@@ -41,14 +41,8 @@ class AuthGroups extends ShieldAuthGroups
      * @see https://codeigniter4.github.io/shield/quick_start_guide/using_authorization/#change-available-groups for more info
      */
     public array $groups = [
-        'superadmin' => [
-            'title'       => 'Super Admin',
-            'description' => 'Complete control of the site.',
-        ],
-        'admin' => [
-            'title'       => 'Admin',
-            'description' => 'Day to day administrators of the site.',
-        ],
+
+        /* ------------------- DEMO EXAMPLES -----------------------
         'developer' => [
             'title'       => 'Developer',
             'description' => 'Site programmers.',
@@ -60,6 +54,38 @@ class AuthGroups extends ShieldAuthGroups
         'beta' => [
             'title'       => 'Beta User',
             'description' => 'Has access to beta-level features.',
+        ],
+        */
+
+        // SIS 
+        'superadmin' => [
+            'title'       => 'Super Admin',
+            'description' => 'has access to all',
+        ],
+
+        'admin' => [
+            'title'       => 'Administrator',
+            'description' => 'System Administrator',
+        ],
+
+        'registrar' => [
+            'title'       => 'Registrar',
+            'description' => 'Registrar staff',
+        ],
+
+        'faculty' => [
+            'title'       => 'Faculty',
+            'description' => 'Faculty members',
+        ],
+
+        'student' => [
+            'title'       => 'Student',
+            'description' => 'Student users',
+        ],
+
+        'user' => [
+            'title'       => 'User',
+            'description' => 'General users of the site. Often customers.',
         ],
     ];
 
@@ -78,7 +104,7 @@ class AuthGroups extends ShieldAuthGroups
         'users.create'        => 'Can create new non-admin users',
         'users.edit'          => 'Can edit existing non-admin users',
         'users.delete'        => 'Can delete existing non-admin users',
-        'beta.access'         => 'Can access beta-level features',
+        // 'beta.access'         => 'Can access beta-level features',
     ];
 
     /**
@@ -93,25 +119,18 @@ class AuthGroups extends ShieldAuthGroups
         'superadmin' => [
             'admin.*',
             'users.*',
-            'beta.*',
         ],
         'admin' => [
             'admin.access',
             'users.create',
             'users.edit',
             'users.delete',
-            'beta.access',
         ],
-        'developer' => [
+        'registrar' => [
             'admin.access',
-            'admin.settings',
-            'users.create',
-            'users.edit',
-            'beta.access',
         ],
+        'faculty' => [],
+        'student' => [],
         'user' => [],
-        'beta' => [
-            'beta.access',
-        ],
     ];
 }
