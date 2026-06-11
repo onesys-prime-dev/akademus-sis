@@ -10,6 +10,6 @@ class AdminController extends BaseController
     public function index()
     {
         // return view('admin/dashboard');
-        return 'Superadmin Dashboard';
+        return 'Admin Dashboard';
     }
 }

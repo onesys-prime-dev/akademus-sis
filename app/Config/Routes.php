@@ -7,7 +7,7 @@ $routes->get('/', 'Home::index');
 
 service('auth')->routes($routes);
 
-$routes->group('admin', ['filter' => 'group:admin,superadmin'], function ($routes) {
+$routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->get('dashboard', 'AdminController::index');
 });
 

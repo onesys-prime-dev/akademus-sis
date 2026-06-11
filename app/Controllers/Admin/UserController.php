@@ -9,6 +9,6 @@ class UserController extends BaseController
 {
     public function index()
     {
-        //
+        return 'Admin User Management';
     }
 }

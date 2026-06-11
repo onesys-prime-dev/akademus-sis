@@ -126,9 +126,7 @@ class AuthGroups extends ShieldAuthGroups
             'users.edit',
             'users.delete',
         ],
-        'registrar' => [
-            'admin.access',
-        ],
+        'registrar' => [],
         'faculty' => [],
         'student' => [],
         'user' => [],

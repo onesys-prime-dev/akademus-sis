@@ -9,6 +9,6 @@ class RegistrarController extends BaseController
 {
     public function index()
     {
-        //
+        return 'registrar dashboard';
     }
 }

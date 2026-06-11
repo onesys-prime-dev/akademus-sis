@@ -9,6 +9,6 @@ class FacultyController extends BaseController
 {
     public function index()
     {
-        //
+        return 'faculty dashboard';
     }
 }

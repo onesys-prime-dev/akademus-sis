@@ -9,6 +9,6 @@ class StudentController extends BaseController
 {
     public function index()
     {
-        //
+        return 'student dashboard';
     }
 }
