@@ -36,3 +36,10 @@ $routes->get('/profile', function () {
     ]);
 
 }, ['filter' => 'session']);
+
+// AUTH
+$routes->get('forgot-password'      , 'Auth\ForgotPasswordController::showForgotForm');
+$routes->post('forgot-password'     , 'Auth\ForgotPasswordController::sendResetLink');
+
+$routes->get('reset-password/(:any)', 'Auth\ForgotPasswordController::showResetForm/$1');
+$routes->post('reset-password'      , 'Auth\ForgotPasswordController::resetPassword');
