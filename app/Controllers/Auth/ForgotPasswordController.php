@@ -25,19 +25,21 @@ class ForgotPasswordController extends BaseController
         if (! $user) {
             return redirect()
                 ->back()
-                ->with('error', 'Email not found.');
+                ->with('message', 'If the email exists, a password reset link has been sent.');
         }
 
         $token = bin2hex(random_bytes(32));
 
         $model = new PasswordResetTokenModel();
 
+        $model->where('user_id', $user->id)->delete();
+
         $model->insert([
             'user_id'    => $user->id,
             'token'      => hash('sha256', $token),
             'expires_at' => date(
                 'Y-m-d H:i:s',
-                strtotime('+1 hour')
+                strtotime('+1 hour') // testing (must be +1 hour, for production)
             ),
             'created_at' => date('Y-m-d H:i:s'),
         ]);
@@ -71,6 +73,22 @@ class ForgotPasswordController extends BaseController
 
     public function showResetForm($token)
     {
+        $model = new PasswordResetTokenModel();
+
+        $resetToken = $model
+            ->where('token', hash('sha256', $token))
+            ->first();
+
+        if (! $resetToken) {
+            return redirect()->to('/login')
+                ->with('error', 'This password reset link is invalid, expired, or has already been used.');
+        }
+
+        if (strtotime($resetToken['expires_at']) < time()) {
+            return redirect()->to('/login')
+                ->with('error', 'This password reset link has expired.');
+        }
+
         return view('auth/reset_password', [
             'token' => $token
         ]);
