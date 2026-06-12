@@ -44,7 +44,29 @@ class ForgotPasswordController extends BaseController
 
         $link = site_url('reset-password/' . $token);
 
-        return $link;
+        $emailService = service('email');
+
+        $emailService->setTo($email);
+        $emailService->setSubject('Reset Your Password');
+
+        $emailService->setMessage("
+            <h2>Password Reset</h2>
+            <p>Click the link below to reset your password:</p>
+            <p>
+                <a href='{$link}'>
+                    Reset Password
+                </a>
+            </p>
+            <p>This link expires in 1 hour.</p>
+        ");
+
+        if (! $emailService->send()) {
+            dd($emailService->printDebugger(['headers']));
+        }
+
+        return redirect()
+            ->back()
+            ->with('message', 'Password reset link sent.');
     }
 
     public function showResetForm($token)
@@ -74,15 +96,6 @@ class ForgotPasswordController extends BaseController
             ->where('token', $hashedToken)
             ->first();
 
-        $user = auth()->getProvider()
-            ->findById($resetToken['user_id']);
-
-        $user->password = $password;
-
-        $result = auth()->getProvider()->save($user);
-
-        dd($result);
-
         if (! $resetToken) {
             return redirect()->to('/login')
                 ->with('error', 'Invalid reset token.');
@@ -96,11 +109,8 @@ class ForgotPasswordController extends BaseController
         $user = auth()->getProvider()
             ->findById($resetToken['user_id']);
 
-        dd(get_class($user));
-
         $user->password = $password;
 
-        dd($user);
         auth()->getProvider()->save($user);
 
         $model->delete($resetToken['id']);
