@@ -44,9 +44,7 @@ class ForgotPasswordController extends BaseController
 
         $link = site_url('reset-password/' . $token);
 
-        return redirect()
-            ->back()
-            ->with('message', 'Password reset link sent.');
+        return $link;
     }
 
     public function showResetForm($token)
@@ -58,7 +56,6 @@ class ForgotPasswordController extends BaseController
 
     public function resetPassword()
     {
-        dd('resetPassword reached');
         $token = $this->request->getPost('token');
 
         $password = $this->request->getPost('password');
@@ -71,9 +68,20 @@ class ForgotPasswordController extends BaseController
 
         $model = new PasswordResetTokenModel();
 
+        $hashedToken = hash('sha256', $token);
+
         $resetToken = $model
-            ->where('token', hash('sha256', $token))
+            ->where('token', $hashedToken)
             ->first();
+
+        $user = auth()->getProvider()
+            ->findById($resetToken['user_id']);
+
+        $user->password = $password;
+
+        $result = auth()->getProvider()->save($user);
+
+        dd($result);
 
         if (! $resetToken) {
             return redirect()->to('/login')
@@ -87,6 +95,8 @@ class ForgotPasswordController extends BaseController
 
         $user = auth()->getProvider()
             ->findById($resetToken['user_id']);
+
+        dd(get_class($user));
 
         $user->password = $password;
 
