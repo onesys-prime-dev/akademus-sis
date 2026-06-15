@@ -44,4 +44,10 @@ $routes->post('forgot-password'     , 'Auth\ForgotPasswordController::sendResetL
 $routes->get('reset-password/(:any)', 'Auth\ForgotPasswordController::showResetForm/$1');
 $routes->post('reset-password'      , 'Auth\ForgotPasswordController::resetPassword');
 
-$routes->get('api/ping', 'Api\Ping::getIndex');
+$routes->group('api', function($routes) {
+    $routes->post('students/promote'   , 'API\StudentAPIController::promote');
+
+    // DEV ONLY
+    $routes->get('api/students/promote', 'API\StudentAPIController::promote');
+});
+
