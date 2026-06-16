@@ -24,9 +24,31 @@ class StudentAPIController extends BaseController
                 ]);
         }
 
+        $data = $this->request->getJSON(true);
+
+        $required = [
+            'applicant_id',
+            'first_name',
+            'last_name',
+            'email'
+        ];
+
+        foreach ($required as $field) {
+
+            if (! isset($data[$field]) || trim($data[$field]) === '') {
+
+                return $this->response
+                    ->setStatusCode(422)
+                    ->setJSON([
+                        'success' => false,
+                        'message' => "{$field} is required"
+                    ]);
+            }
+        }
+
         return $this->respond([
             'success' => true,
-            'message' => 'SIS API Working'
+            'received' => $data
         ]);
     }
 }

@@ -48,6 +48,6 @@ $routes->group('api', function($routes) {
     $routes->post('students/promote'   , 'API\StudentAPIController::promote');
 
     // DEV ONLY
-    $routes->get('api/students/promote', 'API\StudentAPIController::promote');
+    $routes->get('students/promote', 'API\StudentAPIController::promote');
 });
 
