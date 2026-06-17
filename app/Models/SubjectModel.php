@@ -1,0 +1,23 @@
+<?php
+
+namespace App\Models;
+
+use CodeIgniter\Model;
+
+class SubjectModel extends Model
+{
+    protected $table = 'subjects';
+    protected $primaryKey = 'subject_id';
+
+    protected $allowedFields = [
+        'subject_code',
+        'subject_name',
+        'units',
+        'description',
+        'is_active'
+    ];
+
+    protected $returnType = 'array';
+    
+    protected $useTimestamps = true;
+}
