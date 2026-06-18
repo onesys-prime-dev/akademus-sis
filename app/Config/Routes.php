@@ -8,7 +8,27 @@ $routes->get('/', 'Home::index');
 service('auth')->routes($routes);
 
 $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
-    $routes->get('dashboard', 'AdminController::index');
+    $routes->get('dashboard', 'Admin\AdminController::index');
+
+    // create programs
+    $routes->get('programs'              , 'Admin\ProgramController::index');
+    $routes->get('programs/create'       , 'Admin\ProgramController::create');
+    $routes->post('programs/store'        , 'Admin\ProgramController::store');
+    
+    $routes->get('programs/edit/(:num)'  , 'Admin\ProgramController::edit/$1');
+    $routes->post('programs/update/(:num)', 'Admin\ProgramController::update/$1');
+
+    $routes->post('programs/delete/(:num)', 'Admin\ProgramController::delete/$1');
+
+    // create subjects
+    $routes->get('subjects'               , 'Admin\SubjectController::index');
+    $routes->get('subjects/create'        , 'Admin\SubjectController::create');
+    $routes->post('subjects/store'        , 'Admin\SubjectController::store');
+
+    $routes->get('subjects/edit/(:num)'   , 'Admin\SubjectController::edit/$1');
+    $routes->post('subjects/update/(:num)', 'Admin\SubjectController::update/$1');
+
+    $routes->post('subjects/delete/(:num)', 'Admin\SubjectController::delete/$1');
 });
 
 $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) {
