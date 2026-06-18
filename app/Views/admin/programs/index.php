@@ -8,6 +8,12 @@
 </head>
 
 <body>
+    <?php if (session()->has('message')): ?>
+        <div style="color:green;">
+            <?= session('message') ?>
+        </div>
+    <?php endif ?>
+    
     <h1>Programs</h1>
 
     <a href="<?= site_url('admin/programs/create') ?>">

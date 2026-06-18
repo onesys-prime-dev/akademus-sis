@@ -7,6 +7,12 @@
 </head>
 
 <body>
+    <?php if (session()->has('message')): ?>
+        <div style="color:green;">
+            <?= session('message') ?>
+        </div>
+    <?php endif ?>
+    
     <h1>Subjects</h1>
 
     <a href="<?= site_url('admin/subjects/create') ?>">

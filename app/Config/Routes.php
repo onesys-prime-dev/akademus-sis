@@ -11,11 +11,11 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->get('dashboard', 'Admin\AdminController::index');
 
     // create programs
-    $routes->get('programs'              , 'Admin\ProgramController::index');
-    $routes->get('programs/create'       , 'Admin\ProgramController::create');
+    $routes->get('programs'               , 'Admin\ProgramController::index');
+    $routes->get('programs/create'        , 'Admin\ProgramController::create');
     $routes->post('programs/store'        , 'Admin\ProgramController::store');
-    
-    $routes->get('programs/edit/(:num)'  , 'Admin\ProgramController::edit/$1');
+
+    $routes->get('programs/edit/(:num)'   , 'Admin\ProgramController::edit/$1');
     $routes->post('programs/update/(:num)', 'Admin\ProgramController::update/$1');
 
     $routes->post('programs/delete/(:num)', 'Admin\ProgramController::delete/$1');

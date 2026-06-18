@@ -15,7 +15,7 @@
             <?php endforeach ?>
         </div>
     <?php endif ?>
-    
+
     <h1>Edit Program</h1>
 
     <form method="post"
@@ -28,7 +28,7 @@
         <input
             type="text"
             name="program_code"
-            value="<?= esc($program['program_code']) ?>">
+            value="<?= old('program_code', $program['program_code']) ?>">
         <br><br>
 
         <label>Program Name</label>
@@ -36,7 +36,7 @@
         <input
             type="text"
             name="program_name"
-            value="<?= esc($program['program_name']) ?>">
+            value="<?= old('program_name', $program['program_name']) ?>">
         <br><br>
 
         <label>Description</label>

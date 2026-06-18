@@ -15,7 +15,7 @@
             <?php endforeach ?>
         </div>
     <?php endif ?>
-    
+
     <h1>Edit Subject</h1>
 
     <form method="post"
@@ -28,7 +28,7 @@
         <input
             type="text"
             name="subject_code"
-            value="<?= esc($subject['subject_code']) ?>">
+            value="<?= old('subject_code', $program['subject_code']) ?>">
         <br><br>
 
         <label>Subject Name</label>
@@ -36,7 +36,7 @@
         <input
             type="text"
             name="subject_name"
-            value="<?= esc($subject['subject_name']) ?>">
+            value="<?= old('subject_name', $program['subject_name']) ?>">
         <br><br>
 
         <label>Units</label>
@@ -45,7 +45,7 @@
             type="number"
             step="0.5"
             name="units"
-            value="<?= esc($subject['units']) ?>">
+            value="<?= old('units', $program['units']) ?>">
         <br><br>
 
         <label>Description</label>

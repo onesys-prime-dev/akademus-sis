@@ -9,11 +9,13 @@ use CodeIgniter\HTTP\ResponseInterface;
 class ProgramController extends BaseController
 {
     protected ProgramModel $programModel;
-    public function __construct() {
+    public function __construct()
+    {
         $this->programModel = new ProgramModel();
     }
 
-    public function index() {
+    public function index()
+    {
         $programs = $this->programModel
             ->where('is_active', 1)
             ->findAll();
@@ -23,13 +25,13 @@ class ProgramController extends BaseController
         ]);
     }
 
-    public function create() {
-        return redirect()
-            ->to('/admin/programs')
-            ->with('message', 'Programs created successfully.');
+    public function create()
+    {
+        return view('admin/programs/create');
     }
 
-    public function store() {
+    public function store()
+    {
         $rules = [
             'program_code' => 'required|max_length[20]',
             'program_name' => 'required|max_length[255]',
@@ -49,10 +51,13 @@ class ProgramController extends BaseController
             'description'  => $this->request->getPost('description'),
         ]);
 
-        return redirect()->to('/admin/programs');
+        return redirect()
+            ->to('/admin/programs')
+            ->with('message', 'Program created successfully.');
     }
 
-    public function edit($id) {
+    public function edit($id)
+    {
         $program = $this->programModel->find($id);
 
         if (! $program) {
@@ -64,7 +69,8 @@ class ProgramController extends BaseController
         ]);
     }
 
-    public function update($id) {
+    public function update($id)
+    {
         $rules = [
             'program_code' => 'required|max_length[20]',
             'program_name' => 'required|max_length[255]',
@@ -78,6 +84,12 @@ class ProgramController extends BaseController
                 ->with('errors', $this->validator->getErrors());
         }
 
+        $program =$this->programModel->find($id);
+
+        if (! $program) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
         $this->programModel->update($id, [
             'program_code' => $this->request->getPost('program_code'),
             'program_name' => $this->request->getPost('program_name'),
@@ -89,7 +101,8 @@ class ProgramController extends BaseController
             ->with('message', 'Programs updated successfully.');
     }
 
-    public function delete($id) {
+    public function delete($id)
+    {
         $program = $this->programModel->find($id);
 
         if (! $program) {
