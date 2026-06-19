@@ -12,7 +12,7 @@ class CurriculumSubjectModel extends Model
     protected $allowedFields = [
         'curriculum_id',
         'subject_id',
-        'year_level',
+        'year_level', 
         'semester',
         'is_required',
     ];
