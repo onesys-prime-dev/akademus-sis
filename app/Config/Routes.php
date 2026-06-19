@@ -20,6 +20,8 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
 
     $routes->post('programs/delete/(:num)', 'Admin\ProgramController::delete/$1');
 
+    $routes->post('programs/toggle-status/(:num)' , 'Admin\ProgramController::toggleStatus/$1');
+
     // create subjects
     $routes->get('subjects'               , 'Admin\SubjectController::index');
     $routes->get('subjects/create'        , 'Admin\SubjectController::create');
@@ -29,6 +31,8 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->post('subjects/update/(:num)', 'Admin\SubjectController::update/$1');
 
     $routes->post('subjects/delete/(:num)', 'Admin\SubjectController::delete/$1');
+
+    $routes->post('subjects/toggle-status/(:num)', 'Admin\SubjectController::toggleStatus/$1');
 });
 
 $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) {

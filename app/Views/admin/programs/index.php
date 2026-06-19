@@ -13,7 +13,7 @@
             <?= session('message') ?>
         </div>
     <?php endif ?>
-    
+
     <h1>Programs</h1>
 
     <a href="<?= site_url('admin/programs/create') ?>">
@@ -26,6 +26,7 @@
             <th>Code</th>
             <th>Name</th>
             <th>Description</th>
+            <th>Status</th>
             <th>Actions</th>
         </tr>
 
@@ -36,19 +37,32 @@
                 <td><?= esc($program['program_name']) ?></td>
                 <td><?= esc($program['description']) ?></td>
                 <td>
+                    <?= $program['is_active']
+                        ? 'Active'
+                        : 'Inactive' ?>
+                </td>   
+                <td>
                     <a href="<?= site_url('admin/programs/edit/' . $program['program_id']) ?>">
                         Edit
                     </a>
 
-                    <form method="post"
-                        action="<?= site_url('admin/programs/delete/' . $program['program_id']) ?>"
+                    <form
+                        method="post"
+                        action="<?= site_url('admin/programs/toggle-status/' . $program['program_id']) ?>"
                         style="display:inline;">
 
                         <?= csrf_field() ?>
 
-                        <button type="submit" onclick="return confirm('Deactivate this record? ')">
-                            Delete
+                        <button
+                            type="submit"
+                            onclick="return confirm('Change program status?')">
+
+                            <?= $program['is_active']
+                                ? 'Deactivate'
+                                : 'Activate' ?>
+
                         </button>
+
                     </form>
                 </td>
             </tr>

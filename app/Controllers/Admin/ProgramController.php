@@ -16,9 +16,7 @@ class ProgramController extends BaseController
 
     public function index()
     {
-        $programs = $this->programModel
-            ->where('is_active', 1)
-            ->findAll();
+        $programs = $this->programModel->findAll();
 
         return view('admin/programs/index', [
             'programs' => $programs
@@ -101,19 +99,42 @@ class ProgramController extends BaseController
             ->with('message', 'Programs updated successfully.');
     }
 
-    public function delete($id)
-    {
+    // public function delete($id)
+    // {
+    //     $program = $this->programModel->find($id);
+
+    //     if (! $program) {
+    //         throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+    //     }
+    //     $this->programModel->update($id, [
+    //         'is_active' => 0
+    //     ]);
+
+    //     return redirect()
+    //         ->to('/admin/programs')
+    //         ->with('message', 'Programs deactivated successfully.');
+    // }
+
+    public function toggleStatus($id) {
         $program = $this->programModel->find($id);
 
         if (! $program) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
-        $this->programModel->update($id, [
-            'is_active' => 0
+
+        $newStatus = $program['is_active'] ? 0 : 1;
+
+        $this->programModel->update($id, [ 
+            'is_active' => $newStatus
         ]);
 
         return redirect()
             ->to('/admin/programs')
-            ->with('message', 'Programs deactivated successfully.');
+            ->with(
+                'message', 
+                $newStatus
+                    ? 'program activated.'
+                    : 'program deactivated.'
+            );
     }
 }

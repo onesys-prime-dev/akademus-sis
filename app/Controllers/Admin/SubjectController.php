@@ -16,9 +16,7 @@ class SubjectController extends BaseController
 
     public function index()
     {
-        $subjects = $this->subjectModel
-            ->where('is_active', 1)
-            ->findAll();
+        $subjects = $this->subjectModel->findAll();
 
         return view('admin/subjects/index', [
             'subjects' => $subjects
@@ -105,20 +103,43 @@ class SubjectController extends BaseController
             ->with('message', 'Subjects updated successfully.');
     }
 
-    public function delete($id)
-    {
+    // public function delete($id)
+    // {
+    //     $subject = $this->subjectModel->find($id);
+
+    //     if (! $subject) {
+    //         throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+    //     }
+
+    //     $this->subjectModel->update($id, [
+    //         'is_active' => 0
+    //     ]);
+
+    //     return redirect()
+    //         ->to('/admin/subjects')
+    //         ->with('message', 'Subjects deactivated successfully.');
+    // }
+
+    public function toggleStatus($id) {
         $subject = $this->subjectModel->find($id);
 
         if (! $subject) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
-        $this->subjectModel->update($id, [
-            'is_active' => 0
+        $newStatus = $subject['is_active'] ? 0 : 1;
+
+        $this->subjectModel->update($id, [ 
+            'is_active' => $newStatus
         ]);
 
         return redirect()
             ->to('/admin/subjects')
-            ->with('message', 'Subjects deactivated successfully.');
+            ->with(
+                'message', 
+                $newStatus
+                    ? 'Subject activated.'
+                    : 'Subject deactivated.'
+            );
     }
 }
