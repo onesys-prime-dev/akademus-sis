@@ -8,7 +8,8 @@ class SubjectPrerequisiteModel extends Model
 {
     protected $table            = 'subject_prerequisites';
     protected $primaryKey       = 'subject_prerequisites_id';
-    protected $allowedFields = [
+    protected $allowedFields = 
+    [
         'subject_id',
         'prerequisite_subject_id'
     ];

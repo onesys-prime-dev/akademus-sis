@@ -18,7 +18,7 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->get('programs/edit/(:num)'   , 'Admin\ProgramController::edit/$1');
     $routes->post('programs/update/(:num)', 'Admin\ProgramController::update/$1');
 
-    $routes->post('programs/delete/(:num)', 'Admin\ProgramController::delete/$1');
+    // $routes->post('programs/delete/(:num)', 'Admin\ProgramController::delete/$1');
 
     $routes->post('programs/toggle-status/(:num)' , 'Admin\ProgramController::toggleStatus/$1');
 
@@ -30,9 +30,18 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->get('subjects/edit/(:num)'   , 'Admin\SubjectController::edit/$1');
     $routes->post('subjects/update/(:num)', 'Admin\SubjectController::update/$1');
 
-    $routes->post('subjects/delete/(:num)', 'Admin\SubjectController::delete/$1');
+    // $routes->post('subjects/delete/(:num)', 'Admin\SubjectController::delete/$1');
 
     $routes->post('subjects/toggle-status/(:num)', 'Admin\SubjectController::toggleStatus/$1');
+
+    $routes->get('curriculum', 'Admin\CurriculumController::index');
+    $routes->get('curriculum/create', 'Admin\CurriculumController:create');
+    $routes->post('curriculum/store', 'Admin\Curriculum::store');
+
+    $routes->get('curriculum/edit/(:num)', 'Admin\CurriculumController:edit/$1');
+    $routes->get('curriculum/update(:num)', 'Admin\Curriculum::update/$1');
+
+    $routes->post('curriculum/toggle/(:num)', 'Admin\CurriculumController::toggleStatus/$1');
 });
 
 $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) {
