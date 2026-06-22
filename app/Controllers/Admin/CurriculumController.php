@@ -43,7 +43,6 @@ class CurriculumController extends BaseController
 
     public function store()
     {
-
         $rules = [
             'program_id'      => 'required|integer',
             'curriculum_code' => 'required|max_length[50]',
