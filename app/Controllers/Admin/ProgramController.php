@@ -71,7 +71,7 @@ class ProgramController extends BaseController
     {
         $rules = [
             'program_code' => 'required|max_length[20]',
-            'program_name' => 'required|max_length[255]',
+            'program_name' => 'required|max_length[100]',
             'description'  => 'permit_empty',
         ];
 
@@ -82,7 +82,7 @@ class ProgramController extends BaseController
                 ->with('errors', $this->validator->getErrors());
         }
 
-        $program =$this->programModel->find($id);
+        $program = $this->programModel->find($id);
 
         if (! $program) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
@@ -115,7 +115,8 @@ class ProgramController extends BaseController
     //         ->with('message', 'Programs deactivated successfully.');
     // }
 
-    public function toggleStatus($id) {
+    public function toggleStatus($id)
+    {
         $program = $this->programModel->find($id);
 
         if (! $program) {
@@ -124,14 +125,14 @@ class ProgramController extends BaseController
 
         $newStatus = $program['is_active'] ? 0 : 1;
 
-        $this->programModel->update($id, [ 
+        $this->programModel->update($id, [
             'is_active' => $newStatus
         ]);
 
         return redirect()
             ->to('/admin/programs')
             ->with(
-                'message', 
+                'message',
                 $newStatus
                     ? 'program activated.'
                     : 'program deactivated.'

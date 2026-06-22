@@ -34,12 +34,12 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
 
     $routes->post('subjects/toggle-status/(:num)', 'Admin\SubjectController::toggleStatus/$1');
 
-    $routes->get('curriculum', 'Admin\CurriculumController::index');
-    $routes->get('curriculum/create', 'Admin\CurriculumController:create');
-    $routes->post('curriculum/store', 'Admin\Curriculum::store');
+    $routes->get('curriculum'               , 'Admin\CurriculumController::index');
+    $routes->get('curriculum/create'        , 'Admin\CurriculumController::create');
+    $routes->post('curriculum/store'        , 'Admin\CurriculumController::store');
 
-    $routes->get('curriculum/edit/(:num)', 'Admin\CurriculumController:edit/$1');
-    $routes->get('curriculum/update(:num)', 'Admin\Curriculum::update/$1');
+    $routes->get('curriculum/edit/(:num)'   , 'Admin\CurriculumController::edit/$1');
+    $routes->get('curriculum/update(:num)'  , 'Admin\CurriculumController::update/$1');
 
     $routes->post('curriculum/toggle/(:num)', 'Admin\CurriculumController::toggleStatus/$1');
 });
