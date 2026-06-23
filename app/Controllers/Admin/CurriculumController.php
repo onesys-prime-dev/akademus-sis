@@ -23,7 +23,7 @@ class CurriculumController extends BaseController
         $curriculum = $this->curriculumModel
             ->select('curriculum.*, programs.program_name')
             ->join('programs', 'programs.program_id = curriculum.program_id')
-            ->findAll();
+            ->where('curriculum.is_active', 1);
 
         return view('admin/curriculum/index', [
             'curriculum' => $curriculum
@@ -73,13 +73,15 @@ class CurriculumController extends BaseController
     public function edit($id)
     {
         $curriculum = $this->curriculumModel->find($id);
+        $programs = $this->programModel->where('is_active', 1)->findAll();
 
         if (! $curriculum) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
         return view('admin/curriculum/edit', [
-            'curriculum' => $curriculum
+            'curriculum' => $curriculum,
+            'programs'   => $programs
         ]);
     }
 
@@ -90,7 +92,7 @@ class CurriculumController extends BaseController
             'program_id'      => 'required|max_length[10]',
             'curriculum_code' => 'required|max_length[20]',
             'curriculum_name' => 'required|max_length[100]',
-            'academic_year'   => 'required|max_length[15]',
+            'academic_year'   => 'required|regex_match[/^\d{4}-\d{4}$/]',
             'description'     => 'permit_empty',
         ];
 
@@ -114,6 +116,10 @@ class CurriculumController extends BaseController
             'academic_year'   => $this->request->getPost('academic_year'),
             'description'     => $this->request->getPost('description'),
         ]);
+
+        return redirect()
+            ->to('/admin/curriculum')
+            ->with('message', 'Curriculum updated successfully.');
     }
 
     public function toggleStatus($id) {

@@ -39,7 +39,7 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->post('curriculum/store'        , 'Admin\CurriculumController::store');
 
     $routes->get('curriculum/edit/(:num)'   , 'Admin\CurriculumController::edit/$1');
-    $routes->get('curriculum/update(:num)'  , 'Admin\CurriculumController::update/$1');
+    $routes->post('curriculum/update/(:num)'  , 'Admin\CurriculumController::update/$1');
 
     $routes->post('curriculum/toggle/(:num)', 'Admin\CurriculumController::toggleStatus/$1');
 });

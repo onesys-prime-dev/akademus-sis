@@ -19,7 +19,7 @@ class UserSeeder extends Seeder
         $adminUser = $users->findById($users->getInsertID());
 
         $adminUser->createEmailIdentity([
-            'email'    => 'testakademusmentora@gmail.com',
+            'email'    => 'admin@test.com',
             'password' => 'Admin@123',
         ]);
 
