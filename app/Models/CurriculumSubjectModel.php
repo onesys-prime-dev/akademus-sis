@@ -6,8 +6,8 @@ use CodeIgniter\Model;
 
 class CurriculumSubjectModel extends Model
 {
-    protected $table            = 'curriculum_subjects';
-    protected $primaryKey       = 'curriculum_subject_id';
+    protected $table      = 'curriculum_subjects';
+    protected $primaryKey = 'curriculum_subject_id';
 
     protected $allowedFields = [
         'curriculum_id',
@@ -15,6 +15,7 @@ class CurriculumSubjectModel extends Model
         'year_level', 
         'semester',
         'is_required',
+        'is_active',
     ];
 
     protected $useTimestamps = true;

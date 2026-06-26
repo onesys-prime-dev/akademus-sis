@@ -23,7 +23,7 @@ class CurriculumController extends BaseController
         $curriculum = $this->curriculumModel
             ->select('curriculum.*, programs.program_name')
             ->join('programs', 'programs.program_id = curriculum.program_id')
-            ->where('curriculum.is_active', 1);
+            ->findAll();
 
         return view('admin/curriculum/index', [
             'curriculum' => $curriculum
@@ -45,9 +45,9 @@ class CurriculumController extends BaseController
     {
         $rules = [
             'program_id'      => 'required|integer',
-            'curriculum_code' => 'required|max_length[50]',
+            'curriculum_code' => 'required|max_length[50]|is_unique[curriculum.curriculum_code]',
             'curriculum_name' => 'required|max_length[255]',
-            'academic_year'   => 'required|max_length[20]'
+            'academic_year'   => 'required|regex_match[/^\d{4}-\d{4}$/]'
         ];
 
         if (! $this->validate($rules)) {
@@ -87,11 +87,10 @@ class CurriculumController extends BaseController
 
     public function update($id)
     {
-
         $rules = [
-            'program_id'      => 'required|max_length[10]',
-            'curriculum_code' => 'required|max_length[20]',
-            'curriculum_name' => 'required|max_length[100]',
+            'program_id'      => 'required|integer',
+            'curriculum_code' => 'required|max_length[50]|is_unique[curriculum.curriculum_code,curriculum_id,{curriculum_id}]',
+            'curriculum_name' => 'required|max_length[255]',
             'academic_year'   => 'required|regex_match[/^\d{4}-\d{4}$/]',
             'description'     => 'permit_empty',
         ];
@@ -104,6 +103,20 @@ class CurriculumController extends BaseController
         }
 
         $curriculum = $this->curriculumModel->find($id);
+
+        $duplicate = $this->curriculumModel
+            ->where('curriculum_code', $this->request->getPost('curriculum_code'))
+            ->where('curriculum_id !=', $id)
+            ->first();
+
+        if ($duplicate) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', [
+                    'curriculum_code' => 'Curriculum code already exists.'
+                ]);
+        }
 
         if (! $curriculum) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
@@ -122,8 +135,8 @@ class CurriculumController extends BaseController
             ->with('message', 'Curriculum updated successfully.');
     }
 
-    public function toggleStatus($id) {
-        
+    public function toggleStatus($id)
+    {
         $curriculum = $this->curriculumModel->find($id);
 
         if (! $curriculum) {
@@ -139,10 +152,10 @@ class CurriculumController extends BaseController
         return redirect()
             ->to('/admin/curriculum')
             ->with(
-                'message', 
-                $newStatus 
-                    ? 'curriculum is activated'
-                    : 'curriculum is deactivated'
+                'message',
+                $newStatus
+                    ? 'curriculum is activated successfully'
+                    : 'curriculum is deactivated successfully'
             );
     }
 }

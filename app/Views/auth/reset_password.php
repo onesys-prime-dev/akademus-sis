@@ -1,49 +1,49 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Reset Password</title>
 </head>
+
 <body>
 
-<h2>Reset Password</h2>
+    <h2>Reset Password</h2>
 
-<form method="post" action="<?= site_url('reset-password') ?>">
+    <form method="post" action="<?= site_url('reset-password') ?>">
 
-    <?= csrf_field() ?>
+        <?= csrf_field() ?>
 
-    <input
-        type="hidden"
-        name="token"
-        value="<?= esc($token) ?>"
-    >
+        <input
+            type="hidden"
+            name="token"
+            value="<?= esc($token) ?>">
 
-    <label>New Password</label>
-    <br>
+        <label>New Password</label>
+        <br>
 
-    <input
-        type="password"
-        name="password"
-        required
-    >
+        <input
+            type="password"
+            name="password"
+            required>
 
-    <br><br>
+        <br><br>
 
-    <label>Confirm Password</label>
-    <br>
+        <label>Confirm Password</label>
+        <br>
 
-    <input
-        type="password"
-        name="password_confirm"
-        required
-    >
+        <input
+            type="password"
+            name="password_confirm"
+            required>
 
-    <br><br>
+        <br><br>
 
-    <button type="submit">
-        Reset Password
-    </button>
+        <button type="submit">
+            Reset Password
+        </button>
 
-</form>
+    </form>
 
 </body>
+
 </html>
