@@ -60,6 +60,11 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->get('dashboard', 'StudentController::index');
 });
 
+$routes->group('chairperson', ['filter' => 'group:chairperson'], function ($routes) {
+    $routes->get('dashboard', 'ChairpersonController::index');
+    $routes->post('schedule/save-draft', 'ChairpersonController::saveDraft');
+});
+
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);
 
 $routes->get('/profile', function () {
