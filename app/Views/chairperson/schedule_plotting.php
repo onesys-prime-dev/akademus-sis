@@ -46,11 +46,25 @@
         .btn-primary:hover { background: #1d4ed8; }
         .btn-primary:disabled { background: #93c5fd; cursor: default; }
         .btn-ghost { background: #fff; color: #2563eb; border: 1px solid #2563eb; }
-        .btn-publish { background: #16a34a; color: #fff; }
-        .btn-publish:hover { background: #15803d; }
-        .btn-publish:disabled { background: #86efac; cursor: default; }
-        .btn-danger { background: #fff; color: #dc2626; border: 1px solid #dc2626; }
-        .btn-danger:hover { background: #fef2f2; }
+        /* Google-Docs-style sync indicator */
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .sync-status .sync-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #16a34a;
+        }
+
+        .sync-status.saving .sync-dot { background: #d97706; }
+        .sync-status.error .sync-dot { background: #dc2626; }
+        .sync-status.error { color: #dc2626; }
 
         /* ===== Filters ===== */
         .filters {
@@ -181,17 +195,12 @@
 
         .grid-toolbar h2 { margin-bottom: 0; }
 
-        .status-badge {
-            display: inline-block;
+        .class-count {
             font-size: 11px;
-            font-weight: 700;
-            padding: 2px 10px;
-            border-radius: 999px;
-            vertical-align: 1px;
+            font-weight: 400;
+            color: #6b7280;
+            margin-left: 6px;
         }
-
-        .status-badge.draft { background: #fef3c7; color: #b45309; }
-        .status-badge.published { background: #dcfce7; color: #15803d; }
 
         .room-legend {
             display: flex;
@@ -227,8 +236,6 @@
             font-weight: 600;
         }
 
-        .grid .head .date { font-size: 11px; color: #6b7280; font-weight: 400; }
-
         .grid .time {
             font-size: 11px;
             color: #6b7280;
@@ -258,6 +265,15 @@
         .block .code  { font-weight: 700; }
         .block .title { font-weight: 600; }
         .block .meta  { color: #4b5563; }
+
+        /* Keep narrow (lane-sharing) blocks readable: one line + ellipsis,
+           full details in the hover tooltip. */
+        .block .code, .block .title, .block .meta, .block .section-tag {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
 
         .block .remove {
             position: absolute;
@@ -527,6 +543,109 @@
             flex-wrap: wrap;
         }
 
+        /* ===== Room overview modal ===== */
+        .overview-modal { width: 480px; }
+
+        .ov-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #6b7280;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .day-chips {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .day-chip {
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid #d1d5db;
+            background: #fff;
+            color: #374151;
+            font-size: 12px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .day-chip:hover { border-color: #93c5fd; }
+
+        .day-chip.active {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .overview-rooms {
+            grid-template-columns: repeat(3, 1fr);
+            margin-bottom: 14px;
+        }
+
+        .room-card.selected {
+            outline: 2px solid #2563eb;
+            outline-offset: 1px;
+        }
+
+        .overview-list {
+            max-height: 340px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 14px;
+        }
+
+        .overview-row {
+            display: flex;
+            gap: 12px;
+            padding: 9px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            align-items: flex-start;
+        }
+
+        .overview-row:last-child { border-bottom: none; }
+
+        .overview-row .ov-time {
+            flex: 0 0 132px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .overview-row .ov-details { min-width: 0; font-size: 12px; }
+        .overview-row .ov-details .code { font-weight: 700; }
+        .overview-row .ov-details .meta { color: #6b7280; }
+
+        .overview-row .ov-section {
+            margin-left: auto;
+            flex: 0 0 auto;
+            background: #eff6ff;
+            color: #2563eb;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .overview-row.free {
+            background: #f0fdf4;
+        }
+
+        .overview-row.free .ov-time { color: #16a34a; }
+        .overview-row.free .ov-details { color: #16a34a; font-weight: 600; }
+
+        .overview-empty {
+            padding: 24px 12px;
+            text-align: center;
+            font-size: 12.5px;
+            color: #6b7280;
+        }
+
         /* ===== Toast ===== */
         .toast {
             position: fixed;
@@ -555,8 +674,11 @@
     <header class="topbar">
         <h1>Schedule Plotting</h1>
         <div class="right">
-            <button type="button" class="btn btn-primary" id="saveDraftBtn">Save Draft</button>
-            <button type="button" class="btn btn-publish" id="publishBtn">Publish</button>
+            <div class="sync-status" id="syncStatus">
+                <span class="sync-dot"></span>
+                <span id="syncText">All changes saved</span>
+            </div>
+            <button type="button" class="btn btn-ghost" id="roomOverviewBtn">Room Overview</button>
             <div class="user">
                 <div class="name"><?= esc($user['name']) ?></div>
                 <div class="role"><?= esc($user['role']) ?></div>
@@ -619,9 +741,7 @@
         <section class="panel schedule">
             <div class="grid-toolbar">
                 <h2>Weekly Plotting Grid
-                    <span class="status-badge <?= $is_published ? 'published' : 'draft' ?>" id="statusBadge">
-                        <?= $is_published ? 'Published' : 'Draft' ?>
-                    </span>
+                    <span class="class-count" id="classCount"></span>
                 </h2>
                 <div class="room-legend">
                     <span><i class="lg-green"></i> Available</span>
@@ -633,10 +753,7 @@
             <div class="grid">
                 <div class="head"></div>
                 <?php foreach ($week as $day): ?>
-                    <div class="head">
-                        <?= esc($day['day']) ?>
-                        <div class="date"><?= esc($day['date']) ?></div>
-                    </div>
+                    <div class="head"><?= esc($day['day']) ?></div>
                 <?php endforeach; ?>
 
                 <!-- Time labels column -->
@@ -690,6 +807,27 @@
         </div>
     </div>
 
+    <!-- Room overview modal -->
+    <div class="modal-backdrop" id="overviewModal">
+        <div class="modal overview-modal">
+            <h3>Room Overview</h3>
+            <div class="sub">Every class plotted in a room for a day — all programs, year levels
+                and sections in <?= esc($selected['academic_year']) ?>, live.</div>
+
+            <div class="ov-label">Day</div>
+            <div class="day-chips" id="overviewDays"></div>
+
+            <div class="ov-label">Room</div>
+            <div class="room-grid overview-rooms" id="overviewRooms"></div>
+
+            <div class="overview-list" id="overviewList"></div>
+
+            <div class="actions">
+                <button type="button" class="btn btn-ghost" id="overviewClose">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Conflict warning modal -->
     <div class="modal-backdrop" id="conflictModal">
         <div class="modal">
@@ -706,22 +844,6 @@
         </div>
     </div>
 
-    <!-- Unsaved changes modal -->
-    <div class="modal-backdrop" id="unsavedModal">
-        <div class="modal">
-            <h3>Unsaved changes</h3>
-            <div class="sub">
-                Your plotting for <b><?= esc($selected['section']) ?> &middot; <?= esc($selected['year_level']) ?></b>
-                hasn't been saved. If you switch without saving, those changes will be lost.
-            </div>
-            <div class="actions">
-                <button type="button" class="btn btn-ghost" id="unsavedStay">Stay here</button>
-                <button type="button" class="btn btn-danger" id="unsavedDiscard">Discard &amp; switch</button>
-                <button type="button" class="btn btn-primary" id="unsavedSave">Save as draft &amp; switch</button>
-            </div>
-        </div>
-    </div>
-
     <div class="toast" id="toast"></div>
 
     <script>
@@ -734,10 +856,8 @@
             rowHeight: 28,
             gridStartMin: toMinutes(<?= json_encode($grid_start) ?>),
             gridEndMin: toMinutes(<?= json_encode($grid_end) ?>),
-            saveUrl: <?= json_encode(site_url('chairperson/schedule/save-draft')) ?>,
-            publishUrl: <?= json_encode(site_url('chairperson/schedule/publish')) ?>,
-            othersUrl: <?= json_encode(site_url('chairperson/schedule/others')) ?>,
-            pollMs: 10000,
+            syncUrl: <?= json_encode(site_url('chairperson/schedule/sync')) ?>,
+            stateUrl: <?= json_encode(site_url('chairperson/schedule/state')) ?>,
             saturday: 5,
         };
         CONFIG.totalRows = (CONFIG.gridEndMin - CONFIG.gridStartMin) / 30;
@@ -749,8 +869,11 @@
         let OTHERS     = <?= json_encode(array_values($other_blocks), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         let blocks     = <?= json_encode(array_values($blocks), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
-        // True whenever the grid differs from what's saved on the server.
-        let isDirty = false;
+        // Autosave state: every change syncs to the server immediately.
+        let saveTimer = null;   // debounce handle
+        let saving = false;     // a sync request is in flight
+        let saveQueued = false; // a change happened while saving
+        let stateVersion = '';  // long-poll change signature
 
         // ---------- time helpers ----------
         function rowToHHMM(row) {
@@ -793,102 +916,138 @@
         });
 
         // ---------- rendering ----------
-        function overlapsAny(list, day, startRow, endRow) {
-            return list.some(b => b.day === day && rangesOverlap(startRow, endRow, blockStartRow(b), blockEndRow(b)));
+        // Assign overlapping blocks to side-by-side lanes (interval
+        // partitioning), so no block ever hides behind another.
+        function assignLanes(items) {
+            const sorted = items.slice().sort((a, b) => a.startRow - b.startRow || a.endRow - b.endRow);
+
+            const clusters = [];
+            let cluster = [];
+            let clusterEnd = -1;
+
+            sorted.forEach(item => {
+                if (cluster.length && item.startRow >= clusterEnd) {
+                    clusters.push(cluster);
+                    cluster = [];
+                    clusterEnd = -1;
+                }
+                cluster.push(item);
+                clusterEnd = Math.max(clusterEnd, item.endRow);
+            });
+            if (cluster.length) clusters.push(cluster);
+
+            clusters.forEach(group => {
+                const laneEnds = [];
+                group.forEach(item => {
+                    let lane = laneEnds.findIndex(end => end <= item.startRow);
+                    if (lane === -1) { lane = laneEnds.length; laneEnds.push(0); }
+                    laneEnds[lane] = item.endRow;
+                    item.lane = lane;
+                });
+                group.forEach(item => { item.lanes = laneEnds.length; });
+            });
         }
 
-        function renderGhosts() {
-            OTHERS.forEach(b => {
-                const col = document.querySelector(`.day-col[data-day="${b.day}"]`);
-                if (!col) return;
+        function positionBlock(el, item) {
+            el.style.top = (item.startRow * CONFIG.rowHeight) + 'px';
+            el.style.height = ((item.endRow - item.startRow) * CONFIG.rowHeight - 4) + 'px';
+            el.style.left = `calc(${(item.lane / item.lanes) * 100}% + 3px)`;
+            el.style.width = `calc(${100 / item.lanes}% - 6px)`;
+            el.style.right = 'auto';
+        }
 
-                const startRow = blockStartRow(b);
-                const endRow = blockEndRow(b);
+        function shortYear(yearLevel) {
+            return (yearLevel || '').replace(' Year', ' Yr');
+        }
 
-                const el = document.createElement('div');
-                el.className = 'block ghost';
-                el.style.top = (startRow * CONFIG.rowHeight) + 'px';
-                el.style.height = ((endRow - startRow) * CONFIG.rowHeight - 4) + 'px';
-                el.title = `${b.code} · ${b.section} · ${b.room}${b.prof ? ' · ' + b.prof : ''}`;
+        function ghostEl(b) {
+            const el = document.createElement('div');
+            el.className = 'block ghost';
+            el.title = `${b.code} · ${b.section}${b.year_level ? ' · ' + b.year_level : ''}`
+                + ` · ${b.room}${b.prof ? ' · ' + b.prof : ''} · ${b.time_label}`;
 
-                // Share the column when one of our own blocks occupies the
-                // same time, so it never hides behind the ghost.
-                if (overlapsAny(blocks, b.day, startRow, endRow)) {
-                    el.style.left = '52%';
-                }
+            const tag = document.createElement('div');
+            tag.className = 'section-tag';
+            tag.textContent = b.section + (b.year_level ? ' · ' + shortYear(b.year_level) : '');
 
-                const tag = document.createElement('div');
-                tag.className = 'section-tag';
-                tag.textContent = b.section;
+            const code = document.createElement('div');
+            code.className = 'code';
+            code.textContent = b.code;
 
-                const code = document.createElement('div');
-                code.className = 'code';
-                code.textContent = b.code;
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            meta.textContent = b.room;
 
-                const meta = document.createElement('div');
-                meta.className = 'meta';
-                meta.textContent = b.room;
+            el.append(tag, code, meta);
+            return el;
+        }
 
-                el.append(tag, code, meta);
-                col.appendChild(el);
+        function ownEl(b, index) {
+            const el = document.createElement('div');
+            el.className = 'block ' + b.theme;
+            el.title = `${b.code} · ${b.title} · ${b.time_label} · ${b.room}${b.prof ? ' · ' + b.prof : ''}`;
+
+            const code = document.createElement('div');
+            code.className = 'code';
+            code.textContent = b.code;
+
+            const title = document.createElement('div');
+            title.className = 'title';
+            title.textContent = b.title;
+
+            const time = document.createElement('div');
+            time.className = 'meta';
+            time.textContent = b.time_label;
+
+            const room = document.createElement('div');
+            room.className = 'meta';
+            room.textContent = b.room;
+
+            const remove = document.createElement('button');
+            remove.className = 'remove';
+            remove.type = 'button';
+            remove.title = 'Remove from schedule';
+            remove.textContent = '×';
+            remove.addEventListener('click', () => {
+                blocks.splice(index, 1);
+                renderBlocks();
+                scheduleSave();
+                showToast('Removed ' + b.code + ' from the schedule.', '');
             });
+
+            el.append(code, title, time, room, remove);
+            return el;
         }
 
         function renderBlocks() {
             document.querySelectorAll('.day-col .block').forEach(el => el.remove());
-            renderGhosts();
 
-            blocks.forEach((b, i) => {
-                const col = document.querySelector(`.day-col[data-day="${b.day}"]`);
+            WEEK.forEach((_, day) => {
+                const col = document.querySelector(`.day-col[data-day="${day}"]`);
                 if (!col) return;
 
-                const startRow = blockStartRow(b);
-                const endRow = blockEndRow(b);
+                const items = [];
 
-                const el = document.createElement('div');
-                el.className = 'block ' + b.theme;
-                el.style.top = (startRow * CONFIG.rowHeight) + 'px';
-                el.style.height = ((endRow - startRow) * CONFIG.rowHeight - 4) + 'px';
-
-                // Share the column with any overlapping ghost block.
-                if (overlapsAny(OTHERS, b.day, startRow, endRow)) {
-                    el.style.right = '50%';
-                }
-
-                const code = document.createElement('div');
-                code.className = 'code';
-                code.textContent = b.code;
-
-                const title = document.createElement('div');
-                title.className = 'title';
-                title.textContent = b.title;
-
-                const time = document.createElement('div');
-                time.className = 'meta';
-                time.textContent = b.time_label;
-
-                const room = document.createElement('div');
-                room.className = 'meta';
-                room.textContent = b.room;
-
-                const remove = document.createElement('button');
-                remove.className = 'remove';
-                remove.type = 'button';
-                remove.title = 'Remove from schedule';
-                remove.textContent = '×';
-                remove.addEventListener('click', () => {
-                    blocks.splice(i, 1);
-                    isDirty = true;
-                    setStatus('draft');
-                    renderBlocks();
-                    showToast('Removed ' + b.code + ' from the draft.', '');
+                blocks.forEach((b, i) => {
+                    if (b.day !== day) return;
+                    items.push({ startRow: blockStartRow(b), endRow: blockEndRow(b), el: ownEl(b, i) });
                 });
 
-                el.append(code, title, time, room, remove);
-                col.appendChild(el);
+                OTHERS.forEach(b => {
+                    if (b.day !== day) return;
+                    items.push({ startRow: blockStartRow(b), endRow: blockEndRow(b), el: ghostEl(b) });
+                });
+
+                assignLanes(items);
+
+                items.forEach(item => {
+                    positionBlock(item.el, item);
+                    col.appendChild(item.el);
+                });
             });
 
             updateRail();
+            renderRoomOverview(); // keep the overview live with every change
         }
 
         const MAX_MEETINGS = 3; // a subject can meet up to 3 times a week
@@ -910,13 +1069,14 @@
             });
 
             document.getElementById('plottedUnits').textContent = units;
-            document.getElementById('publishBtn').disabled = blocks.length === 0;
+            document.getElementById('classCount').textContent =
+                blocks.length === 0 ? 'No classes plotted yet' : `${blocks.length} ${blocks.length === 1 ? 'class' : 'classes'} plotted for this section`;
         }
 
-        function setStatus(status) {
-            const badge = document.getElementById('statusBadge');
-            badge.className = 'status-badge ' + status;
-            badge.textContent = status === 'published' ? 'Published' : 'Draft';
+        function setSync(state, text) {
+            const box = document.getElementById('syncStatus');
+            box.className = 'sync-status' + (state === 'saved' ? '' : ' ' + state);
+            document.getElementById('syncText').textContent = text;
         }
 
         // ---------- drag & drop ----------
@@ -1069,6 +1229,155 @@
             });
         });
 
+        // ---------- room overview modal ----------
+        const overviewModal = document.getElementById('overviewModal');
+        const overviewState = { day: 0, room: ROOMS[0] };
+
+        function overviewRoomLoad(room, day) {
+            return blocks.concat(OTHERS).filter(b => b.room === room && b.day === day).length;
+        }
+
+        function renderOverviewControls() {
+            const daysBox = document.getElementById('overviewDays');
+            daysBox.innerHTML = '';
+            WEEK.forEach((d, i) => {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'day-chip' + (i === overviewState.day ? ' active' : '');
+                chip.textContent = d.day;
+                chip.addEventListener('click', () => {
+                    overviewState.day = i;
+                    renderRoomOverview();
+                });
+                daysBox.appendChild(chip);
+            });
+
+            const roomsBox = document.getElementById('overviewRooms');
+            roomsBox.innerHTML = '';
+            ROOMS.forEach(room => {
+                const load = overviewRoomLoad(room, overviewState.day);
+                const state = load >= 3 ? 'red' : load >= 2 ? 'yellow' : 'green';
+
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'room-card ' + state + (room === overviewState.room ? ' selected' : '');
+
+                const head = document.createElement('div');
+                head.className = 'room-head';
+                const name = document.createElement('div');
+                name.className = 'room-name';
+                name.textContent = room;
+                const dot = document.createElement('span');
+                dot.className = 'room-dot';
+                head.append(name, dot);
+
+                const status = document.createElement('div');
+                status.className = 'room-status';
+                status.textContent = load === 0 ? 'Free all day' : `${load} ${load === 1 ? 'class' : 'classes'}`;
+
+                card.append(head, status);
+                card.addEventListener('click', () => {
+                    overviewState.room = room;
+                    renderRoomOverview();
+                });
+                roomsBox.appendChild(card);
+            });
+        }
+
+        function overviewSectionLabel(b) {
+            const section = b.section || CONTEXT.section;
+            const yearLevel = b.year_level || CONTEXT.year_level;
+            return `${section} · ${shortYear(yearLevel)}`;
+        }
+
+        function overviewClassRow(b) {
+            const row = document.createElement('div');
+            row.className = 'overview-row';
+
+            const time = document.createElement('div');
+            time.className = 'ov-time';
+            time.textContent = `${rowTo12h(blockStartRow(b))} - ${rowTo12h(blockEndRow(b))}`;
+
+            const details = document.createElement('div');
+            details.className = 'ov-details';
+            const code = document.createElement('span');
+            code.className = 'code';
+            code.textContent = b.code;
+            details.appendChild(code);
+            details.appendChild(document.createTextNode(' — ' + b.title));
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            const program = b.program || CONTEXT.program;
+            meta.textContent = (b.prof ? b.prof + ' · ' : '') + program;
+            details.appendChild(meta);
+
+            const section = document.createElement('span');
+            section.className = 'ov-section';
+            section.textContent = overviewSectionLabel(b);
+
+            row.append(time, details, section);
+            return row;
+        }
+
+        function overviewFreeRow(startRow, endRow) {
+            const row = document.createElement('div');
+            row.className = 'overview-row free';
+
+            const time = document.createElement('div');
+            time.className = 'ov-time';
+            time.textContent = `${rowTo12h(startRow)} - ${rowTo12h(endRow)}`;
+
+            const details = document.createElement('div');
+            details.className = 'ov-details';
+            const hours = (endRow - startRow) / 2;
+            details.textContent = `Free · ${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+
+            row.append(time, details);
+            return row;
+        }
+
+        function renderRoomOverview() {
+            if (!overviewModal.classList.contains('open')) return;
+
+            renderOverviewControls();
+
+            const room = overviewState.room;
+            const day = overviewState.day;
+            const list = document.getElementById('overviewList');
+            list.innerHTML = '';
+
+            const items = blocks.concat(OTHERS)
+                .filter(b => b.room === room && b.day === day)
+                .sort((a, b) => blockStartRow(a) - blockStartRow(b));
+
+            if (items.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'overview-empty';
+                empty.textContent = `${room} is free all day on ${WEEK[day].day} — no classes plotted.`;
+                list.appendChild(empty);
+                return;
+            }
+
+            // Interleave the occupied slots with the free gaps between them.
+            let cursor = 0;
+            items.forEach(b => {
+                const startRow = blockStartRow(b);
+                const endRow = blockEndRow(b);
+                if (startRow > cursor) list.appendChild(overviewFreeRow(cursor, startRow));
+                list.appendChild(overviewClassRow(b));
+                cursor = Math.max(cursor, endRow);
+            });
+            if (cursor < CONFIG.totalRows) list.appendChild(overviewFreeRow(cursor, CONFIG.totalRows));
+        }
+
+        document.getElementById('roomOverviewBtn').addEventListener('click', () => {
+            overviewModal.classList.add('open');
+            renderRoomOverview();
+        });
+
+        document.getElementById('overviewClose').addEventListener('click', () => overviewModal.classList.remove('open'));
+        overviewModal.addEventListener('click', e => { if (e.target === overviewModal) overviewModal.classList.remove('open'); });
+
         // ---------- conflict warning modal ----------
         const conflictModal = document.getElementById('conflictModal');
 
@@ -1194,9 +1503,8 @@
                             end: rowToHHMM(endRow),
                         });
                         closeRoomModal();
-                        isDirty = true;
-                        setStatus('draft');
                         renderBlocks();
+                        scheduleSave();
                         showToast(`${subject.code} plotted in ${room}.`, 'success');
                     });
                 }
@@ -1218,19 +1526,22 @@
             if (e.key !== 'Escape') return;
             closeRoomModal();
             document.getElementById('conflictModal').classList.remove('open');
-            const unsaved = document.getElementById('unsavedModal');
-            if (unsaved.classList.contains('open')) {
-                document.getElementById('unsavedStay').click();
-            }
+            overviewModal.classList.remove('open');
         });
 
-        // ---------- save draft / publish ----------
-        async function submitSchedule(url, btn, busyLabel, idleLabel, successMessage) {
-            btn.disabled = true;
-            btn.textContent = busyLabel;
+        // ---------- autosave (insta-plot) ----------
+        function scheduleSave() {
+            setSync('saving', 'Saving…');
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(doSave, 250);
+        }
+
+        async function doSave() {
+            if (saving) { saveQueued = true; return; }
+            saving = true;
 
             try {
-                const response = await fetch(url, {
+                const response = await fetch(CONFIG.syncUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     body: JSON.stringify({ context: CONTEXT, blocks: blocks }),
@@ -1238,120 +1549,97 @@
                 const result = await response.json();
 
                 if (response.ok && result.ok) {
-                    isDirty = false;
-                    setStatus(result.status);
-                    showToast(successMessage.replace('{n}', result.saved), 'success');
+                    setSync('saved', 'All changes saved');
                 } else {
-                    showToast(result.error || 'Could not save the schedule.', 'error');
+                    // Server rejected the change (e.g. a conflict won the
+                    // race): fall back to the server's truth.
+                    showToast(result.error || 'Change rejected by the server.', 'error');
+                    await reloadFromServer();
+                    setSync('saved', 'All changes saved');
                 }
             } catch (err) {
-                showToast('Network error while saving the schedule.', 'error');
+                setSync('error', 'Offline — retrying…');
+                setTimeout(scheduleSave, 3000);
             } finally {
-                btn.disabled = false;
-                btn.textContent = idleLabel;
-                updateRail();
-            }
-        }
-
-        document.getElementById('saveDraftBtn').addEventListener('click', e =>
-            submitSchedule(CONFIG.saveUrl, e.currentTarget, 'Saving…', 'Save Draft', 'Draft saved ({n} classes).'));
-
-        document.getElementById('publishBtn').addEventListener('click', e =>
-            submitSchedule(CONFIG.publishUrl, e.currentTarget, 'Publishing…', 'Publish', 'Schedule published ({n} classes).'));
-
-        // ---------- unsaved-changes guard on filter switch ----------
-        const contextForm = document.getElementById('contextForm');
-        const contextSelects = contextForm.querySelectorAll('.context-select');
-        const unsavedModal = document.getElementById('unsavedModal');
-
-        const originalContext = {};
-        contextSelects.forEach(sel => { originalContext[sel.name] = sel.value; });
-
-        function revertContextSelects() {
-            contextSelects.forEach(sel => { sel.value = originalContext[sel.name]; });
-        }
-
-        contextSelects.forEach(sel => sel.addEventListener('change', () => {
-            if (!isDirty) {
-                contextForm.submit();
-                return;
-            }
-            unsavedModal.classList.add('open');
-        }));
-
-        function stayHere() {
-            revertContextSelects();
-            unsavedModal.classList.remove('open');
-        }
-
-        document.getElementById('unsavedStay').addEventListener('click', stayHere);
-        unsavedModal.addEventListener('click', e => { if (e.target === unsavedModal) stayHere(); });
-
-        document.getElementById('unsavedDiscard').addEventListener('click', () => {
-            isDirty = false; // allow the navigation without the beforeunload prompt
-            contextForm.submit();
-        });
-
-        document.getElementById('unsavedSave').addEventListener('click', async () => {
-            const btn = document.getElementById('unsavedSave');
-            btn.disabled = true;
-            btn.textContent = 'Saving…';
-
-            try {
-                const response = await fetch(CONFIG.saveUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ context: CONTEXT, blocks: blocks }),
-                });
-                const result = await response.json();
-
-                if (response.ok && result.ok) {
-                    isDirty = false;
-                    contextForm.submit();
-                } else {
-                    stayHere();
-                    showToast(result.error || 'Could not save the draft.', 'error');
+                saving = false;
+                if (saveQueued) {
+                    saveQueued = false;
+                    doSave();
                 }
-            } catch (err) {
-                stayHere();
-                showToast('Network error while saving the draft.', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Save as draft & switch';
             }
-        });
+        }
 
-        // Warn before closing/leaving the tab with unsaved plotting.
+        async function reloadFromServer() {
+            const query = new URLSearchParams(CONTEXT).toString();
+            const response = await fetch(`${CONFIG.stateUrl}?${query}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (!response.ok) return;
+            const data = await response.json();
+            stateVersion = data.version || '';
+            blocks = data.blocks || [];
+            OTHERS = data.others || [];
+            renderBlocks();
+        }
+
+        // Filters switch context instantly — everything is already saved.
+        document.querySelectorAll('#contextForm .context-select').forEach(sel =>
+            sel.addEventListener('change', () => sel.form.submit()));
+
+        // Only unsent changes can be lost now: warn if a save is in flight.
         window.addEventListener('beforeunload', e => {
-            if (isDirty) {
+            if (saving || saveTimer && document.getElementById('syncStatus').classList.contains('saving')) {
                 e.preventDefault();
                 e.returnValue = '';
             }
         });
 
-        // ---------- live updates from other sections ----------
-        async function refreshOthers() {
-            try {
-                const query = new URLSearchParams(CONTEXT).toString();
-                const response = await fetch(`${CONFIG.othersUrl}?${query}`, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                });
-                if (!response.ok) return;
+        // ---------- real-time sync (long-polling) ----------
+        // The server holds each request open until the schedule changes, so
+        // edits from other tabs/users appear in under a second.
+        async function longPollLoop() {
+            for (;;) {
+                try {
+                    const params = new URLSearchParams(CONTEXT);
+                    if (stateVersion) params.set('version', stateVersion);
 
-                const data = await response.json();
-                if (!Array.isArray(data.others)) return;
+                    const response = await fetch(`${CONFIG.stateUrl}?${params.toString()}`, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    if (!response.ok) throw new Error('poll failed');
 
-                if (JSON.stringify(data.others) !== JSON.stringify(OTHERS)) {
-                    OTHERS = data.others;
-                    renderBlocks();
-                    // Refresh room availability if the modal is open right now.
-                    if (modalArgs) openRoomModal(...modalArgs);
+                    const data = await response.json();
+                    stateVersion = data.version || '';
+
+                    let changed = false;
+
+                    if (Array.isArray(data.others) && JSON.stringify(data.others) !== JSON.stringify(OTHERS)) {
+                        OTHERS = data.others;
+                        changed = true;
+                    }
+
+                    // Adopt the server's copy of our own board only while no
+                    // local change is being saved, so we never clobber a
+                    // just-made edit.
+                    if (Array.isArray(data.blocks) && !saving && !saveQueued
+                        && !document.getElementById('syncStatus').classList.contains('saving')
+                        && JSON.stringify(data.blocks) !== JSON.stringify(blocks)) {
+                        blocks = data.blocks;
+                        changed = true;
+                    }
+
+                    if (changed) {
+                        renderBlocks();
+                        // Refresh room availability if the modal is open.
+                        if (modalArgs) openRoomModal(...modalArgs);
+                    }
+                } catch (err) {
+                    // Offline or server hiccup: back off briefly, then resume.
+                    await new Promise(resolve => setTimeout(resolve, 3000));
                 }
-            } catch (err) {
-                // Offline or server hiccup: try again on the next tick.
             }
         }
-        setInterval(refreshOthers, CONFIG.pollMs);
+        longPollLoop();
 
         // ---------- toast ----------
         let toastTimer = null;

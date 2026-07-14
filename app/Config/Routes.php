@@ -62,9 +62,8 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
 
 $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($routes) {
     $routes->get('dashboard', 'ChairpersonController::index');
-    $routes->post('schedule/save-draft', 'ChairpersonController::saveDraft');
-    $routes->post('schedule/publish', 'ChairpersonController::publish');
-    $routes->get('schedule/others', 'ChairpersonController::others');
+    $routes->post('schedule/sync', 'ChairpersonController::sync');
+    $routes->get('schedule/state', 'ChairpersonController::state');
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);

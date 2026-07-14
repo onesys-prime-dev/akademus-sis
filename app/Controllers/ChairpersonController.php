@@ -44,11 +44,7 @@ class ChairpersonController extends BaseController
 
         $schedules = new PlottedScheduleModel();
 
-        $ownRows = $schedules->forContext(...array_values($context));
-        $blocks  = array_map([$this, 'rowToBlock'], $ownRows);
-
-        // Published only when the context has rows and none are still drafts.
-        $isPublished = $ownRows !== [] && ! in_array('draft', array_column($ownRows, 'status'), true);
+        $blocks = array_map([$this, 'rowToBlock'], $schedules->forContext(...array_values($context)));
 
         // Classes plotted for other sections in the same AY: shown as ghost
         // blocks and counted for room/faculty availability.
@@ -68,14 +64,14 @@ class ChairpersonController extends BaseController
 
             'subjects' => self::SUBJECTS,
 
-            // Weekly grid. Days are Monday..Saturday.
+            // Weekly grid. A recurring weekly template — no dates.
             'week' => [
-                ['day' => 'Monday',    'date' => 'August 7'],
-                ['day' => 'Tuesday',   'date' => 'August 8'],
-                ['day' => 'Wednesday', 'date' => 'August 9'],
-                ['day' => 'Thursday',  'date' => 'August 10'],
-                ['day' => 'Friday',    'date' => 'August 11'],
-                ['day' => 'Saturday',  'date' => 'August 12'],
+                ['day' => 'Monday'],
+                ['day' => 'Tuesday'],
+                ['day' => 'Wednesday'],
+                ['day' => 'Thursday'],
+                ['day' => 'Friday'],
+                ['day' => 'Saturday'],
             ],
 
             // Grid runs 7:00 AM - 5:30 PM in 30-minute rows.
@@ -86,7 +82,6 @@ class ChairpersonController extends BaseController
 
             'blocks'       => $blocks,
             'other_blocks' => $otherBlocks,
-            'is_published' => $isPublished,
 
             'suggestion' => [
                 'title'  => 'Move IT102 to Wed 1:00 PM - 2:30 PM',
@@ -100,38 +95,70 @@ class ChairpersonController extends BaseController
     }
 
     /**
-     * Other sections' blocks for the requested context, polled by the UI to
-     * keep ghost blocks and room availability current.
+     * Full board state for the requested context (Google-Docs style sync).
+     *
+     * Long-polling: when the client passes its current `version`, the request
+     * is held open (up to ~20s) and answered the moment any schedule row in
+     * the academic year changes, so updates propagate in under a second.
      */
-    public function others()
+    public function state()
     {
         $context = $this->contextFromRequest();
 
+        // Waiting must not block this user's other requests (saves, page
+        // loads) on the session file lock.
+        session_write_close();
+        set_time_limit(60);
+
         $schedules = new PlottedScheduleModel();
 
+        $clientVersion = (string) $this->request->getGet('version');
+        $deadline      = microtime(true) + 20;
+
+        do {
+            $version = $this->scheduleVersion($schedules, $context['academic_year']);
+
+            // First call (no version) or data changed: answer immediately.
+            if ($clientVersion === '' || $version !== $clientVersion) {
+                break;
+            }
+
+            usleep(400000);
+        } while (microtime(true) < $deadline);
+
         return $this->response->setJSON([
-            'others' => array_map(
+            'version' => $version,
+            'blocks'  => array_map(
+                [$this, 'rowToBlock'],
+                $schedules->forContext(...array_values($context))
+            ),
+            'others'  => array_map(
                 [$this, 'rowToBlock'],
                 $schedules->forOtherContexts(...array_values($context))
             ),
         ]);
     }
 
-    public function saveDraft()
+    /**
+     * Cheap change signature for one academic year's schedule rows. Any
+     * insert, update, or delete changes it.
+     */
+    private function scheduleVersion(PlottedScheduleModel $schedules, string $academicYear): string
     {
-        return $this->persistSchedule('draft');
-    }
+        $row = $schedules->builder()
+            ->select('COUNT(*) AS n, COALESCE(MAX(schedule_id), 0) AS max_id, COALESCE(MAX(updated_at), "") AS updated')
+            ->where('academic_year', $academicYear)
+            ->get()
+            ->getRowArray();
 
-    public function publish()
-    {
-        return $this->persistSchedule('published');
+        return "{$row['n']}|{$row['max_id']}|{$row['updated']}";
     }
 
     /**
-     * Validate and persist the submitted plot for one context.
-     * Every rule the UI enforces is re-checked here.
+     * Validate and persist the submitted plot for one context. Called after
+     * every change (insta-plot); every rule the UI enforces is re-checked.
      */
-    private function persistSchedule(string $status)
+    public function sync()
     {
         $payload = $this->request->getJSON(true);
 
@@ -146,10 +173,6 @@ class ChairpersonController extends BaseController
                 return $this->fail("Invalid or missing context: {$key}");
             }
             $context[$key] = $payload['context'][$key];
-        }
-
-        if ($status === 'published' && $payload['blocks'] === []) {
-            return $this->fail('Nothing to publish: the schedule is empty.');
         }
 
         $subjectsByCode = array_column(self::SUBJECTS, null, 'code');
@@ -264,7 +287,7 @@ class ChairpersonController extends BaseController
             'prof'          => $b['prof'],
             'room'          => $b['room'],
             'theme'         => $b['theme'],
-            'status'        => $status,
+            'status'        => 'published',
         ], $blocks);
 
         $schedules->replaceDraft(
@@ -275,7 +298,7 @@ class ChairpersonController extends BaseController
             $rows
         );
 
-        return $this->response->setJSON(['ok' => true, 'saved' => count($rows), 'status' => $status]);
+        return $this->response->setJSON(['ok' => true, 'saved' => count($rows)]);
     }
 
     /**
@@ -307,6 +330,8 @@ class ChairpersonController extends BaseController
             'end'        => substr($row['end_time'], 0, 5),
             'time_label' => $row['time_label'],
             'section'    => $row['section'],
+            'year_level' => $row['year_level'],
+            'program'    => $row['program'],
         ];
     }
 
