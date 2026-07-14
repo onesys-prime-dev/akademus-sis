@@ -65,6 +65,8 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('schedule/sync', 'ChairpersonController::sync');
     $routes->get('schedule/state', 'ChairpersonController::state');
     $routes->post('curriculum-preset', 'ChairpersonController::savePreset');
+    $routes->post('subjects/add', 'ChairpersonController::addSubject');
+    $routes->post('subjects/delete', 'ChairpersonController::deleteSubject');
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);

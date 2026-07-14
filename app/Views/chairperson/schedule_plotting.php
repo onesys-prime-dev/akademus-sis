@@ -46,6 +46,13 @@
         .btn-primary:hover { background: #1d4ed8; }
         .btn-primary:disabled { background: #93c5fd; cursor: default; }
         .btn-ghost { background: #fff; color: #2563eb; border: 1px solid #2563eb; }
+        .btn-danger { background: #dc2626; color: #fff; }
+        .btn-danger:hover { background: #b91c1c; }
+
+        /* Confirmation modal stacks above every other modal */
+        .modal-backdrop.confirm-top { z-index: 70; }
+        .confirm-modal { width: 400px; }
+
         /* Google-Docs-style sync indicator */
         .sync-status {
             display: flex;
@@ -216,9 +223,67 @@
 
         .curriculum-row input { flex: 0 0 auto; }
 
-        .curriculum-row .cr-details { min-width: 0; font-size: 12px; }
+        .curriculum-row .cr-details { min-width: 0; font-size: 12px; flex: 1; }
         .curriculum-row .cr-details .code { font-weight: 700; }
         .curriculum-row .cr-details .meta { color: #6b7280; }
+
+        .curriculum-row .cr-delete {
+            flex: 0 0 auto;
+            border: none;
+            background: none;
+            color: #9ca3af;
+            font-size: 15px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 6px;
+        }
+
+        .curriculum-row .cr-delete:hover { color: #dc2626; background: #fef2f2; }
+
+        /* Add-subject form inside the curriculum modal */
+        .add-subject {
+            border: 1px dashed #93c5fd;
+            background: #eff6ff;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+        }
+
+        .add-subject .asf-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #1d4ed8;
+            margin-bottom: 8px;
+        }
+
+        .asf-grid {
+            display: grid;
+            grid-template-columns: 130px 1fr;
+            gap: 8px;
+        }
+
+        .asf-grid input[type="text"], .asf-grid input[type="number"], .asf-grid select {
+            padding: 7px 9px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 12px;
+            min-width: 0;
+        }
+
+        .asf-grid .asf-wide { grid-column: 2; }
+
+        .asf-grid .asf-lab {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #374151;
+        }
+
+        .asf-grid .asf-btn { padding: 7px 12px; font-size: 12px; }
 
         /* Lab subjects: Saturday-only badge */
         .lab-badge {
@@ -984,6 +1049,24 @@
                 <?= esc($selected['year_level']) ?></b> in <?= esc($selected['academic_year']) ?>.
                 Applies to every section of this year level.
             </div>
+            <div class="add-subject">
+                <div class="asf-title">Add a new subject</div>
+                <div class="asf-grid">
+                    <input type="text" id="asCode" placeholder="Code (e.g. IT106)" maxlength="20">
+                    <input type="text" id="asTitle" placeholder="Subject title" maxlength="200" class="asf-wide">
+                    <input type="number" id="asUnits" min="0.5" max="6" step="0.5" value="3" title="Units">
+                    <select id="asDuration" title="Meeting length">
+                        <option value="1">1 hour</option>
+                        <option value="1.5" selected>1.5 hours</option>
+                        <option value="2">2 hours</option>
+                        <option value="2.5">2.5 hours</option>
+                        <option value="3">3 hours</option>
+                    </select>
+                    <label class="asf-lab"><input type="checkbox" id="asLab"> Lab (Sat)</label>
+                    <button type="button" class="btn btn-primary asf-btn" id="asAdd">+ Add</button>
+                </div>
+            </div>
+
             <div class="curriculum-list" id="curriculumList"></div>
             <div class="actions">
                 <button type="button" class="btn btn-ghost" id="curriculumCancel">Cancel</button>
@@ -1025,6 +1108,18 @@
             </div>
             <div class="actions">
                 <button type="button" class="btn btn-primary" id="conflictOk">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic confirmation modal (stacks above the other modals) -->
+    <div class="modal-backdrop confirm-top" id="confirmModal">
+        <div class="modal confirm-modal">
+            <h3 id="confirmTitle"></h3>
+            <div class="sub" id="confirmMessage"></div>
+            <div class="actions">
+                <button type="button" class="btn btn-ghost" id="confirmCancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmOk">Confirm</button>
             </div>
         </div>
     </div>
@@ -1101,6 +1196,34 @@
                 col.appendChild(slot);
             }
         });
+
+        // ---------- confirmation dialog ----------
+        const confirmModal = document.getElementById('confirmModal');
+        let confirmResolve = null;
+
+        function confirmDialog({ title, message, confirmLabel = 'Confirm', danger = false }) {
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+
+            const okBtn = document.getElementById('confirmOk');
+            okBtn.textContent = confirmLabel;
+            okBtn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+
+            confirmModal.classList.add('open');
+            return new Promise(resolve => { confirmResolve = resolve; });
+        }
+
+        function settleConfirm(result) {
+            if (confirmResolve === null) return;
+            confirmModal.classList.remove('open');
+            const resolve = confirmResolve;
+            confirmResolve = null;
+            resolve(result);
+        }
+
+        document.getElementById('confirmOk').addEventListener('click', () => settleConfirm(true));
+        document.getElementById('confirmCancel').addEventListener('click', () => settleConfirm(false));
+        confirmModal.addEventListener('click', e => { if (e.target === confirmModal) settleConfirm(false); });
 
         // ---------- rendering ----------
         // Assign overlapping blocks to side-by-side lanes (interval
@@ -1195,7 +1318,15 @@
             remove.type = 'button';
             remove.title = 'Remove from schedule';
             remove.textContent = '×';
-            remove.addEventListener('click', () => {
+            remove.addEventListener('click', async () => {
+                const confirmed = await confirmDialog({
+                    title: 'Remove class',
+                    message: `Remove ${b.code} — ${b.title} (${WEEK[b.day].day}, ${b.time_label}, ${b.room}) from this section's schedule?`,
+                    confirmLabel: 'Remove',
+                    danger: true,
+                });
+                if (!confirmed) return;
+
                 blocks.splice(index, 1);
                 renderBlocks();
                 scheduleSave();
@@ -1420,7 +1551,10 @@
         const curriculumModal = document.getElementById('curriculumModal');
         const curriculumUrl = <?= json_encode(site_url('chairperson/curriculum-preset')) ?>;
 
-        function openCurriculumModal() {
+        // Which catalog subjects are ticked for this year level's curriculum.
+        let curriculumChecked = new Map();
+
+        function renderCurriculumList() {
             const list = document.getElementById('curriculumList');
             list.innerHTML = '';
 
@@ -1431,9 +1565,8 @@
                 const box = document.createElement('input');
                 box.type = 'checkbox';
                 box.value = s.code;
-                // Existing preset: check its subjects. New preset: start with
-                // everything checked and let the chairperson trim.
-                box.checked = PRESET_CODES === null || PRESET_CODES.includes(s.code);
+                box.checked = curriculumChecked.get(s.code) === true;
+                box.addEventListener('change', () => curriculumChecked.set(s.code, box.checked));
 
                 const details = document.createElement('div');
                 details.className = 'cr-details';
@@ -1447,12 +1580,114 @@
                 meta.textContent = `${s.units} · ${s.hours}` + (s.is_lab ? ' · Lab (Saturday only)' : '');
                 details.appendChild(meta);
 
-                row.append(box, details);
+                const del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'cr-delete';
+                del.title = 'Delete this subject from the catalog';
+                del.textContent = '×';
+                del.addEventListener('click', e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    deleteSubject(s.code);
+                });
+
+                row.append(box, details, del);
                 list.appendChild(row);
             });
+        }
 
+        function openCurriculumModal() {
+            // Existing preset: check its subjects. New preset: start with
+            // everything checked and let the chairperson trim.
+            curriculumChecked = new Map(CATALOG.map(s =>
+                [s.code, PRESET_CODES === null || PRESET_CODES.includes(s.code)]));
+
+            renderCurriculumList();
             curriculumModal.classList.add('open');
         }
+
+        async function deleteSubject(code) {
+            const subject = CATALOG.find(s => s.code === code);
+            const confirmed = await confirmDialog({
+                title: 'Delete subject',
+                message: `Delete ${code}${subject ? ' — ' + subject.title : ''} from the subject catalog? It disappears from every year level's curriculum. This is blocked while the subject is plotted on any schedule.`,
+                confirmLabel: 'Delete',
+                danger: true,
+            });
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(<?= json_encode(site_url('chairperson/subjects/delete')) ?>, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ code: code }),
+                });
+                const result = await response.json();
+
+                if (response.ok && result.ok) {
+                    const index = CATALOG.findIndex(s => s.code === code);
+                    if (index !== -1) CATALOG.splice(index, 1);
+                    curriculumChecked.delete(code);
+                    renderCurriculumList();
+                    showToast(`${code} deleted from the catalog.`, 'success');
+                } else {
+                    showToast(result.error || 'Could not delete the subject.', 'error');
+                }
+            } catch (err) {
+                showToast('Network error while deleting the subject.', 'error');
+            }
+        }
+
+        document.getElementById('asAdd').addEventListener('click', async () => {
+            const payload = {
+                code: document.getElementById('asCode').value.trim().toUpperCase(),
+                title: document.getElementById('asTitle').value.trim(),
+                units: parseFloat(document.getElementById('asUnits').value),
+                duration: parseFloat(document.getElementById('asDuration').value),
+                is_lab: document.getElementById('asLab').checked,
+            };
+
+            if (!payload.code || !payload.title) {
+                showToast('Subject code and title are required.', 'error');
+                return;
+            }
+
+            const confirmed = await confirmDialog({
+                title: 'Add subject',
+                message: `Add ${payload.code} — ${payload.title} (${payload.units} units, ${payload.duration} ${payload.duration === 1 ? 'hour' : 'hours'}${payload.is_lab ? ', laboratory — Saturday only' : ''}) to the subject catalog?`,
+                confirmLabel: 'Add Subject',
+            });
+            if (!confirmed) return;
+
+            const btn = document.getElementById('asAdd');
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(<?= json_encode(site_url('chairperson/subjects/add')) ?>, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify(payload),
+                });
+                const result = await response.json();
+
+                if (response.ok && result.ok && result.subject) {
+                    CATALOG.push(result.subject);
+                    CATALOG.sort((a, b) => a.code.localeCompare(b.code));
+                    curriculumChecked.set(result.subject.code, true);
+                    renderCurriculumList();
+                    document.getElementById('asCode').value = '';
+                    document.getElementById('asTitle').value = '';
+                    document.getElementById('asLab').checked = false;
+                    showToast(`${result.subject.code} added to the catalog.`, 'success');
+                } else {
+                    showToast(result.error || 'Could not add the subject.', 'error');
+                }
+            } catch (err) {
+                showToast('Network error while adding the subject.', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
 
         document.getElementById('curriculumBtn').addEventListener('click', openCurriculumModal);
         document.getElementById('curriculumCancel').addEventListener('click', () => curriculumModal.classList.remove('open'));
@@ -1849,6 +2084,12 @@
         modal.addEventListener('click', e => { if (e.target === modal) closeRoomModal(); });
         document.addEventListener('keydown', e => {
             if (e.key !== 'Escape') return;
+            // The confirm dialog stacks on top: Esc answers it (as "cancel")
+            // without closing the modal underneath.
+            if (confirmResolve !== null) {
+                settleConfirm(false);
+                return;
+            }
             closeRoomModal();
             document.getElementById('conflictModal').classList.remove('open');
             overviewModal.classList.remove('open');

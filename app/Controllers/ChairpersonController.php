@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use App\Models\CurriculumPresetModel;
 use App\Models\PlottedScheduleModel;
+use App\Models\SubjectModel;
 
 class ChairpersonController extends BaseController
 {
@@ -38,22 +39,41 @@ class ChairpersonController extends BaseController
     /** Saturday's index in the weekly grid (labs are Saturday-only). */
     private const SATURDAY = 5;
 
+    /** Meeting lengths a subject may have, in hours. */
+    private const ALLOWED_DURATIONS = [1.0, 1.5, 2.0, 2.5, 3.0];
+
+    /** Block accent colors, assigned per subject by a stable hash. */
+    private const COLORS = ['blue', 'purple', 'cyan', 'red', 'green', 'yellow'];
+
     /**
-     * Subject catalog. duration is in hours; is_lab subjects may only be
-     * plotted on Saturdays. color = accent used in the UI. No professors at
-     * plotting time — faculty are attached later (claiming / assignment).
+     * Subject catalog from the subjects table (active rows only), mapped to
+     * the plotting shape. No professors at plotting time — faculty are
+     * attached later (claiming / assignment).
      */
-    private const SUBJECTS = [
-        ['code' => 'IT101',    'units' => '3 Units', 'title' => 'Introduction to Computing',   'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'blue'],
-        ['code' => 'IT102',    'units' => '3 Units', 'title' => 'Computer Programming 1',      'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'purple'],
-        ['code' => 'IT103',    'units' => '3 Units', 'title' => 'Web Systems & Technology',    'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'cyan'],
-        ['code' => 'IT104',    'units' => '3 Units', 'title' => 'Data Structures',             'hours' => '3 hours',   'duration' => 3.0, 'is_lab' => false, 'color' => 'red'],
-        ['code' => 'IT105',    'units' => '3 Units', 'title' => 'Networking 1',                'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'blue'],
-        ['code' => 'GE01',     'units' => '3 Units', 'title' => 'Math in Modern World',        'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'green'],
-        ['code' => 'PATHFIT1', 'units' => '2 Units', 'title' => 'Physical Education',          'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'red'],
-        ['code' => 'OOP1',     'units' => '3 Units', 'title' => 'Object Oriented Programming', 'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'purple'],
-        ['code' => 'CSLAB',    'units' => '2 Units', 'title' => 'Programming Laboratory',      'hours' => '3 hours',   'duration' => 3.0, 'is_lab' => true,  'color' => 'yellow'],
-    ];
+    private function catalog(): array
+    {
+        $rows = (new SubjectModel())
+            ->where('is_active', 1)
+            ->orderBy('subject_code')
+            ->findAll();
+
+        return array_map(static function (array $row): array {
+            $units    = (float) $row['units'];
+            $duration = (float) $row['contact_hours'];
+
+            $fmt = static fn (float $n): string => $n == (int) $n ? (string) (int) $n : (string) $n;
+
+            return [
+                'code'     => $row['subject_code'],
+                'title'    => $row['subject_name'],
+                'units'    => $fmt($units) . ' Units',
+                'hours'    => $fmt($duration) . ' hours',
+                'duration' => $duration,
+                'is_lab'   => (bool) $row['is_laboratory'],
+                'color'    => self::COLORS[array_sum(array_map('ord', str_split($row['subject_code']))) % count(self::COLORS)],
+            ];
+        }, $rows);
+    }
 
     public function index()
     {
@@ -80,9 +100,11 @@ class ChairpersonController extends BaseController
 
         $presetCodes = $preset === null ? null : (json_decode($preset['subject_codes'], true) ?: []);
 
+        $catalog = $this->catalog();
+
         $subjects = $presetCodes === null
-            ? self::SUBJECTS
-            : array_values(array_filter(self::SUBJECTS, static fn (array $s) => in_array($s['code'], $presetCodes, true)));
+            ? $catalog
+            : array_values(array_filter($catalog, static fn (array $s) => in_array($s['code'], $presetCodes, true)));
 
         $data = [
             'user' => [
@@ -94,7 +116,7 @@ class ChairpersonController extends BaseController
             'selected' => $context,
 
             'subjects'     => $subjects,
-            'catalog'      => self::SUBJECTS,
+            'catalog'      => $catalog,
             'preset_codes' => $presetCodes,
 
             // Weekly grid. A recurring weekly template — no dates.
@@ -212,7 +234,7 @@ class ChairpersonController extends BaseController
             $context[$key] = $payload['context'][$key];
         }
 
-        $catalogCodes = array_column(self::SUBJECTS, 'code');
+        $catalogCodes = array_column($this->catalog(), 'code');
         $codes        = [];
 
         foreach ($payload['subjects'] as $code) {
@@ -238,6 +260,101 @@ class ChairpersonController extends BaseController
         return $this->response->setJSON(['ok' => true, 'saved' => count($codes)]);
     }
 
+    /**
+     * Add a subject to the catalog (curricula change; every school teaches
+     * different things). Reactivates a previously removed code.
+     */
+    public function addSubject()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload)) {
+            return $this->fail('Invalid payload.');
+        }
+
+        $code  = strtoupper(trim((string) ($payload['code'] ?? '')));
+        $title = trim((string) ($payload['title'] ?? ''));
+
+        if (! preg_match('/^[A-Z0-9][A-Z0-9 _-]{1,19}$/', $code)) {
+            return $this->fail('Subject code must be 2-20 letters/numbers (e.g. IT106).');
+        }
+
+        if ($title === '' || mb_strlen($title) > 200) {
+            return $this->fail('Subject title is required (max 200 characters).');
+        }
+
+        $units = (float) ($payload['units'] ?? 0);
+
+        if ($units < 0.5 || $units > 6) {
+            return $this->fail('Units must be between 0.5 and 6.');
+        }
+
+        $duration = (float) ($payload['duration'] ?? 0);
+
+        if (! in_array($duration, self::ALLOWED_DURATIONS, true)) {
+            return $this->fail('Duration must be one of: ' . implode(', ', self::ALLOWED_DURATIONS) . ' hours.');
+        }
+
+        $isLab = ! empty($payload['is_lab']);
+
+        $subjects = new SubjectModel();
+        $existing = $subjects->where('subject_code', $code)->first();
+
+        if ($existing !== null && $existing['is_active']) {
+            return $this->fail("Subject {$code} already exists in the catalog.");
+        }
+
+        $row = [
+            'subject_code'  => $code,
+            'subject_name'  => $title,
+            'units'         => $units,
+            'contact_hours' => $duration,
+            'is_laboratory' => $isLab ? 1 : 0,
+            'is_active'     => 1,
+        ];
+
+        if ($existing === null) {
+            $subjects->insert($row);
+        } else {
+            $subjects->update($existing['subject_id'], $row);
+        }
+
+        $subject = current(array_filter($this->catalog(), static fn (array $s) => $s['code'] === $code));
+
+        return $this->response->setJSON(['ok' => true, 'subject' => $subject]);
+    }
+
+    /**
+     * Remove a subject from the catalog (soft delete). Blocked while any
+     * plotted class still uses it, so schedules never reference ghosts.
+     */
+    public function deleteSubject()
+    {
+        $payload = $this->request->getJSON(true);
+        $code    = is_array($payload) ? strtoupper(trim((string) ($payload['code'] ?? ''))) : '';
+
+        if ($code === '') {
+            return $this->fail('Missing subject code.');
+        }
+
+        $subjects = new SubjectModel();
+        $subject  = $subjects->where('subject_code', $code)->where('is_active', 1)->first();
+
+        if ($subject === null) {
+            return $this->fail("Subject {$code} is not in the catalog.");
+        }
+
+        $plotted = (new PlottedScheduleModel())->where('subject_code', $code)->countAllResults();
+
+        if ($plotted > 0) {
+            return $this->fail("{$code} is plotted in {$plotted} " . ($plotted === 1 ? 'class' : 'classes') . ' — remove those from the schedules first.');
+        }
+
+        $subjects->update($subject['subject_id'], ['is_active' => 0]);
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
     public function sync()
     {
         $payload = $this->request->getJSON(true);
@@ -255,7 +372,7 @@ class ChairpersonController extends BaseController
             $context[$key] = $payload['context'][$key];
         }
 
-        $subjectsByCode = array_column(self::SUBJECTS, null, 'code');
+        $subjectsByCode = array_column($this->catalog(), null, 'code');
 
         $blocks = [];
 
