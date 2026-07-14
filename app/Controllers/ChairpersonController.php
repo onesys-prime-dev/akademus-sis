@@ -16,6 +16,9 @@ class ChairpersonController extends BaseController
 
     private const ROOMS = ['Lab A', 'Lab B', 'Lab C', 'Room 105', 'Room 203', 'Room 302'];
 
+    /** A subject can meet at most this many times per week. */
+    private const MAX_MEETINGS = 3;
+
     public function index()
     {
         $context = $this->contextFromRequest();
@@ -143,6 +146,15 @@ class ChairpersonController extends BaseController
                 'end'   => $block['end'],
                 'time_label' => $block['time_label'],
             ];
+        }
+
+        // A subject cannot meet more than MAX_MEETINGS times per week.
+        $meetings = array_count_values(array_column($blocks, 'code'));
+
+        foreach ($meetings as $code => $count) {
+            if ($count > self::MAX_MEETINGS) {
+                return $this->fail("{$code} is plotted {$count} times; the maximum is " . self::MAX_MEETINGS . ' meetings per week.');
+            }
         }
 
         // Within the section: no two classes may overlap in time.

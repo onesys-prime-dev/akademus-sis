@@ -119,15 +119,15 @@
         .subject .title { font-weight: 600; margin: 2px 0; }
         .subject .meta { font-size: 12px; color: #6b7280; }
 
-        .subject .plotted-badge {
-            display: none;
+        /* A subject leaves the rail once it reaches its max meetings */
+        .subject.is-plotted { display: none; }
+
+        .subject .plot-count {
             font-size: 10px;
             color: #16a34a;
             font-weight: 600;
             margin-top: 2px;
         }
-
-        .subject.is-plotted .plotted-badge { display: block; }
 
         .subject.blue   { border-left-color: #3b82f6; } .subject.blue .code   { color: #3b82f6; }
         .subject.purple { border-left-color: #8b5cf6; } .subject.purple .code { color: #8b5cf6; }
@@ -491,7 +491,7 @@
                     </div>
                     <div class="title"><?= esc($subject['title']) ?></div>
                     <div class="meta"><?= esc($subject['prof']) ?> &middot; <?= esc($subject['hours']) ?></div>
-                    <div class="plotted-badge">&#10003; Plotted</div>
+                    <div class="plot-count"></div>
                 </div>
             <?php endforeach; ?>
 
@@ -722,15 +722,22 @@
             updateRail();
         }
 
+        const MAX_MEETINGS = 3; // a subject can meet up to 3 times a week
+
         function updateRail() {
-            const plottedCodes = new Set(blocks.map(b => b.code));
             let units = 0;
 
             SUBJECTS.forEach(s => {
+                const count = blocks.filter(b => b.code === s.code).length;
                 const card = document.querySelector(`.subject[data-code="${s.code}"]`);
-                const plotted = plottedCodes.has(s.code);
-                if (card) card.classList.toggle('is-plotted', plotted);
-                if (plotted) units += parseFloat(s.units) || 0;
+
+                if (card) {
+                    card.classList.toggle('is-plotted', count >= MAX_MEETINGS);
+                    const counter = card.querySelector('.plot-count');
+                    if (counter) counter.textContent = count > 0 ? `✓ Plotted ${count}/${MAX_MEETINGS}` : '';
+                }
+
+                if (count > 0) units += parseFloat(s.units) || 0;
             });
 
             document.getElementById('plottedUnits').textContent = units;
