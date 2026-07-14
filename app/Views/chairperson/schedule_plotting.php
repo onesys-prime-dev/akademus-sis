@@ -690,6 +690,22 @@
         </div>
     </div>
 
+    <!-- Conflict warning modal -->
+    <div class="modal-backdrop" id="conflictModal">
+        <div class="modal">
+            <h3>Cannot plot here</h3>
+            <div class="sub" id="conflictMessage"></div>
+            <div class="conflict">
+                <span class="tag" id="conflictTag"></span>
+                <div class="when" id="conflictWhen"></div>
+                <div id="conflictCards"></div>
+            </div>
+            <div class="actions">
+                <button type="button" class="btn btn-primary" id="conflictOk">Got it</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Unsaved changes modal -->
     <div class="modal-backdrop" id="unsavedModal">
         <div class="modal">
@@ -1000,21 +1016,44 @@
                 const day = Number(col.dataset.day);
                 const { startRow, endRow } = dropRange(col, e.clientY, subject);
 
+                const attempted = { subject, day, startRow, endRow };
+
                 // Hard rule: laboratory subjects are Saturday-only.
                 if (subject.is_lab && day !== CONFIG.saturday) {
-                    showToast(`${subject.code} is a laboratory subject — it can only be plotted on Saturdays.`, 'error');
+                    showConflictModal({
+                        tag: 'Invalid Day',
+                        message: `${subject.code} is a laboratory subject — it can only be plotted on Saturdays.`,
+                        attempted,
+                        existing: null,
+                    });
                     return;
                 }
 
+                // Hard rule: the section cannot attend two classes at once,
+                // no matter the room.
                 const clash = sectionConflict(day, startRow, endRow);
                 if (clash) {
-                    showToast(`Conflict: ${clash.code} already occupies ${clash.time_label} on ${WEEK[day].day}.`, 'error');
+                    showConflictModal({
+                        tag: 'Time Overlap',
+                        message: `${CONTEXT.section} already has a class during this time. A section cannot attend two classes at once — pick a different time.`,
+                        attempted,
+                        existing: clash,
+                    });
                     return;
                 }
 
+                // Hard rule: the professor cannot teach two classes at once,
+                // even in different rooms or for a different section.
                 const profClash = facultyConflict(subject.prof, day, startRow, endRow);
                 if (profClash) {
-                    showToast(`Faculty conflict: ${subject.prof} teaches ${profClash.code}${profClash.section ? ' (' + profClash.section + ')' : ''} at ${profClash.time_label}.`, 'error');
+                    const where = profClash.section && profClash.section !== CONTEXT.section
+                        ? ` for section ${profClash.section}` : '';
+                    showConflictModal({
+                        tag: 'Faculty Conflict',
+                        message: `${subject.prof} is already teaching at this time${where}. A professor cannot be in two rooms at once — pick a different time or reassign the subject.`,
+                        attempted,
+                        existing: profClash,
+                    });
                     return;
                 }
 
@@ -1029,6 +1068,68 @@
                 openRoomModal(subject, day, startRow, endRow, warnings);
             });
         });
+
+        // ---------- conflict warning modal ----------
+        const conflictModal = document.getElementById('conflictModal');
+
+        function conflictCard(label, code, title, metaText) {
+            const card = document.createElement('div');
+            card.className = 'class-card';
+
+            const head = document.createElement('div');
+            const tag = document.createElement('span');
+            tag.className = 'meta';
+            tag.textContent = label + ' ';
+            const codeEl = document.createElement('span');
+            codeEl.className = 'code';
+            codeEl.textContent = code;
+            head.append(tag, codeEl, document.createTextNode(' — ' + title));
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            meta.textContent = metaText;
+
+            card.append(head, meta);
+            return card;
+        }
+
+        /**
+         * opts: { tag, message, attempted: {subject, day, startRow, endRow},
+         *         existing: block|null }
+         */
+        function showConflictModal(opts) {
+            document.getElementById('conflictTag').textContent = opts.tag;
+            document.getElementById('conflictMessage').textContent = opts.message;
+
+            const a = opts.attempted;
+            document.getElementById('conflictWhen').textContent =
+                `${WEEK[a.day].day}, ${rowTo12h(a.startRow)} - ${rowTo12h(a.endRow)}`;
+
+            const cards = document.getElementById('conflictCards');
+            cards.innerHTML = '';
+
+            cards.appendChild(conflictCard(
+                'You are plotting:',
+                a.subject.code,
+                a.subject.title,
+                `${a.subject.prof} · ${CONTEXT.section}`
+            ));
+
+            if (opts.existing) {
+                const e = opts.existing;
+                cards.appendChild(conflictCard(
+                    'Already scheduled:',
+                    e.code,
+                    e.title,
+                    `${e.room}${e.prof ? ' · ' + e.prof : ''} · ${e.section || CONTEXT.section} · ${e.time_label}`
+                ));
+            }
+
+            conflictModal.classList.add('open');
+        }
+
+        document.getElementById('conflictOk').addEventListener('click', () => conflictModal.classList.remove('open'));
+        conflictModal.addEventListener('click', e => { if (e.target === conflictModal) conflictModal.classList.remove('open'); });
 
         // ---------- room assignment modal ----------
         const modal = document.getElementById('roomModal');
@@ -1116,6 +1217,7 @@
         document.addEventListener('keydown', e => {
             if (e.key !== 'Escape') return;
             closeRoomModal();
+            document.getElementById('conflictModal').classList.remove('open');
             const unsaved = document.getElementById('unsavedModal');
             if (unsaved.classList.contains('open')) {
                 document.getElementById('unsavedStay').click();
