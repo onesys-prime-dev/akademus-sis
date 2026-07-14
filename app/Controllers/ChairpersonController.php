@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Models\CurriculumPresetModel;
 use App\Models\PlottedScheduleModel;
 
 class ChairpersonController extends BaseController
@@ -14,7 +15,22 @@ class ChairpersonController extends BaseController
         'section'       => ['AIT1', 'AIT2', 'BIT1'],
     ];
 
-    private const ROOMS = ['Lab A', 'Lab B', 'Lab C', 'Room 105', 'Room 203', 'Room 302'];
+    /** Rooms grouped by floor. Names must stay stable: plotted rows reference them. */
+    private const ROOMS = [
+        ['name' => 'Lab A',          'floor' => 'Ground Floor'],
+        ['name' => 'Lab B',          'floor' => 'Ground Floor'],
+        ['name' => 'Lab C',          'floor' => 'Ground Floor'],
+        ['name' => 'Networking Lab', 'floor' => 'Ground Floor'],
+        ['name' => 'Room 101',       'floor' => '1st Floor'],
+        ['name' => 'Room 102',       'floor' => '1st Floor'],
+        ['name' => 'Room 105',       'floor' => '1st Floor'],
+        ['name' => 'Room 201',       'floor' => '2nd Floor'],
+        ['name' => 'Room 203',       'floor' => '2nd Floor'],
+        ['name' => 'Room 204',       'floor' => '2nd Floor'],
+        ['name' => 'Room 301',       'floor' => '3rd Floor'],
+        ['name' => 'Room 302',       'floor' => '3rd Floor'],
+        ['name' => 'Room 304',       'floor' => '3rd Floor'],
+    ];
 
     /** A subject can meet at most this many times per week. */
     private const MAX_MEETINGS = 3;
@@ -23,19 +39,20 @@ class ChairpersonController extends BaseController
     private const SATURDAY = 5;
 
     /**
-     * Curriculum subjects (left rail). duration is in hours; is_lab subjects
-     * may only be plotted on Saturdays. color = accent used in the UI.
+     * Subject catalog. duration is in hours; is_lab subjects may only be
+     * plotted on Saturdays. color = accent used in the UI. No professors at
+     * plotting time — faculty are attached later (claiming / assignment).
      */
     private const SUBJECTS = [
-        ['code' => 'IT101',    'units' => '3 Units', 'title' => 'Introduction to Computing',   'prof' => 'Prof. Rose Perreras',    'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'blue'],
-        ['code' => 'IT102',    'units' => '3 Units', 'title' => 'Computer Programming 1',      'prof' => 'Prof. Liza Natividad',   'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'purple'],
-        ['code' => 'IT103',    'units' => '3 Units', 'title' => 'Web Systems & Technology',    'prof' => 'Prof. Paul Ocampo',      'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'cyan'],
-        ['code' => 'IT104',    'units' => '3 Units', 'title' => 'Data Structures',             'prof' => 'Prof. Edward Bustillos', 'hours' => '3 hours',   'duration' => 3.0, 'is_lab' => false, 'color' => 'red'],
-        ['code' => 'IT105',    'units' => '3 Units', 'title' => 'Networking 1',                'prof' => 'Prof. Liza Natividad',   'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'blue'],
-        ['code' => 'GE01',     'units' => '3 Units', 'title' => 'Math in Modern World',        'prof' => 'Prof. Macapagal',        'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'green'],
-        ['code' => 'PATHFIT1', 'units' => '2 Units', 'title' => 'Physical Education',          'prof' => 'Prof. Axel',             'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'red'],
-        ['code' => 'OOP1',     'units' => '3 Units', 'title' => 'Object Oriented Programming', 'prof' => 'Prof. Melchor Jose',     'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'purple'],
-        ['code' => 'CSLAB',    'units' => '2 Units', 'title' => 'Programming Laboratory',      'prof' => 'Prof. Melchor Jose',     'hours' => '3 hours',   'duration' => 3.0, 'is_lab' => true,  'color' => 'yellow'],
+        ['code' => 'IT101',    'units' => '3 Units', 'title' => 'Introduction to Computing',   'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'blue'],
+        ['code' => 'IT102',    'units' => '3 Units', 'title' => 'Computer Programming 1',      'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'purple'],
+        ['code' => 'IT103',    'units' => '3 Units', 'title' => 'Web Systems & Technology',    'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'cyan'],
+        ['code' => 'IT104',    'units' => '3 Units', 'title' => 'Data Structures',             'hours' => '3 hours',   'duration' => 3.0, 'is_lab' => false, 'color' => 'red'],
+        ['code' => 'IT105',    'units' => '3 Units', 'title' => 'Networking 1',                'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'blue'],
+        ['code' => 'GE01',     'units' => '3 Units', 'title' => 'Math in Modern World',        'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'green'],
+        ['code' => 'PATHFIT1', 'units' => '2 Units', 'title' => 'Physical Education',          'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'red'],
+        ['code' => 'OOP1',     'units' => '3 Units', 'title' => 'Object Oriented Programming', 'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'purple'],
+        ['code' => 'CSLAB',    'units' => '2 Units', 'title' => 'Programming Laboratory',      'hours' => '3 hours',   'duration' => 3.0, 'is_lab' => true,  'color' => 'yellow'],
     ];
 
     public function index()
@@ -53,6 +70,20 @@ class ChairpersonController extends BaseController
             $schedules->forOtherContexts(...array_values($context))
         );
 
+        // Curriculum preset: which catalog subjects belong to this
+        // AY + program + year level (shared by all sections).
+        $preset = (new CurriculumPresetModel())->forContext(
+            $context['academic_year'],
+            $context['program'],
+            $context['year_level']
+        );
+
+        $presetCodes = $preset === null ? null : (json_decode($preset['subject_codes'], true) ?: []);
+
+        $subjects = $presetCodes === null
+            ? self::SUBJECTS
+            : array_values(array_filter(self::SUBJECTS, static fn (array $s) => in_array($s['code'], $presetCodes, true)));
+
         $data = [
             'user' => [
                 'name' => 'Rosemarie Perreras',
@@ -62,7 +93,9 @@ class ChairpersonController extends BaseController
             'filters'  => self::FILTERS,
             'selected' => $context,
 
-            'subjects' => self::SUBJECTS,
+            'subjects'     => $subjects,
+            'catalog'      => self::SUBJECTS,
+            'preset_codes' => $presetCodes,
 
             // Weekly grid. A recurring weekly template — no dates.
             'week' => [
@@ -158,6 +191,53 @@ class ChairpersonController extends BaseController
      * Validate and persist the submitted plot for one context. Called after
      * every change (insta-plot); every rule the UI enforces is re-checked.
      */
+    /**
+     * Create or replace the curriculum preset for an AY + program + year
+     * level. All sections of that year level share it.
+     */
+    public function savePreset()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload) || ! isset($payload['context'], $payload['subjects']) || ! is_array($payload['context']) || ! is_array($payload['subjects'])) {
+            return $this->fail('Invalid payload.');
+        }
+
+        $context = [];
+
+        foreach (['academic_year', 'program', 'year_level'] as $key) {
+            if (! isset($payload['context'][$key]) || ! in_array($payload['context'][$key], self::FILTERS[$key], true)) {
+                return $this->fail("Invalid or missing context: {$key}");
+            }
+            $context[$key] = $payload['context'][$key];
+        }
+
+        $catalogCodes = array_column(self::SUBJECTS, 'code');
+        $codes        = [];
+
+        foreach ($payload['subjects'] as $code) {
+            if (! is_string($code) || ! in_array($code, $catalogCodes, true)) {
+                return $this->fail("Unknown subject: " . (is_string($code) ? $code : '?'));
+            }
+            if (! in_array($code, $codes, true)) {
+                $codes[] = $code;
+            }
+        }
+
+        if ($codes === []) {
+            return $this->fail('Select at least one subject for the curriculum.');
+        }
+
+        (new CurriculumPresetModel())->upsert(
+            $context['academic_year'],
+            $context['program'],
+            $context['year_level'],
+            $codes
+        );
+
+        return $this->response->setJSON(['ok' => true, 'saved' => count($codes)]);
+    }
+
     public function sync()
     {
         $payload = $this->request->getJSON(true);
@@ -202,7 +282,7 @@ class ChairpersonController extends BaseController
 
             $subject = $subjectsByCode[$block['code']];
 
-            if (! in_array($block['room'], self::ROOMS, true)) {
+            if (! in_array($block['room'], array_column(self::ROOMS, 'name'), true)) {
                 return $this->fail("Unknown room: {$block['room']}");
             }
 
@@ -225,7 +305,7 @@ class ChairpersonController extends BaseController
                 'day'        => $block['day'],
                 'code'       => $subject['code'],
                 'title'      => $subject['title'],
-                'prof'       => $subject['prof'],
+                'prof'       => $subject['prof'] ?? null,
                 'room'       => $block['room'],
                 'theme'      => $subject['color'],
                 'start'      => $block['start'],

@@ -168,6 +168,58 @@
 
         .rail-hint { font-size: 11px; color: #9ca3af; margin-bottom: 10px; }
 
+        .rail-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .rail-head h2 { margin-bottom: 0; }
+
+        .rail-btn {
+            border: 1px dashed #93c5fd;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .rail-btn:hover { background: #dbeafe; }
+
+        /* Curriculum preset modal */
+        .curriculum-list {
+            max-height: 320px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 14px;
+        }
+
+        .curriculum-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+        }
+
+        .curriculum-row:last-child { border-bottom: none; }
+        .curriculum-row:hover { background: #f9fafb; }
+
+        .curriculum-row input { flex: 0 0 auto; }
+
+        .curriculum-row .cr-details { min-width: 0; font-size: 12px; }
+        .curriculum-row .cr-details .code { font-weight: 700; }
+        .curriculum-row .cr-details .meta { color: #6b7280; }
+
         /* Lab subjects: Saturday-only badge */
         .lab-badge {
             display: inline-block;
@@ -460,12 +512,103 @@
 
         .modal .sub { font-size: 12px; color: #6b7280; margin-bottom: 14px; }
 
+        .modal .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .expand-btn {
+            border: 1px solid #d1d5db;
+            background: #fff;
+            color: #374151;
+            border-radius: 8px;
+            padding: 5px 12px;
+            font-size: 12px;
+            font-family: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .expand-btn:hover { border-color: #2563eb; color: #2563eb; }
+
+        .room-layout { display: flex; gap: 14px; }
+
+        /* Floor sidebar: only shown in the expanded modal */
+        .floor-rail { display: none; }
+
+        .room-scroll {
+            flex: 1;
+            min-width: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        .floor-heading {
+            grid-column: 1 / -1;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #6b7280;
+            padding-top: 4px;
+        }
+
         .room-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
             margin-bottom: 14px;
         }
+
+        /* ----- Expanded (large-print) mode ----- */
+        .room-modal.expanded {
+            width: min(940px, 94vw);
+        }
+
+        .room-modal.expanded .room-layout { margin-top: 4px; }
+
+        .room-modal.expanded .floor-rail {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 0 0 150px;
+        }
+
+        .floor-btn {
+            text-align: left;
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            color: #374151;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .floor-btn:hover { border-color: #93c5fd; }
+
+        .floor-btn.active {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .room-modal.expanded .room-scroll { max-height: min(56vh, 520px); }
+
+        .room-modal.expanded .room-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .room-modal.expanded .room-card { padding: 16px 14px; }
+        .room-modal.expanded .room-card .room-name { font-size: 17px; }
+        .room-modal.expanded .room-card .room-status { font-size: 14px; margin-top: 5px; }
+        .room-modal.expanded .room-card .room-dot { width: 12px; height: 12px; }
+        .room-modal.expanded .floor-heading { font-size: 13px; }
 
         .room-card {
             border-radius: 8px;
@@ -584,6 +727,8 @@
         .overview-rooms {
             grid-template-columns: repeat(3, 1fr);
             margin-bottom: 14px;
+            max-height: 250px;
+            overflow-y: auto;
         }
 
         .room-card.selected {
@@ -711,8 +856,21 @@
 
         <!-- Left rail: curriculum subjects (draggable) -->
         <aside class="panel">
-            <h2>Curriculum Subjects</h2>
-            <div class="rail-hint">Drag a subject onto the weekly grid to plot it.</div>
+            <div class="rail-head">
+                <h2>Curriculum Subjects</h2>
+                <button type="button" class="rail-btn" id="curriculumBtn">
+                    <?= $preset_codes === null ? 'Create Curriculum' : 'Edit Curriculum' ?>
+                </button>
+            </div>
+            <div class="rail-hint">
+                <?php if ($preset_codes === null): ?>
+                    No curriculum set for <?= esc($selected['year_level']) ?> yet — showing the full
+                    subject catalog. Create one so each year level loads its own subjects.
+                <?php else: ?>
+                    <?= esc($selected['year_level']) ?> curriculum &middot; <?= count($subjects) ?> subjects
+                    (all sections). Drag a subject onto the grid to plot it.
+                <?php endif; ?>
+            </div>
 
             <?php foreach ($subjects as $subject): ?>
                 <div class="subject <?= esc($subject['color'], 'attr') ?>"
@@ -726,7 +884,7 @@
                         <span class="units"><?= esc($subject['units']) ?></span>
                     </div>
                     <div class="title"><?= esc($subject['title']) ?></div>
-                    <div class="meta"><?= esc($subject['prof']) ?> &middot; <?= esc($subject['hours']) ?></div>
+                    <div class="meta"><?= esc($subject['hours']) ?></div>
                     <div class="plot-count"></div>
                 </div>
             <?php endforeach; ?>
@@ -795,14 +953,41 @@
 
     <!-- Room assignment modal -->
     <div class="modal-backdrop" id="roomModal">
-        <div class="modal">
-            <h3>Assign a room</h3>
+        <div class="modal room-modal" id="roomModalBox">
+            <div class="modal-head">
+                <h3>Assign a room</h3>
+                <button type="button" class="expand-btn" id="roomModalExpand">&#x26F6; Expand</button>
+            </div>
             <div class="sub" id="roomModalSub"></div>
             <div id="roomModalWarnings"></div>
-            <div class="room-grid" id="roomGrid"></div>
-            <div class="note">Occupied rooms are disabled. Room availability reflects the current draft in real time.</div>
+
+            <div class="room-layout">
+                <div class="floor-rail" id="floorRail"></div>
+                <div class="room-scroll">
+                    <div class="room-grid" id="roomGrid"></div>
+                </div>
+            </div>
+
+            <div class="note">Occupied rooms are disabled. Room availability reflects the schedule in real time.</div>
             <div class="actions">
                 <button type="button" class="btn btn-ghost" id="roomModalCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Curriculum preset modal -->
+    <div class="modal-backdrop" id="curriculumModal">
+        <div class="modal">
+            <h3>Curriculum Preset</h3>
+            <div class="sub">
+                Choose the subjects for <b><?= esc($selected['program']) ?> &middot;
+                <?= esc($selected['year_level']) ?></b> in <?= esc($selected['academic_year']) ?>.
+                Applies to every section of this year level.
+            </div>
+            <div class="curriculum-list" id="curriculumList"></div>
+            <div class="actions">
+                <button type="button" class="btn btn-ghost" id="curriculumCancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="curriculumSave">Save Curriculum</button>
             </div>
         </div>
     </div>
@@ -863,6 +1048,8 @@
         CONFIG.totalRows = (CONFIG.gridEndMin - CONFIG.gridStartMin) / 30;
 
         const SUBJECTS = <?= json_encode($subjects, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+        const CATALOG  = <?= json_encode($catalog, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+        const PRESET_CODES = <?= json_encode($preset_codes, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         const ROOMS    = <?= json_encode($rooms, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         const WEEK     = <?= json_encode($week, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         const CONTEXT  = <?= json_encode($selected, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
@@ -1229,9 +1416,86 @@
             });
         });
 
+        // ---------- curriculum preset modal ----------
+        const curriculumModal = document.getElementById('curriculumModal');
+        const curriculumUrl = <?= json_encode(site_url('chairperson/curriculum-preset')) ?>;
+
+        function openCurriculumModal() {
+            const list = document.getElementById('curriculumList');
+            list.innerHTML = '';
+
+            CATALOG.forEach(s => {
+                const row = document.createElement('label');
+                row.className = 'curriculum-row';
+
+                const box = document.createElement('input');
+                box.type = 'checkbox';
+                box.value = s.code;
+                // Existing preset: check its subjects. New preset: start with
+                // everything checked and let the chairperson trim.
+                box.checked = PRESET_CODES === null || PRESET_CODES.includes(s.code);
+
+                const details = document.createElement('div');
+                details.className = 'cr-details';
+                const code = document.createElement('span');
+                code.className = 'code';
+                code.textContent = s.code;
+                details.appendChild(code);
+                details.appendChild(document.createTextNode(' — ' + s.title));
+                const meta = document.createElement('div');
+                meta.className = 'meta';
+                meta.textContent = `${s.units} · ${s.hours}` + (s.is_lab ? ' · Lab (Saturday only)' : '');
+                details.appendChild(meta);
+
+                row.append(box, details);
+                list.appendChild(row);
+            });
+
+            curriculumModal.classList.add('open');
+        }
+
+        document.getElementById('curriculumBtn').addEventListener('click', openCurriculumModal);
+        document.getElementById('curriculumCancel').addEventListener('click', () => curriculumModal.classList.remove('open'));
+        curriculumModal.addEventListener('click', e => { if (e.target === curriculumModal) curriculumModal.classList.remove('open'); });
+
+        document.getElementById('curriculumSave').addEventListener('click', async () => {
+            const codes = [...document.querySelectorAll('#curriculumList input:checked')].map(box => box.value);
+
+            if (codes.length === 0) {
+                showToast('Select at least one subject for the curriculum.', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('curriculumSave');
+            btn.disabled = true;
+            btn.textContent = 'Saving…';
+
+            try {
+                const response = await fetch(curriculumUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ context: CONTEXT, subjects: codes }),
+                });
+                const result = await response.json();
+
+                if (response.ok && result.ok) {
+                    // Reload so the rail reflects the new curriculum.
+                    window.location.reload();
+                } else {
+                    showToast(result.error || 'Could not save the curriculum.', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Save Curriculum';
+                }
+            } catch (err) {
+                showToast('Network error while saving the curriculum.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Save Curriculum';
+            }
+        });
+
         // ---------- room overview modal ----------
         const overviewModal = document.getElementById('overviewModal');
-        const overviewState = { day: 0, room: ROOMS[0] };
+        const overviewState = { day: 0, room: ROOMS[0].name };
 
         function overviewRoomLoad(room, day) {
             return blocks.concat(OTHERS).filter(b => b.room === room && b.day === day).length;
@@ -1254,33 +1518,41 @@
 
             const roomsBox = document.getElementById('overviewRooms');
             roomsBox.innerHTML = '';
-            ROOMS.forEach(room => {
-                const load = overviewRoomLoad(room, overviewState.day);
-                const state = load >= 3 ? 'red' : load >= 2 ? 'yellow' : 'green';
 
-                const card = document.createElement('button');
-                card.type = 'button';
-                card.className = 'room-card ' + state + (room === overviewState.room ? ' selected' : '');
+            FLOORS.forEach(floor => {
+                const heading = document.createElement('div');
+                heading.className = 'floor-heading';
+                heading.textContent = floor;
+                roomsBox.appendChild(heading);
 
-                const head = document.createElement('div');
-                head.className = 'room-head';
-                const name = document.createElement('div');
-                name.className = 'room-name';
-                name.textContent = room;
-                const dot = document.createElement('span');
-                dot.className = 'room-dot';
-                head.append(name, dot);
+                ROOMS.filter(r => r.floor === floor).forEach(room => {
+                    const load = overviewRoomLoad(room.name, overviewState.day);
+                    const state = load >= 3 ? 'red' : load >= 2 ? 'yellow' : 'green';
 
-                const status = document.createElement('div');
-                status.className = 'room-status';
-                status.textContent = load === 0 ? 'Free all day' : `${load} ${load === 1 ? 'class' : 'classes'}`;
+                    const card = document.createElement('button');
+                    card.type = 'button';
+                    card.className = 'room-card ' + state + (room.name === overviewState.room ? ' selected' : '');
 
-                card.append(head, status);
-                card.addEventListener('click', () => {
-                    overviewState.room = room;
-                    renderRoomOverview();
+                    const head = document.createElement('div');
+                    head.className = 'room-head';
+                    const name = document.createElement('div');
+                    name.className = 'room-name';
+                    name.textContent = room.name;
+                    const dot = document.createElement('span');
+                    dot.className = 'room-dot';
+                    head.append(name, dot);
+
+                    const status = document.createElement('div');
+                    status.className = 'room-status';
+                    status.textContent = load === 0 ? 'Free all day' : `${load} ${load === 1 ? 'class' : 'classes'}`;
+
+                    card.append(head, status);
+                    card.addEventListener('click', () => {
+                        overviewState.room = room.name;
+                        renderRoomOverview();
+                    });
+                    roomsBox.appendChild(card);
                 });
-                roomsBox.appendChild(card);
             });
         }
 
@@ -1421,7 +1693,7 @@
                 'You are plotting:',
                 a.subject.code,
                 a.subject.title,
-                `${a.subject.prof} · ${CONTEXT.section}`
+                (a.subject.prof ? a.subject.prof + ' · ' : '') + CONTEXT.section
             ));
 
             if (opts.existing) {
@@ -1446,10 +1718,111 @@
 
         let modalArgs = null; // remembered so polling can refresh room statuses live
 
+        const FLOORS = [...new Set(ROOMS.map(r => r.floor))];
+        let floorFilter = 'all';
+        let roomModalExpanded = localStorage.getItem('roomModalExpanded') === '1';
+
+        function applyRoomModalSize() {
+            document.getElementById('roomModalBox').classList.toggle('expanded', roomModalExpanded);
+            document.getElementById('roomModalExpand').innerHTML =
+                roomModalExpanded ? '&#x26F6; Collapse' : '&#x26F6; Expand';
+        }
+
+        document.getElementById('roomModalExpand').addEventListener('click', () => {
+            roomModalExpanded = !roomModalExpanded;
+            localStorage.setItem('roomModalExpanded', roomModalExpanded ? '1' : '0');
+            applyRoomModalSize();
+            renderFloorRail();
+        });
+
+        function renderFloorRail() {
+            const rail = document.getElementById('floorRail');
+            rail.innerHTML = '';
+
+            ['all', ...FLOORS].forEach(floor => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'floor-btn' + (floor === floorFilter ? ' active' : '');
+                btn.textContent = floor === 'all' ? 'All floors' : floor;
+                btn.addEventListener('click', () => {
+                    floorFilter = floor;
+                    renderFloorRail();
+                    renderRoomGrid();
+                });
+                rail.appendChild(btn);
+            });
+        }
+
+        function renderRoomGrid() {
+            if (!modalArgs) return;
+            const [subject, day, startRow, endRow] = modalArgs;
+
+            roomGrid.innerHTML = '';
+
+            FLOORS.forEach(floor => {
+                if (floorFilter !== 'all' && floorFilter !== floor) return;
+
+                const heading = document.createElement('div');
+                heading.className = 'floor-heading';
+                heading.textContent = floor;
+                roomGrid.appendChild(heading);
+
+                ROOMS.filter(r => r.floor === floor).forEach(room => {
+                    const state = roomStatus(room.name, day, startRow, endRow);
+                    const occupied = state === 'grey';
+
+                    const card = document.createElement('button');
+                    card.type = 'button';
+                    card.className = 'room-card ' + state;
+                    card.disabled = occupied;
+
+                    const head = document.createElement('div');
+                    head.className = 'room-head';
+
+                    const name = document.createElement('div');
+                    name.className = 'room-name';
+                    name.textContent = room.name;
+
+                    const dot = document.createElement('span');
+                    dot.className = 'room-dot';
+
+                    head.append(name, dot);
+
+                    const status = document.createElement('div');
+                    status.className = 'room-status';
+                    status.textContent = ROOM_STATUS_LABEL[state];
+
+                    card.append(head, status);
+
+                    if (!occupied) {
+                        card.addEventListener('click', () => {
+                            blocks.push({
+                                day: day,
+                                code: subject.code,
+                                title: subject.title,
+                                prof: subject.prof,
+                                time_label: `${rowTo12h(startRow)} - ${rowTo12h(endRow)}`,
+                                room: room.name,
+                                theme: subject.color,
+                                start: rowToHHMM(startRow),
+                                end: rowToHHMM(endRow),
+                            });
+                            closeRoomModal();
+                            renderBlocks();
+                            scheduleSave();
+                            showToast(`${subject.code} plotted in ${room.name}.`, 'success');
+                        });
+                    }
+
+                    roomGrid.appendChild(card);
+                });
+            });
+        }
+
         function openRoomModal(subject, day, startRow, endRow, warnings = []) {
             modalArgs = [subject, day, startRow, endRow, warnings];
             document.getElementById('roomModalSub').textContent =
-                `${subject.code} - ${subject.title} · ${WEEK[day].day}, ${rowTo12h(startRow)} - ${rowTo12h(endRow)} · ${subject.prof}`;
+                `${subject.code} - ${subject.title} · ${WEEK[day].day}, ${rowTo12h(startRow)} - ${rowTo12h(endRow)}`;
 
             const warningsBox = document.getElementById('roomModalWarnings');
             warningsBox.innerHTML = '';
@@ -1460,57 +1833,9 @@
                 warningsBox.appendChild(warning);
             });
 
-            roomGrid.innerHTML = '';
-
-            ROOMS.forEach(room => {
-                const state = roomStatus(room, day, startRow, endRow);
-                const occupied = state === 'grey';
-
-                const card = document.createElement('button');
-                card.type = 'button';
-                card.className = 'room-card ' + state;
-                card.disabled = occupied;
-
-                const head = document.createElement('div');
-                head.className = 'room-head';
-
-                const name = document.createElement('div');
-                name.className = 'room-name';
-                name.textContent = room;
-
-                const dot = document.createElement('span');
-                dot.className = 'room-dot';
-
-                head.append(name, dot);
-
-                const status = document.createElement('div');
-                status.className = 'room-status';
-                status.textContent = ROOM_STATUS_LABEL[state];
-
-                card.append(head, status);
-
-                if (!occupied) {
-                    card.addEventListener('click', () => {
-                        blocks.push({
-                            day: day,
-                            code: subject.code,
-                            title: subject.title,
-                            prof: subject.prof,
-                            time_label: `${rowTo12h(startRow)} - ${rowTo12h(endRow)}`,
-                            room: room,
-                            theme: subject.color,
-                            start: rowToHHMM(startRow),
-                            end: rowToHHMM(endRow),
-                        });
-                        closeRoomModal();
-                        renderBlocks();
-                        scheduleSave();
-                        showToast(`${subject.code} plotted in ${room}.`, 'success');
-                    });
-                }
-
-                roomGrid.appendChild(card);
-            });
+            applyRoomModalSize();
+            renderFloorRail();
+            renderRoomGrid();
 
             modal.classList.add('open');
         }
@@ -1527,6 +1852,7 @@
             closeRoomModal();
             document.getElementById('conflictModal').classList.remove('open');
             overviewModal.classList.remove('open');
+            curriculumModal.classList.remove('open');
         });
 
         // ---------- autosave (insta-plot) ----------
