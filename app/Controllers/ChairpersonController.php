@@ -19,16 +19,36 @@ class ChairpersonController extends BaseController
     /** A subject can meet at most this many times per week. */
     private const MAX_MEETINGS = 3;
 
+    /** Saturday's index in the weekly grid (labs are Saturday-only). */
+    private const SATURDAY = 5;
+
+    /**
+     * Curriculum subjects (left rail). duration is in hours; is_lab subjects
+     * may only be plotted on Saturdays. color = accent used in the UI.
+     */
+    private const SUBJECTS = [
+        ['code' => 'IT101',    'units' => '3 Units', 'title' => 'Introduction to Computing',   'prof' => 'Prof. Rose Perreras',    'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'blue'],
+        ['code' => 'IT102',    'units' => '3 Units', 'title' => 'Computer Programming 1',      'prof' => 'Prof. Liza Natividad',   'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'purple'],
+        ['code' => 'IT103',    'units' => '3 Units', 'title' => 'Web Systems & Technology',    'prof' => 'Prof. Paul Ocampo',      'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'cyan'],
+        ['code' => 'IT104',    'units' => '3 Units', 'title' => 'Data Structures',             'prof' => 'Prof. Edward Bustillos', 'hours' => '3 hours',   'duration' => 3.0, 'is_lab' => false, 'color' => 'red'],
+        ['code' => 'IT105',    'units' => '3 Units', 'title' => 'Networking 1',                'prof' => 'Prof. Liza Natividad',   'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'blue'],
+        ['code' => 'GE01',     'units' => '3 Units', 'title' => 'Math in Modern World',        'prof' => 'Prof. Macapagal',        'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'green'],
+        ['code' => 'PATHFIT1', 'units' => '2 Units', 'title' => 'Physical Education',          'prof' => 'Prof. Axel',             'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'red'],
+        ['code' => 'OOP1',     'units' => '3 Units', 'title' => 'Object Oriented Programming', 'prof' => 'Prof. Melchor Jose',     'hours' => '1.5 hours', 'duration' => 1.5, 'is_lab' => false, 'color' => 'purple'],
+        ['code' => 'CSLAB',    'units' => '2 Units', 'title' => 'Programming Laboratory',      'prof' => 'Prof. Melchor Jose',     'hours' => '3 hours',   'duration' => 3.0, 'is_lab' => true,  'color' => 'yellow'],
+    ];
+
     public function index()
     {
         $context = $this->contextFromRequest();
 
         $schedules = new PlottedScheduleModel();
 
-        $blocks = array_map(
-            [$this, 'rowToBlock'],
-            $schedules->forContext(...array_values($context))
-        );
+        $ownRows = $schedules->forContext(...array_values($context));
+        $blocks  = array_map([$this, 'rowToBlock'], $ownRows);
+
+        // Published only when the context has rows and none are still drafts.
+        $isPublished = $ownRows !== [] && ! in_array('draft', array_column($ownRows, 'status'), true);
 
         // Classes plotted for other sections in the same AY: shown as ghost
         // blocks and counted for room/faculty availability.
@@ -46,17 +66,7 @@ class ChairpersonController extends BaseController
             'filters'  => self::FILTERS,
             'selected' => $context,
 
-            // Curriculum subjects (left rail). color = accent used for the left border + code text.
-            'subjects' => [
-                ['code' => 'IT101',    'units' => '3 Units', 'title' => 'Introduction to Computing',     'prof' => 'Prof. Rose Perreras',    'hours' => '1.5 hours', 'color' => 'blue'],
-                ['code' => 'IT102',    'units' => '3 Units', 'title' => 'Computer Programming 1',        'prof' => 'Prof. Liza Natividad',   'hours' => '1.5 hours', 'color' => 'purple'],
-                ['code' => 'IT103',    'units' => '3 Units', 'title' => 'Web Systems & Technology',      'prof' => 'Prof. Paul Ocampo',      'hours' => '1.5 hours', 'color' => 'cyan'],
-                ['code' => 'IT104',    'units' => '3 Units', 'title' => 'Data Structures',               'prof' => 'Prof. Edward Bustillos', 'hours' => '3 hours',   'color' => 'red'],
-                ['code' => 'IT105',    'units' => '3 Units', 'title' => 'Networking 1',                  'prof' => 'Prof. Liza Natividad',   'hours' => '1.5 hours', 'color' => 'blue'],
-                ['code' => 'GE01',     'units' => '3 Units', 'title' => 'Math in Modern World',          'prof' => 'Prof. Macapagal',        'hours' => '1.5 hours', 'color' => 'green'],
-                ['code' => 'PATHFIT1', 'units' => '2 Units', 'title' => 'Physical Education',            'prof' => 'Prof. Axel',             'hours' => '1.5 hours', 'color' => 'red'],
-                ['code' => 'OOP1',     'units' => '3 Units', 'title' => 'Object Oriented Programming',   'prof' => 'Prof. Melchor Jose',     'hours' => '1.5 hours', 'color' => 'purple'],
-            ],
+            'subjects' => self::SUBJECTS,
 
             // Weekly grid. Days are Monday..Saturday.
             'week' => [
@@ -76,6 +86,7 @@ class ChairpersonController extends BaseController
 
             'blocks'       => $blocks,
             'other_blocks' => $otherBlocks,
+            'is_published' => $isPublished,
 
             'suggestion' => [
                 'title'  => 'Move IT102 to Wed 1:00 PM - 2:30 PM',
@@ -89,10 +100,38 @@ class ChairpersonController extends BaseController
     }
 
     /**
-     * Replace the draft for one context. Validates every block and rejects
-     * room/faculty overlaps against every other section's plot.
+     * Other sections' blocks for the requested context, polled by the UI to
+     * keep ghost blocks and room availability current.
      */
+    public function others()
+    {
+        $context = $this->contextFromRequest();
+
+        $schedules = new PlottedScheduleModel();
+
+        return $this->response->setJSON([
+            'others' => array_map(
+                [$this, 'rowToBlock'],
+                $schedules->forOtherContexts(...array_values($context))
+            ),
+        ]);
+    }
+
     public function saveDraft()
+    {
+        return $this->persistSchedule('draft');
+    }
+
+    public function publish()
+    {
+        return $this->persistSchedule('published');
+    }
+
+    /**
+     * Validate and persist the submitted plot for one context.
+     * Every rule the UI enforces is re-checked here.
+     */
+    private function persistSchedule(string $status)
     {
         $payload = $this->request->getJSON(true);
 
@@ -109,6 +148,12 @@ class ChairpersonController extends BaseController
             $context[$key] = $payload['context'][$key];
         }
 
+        if ($status === 'published' && $payload['blocks'] === []) {
+            return $this->fail('Nothing to publish: the schedule is empty.');
+        }
+
+        $subjectsByCode = array_column(self::SUBJECTS, null, 'code');
+
         $blocks = [];
 
         foreach ($payload['blocks'] as $block) {
@@ -116,7 +161,7 @@ class ChairpersonController extends BaseController
                 return $this->fail('Invalid block.');
             }
 
-            foreach (['code', 'title', 'time_label', 'room', 'theme', 'start', 'end'] as $key) {
+            foreach (['code', 'time_label', 'room', 'start', 'end'] as $key) {
                 if (! isset($block[$key]) || ! is_string($block[$key])) {
                     return $this->fail("Missing block field: {$key}");
                 }
@@ -125,6 +170,14 @@ class ChairpersonController extends BaseController
             if (! isset($block['day']) || ! is_int($block['day']) || $block['day'] < 0 || $block['day'] > 5) {
                 return $this->fail('Invalid block day.');
             }
+
+            // The subject must exist in the curriculum; its details are
+            // canonicalized from the curriculum, not trusted from the client.
+            if (! isset($subjectsByCode[$block['code']])) {
+                return $this->fail("Unknown subject: {$block['code']}");
+            }
+
+            $subject = $subjectsByCode[$block['code']];
 
             if (! in_array($block['room'], self::ROOMS, true)) {
                 return $this->fail("Unknown room: {$block['room']}");
@@ -135,15 +188,25 @@ class ChairpersonController extends BaseController
                 return $this->fail('Invalid block time range.');
             }
 
+            // The plotted length must match the subject's class duration.
+            if ($this->toMinutes($block['end']) - $this->toMinutes($block['start']) !== (int) round($subject['duration'] * 60)) {
+                return $this->fail("{$subject['code']} must be plotted as a {$subject['hours']} block.");
+            }
+
+            // Laboratory subjects are Saturday-only.
+            if ($subject['is_lab'] && $block['day'] !== self::SATURDAY) {
+                return $this->fail("{$subject['code']} is a laboratory subject and can only be plotted on Saturdays.");
+            }
+
             $blocks[] = [
-                'day'   => $block['day'],
-                'code'  => $block['code'],
-                'title' => $block['title'],
-                'prof'  => isset($block['prof']) && is_string($block['prof']) ? $block['prof'] : null,
-                'room'  => $block['room'],
-                'theme' => $block['theme'],
-                'start' => $block['start'],
-                'end'   => $block['end'],
+                'day'        => $block['day'],
+                'code'       => $subject['code'],
+                'title'      => $subject['title'],
+                'prof'       => $subject['prof'],
+                'room'       => $block['room'],
+                'theme'      => $subject['color'],
+                'start'      => $block['start'],
+                'end'        => $block['end'],
                 'time_label' => $block['time_label'],
             ];
         }
@@ -201,7 +264,7 @@ class ChairpersonController extends BaseController
             'prof'          => $b['prof'],
             'room'          => $b['room'],
             'theme'         => $b['theme'],
-            'status'        => 'draft',
+            'status'        => $status,
         ], $blocks);
 
         $schedules->replaceDraft(
@@ -212,7 +275,7 @@ class ChairpersonController extends BaseController
             $rows
         );
 
-        return $this->response->setJSON(['ok' => true, 'saved' => count($rows)]);
+        return $this->response->setJSON(['ok' => true, 'saved' => count($rows), 'status' => $status]);
     }
 
     /**
@@ -245,6 +308,13 @@ class ChairpersonController extends BaseController
             'time_label' => $row['time_label'],
             'section'    => $row['section'],
         ];
+    }
+
+    private function toMinutes(string $hhmm): int
+    {
+        [$h, $m] = array_map('intval', explode(':', $hhmm));
+
+        return $h * 60 + $m;
     }
 
     private function overlaps(array $a, array $b): bool

@@ -46,6 +46,11 @@
         .btn-primary:hover { background: #1d4ed8; }
         .btn-primary:disabled { background: #93c5fd; cursor: default; }
         .btn-ghost { background: #fff; color: #2563eb; border: 1px solid #2563eb; }
+        .btn-publish { background: #16a34a; color: #fff; }
+        .btn-publish:hover { background: #15803d; }
+        .btn-publish:disabled { background: #86efac; cursor: default; }
+        .btn-danger { background: #fff; color: #dc2626; border: 1px solid #dc2626; }
+        .btn-danger:hover { background: #fef2f2; }
 
         /* ===== Filters ===== */
         .filters {
@@ -149,8 +154,65 @@
 
         .rail-hint { font-size: 11px; color: #9ca3af; margin-bottom: 10px; }
 
+        /* Lab subjects: Saturday-only badge */
+        .lab-badge {
+            display: inline-block;
+            background: #d97706;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 5px;
+            margin-left: 4px;
+            vertical-align: 1px;
+        }
+
         /* ===== Weekly grid ===== */
         .schedule { overflow-x: auto; }
+
+        .grid-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .grid-toolbar h2 { margin-bottom: 0; }
+
+        .status-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 10px;
+            border-radius: 999px;
+            vertical-align: 1px;
+        }
+
+        .status-badge.draft { background: #fef3c7; color: #b45309; }
+        .status-badge.published { background: #dcfce7; color: #15803d; }
+
+        .room-legend {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            color: #6b7280;
+            flex-wrap: wrap;
+        }
+
+        .room-legend span { display: flex; align-items: center; gap: 5px; }
+
+        .room-legend i {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+        }
+
+        .room-legend .lg-green  { background: #16a34a; }
+        .room-legend .lg-yellow { background: #d97706; }
+        .room-legend .lg-red    { background: #dc2626; }
+        .room-legend .lg-grey   { background: #9ca3af; }
 
         .grid {
             display: grid;
@@ -390,8 +452,6 @@
         }
 
         .room-card {
-            border: 1px solid #bbf7d0;
-            background: #f0fdf4;
             border-radius: 8px;
             padding: 10px;
             cursor: pointer;
@@ -399,23 +459,73 @@
             font-family: inherit;
         }
 
-        .room-card .room-name { font-weight: 700; font-size: 13px; }
-        .room-card .room-status { font-size: 11px; color: #16a34a; }
+        .room-card .room-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-        .room-card:hover:not(:disabled) { border-color: #22c55e; box-shadow: 0 2px 8px rgba(34,197,94,.2); }
+        .room-card .room-name { font-weight: 700; font-size: 13px; }
+
+        .room-card .room-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+        }
+
+        .room-card .room-status { font-size: 11px; font-weight: 600; margin-top: 2px; }
+
+        .room-card:hover:not(:disabled) { box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+
+        /* Room status: green available / yellow high utilization /
+           red near full / grey occupied (disabled) */
+        .room-card.green  { border: 1px solid #86efac; background: #f0fdf4; }
+        .room-card.green .room-status { color: #16a34a; }
+        .room-card.green .room-dot { background: #16a34a; }
+
+        .room-card.yellow { border: 1px solid #fcd34d; background: #fffbeb; }
+        .room-card.yellow .room-status { color: #d97706; }
+        .room-card.yellow .room-dot { background: #d97706; }
+
+        .room-card.red    { border: 1px solid #fca5a5; background: #fef2f2; }
+        .room-card.red .room-status { color: #dc2626; }
+        .room-card.red .room-dot { background: #dc2626; }
 
         .room-card:disabled {
-            border-color: #e5e7eb;
+            border: 1px solid #e5e7eb;
             background: #f3f4f6;
             cursor: not-allowed;
         }
 
         .room-card:disabled .room-name { color: #9ca3af; }
         .room-card:disabled .room-status { color: #9ca3af; }
+        .room-card:disabled .room-dot { background: #9ca3af; }
+
+        /* Soft warnings shown inside the modal (non-blocking) */
+        .modal-warning {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            padding: 9px 11px;
+            font-size: 12px;
+            color: #92400e;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .modal-warning::before { content: "⚠"; }
 
         .modal .note { font-size: 11px; color: #9ca3af; margin-bottom: 12px; }
 
-        .modal .actions { text-align: right; }
+        .modal .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
 
         /* ===== Toast ===== */
         .toast {
@@ -446,6 +556,7 @@
         <h1>Schedule Plotting</h1>
         <div class="right">
             <button type="button" class="btn btn-primary" id="saveDraftBtn">Save Draft</button>
+            <button type="button" class="btn btn-publish" id="publishBtn">Publish</button>
             <div class="user">
                 <div class="name"><?= esc($user['name']) ?></div>
                 <div class="role"><?= esc($user['role']) ?></div>
@@ -465,7 +576,7 @@
         <?php foreach ($filterLabels as $name => $label): ?>
             <div>
                 <label><?= esc($label) ?></label>
-                <select name="<?= esc($name, 'attr') ?>" onchange="this.form.submit()">
+                <select name="<?= esc($name, 'attr') ?>" class="context-select">
                     <?php foreach ($filters[$name] as $option): ?>
                         <option <?= $option === $selected[$name] ? 'selected' : '' ?>><?= esc($option) ?></option>
                     <?php endforeach; ?>
@@ -486,7 +597,10 @@
                      draggable="true"
                      data-code="<?= esc($subject['code'], 'attr') ?>">
                     <div class="row1">
-                        <span class="code"><?= esc($subject['code']) ?></span>
+                        <span>
+                            <span class="code"><?= esc($subject['code']) ?></span>
+                            <?php if ($subject['is_lab']): ?><span class="lab-badge">LAB &middot; SAT</span><?php endif; ?>
+                        </span>
                         <span class="units"><?= esc($subject['units']) ?></span>
                     </div>
                     <div class="title"><?= esc($subject['title']) ?></div>
@@ -503,6 +617,19 @@
 
         <!-- Center: weekly schedule grid -->
         <section class="panel schedule">
+            <div class="grid-toolbar">
+                <h2>Weekly Plotting Grid
+                    <span class="status-badge <?= $is_published ? 'published' : 'draft' ?>" id="statusBadge">
+                        <?= $is_published ? 'Published' : 'Draft' ?>
+                    </span>
+                </h2>
+                <div class="room-legend">
+                    <span><i class="lg-green"></i> Available</span>
+                    <span><i class="lg-yellow"></i> High utilization</span>
+                    <span><i class="lg-red"></i> Near full</span>
+                    <span><i class="lg-grey"></i> Occupied</span>
+                </div>
+            </div>
             <div class="grid">
                 <div class="head"></div>
                 <?php foreach ($week as $day): ?>
@@ -554,10 +681,27 @@
         <div class="modal">
             <h3>Assign a room</h3>
             <div class="sub" id="roomModalSub"></div>
+            <div id="roomModalWarnings"></div>
             <div class="room-grid" id="roomGrid"></div>
             <div class="note">Occupied rooms are disabled. Room availability reflects the current draft in real time.</div>
             <div class="actions">
                 <button type="button" class="btn btn-ghost" id="roomModalCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unsaved changes modal -->
+    <div class="modal-backdrop" id="unsavedModal">
+        <div class="modal">
+            <h3>Unsaved changes</h3>
+            <div class="sub">
+                Your plotting for <b><?= esc($selected['section']) ?> &middot; <?= esc($selected['year_level']) ?></b>
+                hasn't been saved. If you switch without saving, those changes will be lost.
+            </div>
+            <div class="actions">
+                <button type="button" class="btn btn-ghost" id="unsavedStay">Stay here</button>
+                <button type="button" class="btn btn-danger" id="unsavedDiscard">Discard &amp; switch</button>
+                <button type="button" class="btn btn-primary" id="unsavedSave">Save as draft &amp; switch</button>
             </div>
         </div>
     </div>
@@ -575,6 +719,10 @@
             gridStartMin: toMinutes(<?= json_encode($grid_start) ?>),
             gridEndMin: toMinutes(<?= json_encode($grid_end) ?>),
             saveUrl: <?= json_encode(site_url('chairperson/schedule/save-draft')) ?>,
+            publishUrl: <?= json_encode(site_url('chairperson/schedule/publish')) ?>,
+            othersUrl: <?= json_encode(site_url('chairperson/schedule/others')) ?>,
+            pollMs: 10000,
+            saturday: 5,
         };
         CONFIG.totalRows = (CONFIG.gridEndMin - CONFIG.gridStartMin) / 30;
 
@@ -582,8 +730,11 @@
         const ROOMS    = <?= json_encode($rooms, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         const WEEK     = <?= json_encode($week, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         const CONTEXT  = <?= json_encode($selected, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
-        const OTHERS   = <?= json_encode(array_values($other_blocks), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+        let OTHERS     = <?= json_encode(array_values($other_blocks), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         let blocks     = <?= json_encode(array_values($blocks), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+
+        // True whenever the grid differs from what's saved on the server.
+        let isDirty = false;
 
         // ---------- time helpers ----------
         function rowToHHMM(row) {
@@ -711,6 +862,8 @@
                 remove.textContent = '×';
                 remove.addEventListener('click', () => {
                     blocks.splice(i, 1);
+                    isDirty = true;
+                    setStatus('draft');
                     renderBlocks();
                     showToast('Removed ' + b.code + ' from the draft.', '');
                 });
@@ -741,6 +894,13 @@
             });
 
             document.getElementById('plottedUnits').textContent = units;
+            document.getElementById('publishBtn').disabled = blocks.length === 0;
+        }
+
+        function setStatus(status) {
+            const badge = document.getElementById('statusBadge');
+            badge.className = 'status-badge ' + status;
+            badge.textContent = status === 'published' ? 'Published' : 'Draft';
         }
 
         // ---------- drag & drop ----------
@@ -763,8 +923,7 @@
         });
 
         function subjectSlots(subject) {
-            const hours = parseFloat(subject.hours) || 1.5;
-            return Math.max(1, Math.round(hours * 2));
+            return Math.max(1, Math.round((subject.duration || 1.5) * 2));
         }
 
         function dropRange(col, clientY, subject) {
@@ -789,10 +948,27 @@
         }
 
         // Rooms are physical: occupancy counts every section's blocks.
-        function roomOccupied(room, day, startRow, endRow) {
-            return blocks.concat(OTHERS).some(b =>
+        // grey = occupied at that exact time; otherwise availability degrades
+        // with how many classes the room already hosts that day.
+        function roomStatus(room, day, startRow, endRow) {
+            const all = blocks.concat(OTHERS);
+
+            const occupied = all.some(b =>
                 b.room === room && b.day === day && rangesOverlap(startRow, endRow, blockStartRow(b), blockEndRow(b)));
+            if (occupied) return 'grey';
+
+            const load = all.filter(b => b.room === room && b.day === day).length;
+            if (load >= 3) return 'red';
+            if (load >= 2) return 'yellow';
+            return 'green';
         }
+
+        const ROOM_STATUS_LABEL = {
+            green:  'Available',
+            yellow: 'High utilization',
+            red:    'Near full',
+            grey:   'Occupied',
+        };
 
         document.querySelectorAll('.day-col').forEach(col => {
             col.addEventListener('dragover', e => {
@@ -805,7 +981,9 @@
                 preview.style.top = (startRow * CONFIG.rowHeight) + 'px';
                 preview.style.height = ((endRow - startRow) * CONFIG.rowHeight - 4) + 'px';
                 preview.classList.toggle('invalid',
-                    !!sectionConflict(day, startRow, endRow) || !!facultyConflict(dragged.prof, day, startRow, endRow));
+                    (dragged.is_lab && day !== CONFIG.saturday)
+                    || !!sectionConflict(day, startRow, endRow)
+                    || !!facultyConflict(dragged.prof, day, startRow, endRow));
                 if (preview.parentElement !== col) col.appendChild(preview);
             });
 
@@ -822,6 +1000,12 @@
                 const day = Number(col.dataset.day);
                 const { startRow, endRow } = dropRange(col, e.clientY, subject);
 
+                // Hard rule: laboratory subjects are Saturday-only.
+                if (subject.is_lab && day !== CONFIG.saturday) {
+                    showToast(`${subject.code} is a laboratory subject — it can only be plotted on Saturdays.`, 'error');
+                    return;
+                }
+
                 const clash = sectionConflict(day, startRow, endRow);
                 if (clash) {
                     showToast(`Conflict: ${clash.code} already occupies ${clash.time_label} on ${WEEK[day].day}.`, 'error');
@@ -834,7 +1018,15 @@
                     return;
                 }
 
-                openRoomModal(subject, day, startRow, endRow);
+                // Soft warning: plotting on a day the section doesn't attend
+                // yet means an extra campus day. Doesn't block the drop.
+                const warnings = [];
+                const attendedDays = new Set(blocks.map(b => b.day));
+                if (attendedDays.size > 0 && !attendedDays.has(day)) {
+                    warnings.push(`Adding ${subject.code} on ${WEEK[day].day} may require students to attend campus on an extra day. You can still continue.`);
+                }
+
+                openRoomModal(subject, day, startRow, endRow, warnings);
             });
         });
 
@@ -842,29 +1034,50 @@
         const modal = document.getElementById('roomModal');
         const roomGrid = document.getElementById('roomGrid');
 
-        function openRoomModal(subject, day, startRow, endRow) {
+        let modalArgs = null; // remembered so polling can refresh room statuses live
+
+        function openRoomModal(subject, day, startRow, endRow, warnings = []) {
+            modalArgs = [subject, day, startRow, endRow, warnings];
             document.getElementById('roomModalSub').textContent =
                 `${subject.code} - ${subject.title} · ${WEEK[day].day}, ${rowTo12h(startRow)} - ${rowTo12h(endRow)} · ${subject.prof}`;
+
+            const warningsBox = document.getElementById('roomModalWarnings');
+            warningsBox.innerHTML = '';
+            warnings.forEach(text => {
+                const warning = document.createElement('div');
+                warning.className = 'modal-warning';
+                warning.append(document.createTextNode(' ' + text));
+                warningsBox.appendChild(warning);
+            });
 
             roomGrid.innerHTML = '';
 
             ROOMS.forEach(room => {
-                const occupied = roomOccupied(room, day, startRow, endRow);
+                const state = roomStatus(room, day, startRow, endRow);
+                const occupied = state === 'grey';
 
                 const card = document.createElement('button');
                 card.type = 'button';
-                card.className = 'room-card';
+                card.className = 'room-card ' + state;
                 card.disabled = occupied;
+
+                const head = document.createElement('div');
+                head.className = 'room-head';
 
                 const name = document.createElement('div');
                 name.className = 'room-name';
                 name.textContent = room;
 
+                const dot = document.createElement('span');
+                dot.className = 'room-dot';
+
+                head.append(name, dot);
+
                 const status = document.createElement('div');
                 status.className = 'room-status';
-                status.textContent = occupied ? 'Occupied' : 'Available';
+                status.textContent = ROOM_STATUS_LABEL[state];
 
-                card.append(name, status);
+                card.append(head, status);
 
                 if (!occupied) {
                     card.addEventListener('click', () => {
@@ -880,6 +1093,8 @@
                             end: rowToHHMM(endRow),
                         });
                         closeRoomModal();
+                        isDirty = true;
+                        setStatus('draft');
                         renderBlocks();
                         showToast(`${subject.code} plotted in ${room}.`, 'success');
                     });
@@ -892,16 +1107,91 @@
         }
 
         function closeRoomModal() {
+            modalArgs = null;
             modal.classList.remove('open');
         }
 
         document.getElementById('roomModalCancel').addEventListener('click', closeRoomModal);
         modal.addEventListener('click', e => { if (e.target === modal) closeRoomModal(); });
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRoomModal(); });
+        document.addEventListener('keydown', e => {
+            if (e.key !== 'Escape') return;
+            closeRoomModal();
+            const unsaved = document.getElementById('unsavedModal');
+            if (unsaved.classList.contains('open')) {
+                document.getElementById('unsavedStay').click();
+            }
+        });
 
-        // ---------- save draft ----------
-        document.getElementById('saveDraftBtn').addEventListener('click', async () => {
-            const btn = document.getElementById('saveDraftBtn');
+        // ---------- save draft / publish ----------
+        async function submitSchedule(url, btn, busyLabel, idleLabel, successMessage) {
+            btn.disabled = true;
+            btn.textContent = busyLabel;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ context: CONTEXT, blocks: blocks }),
+                });
+                const result = await response.json();
+
+                if (response.ok && result.ok) {
+                    isDirty = false;
+                    setStatus(result.status);
+                    showToast(successMessage.replace('{n}', result.saved), 'success');
+                } else {
+                    showToast(result.error || 'Could not save the schedule.', 'error');
+                }
+            } catch (err) {
+                showToast('Network error while saving the schedule.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = idleLabel;
+                updateRail();
+            }
+        }
+
+        document.getElementById('saveDraftBtn').addEventListener('click', e =>
+            submitSchedule(CONFIG.saveUrl, e.currentTarget, 'Saving…', 'Save Draft', 'Draft saved ({n} classes).'));
+
+        document.getElementById('publishBtn').addEventListener('click', e =>
+            submitSchedule(CONFIG.publishUrl, e.currentTarget, 'Publishing…', 'Publish', 'Schedule published ({n} classes).'));
+
+        // ---------- unsaved-changes guard on filter switch ----------
+        const contextForm = document.getElementById('contextForm');
+        const contextSelects = contextForm.querySelectorAll('.context-select');
+        const unsavedModal = document.getElementById('unsavedModal');
+
+        const originalContext = {};
+        contextSelects.forEach(sel => { originalContext[sel.name] = sel.value; });
+
+        function revertContextSelects() {
+            contextSelects.forEach(sel => { sel.value = originalContext[sel.name]; });
+        }
+
+        contextSelects.forEach(sel => sel.addEventListener('change', () => {
+            if (!isDirty) {
+                contextForm.submit();
+                return;
+            }
+            unsavedModal.classList.add('open');
+        }));
+
+        function stayHere() {
+            revertContextSelects();
+            unsavedModal.classList.remove('open');
+        }
+
+        document.getElementById('unsavedStay').addEventListener('click', stayHere);
+        unsavedModal.addEventListener('click', e => { if (e.target === unsavedModal) stayHere(); });
+
+        document.getElementById('unsavedDiscard').addEventListener('click', () => {
+            isDirty = false; // allow the navigation without the beforeunload prompt
+            contextForm.submit();
+        });
+
+        document.getElementById('unsavedSave').addEventListener('click', async () => {
+            const btn = document.getElementById('unsavedSave');
             btn.disabled = true;
             btn.textContent = 'Saving…';
 
@@ -914,17 +1204,52 @@
                 const result = await response.json();
 
                 if (response.ok && result.ok) {
-                    showToast(`Draft saved (${result.saved} classes).`, 'success');
+                    isDirty = false;
+                    contextForm.submit();
                 } else {
+                    stayHere();
                     showToast(result.error || 'Could not save the draft.', 'error');
                 }
             } catch (err) {
+                stayHere();
                 showToast('Network error while saving the draft.', 'error');
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Save Draft';
+                btn.textContent = 'Save as draft & switch';
             }
         });
+
+        // Warn before closing/leaving the tab with unsaved plotting.
+        window.addEventListener('beforeunload', e => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // ---------- live updates from other sections ----------
+        async function refreshOthers() {
+            try {
+                const query = new URLSearchParams(CONTEXT).toString();
+                const response = await fetch(`${CONFIG.othersUrl}?${query}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!response.ok) return;
+
+                const data = await response.json();
+                if (!Array.isArray(data.others)) return;
+
+                if (JSON.stringify(data.others) !== JSON.stringify(OTHERS)) {
+                    OTHERS = data.others;
+                    renderBlocks();
+                    // Refresh room availability if the modal is open right now.
+                    if (modalArgs) openRoomModal(...modalArgs);
+                }
+            } catch (err) {
+                // Offline or server hiccup: try again on the next tick.
+            }
+        }
+        setInterval(refreshOthers, CONFIG.pollMs);
 
         // ---------- toast ----------
         let toastTimer = null;
