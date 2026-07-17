@@ -46,6 +46,45 @@
         .btn-primary:hover { background: #1d4ed8; }
         .btn-primary:disabled { background: #93c5fd; cursor: default; }
         .btn-ghost { background: #fff; color: #2563eb; border: 1px solid #2563eb; }
+        .approval-badge {
+            display: inline-block;
+            background: #dc2626;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 999px;
+            min-width: 17px;
+            padding: 2px 5px;
+            text-align: center;
+            margin-left: 3px;
+        }
+
+        .approval-badge.zero { background: #d1d5db; }
+
+        .approvals-list {
+            max-height: 340px;
+            overflow-y: auto;
+            margin-bottom: 14px;
+        }
+
+        .approval-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+
+        .approval-item .ap-who { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+        .approval-item .ap-loads { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+        .approval-item .ap-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+        .approvals-empty {
+            padding: 24px 12px;
+            text-align: center;
+            font-size: 12.5px;
+            color: #6b7280;
+        }
+
         .btn-danger { background: #dc2626; color: #fff; }
         .btn-danger:hover { background: #b91c1c; }
 
@@ -284,6 +323,21 @@
         }
 
         .asf-grid .asf-btn { padding: 7px 12px; font-size: 12px; }
+        .asf-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+        .curriculum-row .cr-edit {
+            flex: 0 0 auto;
+            border: none;
+            background: none;
+            color: #9ca3af;
+            font-size: 13px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 6px;
+        }
+
+        .curriculum-row .cr-edit:hover { color: #2563eb; background: #eff6ff; }
 
         /* Lab subjects: Saturday-only badge */
         .lab-badge {
@@ -889,6 +943,9 @@
                 <span class="sync-dot"></span>
                 <span id="syncText">All changes saved</span>
             </div>
+            <button type="button" class="btn btn-ghost" id="approvalsBtn">
+                Swap Approvals <span class="approval-badge" id="approvalBadge">0</span>
+            </button>
             <button type="button" class="btn btn-ghost" id="roomOverviewBtn">Room Overview</button>
             <div class="user">
                 <div class="name"><?= esc($user['name']) ?></div>
@@ -1041,6 +1098,19 @@
         </div>
     </div>
 
+    <!-- Swap approvals modal -->
+    <div class="modal-backdrop" id="approvalsModal">
+        <div class="modal">
+            <h3>Swap Approvals</h3>
+            <div class="sub">Faculty-agreed swaps in your department, waiting for your decision.
+                Loads only transfer once you approve.</div>
+            <div class="approvals-list" id="approvalsList"></div>
+            <div class="actions">
+                <button type="button" class="btn btn-ghost" id="approvalsClose">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Curriculum preset modal -->
     <div class="modal-backdrop" id="curriculumModal">
         <div class="modal">
@@ -1051,7 +1121,7 @@
                 Applies to every section of this year level.
             </div>
             <div class="add-subject">
-                <div class="asf-title">Add a new subject</div>
+                <div class="asf-title" id="asFormTitle">Add a new subject</div>
                 <div class="asf-grid">
                     <input type="text" id="asCode" placeholder="Code (e.g. IT106)" maxlength="20">
                     <input type="text" id="asTitle" placeholder="Subject title" maxlength="200" class="asf-wide">
@@ -1064,7 +1134,10 @@
                         <option value="3">3 hours</option>
                     </select>
                     <label class="asf-lab"><input type="checkbox" id="asLab"> Lab (Sat)</label>
-                    <button type="button" class="btn btn-primary asf-btn" id="asAdd">+ Add</button>
+                    <div class="asf-actions">
+                        <button type="button" class="btn btn-ghost asf-btn" id="asCancelEdit" style="display:none">Cancel</button>
+                        <button type="button" class="btn btn-primary asf-btn" id="asAdd">+ Add</button>
+                    </div>
                 </div>
             </div>
 
@@ -1152,6 +1225,7 @@
         let OTHERS     = <?= json_encode(array_values($other_blocks), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         let blocks     = <?= json_encode(array_values($blocks), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         let ASSIGNMENTS = <?= json_encode(array_values($assignments), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+        let APPROVALS   = <?= json_encode(array_values($swap_approvals), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
         // Autosave state: every change syncs to the server immediately.
         let saveTimer = null;   // debounce handle
@@ -1591,6 +1665,17 @@
                 meta.textContent = `${s.units} · ${s.hours}` + (s.is_lab ? ' · Lab (Saturday only)' : '');
                 details.appendChild(meta);
 
+                const edit = document.createElement('button');
+                edit.type = 'button';
+                edit.className = 'cr-edit';
+                edit.title = 'Edit this subject';
+                edit.textContent = '✎';
+                edit.addEventListener('click', e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    enterEditMode(s);
+                });
+
                 const del = document.createElement('button');
                 del.type = 'button';
                 del.className = 'cr-delete';
@@ -1602,10 +1687,40 @@
                     deleteSubject(s.code);
                 });
 
-                row.append(box, details, del);
+                row.append(box, details, edit, del);
                 list.appendChild(row);
             });
         }
+
+        // ----- add/edit form mode -----
+        let editingCode = null; // null = adding a new subject
+
+        function enterEditMode(s) {
+            editingCode = s.code;
+            document.getElementById('asFormTitle').textContent = 'Edit subject: ' + s.code;
+            document.getElementById('asCode').value = s.code;
+            document.getElementById('asTitle').value = s.title;
+            document.getElementById('asUnits').value = parseFloat(s.units) || 3;
+            document.getElementById('asDuration').value = String(s.duration);
+            document.getElementById('asLab').checked = !!s.is_lab;
+            document.getElementById('asAdd').textContent = 'Save Changes';
+            document.getElementById('asCancelEdit').style.display = '';
+            document.getElementById('asCode').focus();
+        }
+
+        function exitEditMode() {
+            editingCode = null;
+            document.getElementById('asFormTitle').textContent = 'Add a new subject';
+            document.getElementById('asCode').value = '';
+            document.getElementById('asTitle').value = '';
+            document.getElementById('asUnits').value = 3;
+            document.getElementById('asDuration').value = '1.5';
+            document.getElementById('asLab').checked = false;
+            document.getElementById('asAdd').textContent = '+ Add';
+            document.getElementById('asCancelEdit').style.display = 'none';
+        }
+
+        document.getElementById('asCancelEdit').addEventListener('click', exitEditMode);
 
         function openCurriculumModal() {
             // Existing preset: check its subjects. New preset: start with
@@ -1613,6 +1728,7 @@
             curriculumChecked = new Map(CATALOG.map(s =>
                 [s.code, PRESET_CODES === null || PRESET_CODES.includes(s.code)]));
 
+            exitEditMode();
             renderCurriculumList();
             curriculumModal.classList.add('open');
         }
@@ -1663,38 +1779,57 @@
                 return;
             }
 
-            const confirmed = await confirmDialog({
-                title: 'Add subject',
-                message: `Add ${payload.code} — ${payload.title} (${payload.units} units, ${payload.duration} ${payload.duration === 1 ? 'hour' : 'hours'}${payload.is_lab ? ', laboratory — Saturday only' : ''}) to the subject catalog?`,
-                confirmLabel: 'Add Subject',
-            });
+            const editing = editingCode !== null;
+            const details = `${payload.code} — ${payload.title} (${payload.units} units, ${payload.duration} ${payload.duration === 1 ? 'hour' : 'hours'}${payload.is_lab ? ', laboratory — Saturday only' : ''})`;
+
+            const confirmed = await confirmDialog(editing
+                ? {
+                    title: 'Save subject changes',
+                    message: `Save changes to ${editingCode}? New details: ${details}. Updates apply everywhere the subject is used.`,
+                    confirmLabel: 'Save Changes',
+                }
+                : {
+                    title: 'Add subject',
+                    message: `Add ${details} to the subject catalog?`,
+                    confirmLabel: 'Add Subject',
+                });
             if (!confirmed) return;
 
             const btn = document.getElementById('asAdd');
             btn.disabled = true;
 
             try {
-                const response = await fetch(<?= json_encode(site_url('chairperson/subjects/add')) ?>, {
+                const url = editing
+                    ? <?= json_encode(site_url('chairperson/subjects/update')) ?>
+                    : <?= json_encode(site_url('chairperson/subjects/add')) ?>;
+
+                const body = editing ? { ...payload, original_code: editingCode } : payload;
+
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify(body),
                 });
                 const result = await response.json();
 
                 if (response.ok && result.ok && result.subject) {
+                    if (editing) {
+                        // Reload so the rail, blocks, and presets all reflect
+                        // the edited subject.
+                        window.location.reload();
+                        return;
+                    }
                     CATALOG.push(result.subject);
                     CATALOG.sort((a, b) => a.code.localeCompare(b.code));
                     curriculumChecked.set(result.subject.code, true);
                     renderCurriculumList();
-                    document.getElementById('asCode').value = '';
-                    document.getElementById('asTitle').value = '';
-                    document.getElementById('asLab').checked = false;
+                    exitEditMode();
                     showToast(`${result.subject.code} added to the catalog.`, 'success');
                 } else {
-                    showToast(result.error || 'Could not add the subject.', 'error');
+                    showToast(result.error || 'Could not save the subject.', 'error');
                 }
             } catch (err) {
-                showToast('Network error while adding the subject.', 'error');
+                showToast('Network error while saving the subject.', 'error');
             } finally {
                 btn.disabled = false;
             }
@@ -1738,6 +1873,105 @@
                 btn.textContent = 'Save Curriculum';
             }
         });
+
+        // ---------- swap approvals ----------
+        const approvalsModal = document.getElementById('approvalsModal');
+
+        function renderApprovals() {
+            const badge = document.getElementById('approvalBadge');
+            badge.textContent = APPROVALS.length;
+            badge.classList.toggle('zero', APPROVALS.length === 0);
+
+            const list = document.getElementById('approvalsList');
+            list.innerHTML = '';
+
+            if (APPROVALS.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'approvals-empty';
+                empty.textContent = 'No swaps waiting for approval.';
+                list.appendChild(empty);
+                return;
+            }
+
+            APPROVALS.forEach(a => {
+                const item = document.createElement('div');
+                item.className = 'approval-item';
+
+                const who = document.createElement('div');
+                who.className = 'ap-who';
+                who.textContent = a.requested
+                    ? `${a.requester} ⇄ ${a.target} (exchange)`
+                    : `${a.requester} → ${a.target} (handover)`;
+
+                const loads = document.createElement('div');
+                loads.className = 'ap-loads';
+                loads.textContent = a.requested
+                    ? `${a.requester} gives ${a.offered} · receives ${a.requested}`
+                    : `${a.requester} hands over ${a.offered}`;
+
+                const actions = document.createElement('div');
+                actions.className = 'ap-actions';
+
+                const reject = document.createElement('button');
+                reject.type = 'button';
+                reject.className = 'btn btn-ghost';
+                reject.textContent = 'Reject';
+                reject.addEventListener('click', () => decideSwap(a, false));
+
+                const approve = document.createElement('button');
+                approve.type = 'button';
+                approve.className = 'btn btn-primary';
+                approve.textContent = 'Approve';
+                approve.addEventListener('click', () => decideSwap(a, true));
+
+                actions.append(reject, approve);
+                item.append(who, loads, actions);
+                list.appendChild(item);
+            });
+        }
+
+        async function decideSwap(a, approve) {
+            const confirmed = await confirmDialog({
+                title: (approve ? 'Approve' : 'Reject') + ' swap',
+                message: (a.requested
+                    ? `${a.requester} gives ${a.offered} and receives ${a.requested} from ${a.target}.`
+                    : `${a.requester} hands ${a.offered} over to ${a.target}.`)
+                    + (approve ? ' Approving transfers the load(s) immediately.' : ' Rejecting keeps everything as it is.'),
+                confirmLabel: approve ? 'Approve Swap' : 'Reject Swap',
+                danger: !approve,
+            });
+            if (!confirmed) return;
+
+            try {
+                const url = approve
+                    ? <?= json_encode(site_url('chairperson/swaps/approve')) ?>
+                    : <?= json_encode(site_url('chairperson/swaps/reject')) ?>;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ swap_id: a.id }),
+                });
+                const result = await response.json();
+
+                if (response.ok && result.ok) {
+                    APPROVALS = APPROVALS.filter(x => x.id !== a.id);
+                    renderApprovals();
+                    showToast(approve ? 'Swap approved — loads transferred.' : 'Swap rejected.', approve ? 'success' : '');
+                } else {
+                    showToast(result.error || 'Could not decide the swap.', 'error');
+                }
+            } catch (err) {
+                showToast('Network error while deciding the swap.', 'error');
+            }
+        }
+
+        document.getElementById('approvalsBtn').addEventListener('click', () => {
+            renderApprovals();
+            approvalsModal.classList.add('open');
+        });
+        document.getElementById('approvalsClose').addEventListener('click', () => approvalsModal.classList.remove('open'));
+        approvalsModal.addEventListener('click', e => { if (e.target === approvalsModal) approvalsModal.classList.remove('open'); });
 
         // ---------- room overview modal ----------
         const overviewModal = document.getElementById('overviewModal');
@@ -2105,6 +2339,7 @@
             document.getElementById('conflictModal').classList.remove('open');
             overviewModal.classList.remove('open');
             curriculumModal.classList.remove('open');
+            approvalsModal.classList.remove('open');
         });
 
         // ---------- autosave (insta-plot) ----------
@@ -2191,15 +2426,30 @@
                     stateVersion = data.version || '';
 
                     // Notify the chairperson the moment a faculty member
-                    // claims one of the plotted loads.
+                    // claims one of the plotted loads — or swaps it away.
                     if (Array.isArray(data.assignments)) {
-                        const known = new Set(ASSIGNMENTS.map(a => a.key));
+                        const known = new Map(ASSIGNMENTS.map(a => [a.key, a.username]));
                         data.assignments.forEach(a => {
+                            const label = `${a.code} (${a.section} · ${shortYear(a.year_level)})`;
                             if (!known.has(a.key)) {
-                                showToast(`${a.code} (${a.section} · ${shortYear(a.year_level)}) was claimed by ${a.username}.`, 'success');
+                                showToast(`${label} was claimed by ${a.username}.`, 'success');
+                            } else if (known.get(a.key) !== a.username) {
+                                showToast(`${label} was swapped from ${known.get(a.key)} to ${a.username}.`, 'success');
                             }
                         });
                         ASSIGNMENTS = data.assignments;
+                    }
+
+                    // Approvals queue: toast newly arrived requests.
+                    if (Array.isArray(data.swap_approvals)) {
+                        const knownIds = new Set(APPROVALS.map(a => a.id));
+                        data.swap_approvals.forEach(a => {
+                            if (!knownIds.has(a.id)) {
+                                showToast(`Swap awaiting your approval: ${a.requester} ${a.requested ? '⇄' : '→'} ${a.target} (${a.offered}).`, 'success');
+                            }
+                        });
+                        APPROVALS = data.swap_approvals;
+                        renderApprovals();
                     }
 
                     let changed = false;
@@ -2243,6 +2493,7 @@
         }
 
         renderBlocks();
+        renderApprovals();
     </script>
 
 </body>

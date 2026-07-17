@@ -56,6 +56,9 @@ $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {
     $routes->get('dashboard', 'TeachingLoads::index');
     $routes->get('loads/state', 'TeachingLoads::state');
     $routes->post('loads/claim', 'TeachingLoads::claim');
+    $routes->post('loads/swap/request', 'TeachingLoads::requestSwap');
+    $routes->post('loads/swap/respond', 'TeachingLoads::respondSwap');
+    $routes->post('loads/swap/cancel', 'TeachingLoads::cancelSwap');
 });
 
 $routes->group('student', ['filter' => 'group:student'], function ($routes) {
@@ -67,7 +70,10 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('schedule/sync', 'ChairpersonController::sync');
     $routes->get('schedule/state', 'ChairpersonController::state');
     $routes->post('curriculum-preset', 'ChairpersonController::savePreset');
+    $routes->post('swaps/approve', 'ChairpersonController::approveSwap');
+    $routes->post('swaps/reject', 'ChairpersonController::rejectSwap');
     $routes->post('subjects/add', 'ChairpersonController::addSubject');
+    $routes->post('subjects/update', 'ChairpersonController::updateSubject');
     $routes->post('subjects/delete', 'ChairpersonController::deleteSubject');
 });
 

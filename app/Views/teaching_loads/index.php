@@ -250,7 +250,30 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
 .tile-btn.claim:active{transform:scale(.96)}
 .tile-btn.conflict{background:var(--red-soft);color:var(--red);border:1px solid var(--red-border);cursor:not-allowed}
 .tile-btn.assigned{background:var(--green-soft);color:var(--green);border:1px solid var(--green-border);cursor:default}
+.tile-btn.swap{background:rgba(0,0,0,.05);color:var(--ink)}
+.tile-btn.swap:hover{background:rgba(0,0,0,.1)}
+.tile-btn.swap:disabled{color:var(--muted);cursor:not-allowed}
+.tile-btn.decline{background:var(--red-soft);color:var(--red);border:1px solid var(--red-border)}
+.tile-btn.decline:hover{background:#fee2e2}
 .tile-btn .material-symbols-outlined{font-size:17px}
+
+.swap-status{
+    padding:4px 12px;border-radius:999px;font-size:.62rem;font-weight:600;white-space:nowrap;flex:none;
+}
+.swap-status.pending{background:#fffbeb;color:#b45309}
+.swap-status.accepted{background:var(--green-soft);color:var(--green)}
+.swap-status.declined{background:var(--red-soft);color:var(--red)}
+.swap-status.cancelled{background:rgba(0,0,0,.05);color:var(--muted)}
+.swap-who{font-size:.74rem;color:var(--ink);font-weight:600}
+.swap-status.awaiting{background:#eff6ff;color:#1d4ed8}
+.swap-status.approved{background:var(--green-soft);color:var(--green)}
+.swap-status.rejected{background:var(--red-soft);color:var(--red)}
+
+.tile.is-taken{opacity:.85;background:#fafafa}
+.taken-chip{
+    padding:4px 10px;border-radius:999px;font-size:.62rem;font-weight:600;white-space:nowrap;flex:none;
+    background:rgba(0,0,0,.06);color:var(--muted);
+}
 
 /* ===== Empty state ===== */
 .empty-state{
@@ -401,8 +424,8 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
                     <button type="button" class="tab" data-tab="mine">
                         My Assignments <span class="tab-cnt" id="cntMine">0</span>
                     </button>
-                    <button type="button" class="tab" disabled title="Coming soon">
-                        Swap Request <span class="tab-cnt">0</span>
+                    <button type="button" class="tab" data-tab="swaps">
+                        Swap Requests <span class="tab-cnt" id="cntSwaps">0</span>
                     </button>
                 </div>
 
@@ -427,6 +450,19 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
     </main>
 </div>
 
+<!-- Swap request modal -->
+<div class="modal-backdrop" id="swapModal">
+    <div class="modal-card">
+        <h3 id="swapTitle"></h3>
+        <p id="swapMessage"></p>
+        <select class="filter-select" id="swapTarget" style="width:100%;margin-bottom:32px;padding:10px 14px;border-radius:12px"></select>
+        <div class="modal-actions">
+            <button type="button" class="modal-btn cancel" id="swapCancel">Cancel</button>
+            <button type="button" class="modal-btn ok" id="swapSend">Send Request</button>
+        </div>
+    </div>
+</div>
+
 <!-- Claim confirmation -->
 <div class="modal-backdrop" id="confirmModal">
     <div class="modal-card">
@@ -445,14 +481,20 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
 const CONFIG = {
     stateUrl: <?= json_encode(site_url('faculty/loads/state')) ?>,
     claimUrl: <?= json_encode(site_url('faculty/loads/claim')) ?>,
+    swapRequestUrl: <?= json_encode(site_url('faculty/loads/swap/request')) ?>,
+    swapRespondUrl: <?= json_encode(site_url('faculty/loads/swap/respond')) ?>,
+    swapCancelUrl: <?= json_encode(site_url('faculty/loads/swap/cancel')) ?>,
     maxUnits: <?= (int) $max_units ?>,
 };
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 let LOADS = <?= json_encode($state['loads'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+let TAKEN = <?= json_encode($state['taken'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 let MINE  = <?= json_encode($state['mine'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 let UNITS = <?= json_encode($state['units']) ?>;
+let SWAPS = <?= json_encode($state['swaps'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+let FACULTY = <?= json_encode($state['faculty'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
 let activeTab = 'available';
 let dayFilter = null;   // null = all days
@@ -538,6 +580,36 @@ function loadTile(l) {
         btn.className = 'tile-btn assigned';
         btn.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Assigned to you';
         btn.disabled = true;
+
+        const swapBtn = document.createElement('button');
+        swapBtn.type = 'button';
+        if (l.swap_pending) {
+            swapBtn.className = 'tile-btn swap';
+            swapBtn.innerHTML = '<span class="material-symbols-outlined">hourglass_top</span> Swap pending';
+            swapBtn.disabled = true;
+        } else {
+            swapBtn.className = 'tile-btn swap';
+            swapBtn.innerHTML = '<span class="material-symbols-outlined">swap_horiz</span> Request Swap';
+            swapBtn.addEventListener('click', () => openSwapModal(l));
+        }
+        tile.appendChild(btn);
+        tile.appendChild(swapBtn);
+        return tile;
+    } else if (l.state === 'taken') {
+        tile.classList.add('is-taken');
+        // Replace the section chip with a "taken by" chip.
+        spec.className = 'taken-chip';
+        spec.textContent = 'Taken · ' + l.holder;
+
+        if (l.swap_pending) {
+            btn.className = 'tile-btn swap';
+            btn.innerHTML = '<span class="material-symbols-outlined">hourglass_top</span> Swap in progress';
+            btn.disabled = true;
+        } else {
+            btn.className = 'tile-btn swap';
+            btn.innerHTML = '<span class="material-symbols-outlined">swap_horiz</span> Propose Swap';
+            btn.addEventListener('click', () => openProposeModal(l));
+        }
     } else if (l.state === 'conflict') {
         btn.className = 'tile-btn conflict';
         btn.textContent = 'Schedule Conflict';
@@ -553,8 +625,82 @@ function loadTile(l) {
     return tile;
 }
 
+const SWAP_STATUS = {
+    pending:   { label: 'Pending',            cls: 'pending' },
+    accepted:  { label: 'Awaiting approval',  cls: 'awaiting' },
+    approved:  { label: 'Approved',           cls: 'approved' },
+    declined:  { label: 'Declined',           cls: 'declined' },
+    rejected:  { label: 'Rejected by chair',  cls: 'rejected' },
+    cancelled: { label: 'Cancelled',          cls: 'cancelled' },
+};
+
+function swapTile(s) {
+    const tile = document.createElement('div');
+    tile.className = 'tile acc-' + (s.offered ? s.offered.accent : 'blue');
+
+    const statusInfo = SWAP_STATUS[s.status] || SWAP_STATUS.cancelled;
+
+    const head = document.createElement('div');
+    head.className = 'tile-head';
+    const code = document.createElement('span');
+    code.className = 'tile-code';
+    code.textContent = s.requested ? `${s.offered.code} ⇄ ${s.requested.code}` : s.offered.code;
+    const status = document.createElement('span');
+    status.className = 'swap-status ' + statusInfo.cls;
+    status.textContent = statusInfo.label;
+    head.append(code, status);
+
+    const who = document.createElement('div');
+    who.className = 'swap-who';
+    if (s.direction === 'incoming') {
+        who.textContent = s.requested
+            ? `${s.requester} offers ${s.offered.code} for your ${s.requested.code}`
+            : `${s.requester} wants to hand ${s.offered.code} to you`;
+    } else {
+        who.textContent = s.requested
+            ? `You offered ${s.offered.code} for ${s.target}'s ${s.requested.code}`
+            : `You offered ${s.offered.code} to ${s.target}`;
+    }
+
+    tile.append(head, who,
+        metaRow('calendar_month', `${s.offered.code}: ${s.offered.days} · ${s.offered.time} · ${s.offered.room} · ${s.offered.spec}`));
+
+    if (s.requested) {
+        tile.append(metaRow('swap_horiz', `${s.requested.code}: ${s.requested.days} · ${s.requested.time} · ${s.requested.room} · ${s.requested.spec}`));
+    }
+
+    if (s.status === 'accepted') {
+        tile.append(metaRow('schedule', 'Waiting for the chairperson to approve the transfer.'));
+    }
+
+    if (s.direction === 'incoming' && s.status === 'pending') {
+        const accept = document.createElement('button');
+        accept.type = 'button';
+        accept.className = 'tile-btn claim';
+        accept.textContent = 'Accept Swap';
+        accept.addEventListener('click', () => respondSwap(s, 'accept'));
+
+        const decline = document.createElement('button');
+        decline.type = 'button';
+        decline.className = 'tile-btn decline';
+        decline.textContent = 'Decline';
+        decline.addEventListener('click', () => respondSwap(s, 'decline'));
+
+        tile.append(accept, decline);
+    } else if (s.direction === 'outgoing' && (s.status === 'pending' || s.status === 'accepted')) {
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.className = 'tile-btn swap';
+        cancel.textContent = 'Withdraw Request';
+        cancel.addEventListener('click', () => cancelSwap(s));
+        tile.appendChild(cancel);
+    }
+
+    return tile;
+}
+
 function visibleLoads() {
-    const source = activeTab === 'available' ? LOADS : MINE;
+    const source = activeTab === 'available' ? LOADS.concat(TAKEN) : MINE;
     const q = query.trim().toLowerCase();
 
     return source.filter(l => {
@@ -571,10 +717,29 @@ function renderBoard() {
     const empty = document.getElementById('boardEmpty');
     grid.innerHTML = '';
 
-    const items = visibleLoads();
-
     document.getElementById('cntAvailable').textContent = LOADS.length;
     document.getElementById('cntMine').textContent = MINE.length;
+    document.getElementById('cntSwaps').textContent =
+        SWAPS.filter(s => s.direction === 'incoming' && s.status === 'pending').length;
+
+    // The day/section filters only make sense for load boards.
+    document.querySelector('.filter-bar').style.display = activeTab === 'swaps' ? 'none' : '';
+
+    if (activeTab === 'swaps') {
+        if (SWAPS.length === 0) {
+            empty.classList.add('visible');
+            document.getElementById('emptyTitle').textContent = 'No swap requests';
+            document.getElementById('emptySub').textContent =
+                'Offer one of your assignments to a colleague from the My Assignments tab, or wait for an incoming request.';
+        } else {
+            empty.classList.remove('visible');
+            SWAPS.forEach(s => grid.appendChild(swapTile(s)));
+        }
+        updateLoadBar();
+        return;
+    }
+
+    const items = visibleLoads();
 
     const totalUnits = items.reduce((sum, l) => sum + l.units, 0);
     document.getElementById('boardSummary').textContent =
@@ -597,7 +762,10 @@ function renderBoard() {
         items.forEach(l => grid.appendChild(loadTile(l)));
     }
 
-    // load bar
+    updateLoadBar();
+}
+
+function updateLoadBar() {
     const pct = Math.min(100, Math.round(UNITS / CONFIG.maxUnits * 100));
     const fill = document.getElementById('loadFill');
     fill.style.width = pct + '%';
@@ -637,7 +805,7 @@ document.getElementById('searchInput').addEventListener('input', e => {
 // Year level / section dropdowns: options follow whatever contexts exist in
 // the live data, so new sections appear automatically.
 function rebuildContextFilters() {
-    const all = LOADS.concat(MINE);
+    const all = LOADS.concat(TAKEN, MINE);
 
     const fill = (id, values, current, allLabel) => {
         const select = document.getElementById(id);
@@ -705,12 +873,204 @@ async function claimLoad(l) {
     }
 }
 
+// ---------- swaps ----------
+const swapModal = document.getElementById('swapModal');
+let swapMode = null; // { type: 'handover', load } | { type: 'exchange', load }
+
+function openSwapModal(l) {
+    // Handover: give one of my loads to a chosen colleague.
+    if (FACULTY.length === 0) {
+        showToast('No other faculty members in your department yet.', 'error');
+        return;
+    }
+    swapMode = { type: 'handover', load: l };
+    document.getElementById('swapTitle').textContent = 'Hand over ' + l.code;
+    document.getElementById('swapMessage').textContent =
+        `Offer ${l.code} — ${l.title} (${l.days}, ${l.time} · ${l.room} · ${l.units} units) to a colleague. ` +
+        `They must accept, and the chairperson must approve, before it transfers.`;
+
+    const select = document.getElementById('swapTarget');
+    select.innerHTML = '';
+    FACULTY.forEach(f => {
+        const option = document.createElement('option');
+        option.value = f.id;
+        option.textContent = f.username;
+        select.appendChild(option);
+    });
+
+    swapModal.classList.add('open');
+}
+
+function openProposeModal(l) {
+    // Exchange: offer one of MY loads for a colleague's taken load.
+    if (MINE.length === 0) {
+        showToast('You need an assigned load of your own to offer in exchange — claim one first.', 'error');
+        return;
+    }
+    const offerable = MINE.filter(m => !m.swap_pending);
+    if (offerable.length === 0) {
+        showToast('All your loads are already part of open swap requests.', 'error');
+        return;
+    }
+
+    swapMode = { type: 'exchange', load: l };
+    document.getElementById('swapTitle').textContent = `Propose swap for ${l.code}`;
+    document.getElementById('swapMessage').textContent =
+        `${l.code} — ${l.title} (${l.days}, ${l.time} · ${l.room}) is held by ${l.holder}. ` +
+        `Choose which of your loads to offer in exchange. ${l.holder} must accept, ` +
+        `and the chairperson must approve, before the loads trade places.`;
+
+    const select = document.getElementById('swapTarget');
+    select.innerHTML = '';
+    offerable.forEach(m => {
+        const option = document.createElement('option');
+        option.value = m.assignment_id;
+        option.textContent = `${m.code} — ${m.title} (${m.days}, ${m.time} · ${m.units} units)`;
+        select.appendChild(option);
+    });
+
+    swapModal.classList.add('open');
+}
+
+function closeSwapModal() {
+    swapMode = null;
+    swapModal.classList.remove('open');
+}
+
+document.getElementById('swapCancel').addEventListener('click', closeSwapModal);
+swapModal.addEventListener('click', e => { if (e.target === swapModal) closeSwapModal(); });
+
+document.getElementById('swapSend').addEventListener('click', async () => {
+    if (!swapMode) return;
+    const mode = swapMode;
+    const selected = document.getElementById('swapTarget');
+    const value = Number(selected.value);
+    const valueName = selected.selectedOptions[0].textContent;
+    closeSwapModal();
+
+    const body = mode.type === 'handover'
+        ? { offered_assignment_id: mode.load.assignment_id, target_id: value }
+        : { offered_assignment_id: value, requested_assignment_id: mode.load.assignment_id };
+
+    try {
+        const response = await fetch(CONFIG.swapRequestUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify(body),
+        });
+        const result = await response.json();
+
+        if (response.ok && result.ok) {
+            showToast(mode.type === 'handover'
+                ? `Swap request for ${mode.load.code} sent to ${valueName}.`
+                : `Swap proposed to ${mode.load.holder}: your load for their ${mode.load.code}.`, 'success');
+        } else {
+            showToast(result.error || 'Could not send the swap request.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error while sending the swap request.', 'error');
+    } finally {
+        refreshState();
+    }
+});
+
+async function respondSwap(s, action) {
+    const gain = s.offered;
+    const give = s.requested;
+
+    const confirmed = await confirmDialog(
+        (action === 'accept' ? 'Accept' : 'Decline') + ' swap: ' + gain.code + '?',
+        action === 'accept'
+            ? `You receive ${gain.code} (${gain.days}, ${gain.time} · ${gain.room})` +
+              (give ? ` and give ${give.code} to ${s.requester}.` : ` from ${s.requester}.`) +
+              ` The chairperson still has to approve before anything transfers.`
+            : `Decline ${s.requester}'s swap request for ${gain.code}?`,
+        action === 'accept' ? 'Accept Swap' : 'Decline'
+    );
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(CONFIG.swapRespondUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ swap_id: s.id, action: action }),
+        });
+        const result = await response.json();
+
+        if (response.ok && result.ok) {
+            showToast(action === 'accept'
+                ? `Swap accepted — now waiting for the chairperson's approval.`
+                : `Swap request for ${gain.code} declined.`, 'success');
+        } else {
+            showToast(result.error || 'Could not respond to the swap.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error while responding to the swap.', 'error');
+    } finally {
+        refreshState();
+    }
+}
+
+async function cancelSwap(s) {
+    const confirmed = await confirmDialog(
+        'Withdraw swap request?',
+        `Withdraw your offer of ${s.offered.code}${s.requested ? ' for ' + s.requested.code : ''}? Everything stays as it is.`,
+        'Withdraw'
+    );
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(CONFIG.swapCancelUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ swap_id: s.id }),
+        });
+        const result = await response.json();
+        if (response.ok && result.ok) {
+            showToast(`Swap request for ${s.offered.code} withdrawn.`, '');
+        } else {
+            showToast(result.error || 'Could not cancel the swap.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error while cancelling the swap.', 'error');
+    } finally {
+        refreshState();
+    }
+}
+
 // ---------- real-time (long-polling) ----------
 function applyState(data) {
     const before = new Set(LOADS.map(l => l.key));
     const mineKeys = new Set((data.mine || []).map(l => l.key));
 
+    // Toast swap events: new incoming requests and every status change.
+    if (Array.isArray(data.swaps)) {
+        const prev = new Map(SWAPS.map(s => [s.id, s]));
+        data.swaps.forEach(s => {
+            const old = prev.get(s.id);
+            const code = s.offered ? s.offered.code : '';
+            if (!old && s.direction === 'incoming' && s.status === 'pending') {
+                showToast(`${s.requester} proposed a swap for ${code} — check Swap Requests.`, 'success');
+            } else if (old && s.status !== old.status) {
+                const messages = {
+                    accepted: s.direction === 'outgoing'
+                        ? `${s.target} accepted your swap for ${code} — awaiting chairperson approval.` : null,
+                    approved: `Swap for ${code} approved by the chairperson — loads transferred.`,
+                    declined: s.direction === 'outgoing' ? `${s.target} declined your swap request for ${code}.` : null,
+                    rejected: `The chairperson rejected the swap for ${code}.`,
+                    cancelled: s.direction === 'incoming' ? `The swap request for ${code} was withdrawn.` : null,
+                };
+                if (messages[s.status]) {
+                    showToast(messages[s.status], s.status === 'approved' || s.status === 'accepted' ? 'success' : '');
+                }
+            }
+        });
+        SWAPS = data.swaps;
+    }
+    if (Array.isArray(data.faculty)) FACULTY = data.faculty;
+
     LOADS = data.loads || [];
+    TAKEN = data.taken || [];
     MINE = data.mine || [];
     UNITS = data.units || 0;
     rebuildContextFilters();

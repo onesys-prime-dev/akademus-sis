@@ -4,8 +4,11 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\CurriculumPresetModel;
+use App\Models\DepartmentModel;
+use App\Models\FacultyAssignmentModel;
 use App\Models\PlottedScheduleModel;
 use App\Models\SubjectModel;
+use App\Models\SwapRequestModel;
 
 class ChairpersonController extends BaseController
 {
@@ -117,7 +120,7 @@ class ChairpersonController extends BaseController
                 'role' => 'IT Department - Chairperson',
             ],
 
-            'filters'  => self::FILTERS,
+            'filters'  => $this->filters(),
             'selected' => $context,
 
             'subjects'     => $subjects,
@@ -140,9 +143,10 @@ class ChairpersonController extends BaseController
 
             'rooms' => self::ROOMS,
 
-            'blocks'       => $blocks,
-            'other_blocks' => $otherBlocks,
-            'assignments'  => $assignments,
+            'blocks'         => $blocks,
+            'other_blocks'   => $otherBlocks,
+            'assignments'    => $assignments,
+            'swap_approvals' => $this->swapApprovals(),
 
             'suggestion' => [
                 'title'  => 'Move IT102 to Wed 1:00 PM - 2:30 PM',
@@ -199,8 +203,226 @@ class ChairpersonController extends BaseController
                 array_map([$this, 'rowToBlock'], $schedules->forOtherContexts(...array_values($context))),
                 $profMap
             ),
-            'assignments' => $assignments,
+            'assignments'    => $assignments,
+            'swap_approvals' => $this->swapApprovals(),
         ]);
+    }
+
+    /**
+     * Faculty-accepted swaps awaiting this chairperson's decision, scoped to
+     * their department's programs.
+     */
+    private function swapApprovals(): array
+    {
+        $dept = (new DepartmentModel())->codeOfUser((int) auth()->id());
+
+        $rows = db_connect()->table('swap_requests sr')
+            ->select('sr.swap_id, r.username AS requester, t.username AS target,'
+                . ' fa1.program a1_prog, fa1.year_level a1_yl, fa1.section a1_sec, fa1.subject_code a1_code,'
+                . ' fa2.program a2_prog, fa2.year_level a2_yl, fa2.section a2_sec, fa2.subject_code a2_code')
+            ->join('faculty_assignments fa1', 'fa1.assignment_id = sr.assignment_id')
+            ->join('faculty_assignments fa2', 'fa2.assignment_id = sr.requested_assignment_id', 'left')
+            ->join('users r', 'r.id = sr.requester_id')
+            ->join('users t', 't.id = sr.target_id')
+            ->where('sr.status', 'accepted')
+            ->orderBy('sr.swap_id')
+            ->get()
+            ->getResultArray();
+
+        $label = static fn (string $code, string $section, string $yearLevel): string =>
+            $code . ' · ' . $section . ' · ' . str_replace(' Year', ' Yr', $yearLevel);
+
+        $items = [];
+
+        foreach ($rows as $row) {
+            if ($dept !== null && DepartmentModel::programDept($row['a1_prog']) !== $dept) {
+                continue;
+            }
+
+            $items[] = [
+                'id'        => (int) $row['swap_id'],
+                'requester' => $row['requester'],
+                'target'    => $row['target'],
+                'offered'   => $label($row['a1_code'], $row['a1_sec'], $row['a1_yl']),
+                'requested' => $row['a2_code'] === null ? null : $label($row['a2_code'], $row['a2_sec'], $row['a2_yl']),
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * Approve a faculty-accepted swap: final validation of both parties,
+     * then the loads transfer atomically.
+     */
+    public function approveSwap()
+    {
+        return $this->decideSwap(true);
+    }
+
+    public function rejectSwap()
+    {
+        return $this->decideSwap(false);
+    }
+
+    private function decideSwap(bool $approve)
+    {
+        $payload = $this->request->getJSON(true);
+        $swapId  = (int) ($payload['swap_id'] ?? 0);
+
+        $swaps = new SwapRequestModel();
+        $swap  = $swaps->find($swapId);
+
+        if ($swap === null || $swap['status'] !== 'accepted') {
+            return $this->fail('This swap is not awaiting approval.');
+        }
+
+        $assignments = new FacultyAssignmentModel();
+        $offered     = $assignments->find((int) $swap['assignment_id']);
+
+        if ($offered === null) {
+            $swaps->update($swapId, ['status' => 'cancelled']);
+
+            return $this->fail('This swap is no longer valid.');
+        }
+
+        // Department ownership: only the owning department's chair decides.
+        $dept = (new DepartmentModel())->codeOfUser((int) auth()->id());
+
+        if ($dept !== null && DepartmentModel::programDept($offered['program']) !== $dept) {
+            return $this->fail('This swap belongs to another department.');
+        }
+
+        if (! $approve) {
+            $swaps->update($swapId, ['status' => 'rejected']);
+
+            return $this->response->setJSON(['ok' => true, 'status' => 'rejected']);
+        }
+
+        if ((int) $offered['user_id'] !== (int) $swap['requester_id']) {
+            $swaps->update($swapId, ['status' => 'cancelled']);
+
+            return $this->fail('This swap is no longer valid — the offered load changed hands.');
+        }
+
+        $requested = null;
+        if ($swap['requested_assignment_id'] !== null) {
+            $requested = $assignments->find((int) $swap['requested_assignment_id']);
+
+            if ($requested === null || (int) $requested['user_id'] !== (int) $swap['target_id']) {
+                $swaps->update($swapId, ['status' => 'cancelled']);
+
+                return $this->fail('This swap is no longer valid — the requested load changed hands.');
+            }
+        }
+
+        // Final fit check for both parties at this moment.
+        $offeredInfo = $this->assignmentLoadInfo($offered);
+
+        $targetAgg = $this->facultyAggregate((int) $swap['target_id'], $requested ? [(int) $requested['assignment_id']] : []);
+        if ($error = $this->fitError($targetAgg, $offeredInfo, $swap['target_id'], $offered['subject_code'])) {
+            return $this->fail('Cannot approve: ' . $error);
+        }
+
+        if ($requested !== null) {
+            $requestedInfo = $this->assignmentLoadInfo($requested);
+            $requesterAgg  = $this->facultyAggregate((int) $swap['requester_id'], [(int) $offered['assignment_id']]);
+            if ($error = $this->fitError($requesterAgg, $requestedInfo, $swap['requester_id'], $requested['subject_code'])) {
+                return $this->fail('Cannot approve: ' . $error);
+            }
+        }
+
+        $db = db_connect();
+        $db->transException(true)->transStart();
+
+        $assignments->update($offered['assignment_id'], ['user_id' => (int) $swap['target_id'], 'method' => 'swapped']);
+        if ($requested !== null) {
+            $assignments->update($requested['assignment_id'], ['user_id' => (int) $swap['requester_id'], 'method' => 'swapped']);
+        }
+
+        $swaps->update($swapId, ['status' => 'approved']);
+
+        // Any other open swaps touching these assignments are now moot.
+        $involved = array_filter([(int) $offered['assignment_id'], $requested ? (int) $requested['assignment_id'] : 0]);
+        $swaps->groupStart()
+                ->whereIn('assignment_id', $involved)
+                ->orWhereIn('requested_assignment_id', $involved)
+            ->groupEnd()
+            ->whereIn('status', ['pending', 'accepted'])
+            ->where('swap_id !=', $swapId)
+            ->set('status', 'cancelled')
+            ->update();
+
+        $db->transComplete();
+
+        return $this->response->setJSON(['ok' => true, 'status' => 'approved']);
+    }
+
+    /**
+     * Meetings + units of one assignment's load, straight from the plotted
+     * rows and subject catalog.
+     */
+    private function assignmentLoadInfo(array $assignment): array
+    {
+        $rows = (new PlottedScheduleModel())->where([
+            'academic_year' => $assignment['academic_year'],
+            'program'       => $assignment['program'],
+            'year_level'    => $assignment['year_level'],
+            'section'       => $assignment['section'],
+            'subject_code'  => $assignment['subject_code'],
+        ])->findAll();
+
+        $meetings = array_map(static fn (array $row): array => [
+            'day'   => (int) $row['day'],
+            'start' => substr($row['start_time'], 0, 5),
+            'end'   => substr($row['end_time'], 0, 5),
+        ], $rows);
+
+        $subject = (new SubjectModel())->where('subject_code', $assignment['subject_code'])->first();
+
+        return [
+            'units'    => (float) ($subject['units'] ?? 3.0),
+            'meetings' => $meetings,
+        ];
+    }
+
+    private function facultyAggregate(int $userId, array $excludeIds): array
+    {
+        $rows = (new FacultyAssignmentModel())->where('user_id', $userId)->findAll();
+
+        $units    = 0.0;
+        $meetings = [];
+
+        foreach ($rows as $row) {
+            if (in_array((int) $row['assignment_id'], $excludeIds, true)) {
+                continue;
+            }
+            $info = $this->assignmentLoadInfo($row);
+            $units += $info['units'];
+            foreach ($info['meetings'] as $meeting) {
+                $meetings[] = $meeting;
+            }
+        }
+
+        return ['units' => $units, 'meetings' => $meetings];
+    }
+
+    private function fitError(array $aggregate, array $gain, int $userId, string $code): ?string
+    {
+        if ($aggregate['units'] + $gain['units'] > 24) {
+            return "{$code} would push the receiving faculty over the 24-unit limit.";
+        }
+
+        foreach ($gain['meetings'] as $meeting) {
+            foreach ($aggregate['meetings'] as $moment) {
+                if ($meeting['day'] === $moment['day']
+                    && $meeting['start'] < $moment['end'] && $moment['start'] < $meeting['end']) {
+                    return "{$code} would overlap another class of the receiving faculty.";
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -271,6 +493,13 @@ class ChairpersonController extends BaseController
             $parts[] = "{$row['n']}|{$row['max_id']}|{$row['updated']}";
         }
 
+        // Swap requests have no AY column; any change should wake the board.
+        $row = $db->table('swap_requests')
+            ->select("COUNT(*) AS n, COALESCE(MAX(swap_id), 0) AS max_id, COALESCE(MAX(updated_at), '') AS updated")
+            ->get()
+            ->getRowArray();
+        $parts[] = "{$row['n']}|{$row['max_id']}|{$row['updated']}";
+
         return implode('#', $parts);
     }
 
@@ -293,7 +522,7 @@ class ChairpersonController extends BaseController
         $context = [];
 
         foreach (['academic_year', 'program', 'year_level'] as $key) {
-            if (! isset($payload['context'][$key]) || ! in_array($payload['context'][$key], self::FILTERS[$key], true)) {
+            if (! isset($payload['context'][$key]) || ! in_array($payload['context'][$key], $this->filters()[$key], true)) {
                 return $this->fail("Invalid or missing context: {$key}");
             }
             $context[$key] = $payload['context'][$key];
@@ -390,6 +619,110 @@ class ChairpersonController extends BaseController
     }
 
     /**
+     * Edit an existing catalog subject. Title and units may always change;
+     * code, duration, and the lab flag are locked while the subject is
+     * plotted on any schedule, so existing blocks never become invalid.
+     */
+    public function updateSubject()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload)) {
+            return $this->fail('Invalid payload.');
+        }
+
+        $originalCode = strtoupper(trim((string) ($payload['original_code'] ?? '')));
+
+        $subjects = new SubjectModel();
+        $existing = $subjects->where('subject_code', $originalCode)->where('is_active', 1)->first();
+
+        if ($existing === null) {
+            return $this->fail("Subject {$originalCode} is not in the catalog.");
+        }
+
+        $code  = strtoupper(trim((string) ($payload['code'] ?? '')));
+        $title = trim((string) ($payload['title'] ?? ''));
+
+        if (! preg_match('/^[A-Z0-9][A-Z0-9 _-]{1,19}$/', $code)) {
+            return $this->fail('Subject code must be 2-20 letters/numbers (e.g. IT106).');
+        }
+
+        if ($title === '' || mb_strlen($title) > 200) {
+            return $this->fail('Subject title is required (max 200 characters).');
+        }
+
+        $units = (float) ($payload['units'] ?? 0);
+
+        if ($units < 0.5 || $units > 6) {
+            return $this->fail('Units must be between 0.5 and 6.');
+        }
+
+        $duration = (float) ($payload['duration'] ?? 0);
+
+        if (! in_array($duration, self::ALLOWED_DURATIONS, true)) {
+            return $this->fail('Duration must be one of: ' . implode(', ', self::ALLOWED_DURATIONS) . ' hours.');
+        }
+
+        $isLab = ! empty($payload['is_lab']);
+
+        $plotted = (new PlottedScheduleModel())->where('subject_code', $originalCode)->countAllResults();
+
+        if ($plotted > 0) {
+            $classes = $plotted . ' ' . ($plotted === 1 ? 'class' : 'classes');
+
+            if ($code !== $originalCode) {
+                return $this->fail("{$originalCode} is plotted in {$classes} — its code cannot change until those are removed.");
+            }
+
+            if (abs($duration - (float) $existing['contact_hours']) > 0.01) {
+                return $this->fail("{$originalCode} is plotted in {$classes} — its duration cannot change until those are removed.");
+            }
+
+            if ($isLab !== (bool) $existing['is_laboratory']) {
+                return $this->fail("{$originalCode} is plotted in {$classes} — its laboratory setting cannot change until those are removed.");
+            }
+        }
+
+        if ($code !== $originalCode
+            && $subjects->where('subject_code', $code)->countAllResults() > 0) {
+            return $this->fail("Subject code {$code} is already used.");
+        }
+
+        $subjects->update($existing['subject_id'], [
+            'subject_code'  => $code,
+            'subject_name'  => $title,
+            'units'         => $units,
+            'contact_hours' => $duration,
+            'is_laboratory' => $isLab ? 1 : 0,
+        ]);
+
+        // Keep the denormalized titles on plotted blocks in sync.
+        if ($plotted > 0 && $title !== $existing['subject_name']) {
+            (new PlottedScheduleModel())
+                ->where('subject_code', $originalCode)
+                ->set('subject_title', $title)
+                ->update();
+        }
+
+        // Renames must follow through to curriculum presets.
+        if ($code !== $originalCode) {
+            $presets = new CurriculumPresetModel();
+            foreach ($presets->findAll() as $preset) {
+                $codes = json_decode($preset['subject_codes'], true) ?: [];
+                $index = array_search($originalCode, $codes, true);
+                if ($index !== false) {
+                    $codes[$index] = $code;
+                    $presets->update($preset['preset_id'], ['subject_codes' => json_encode(array_values($codes))]);
+                }
+            }
+        }
+
+        $subject = current(array_filter($this->catalog(), static fn (array $s) => $s['code'] === $code));
+
+        return $this->response->setJSON(['ok' => true, 'subject' => $subject]);
+    }
+
+    /**
      * Remove a subject from the catalog (soft delete). Blocked while any
      * plotted class still uses it, so schedules never reference ghosts.
      */
@@ -430,7 +763,7 @@ class ChairpersonController extends BaseController
 
         $context = [];
 
-        foreach (self::FILTERS as $key => $allowed) {
+        foreach ($this->filters() as $key => $allowed) {
             if (! isset($payload['context'][$key]) || ! in_array($payload['context'][$key], $allowed, true)) {
                 return $this->fail("Invalid or missing context: {$key}");
             }
@@ -564,6 +897,30 @@ class ChairpersonController extends BaseController
     }
 
     /**
+     * Filter options, with programs narrowed to the chairperson's own
+     * department when they belong to one.
+     */
+    private function filters(): array
+    {
+        $filters = self::FILTERS;
+
+        $dept = (new DepartmentModel())->codeOfUser((int) auth()->id());
+
+        if ($dept !== null) {
+            $programs = array_values(array_filter(
+                $filters['program'],
+                static fn (string $p) => DepartmentModel::programDept($p) === $dept
+            ));
+
+            if ($programs !== []) {
+                $filters['program'] = $programs;
+            }
+        }
+
+        return $filters;
+    }
+
+    /**
      * Resolve the plotting context from query params, falling back to the
      * first option of each filter.
      */
@@ -571,7 +928,7 @@ class ChairpersonController extends BaseController
     {
         $context = [];
 
-        foreach (self::FILTERS as $key => $allowed) {
+        foreach ($this->filters() as $key => $allowed) {
             $value = $this->request->getGet($key);
             $context[$key] = in_array($value, $allowed, true) ? $value : $allowed[0];
         }
