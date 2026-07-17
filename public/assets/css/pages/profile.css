@@ -1,0 +1,53 @@
+.profile {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: fit-content;
+}
+
+.profile__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 20px;
+}
+
+.profile__title {
+    font-size: var(--font-3xl);
+    font-weight: 600;
+    color: var(--color-white);
+}
+
+.profile__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.profile__button--edit {
+    display: inline-flex;
+    align-items: center;
+}
+
+.profile__section {
+    display: flex;
+    gap: 20px;
+    height: 100%;
+    width: 100%;
+}
+
+.profile-details__card {
+    width: 100%;
+}
+
+.profile-overview__card {
+    width: 350px;
+}
+
+.academic-history__card {
+    width: 100%;
+}
+
+.record-detail__card {
+    width: 450px;
+}

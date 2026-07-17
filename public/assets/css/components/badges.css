@@ -1,0 +1,9 @@
+.badge {
+    padding: .3rem .6rem;
+    border-radius: var(--radius-md);
+}
+
+.badge--success {
+    background: var(--color-success);
+    color: var(--color-text-success);
+}

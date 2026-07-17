@@ -7,8 +7,26 @@ use CodeIgniter\HTTP\ResponseInterface;
 
 class StudentController extends BaseController
 {
-    public function index()
+    public function index(): string
     {
-        return 'student dashboard';
+        $user = auth()->user();
+
+        return view('pages/dashboard', [
+            'pageTitle' => 'Dashboard',
+            'activePage' => 'dashboard',
+            'user' => $user,
+        ]);
+    }
+
+    public function profile(): string
+    {
+        $user = auth()->user();
+        
+        return view('pages/profile', [
+            'pageTitle' => 'Profile',
+            'activePage' => 'profile',
+            'user' => $user,
+        ]);
     }
 }
+

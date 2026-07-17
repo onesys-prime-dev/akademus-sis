@@ -10,16 +10,16 @@ class CreateSubjectPrerequisites extends Migration
     {
         $this->forge->addField([
             'subject_prerequisite_id' => [
-                'type' => 'INT',
+                'type'           => 'INT',
                 'auto_increment' => true,
             ],
 
             'subject_id' => [
-                'type' => 'INT'
+                'type' => 'INT',
             ],
 
             'prerequisite_subject_id' => [
-                'type' => 'INT'
+                'type' => 'INT',
             ],
 
             'created_at' => [
@@ -30,10 +30,10 @@ class CreateSubjectPrerequisites extends Migration
             'updated_at' => [
                 'type' => 'DATETIME',
                 'null' => true,
-            ]
+            ],
         ]);
 
-        $this->forge->addPrimaryKey('subject_prerequisite_id', true);
+        $this->forge->addKey('subject_prerequisite_id', true);
 
         $this->forge->addForeignKey(
             'subject_id',
@@ -44,7 +44,7 @@ class CreateSubjectPrerequisites extends Migration
         );
 
         $this->forge->addForeignKey(
-            'subject_id',
+            'prerequisite_subject_id',
             'subjects',
             'subject_id',
             'CASCADE',

@@ -54,10 +54,12 @@ $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {
 
 $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->get('dashboard', 'StudentController::index');
+    $routes->get('profile', 'StudentController::profile');
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);
 
+/*
 $routes->get('/profile', function () {
 
     $user = auth()->user();
@@ -69,6 +71,7 @@ $routes->get('/profile', function () {
     ]);
 
 }, ['filter' => 'session']);
+*/
 
 // AUTH
 $routes->get('forgot-password'      , 'Auth\ForgotPasswordController::showForgotForm');

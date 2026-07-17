@@ -1,0 +1,15 @@
+:root {
+
+    --font-family:
+        'Poppins',
+        sans-serif;
+
+    --font-xs: .75rem;
+    --font-sm: .875rem;
+    --font-md: 1rem;
+    --font-lg: 1.125rem;
+    --font-xl: 1.25rem;
+    --font-2xl: 1.5rem;
+    --font-3xl: 2rem;
+
+}
