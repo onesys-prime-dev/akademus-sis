@@ -382,6 +382,7 @@
         .block .code  { font-weight: 700; }
         .block .title { font-weight: 600; }
         .block .meta  { color: #4b5563; }
+        .block .meta.prof { color: #1f2937; font-weight: 600; }
 
         /* Keep narrow (lane-sharing) blocks readable: one line + ellipsis,
            full details in the hover tooltip. */
@@ -1150,6 +1151,7 @@
         const CONTEXT  = <?= json_encode($selected, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         let OTHERS     = <?= json_encode(array_values($other_blocks), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         let blocks     = <?= json_encode(array_values($blocks), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+        let ASSIGNMENTS = <?= json_encode(array_values($assignments), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
         // Autosave state: every change syncs to the server immediately.
         let saveTimer = null;   // debounce handle
@@ -1313,6 +1315,13 @@
             room.className = 'meta';
             room.textContent = b.room;
 
+            let prof = null;
+            if (b.prof) {
+                prof = document.createElement('div');
+                prof.className = 'meta prof';
+                prof.textContent = '👤 ' + b.prof;
+            }
+
             const remove = document.createElement('button');
             remove.className = 'remove';
             remove.type = 'button';
@@ -1333,7 +1342,9 @@
                 showToast('Removed ' + b.code + ' from the schedule.', '');
             });
 
-            el.append(code, title, time, room, remove);
+            el.append(code, title, time, room);
+            if (prof) el.appendChild(prof);
+            el.appendChild(remove);
             return el;
         }
 
@@ -2146,6 +2157,7 @@
             stateVersion = data.version || '';
             blocks = data.blocks || [];
             OTHERS = data.others || [];
+            if (Array.isArray(data.assignments)) ASSIGNMENTS = data.assignments;
             renderBlocks();
         }
 
@@ -2177,6 +2189,18 @@
 
                     const data = await response.json();
                     stateVersion = data.version || '';
+
+                    // Notify the chairperson the moment a faculty member
+                    // claims one of the plotted loads.
+                    if (Array.isArray(data.assignments)) {
+                        const known = new Set(ASSIGNMENTS.map(a => a.key));
+                        data.assignments.forEach(a => {
+                            if (!known.has(a.key)) {
+                                showToast(`${a.code} (${a.section} · ${shortYear(a.year_level)}) was claimed by ${a.username}.`, 'success');
+                            }
+                        });
+                        ASSIGNMENTS = data.assignments;
+                    }
 
                     let changed = false;
 

@@ -81,13 +81,18 @@ class ChairpersonController extends BaseController
 
         $schedules = new PlottedScheduleModel();
 
-        $blocks = array_map([$this, 'rowToBlock'], $schedules->forContext(...array_values($context)));
+        [$profMap, $assignments] = $this->assignmentsFor($context['academic_year']);
+
+        $blocks = $this->attachProfs(
+            array_map([$this, 'rowToBlock'], $schedules->forContext(...array_values($context))),
+            $profMap
+        );
 
         // Classes plotted for other sections in the same AY: shown as ghost
         // blocks and counted for room/faculty availability.
-        $otherBlocks = array_map(
-            [$this, 'rowToBlock'],
-            $schedules->forOtherContexts(...array_values($context))
+        $otherBlocks = $this->attachProfs(
+            array_map([$this, 'rowToBlock'], $schedules->forOtherContexts(...array_values($context))),
+            $profMap
         );
 
         // Curriculum preset: which catalog subjects belong to this
@@ -137,6 +142,7 @@ class ChairpersonController extends BaseController
 
             'blocks'       => $blocks,
             'other_blocks' => $otherBlocks,
+            'assignments'  => $assignments,
 
             'suggestion' => [
                 'title'  => 'Move IT102 to Wed 1:00 PM - 2:30 PM',
@@ -181,32 +187,91 @@ class ChairpersonController extends BaseController
             usleep(400000);
         } while (microtime(true) < $deadline);
 
+        [$profMap, $assignments] = $this->assignmentsFor($context['academic_year']);
+
         return $this->response->setJSON([
-            'version' => $version,
-            'blocks'  => array_map(
-                [$this, 'rowToBlock'],
-                $schedules->forContext(...array_values($context))
+            'version'     => $version,
+            'blocks'      => $this->attachProfs(
+                array_map([$this, 'rowToBlock'], $schedules->forContext(...array_values($context))),
+                $profMap
             ),
-            'others'  => array_map(
-                [$this, 'rowToBlock'],
-                $schedules->forOtherContexts(...array_values($context))
+            'others'      => $this->attachProfs(
+                array_map([$this, 'rowToBlock'], $schedules->forOtherContexts(...array_values($context))),
+                $profMap
             ),
+            'assignments' => $assignments,
         ]);
     }
 
     /**
-     * Cheap change signature for one academic year's schedule rows. Any
-     * insert, update, or delete changes it.
+     * Claims/assignments for one academic year, joined to usernames.
+     * Returns [lookup map by program|year|section|code, plain list].
+     */
+    private function assignmentsFor(string $academicYear): array
+    {
+        $rows = db_connect()->table('faculty_assignments fa')
+            ->select('fa.program, fa.year_level, fa.section, fa.subject_code, u.username')
+            ->join('users u', 'u.id = fa.user_id')
+            ->where('fa.academic_year', $academicYear)
+            ->get()
+            ->getResultArray();
+
+        $map  = [];
+        $list = [];
+
+        foreach ($rows as $row) {
+            $key = implode('|', [$row['program'], $row['year_level'], $row['section'], $row['subject_code']]);
+
+            $map[$key] = $row['username'];
+            $list[]    = [
+                'key'        => $key,
+                'code'       => $row['subject_code'],
+                'section'    => $row['section'],
+                'year_level' => $row['year_level'],
+                'username'   => $row['username'],
+            ];
+        }
+
+        return [$map, $list];
+    }
+
+    /**
+     * Overlay claimed professors onto blocks (display only — the claims
+     * table stays the single source of truth).
+     */
+    private function attachProfs(array $blocks, array $profMap): array
+    {
+        return array_map(static function (array $block) use ($profMap): array {
+            $key = implode('|', [$block['program'], $block['year_level'], $block['section'], $block['code']]);
+
+            if (isset($profMap[$key])) {
+                $block['prof'] = $profMap[$key];
+            }
+
+            return $block;
+        }, $blocks);
+    }
+
+    /**
+     * Cheap change signature for one academic year's schedule AND assignment
+     * rows: plots, removals, and faculty claims all release the long-poll.
      */
     private function scheduleVersion(PlottedScheduleModel $schedules, string $academicYear): string
     {
-        $row = $schedules->builder()
-            ->select('COUNT(*) AS n, COALESCE(MAX(schedule_id), 0) AS max_id, COALESCE(MAX(updated_at), "") AS updated')
-            ->where('academic_year', $academicYear)
-            ->get()
-            ->getRowArray();
+        $db    = db_connect();
+        $parts = [];
 
-        return "{$row['n']}|{$row['max_id']}|{$row['updated']}";
+        foreach (['plotted_schedules' => 'schedule_id', 'faculty_assignments' => 'assignment_id'] as $table => $pk) {
+            $row = $db->table($table)
+                ->select("COUNT(*) AS n, COALESCE(MAX({$pk}), 0) AS max_id, COALESCE(MAX(updated_at), '') AS updated")
+                ->where('academic_year', $academicYear)
+                ->get()
+                ->getRowArray();
+
+            $parts[] = "{$row['n']}|{$row['max_id']}|{$row['updated']}";
+        }
+
+        return implode('#', $parts);
     }
 
     /**

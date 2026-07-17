@@ -53,7 +53,9 @@ $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) 
 });
 
 $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {
-    $routes->get('dashboard', 'FacultyController::index');
+    $routes->get('dashboard', 'TeachingLoads::index');
+    $routes->get('loads/state', 'TeachingLoads::state');
+    $routes->post('loads/claim', 'TeachingLoads::claim');
 });
 
 $routes->group('student', ['filter' => 'group:student'], function ($routes) {
