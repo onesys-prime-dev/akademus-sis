@@ -34,14 +34,18 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
 
     $routes->post('subjects/toggle-status/(:num)', 'Admin\SubjectController::toggleStatus/$1');
 
-    $routes->get('curriculum', 'Admin\CurriculumController::index');
-    $routes->get('curriculum/create', 'Admin\CurriculumController:create');
-    $routes->post('curriculum/store', 'Admin\Curriculum::store');
+    $routes->get('curriculum'               , 'Admin\CurriculumController::index');
+    $routes->get('curriculum/create'        , 'Admin\CurriculumController::create');
+    $routes->post('curriculum/store'        , 'Admin\CurriculumController::store');
 
-    $routes->get('curriculum/edit/(:num)', 'Admin\CurriculumController:edit/$1');
-    $routes->get('curriculum/update(:num)', 'Admin\Curriculum::update/$1');
+    $routes->get('curriculum/edit/(:num)'   , 'Admin\CurriculumController::edit/$1');
+    $routes->post('curriculum/update/(:num)', 'Admin\CurriculumController::update/$1');
 
     $routes->post('curriculum/toggle/(:num)', 'Admin\CurriculumController::toggleStatus/$1');
+
+    $routes->get('curriculum-subjects'       , 'Admin\CurriculumSubjectController::index');
+    $routes->get('curriculum-subjects/create', 'Admin\CurriculumSubjectController::create');
+    $routes->post('curriculum-subjects/store', 'Admin\CurriculumSubjectController::store');
 });
 
 $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) {
@@ -49,12 +53,29 @@ $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) 
 });
 
 $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {
-    $routes->get('dashboard', 'FacultyController::index');
+    $routes->get('dashboard', 'TeachingLoads::index');
+    $routes->get('loads/state', 'TeachingLoads::state');
+    $routes->post('loads/claim', 'TeachingLoads::claim');
+    $routes->post('loads/swap/request', 'TeachingLoads::requestSwap');
+    $routes->post('loads/swap/respond', 'TeachingLoads::respondSwap');
+    $routes->post('loads/swap/cancel', 'TeachingLoads::cancelSwap');
 });
 
 $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->get('dashboard', 'StudentController::index');
     $routes->get('profile', 'StudentController::profile');
+});
+
+$routes->group('chairperson', ['filter' => 'group:chairperson'], function ($routes) {
+    $routes->get('dashboard', 'ChairpersonController::index');
+    $routes->post('schedule/sync', 'ChairpersonController::sync');
+    $routes->get('schedule/state', 'ChairpersonController::state');
+    $routes->post('curriculum-preset', 'ChairpersonController::savePreset');
+    $routes->post('swaps/approve', 'ChairpersonController::approveSwap');
+    $routes->post('swaps/reject', 'ChairpersonController::rejectSwap');
+    $routes->post('subjects/add', 'ChairpersonController::addSubject');
+    $routes->post('subjects/update', 'ChairpersonController::updateSubject');
+    $routes->post('subjects/delete', 'ChairpersonController::deleteSubject');
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);

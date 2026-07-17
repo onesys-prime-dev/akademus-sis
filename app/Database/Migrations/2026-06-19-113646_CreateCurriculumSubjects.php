@@ -38,6 +38,12 @@ class CreateCurriculumSubjects extends Migration
                 'default'    => 1,
             ],
 
+            'is_active' => [
+                'type'       => 'TINYINT',
+                'constraint' => 1,
+                'default'    => 1,
+            ],
+
             'created_at' => [
                 'type' => 'DATETIME',
                 'null' => true,

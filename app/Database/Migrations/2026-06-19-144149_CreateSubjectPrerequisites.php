@@ -35,6 +35,12 @@ class CreateSubjectPrerequisites extends Migration
 
         $this->forge->addKey('subject_prerequisite_id', true);
 
+        $this->forge->addUniqueKey(
+            ['subject_id', 'prerequisite_subject_id'],
+            'uq_subject_prerequisite'
+        );
+
+
         $this->forge->addForeignKey(
             'subject_id',
             'subjects',

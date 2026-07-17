@@ -13,6 +13,8 @@ class SubjectModel extends Model
         'subject_code',
         'subject_name',
         'units',
+        'contact_hours',
+        'is_laboratory',
         'description',
         'is_active'
     ];

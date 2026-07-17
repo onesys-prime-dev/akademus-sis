@@ -7,7 +7,7 @@ use CodeIgniter\Model;
 class SubjectPrerequisiteModel extends Model
 {
     protected $table            = 'subject_prerequisites';
-    protected $primaryKey       = 'subject_prerequisites_id';
+    protected $primaryKey       = 'subject_prerequisite_id';
     protected $allowedFields = 
     [
         'subject_id',

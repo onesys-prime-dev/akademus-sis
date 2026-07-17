@@ -65,6 +65,8 @@ class CreateCurricula extends Migration
             'CASCADE'
         );
 
+        $this->forge->addUniqueKey('curriculum_code');
+
         $this->forge->createTable('curriculum');
     }
 
