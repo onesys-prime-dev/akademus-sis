@@ -9,7 +9,7 @@ class DepartmentModel extends Model
     protected $table      = 'departments';
     protected $primaryKey = 'dept_id';
 
-    protected $allowedFields = ['code', 'name'];
+    protected $allowedFields = ['code', 'name', 'location', 'established_year'];
 
     protected $useTimestamps = true;
 

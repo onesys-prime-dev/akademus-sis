@@ -138,6 +138,25 @@
             min-width: 160px;
         }
 
+        .readonly-banner {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 24px;
+            background: #fff8eb;
+            border-bottom: 1px solid #fde3b0;
+            color: #92400e;
+            font-size: 13px;
+        }
+
+        .readonly-banner .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #d97706;
+            flex-shrink: 0;
+        }
+
         /* ===== Layout ===== */
         .layout {
             display: grid;
@@ -975,6 +994,13 @@
         <?php endforeach; ?>
     </form>
 
+    <?php if (! $is_active_year): ?>
+        <div class="readonly-banner">
+            <span class="dot"></span>
+            <span><b><?= esc($selected['academic_year']) ?></b> is not the active term — this view is read-only. Switch Admin &gt; Academic Years to make it active, or select the active term above to make changes.</span>
+        </div>
+    <?php endif ?>
+
     <main class="layout">
 
         <!-- Left rail: curriculum subjects (draggable) -->
@@ -997,8 +1023,9 @@
 
             <?php foreach ($subjects as $subject): ?>
                 <div class="subject <?= esc($subject['color'], 'attr') ?>"
-                     draggable="true"
-                     data-code="<?= esc($subject['code'], 'attr') ?>">
+                     draggable="<?= $is_active_year ? 'true' : 'false' ?>"
+                     data-code="<?= esc($subject['code'], 'attr') ?>"
+                     <?= $is_active_year ? '' : 'style="opacity:.5; cursor:not-allowed;" title="Read-only — not the active term"' ?>>
                     <div class="row1">
                         <span>
                             <span class="code"><?= esc($subject['code']) ?></span>

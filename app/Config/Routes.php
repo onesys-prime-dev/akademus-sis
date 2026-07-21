@@ -47,10 +47,28 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->get('curriculum-subjects/create', 'Admin\CurriculumSubjectController::create');
     $routes->post('curriculum-subjects/store', 'Admin\CurriculumSubjectController::store');
 
-    // departments
-    $routes->get('departments'                    , 'Admin\DepartmentController::index');
-    $routes->post('departments/store'              , 'Admin\DepartmentController::store');
-    $routes->post('departments/store-chair/(:num)' , 'Admin\DepartmentController::storeChair/$1');
+    // departments (colleges, dean-headed)
+    $routes->get('departments'                        , 'Admin\DepartmentController::index');
+    $routes->post('departments/store'                 , 'Admin\DepartmentController::store');
+    $routes->get('departments/(:num)'                 , 'Admin\DepartmentController::show/$1');
+    $routes->post('departments/(:num)/update'         , 'Admin\DepartmentController::update/$1');
+    $routes->post('departments/(:num)/sub-departments', 'Admin\DepartmentController::storeSubDepartment/$1');
+    $routes->post('departments/store-dean/(:num)'     , 'Admin\DepartmentController::storeDean/$1');
+
+    // sub-departments (departments, chairperson-headed, nested under a college)
+    $routes->get('sub-departments/(:num)'              , 'Admin\SubDepartmentController::show/$1');
+    $routes->post('sub-departments/(:num)/update'      , 'Admin\SubDepartmentController::update/$1');
+    $routes->post('sub-departments/(:num)/store-chair' , 'Admin\SubDepartmentController::storeChair/$1');
+    $routes->post('sub-departments/(:num)/transfer'    , 'Admin\SubDepartmentController::transfer/$1');
+    $routes->post('sub-departments/(:num)/programs'    , 'Admin\SubDepartmentController::addProgram/$1');
+    $routes->post('sub-departments/(:num)/toggle-status', 'Admin\SubDepartmentController::toggleStatus/$1');
+    $routes->post('sub-departments/(:num)/delete'      , 'Admin\SubDepartmentController::delete/$1');
+
+    // faculty members (teaching staff) within a department
+    $routes->post('sub-departments/(:num)/faculty'                       , 'Admin\SubDepartmentController::addFaculty/$1');
+    $routes->post('sub-departments/(:num)/faculty/(:num)/update'         , 'Admin\SubDepartmentController::updateFaculty/$1/$2');
+    $routes->post('sub-departments/(:num)/faculty/(:num)/toggle-status'  , 'Admin\SubDepartmentController::toggleFacultyStatus/$1/$2');
+    $routes->post('sub-departments/(:num)/faculty/(:num)/delete'         , 'Admin\SubDepartmentController::deleteFaculty/$1/$2');
 
     // rooms
     $routes->get('rooms'                    , 'Admin\RoomController::index');

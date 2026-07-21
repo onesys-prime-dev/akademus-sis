@@ -15,9 +15,9 @@
             <span class="material-symbols-outlined icon-fill">warning</span>
         </div>
         <div>
-            <h4 class="ac-alert-card__title">Action Required: Unassigned Departments</h4>
+            <h4 class="ac-alert-card__title">Action Required: Unassigned Colleges</h4>
             <p class="ac-alert-card__text">
-                <?= esc($stats['unassigned']) ?> department<?= $stats['unassigned'] > 1 ? 's are' : ' is' ?> currently lacking a designated chairperson.
+                <?= esc($stats['unassigned']) ?> college<?= $stats['unassigned'] > 1 ? 's are' : ' is' ?> currently lacking a designated chairperson.
             </p>
             <div class="ac-alert-card__actions">
                 <a href="<?= site_url('admin/departments') ?>" class="ac-btn-outline">Review Assignments</a>
@@ -34,7 +34,7 @@
             <div class="ac-bento-card__icon ac-bento-card__icon--primary"><span class="material-symbols-outlined icon-fill">hub</span></div>
             <span class="ac-pill ac-pill--success"><?= esc($stats['chaired']) ?>/<?= esc($stats['departments']) ?> chaired</span>
         </div>
-        <p class="ac-bento-card__label">Total Departments</p>
+        <p class="ac-bento-card__label">Total Colleges</p>
         <h3 class="ac-bento-card__value"><?= esc($stats['departments']) ?></h3>
     </div>
 
@@ -108,7 +108,7 @@
                 <?= esc($setupPercent) ?>% complete.
                 <?= $setupPercent < 100
                     ? 'Finish assigning chairpersons to unlock full reporting.'
-                    : 'All departments have a chairperson assigned.' ?>
+                    : 'All colleges have a chairperson assigned.' ?>
             </p>
             <?php if ($setupPercent < 100): ?>
                 <a href="<?= site_url('admin/departments') ?>" class="ac-btn-outline" style="display:block; text-align:center;">Continue Setup</a>

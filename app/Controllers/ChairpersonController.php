@@ -3,37 +3,21 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Models\AcademicYearModel;
 use App\Models\CurriculumPresetModel;
 use App\Models\DepartmentModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\PlottedScheduleModel;
+use App\Models\RoomModel;
 use App\Models\SubjectModel;
 use App\Models\SwapRequestModel;
 
 class ChairpersonController extends BaseController
 {
     private const FILTERS = [
-        'academic_year' => ['AY 2025 - 2026', 'AY 2024 - 2025'],
-        'program'       => ['BS in Information Technology', 'BS in Computer Science'],
-        'year_level'    => ['1st Year', '2nd Year', '3rd Year', '4th Year'],
-        'section'       => ['AIT1', 'AIT2', 'BIT1'],
-    ];
-
-    /** Rooms grouped by floor. Names must stay stable: plotted rows reference them. */
-    private const ROOMS = [
-        ['name' => 'Lab A',          'floor' => 'Ground Floor'],
-        ['name' => 'Lab B',          'floor' => 'Ground Floor'],
-        ['name' => 'Lab C',          'floor' => 'Ground Floor'],
-        ['name' => 'Networking Lab', 'floor' => 'Ground Floor'],
-        ['name' => 'Room 101',       'floor' => '1st Floor'],
-        ['name' => 'Room 102',       'floor' => '1st Floor'],
-        ['name' => 'Room 105',       'floor' => '1st Floor'],
-        ['name' => 'Room 201',       'floor' => '2nd Floor'],
-        ['name' => 'Room 203',       'floor' => '2nd Floor'],
-        ['name' => 'Room 204',       'floor' => '2nd Floor'],
-        ['name' => 'Room 301',       'floor' => '3rd Floor'],
-        ['name' => 'Room 302',       'floor' => '3rd Floor'],
-        ['name' => 'Room 304',       'floor' => '3rd Floor'],
+        'program'    => ['BS in Information Technology', 'BS in Computer Science'],
+        'year_level' => ['1st Year', '2nd Year', '3rd Year', '4th Year'],
+        'section'    => ['AIT1', 'AIT2', 'BIT1'],
     ];
 
     /** A subject can meet at most this many times per week. */
@@ -78,6 +62,60 @@ class ChairpersonController extends BaseController
         }, $rows);
     }
 
+    /**
+     * Rooms grouped by floor, sourced from the admin-managed rooms table
+     * (active rooms only) so the plotting grid always reflects what
+     * Admin > Facilities currently has on record.
+     */
+    private function rooms(): array
+    {
+        $rows = (new RoomModel())
+            ->where('is_active', 1)
+            ->orderBy('floor')
+            ->orderBy('name')
+            ->findAll();
+
+        return array_map(static fn (array $row): array => [
+            'name'  => $row['name'],
+            'floor' => $row['floor'] . ' Floor',
+        ], $rows);
+    }
+
+    /**
+     * Academic year labels sourced from the admin-managed academic_years
+     * table, formatted to match the "AY 2025 - 2026" strings already stored
+     * on scheduling rows. Distinct by label (semester isn't part of this
+     * filter), with the active year first.
+     */
+    private function academicYears(): array
+    {
+        $rows = (new AcademicYearModel())
+            ->orderBy('is_active', 'desc')
+            ->orderBy('label', 'desc')
+            ->findAll();
+
+        $labels = [];
+
+        foreach ($rows as $row) {
+            $formatted = AcademicYearModel::format($row['label']);
+
+            if (! in_array($formatted, $labels, true)) {
+                $labels[] = $formatted;
+            }
+        }
+
+        return $labels;
+    }
+
+    /**
+     * Only the admin-flagged active academic year accepts new plots, presets,
+     * or swap decisions. Any other term is read-only from this controller.
+     */
+    private function isActiveYear(string $academicYear): bool
+    {
+        return $academicYear === (new AcademicYearModel())->activeFormatted();
+    }
+
     public function index()
     {
         $context = $this->contextFromRequest();
@@ -120,8 +158,9 @@ class ChairpersonController extends BaseController
                 'role' => 'IT Department - Chairperson',
             ],
 
-            'filters'  => $this->filters(),
-            'selected' => $context,
+            'filters'        => $this->filters(),
+            'selected'       => $context,
+            'is_active_year' => $this->isActiveYear($context['academic_year']),
 
             'subjects'     => $subjects,
             'catalog'      => $catalog,
@@ -141,7 +180,7 @@ class ChairpersonController extends BaseController
             'grid_start' => '07:00',
             'grid_end'   => '17:30',
 
-            'rooms' => self::ROOMS,
+            'rooms' => $this->rooms(),
 
             'blocks'         => $blocks,
             'other_blocks'   => $otherBlocks,
@@ -297,6 +336,10 @@ class ChairpersonController extends BaseController
             $swaps->update($swapId, ['status' => 'rejected']);
 
             return $this->response->setJSON(['ok' => true, 'status' => 'rejected']);
+        }
+
+        if (! $this->isActiveYear($offered['academic_year'])) {
+            return $this->fail('This academic year is not active. Only the active term can be edited.');
         }
 
         if ((int) $offered['user_id'] !== (int) $swap['requester_id']) {
@@ -526,6 +569,10 @@ class ChairpersonController extends BaseController
                 return $this->fail("Invalid or missing context: {$key}");
             }
             $context[$key] = $payload['context'][$key];
+        }
+
+        if (! $this->isActiveYear($context['academic_year'])) {
+            return $this->fail('This academic year is not active. Only the active term can be edited.');
         }
 
         $catalogCodes = array_column($this->catalog(), 'code');
@@ -770,6 +817,10 @@ class ChairpersonController extends BaseController
             $context[$key] = $payload['context'][$key];
         }
 
+        if (! $this->isActiveYear($context['academic_year'])) {
+            return $this->fail('This academic year is not active. Only the active term can be scheduled.');
+        }
+
         $subjectsByCode = array_column($this->catalog(), null, 'code');
 
         $blocks = [];
@@ -797,7 +848,7 @@ class ChairpersonController extends BaseController
 
             $subject = $subjectsByCode[$block['code']];
 
-            if (! in_array($block['room'], array_column(self::ROOMS, 'name'), true)) {
+            if (! in_array($block['room'], array_column($this->rooms(), 'name'), true)) {
                 return $this->fail("Unknown room: {$block['room']}");
             }
 
@@ -902,7 +953,8 @@ class ChairpersonController extends BaseController
      */
     private function filters(): array
     {
-        $filters = self::FILTERS;
+        $filters                 = self::FILTERS;
+        $filters['academic_year'] = $this->academicYears();
 
         $dept = (new DepartmentModel())->codeOfUser((int) auth()->id());
 

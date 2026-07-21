@@ -108,13 +108,14 @@
                         <label>Role</label>
                         <select name="role" id="acRoleSelect" class="ac-input" required onchange="acToggleDeptField()">
                             <option value="faculty" <?= old('role') === 'faculty' ? 'selected' : '' ?>>Faculty</option>
-                            <option value="chairperson" <?= old('role') === 'chairperson' ? 'selected' : '' ?>>Chairperson</option>
+                            <option value="dean" <?= old('role') === 'dean' ? 'selected' : '' ?>>Dean</option>
                             <option value="student" <?= old('role') === 'student' ? 'selected' : '' ?>>Student</option>
                             <option value="admin" <?= old('role') === 'admin' ? 'selected' : '' ?>>Admin</option>
                         </select>
+                        <p style="font-size:11.5px; color:#515f74; margin-top:4px;">Chairpersons are assigned from a department's own page.</p>
                     </div>
                     <div class="ac-field" id="acDeptField">
-                        <label>Department</label>
+                        <label>College</label>
                         <select name="department_id" class="ac-input">
                             <?php foreach ($departments as $d): ?>
                                 <option value="<?= esc($d['dept_id']) ?>"><?= esc($d['code']) ?> — <?= esc($d['name']) ?></option>
@@ -125,7 +126,7 @@
 
                 <div class="ac-notice" id="acChairNotice" style="display:none;">
                     <span class="material-symbols-outlined" style="font-size:16px; color:#1d4ed8; margin-top:1px;">info</span>
-                    <span class="ac-notice__text">This will set the account as the selected department's chairperson, replacing the current one if any.</span>
+                    <span class="ac-notice__text">This will set the account as the selected college's dean, replacing the current one if any.</span>
                 </div>
             </div>
 
@@ -144,7 +145,7 @@
     function acToggleDeptField() {
         var role = document.getElementById('acRoleSelect').value;
         document.getElementById('acDeptField').style.display = role === 'admin' ? 'none' : 'block';
-        document.getElementById('acChairNotice').style.display = role === 'chairperson' ? 'flex' : 'none';
+        document.getElementById('acChairNotice').style.display = role === 'dean' ? 'flex' : 'none';
     }
     document.addEventListener('DOMContentLoaded', acToggleDeptField);
 </script>

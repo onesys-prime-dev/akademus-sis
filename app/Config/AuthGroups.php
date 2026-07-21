@@ -78,6 +78,11 @@ class AuthGroups extends ShieldAuthGroups
             'description' => 'Faculty members',
         ],
 
+        'dean' => [
+            'title'       => 'Dean',
+            'description' => 'College deans',
+        ],
+
         'chairperson' => [
             'title'       => 'Chairperson',
             'description' => 'Department chairpersons',
@@ -133,6 +138,7 @@ class AuthGroups extends ShieldAuthGroups
         ],
         'registrar' => [],
         'faculty' => [],
+        'dean' => [],
         'chairperson' => [],
         'student' => [],
         'user' => [],

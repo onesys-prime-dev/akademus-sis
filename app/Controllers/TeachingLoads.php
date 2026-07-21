@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Models\AcademicYearModel;
 use App\Models\DepartmentModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\PlottedScheduleModel;
@@ -98,6 +99,10 @@ class TeachingLoads extends BaseController
             }
         }
 
+        if (! $this->isActiveYear($payload['academic_year'])) {
+            return $this->fail('This academic year is not active. Only the active term accepts new claims.');
+        }
+
         $state = $this->buildState($userId);
 
         $key  = implode('|', [$payload['academic_year'], $payload['program'], $payload['year_level'], $payload['section'], $payload['code']]);
@@ -160,6 +165,10 @@ class TeachingLoads extends BaseController
 
         if ($offered === null || (int) $offered['user_id'] !== $userId) {
             return $this->fail('You do not hold the load you are offering.');
+        }
+
+        if (! $this->isActiveYear($offered['academic_year'])) {
+            return $this->fail('This academic year is not active. Only the active term accepts swap requests.');
         }
 
         if ($requestedId > 0) {
@@ -246,6 +255,10 @@ class TeachingLoads extends BaseController
             $swaps->update($swapId, ['status' => 'cancelled']);
 
             return $this->fail('This swap is no longer valid — the offered load changed hands.');
+        }
+
+        if (! $this->isActiveYear($offered['academic_year'])) {
+            return $this->fail('This academic year is not active. Only the active term accepts swap transfers.');
         }
 
         $requested = null;
@@ -483,6 +496,7 @@ class TeachingLoads extends BaseController
             ->select('u.id, u.username')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'faculty')
+            ->where('u.deleted_at', null)
             ->where('u.id !=', $userId);
 
         if (! empty($me['department_id'])) {
@@ -636,5 +650,14 @@ class TeachingLoads extends BaseController
     private function fail(string $message)
     {
         return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => $message]);
+    }
+
+    /**
+     * Only the admin-flagged active academic year accepts new claims or
+     * swap transfers. Any other term is read-only from this controller.
+     */
+    private function isActiveYear(string $academicYear): bool
+    {
+        return $academicYear === (new AcademicYearModel())->activeFormatted();
     }
 }

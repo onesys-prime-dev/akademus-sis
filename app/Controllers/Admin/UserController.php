@@ -10,7 +10,10 @@ class UserController extends BaseController
 {
     protected DepartmentModel $departmentModel;
 
-    private const ROLES = ['admin', 'chairperson', 'faculty', 'student'];
+    private const ROLES = ['admin', 'dean', 'chairperson', 'faculty', 'student'];
+
+    /** Chairpersons are assigned via a specific Department (see Admin\SubDepartmentController::storeChair). */
+    private const CREATABLE_ROLES = ['admin', 'dean', 'faculty', 'student'];
 
     public function __construct()
     {
@@ -26,6 +29,7 @@ class UserController extends BaseController
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->join('departments d', 'd.dept_id = u.department_id', 'left')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->where('u.deleted_at', null)
             ->orderBy('u.username', 'asc');
 
         if ($roleFilter !== 'all') {
@@ -51,7 +55,7 @@ class UserController extends BaseController
         $rules = [
             'username'      => 'required|max_length[100]',
             'email'         => 'required|valid_email',
-            'role'          => 'required|in_list[' . implode(',', self::ROLES) . ']',
+            'role'          => 'required|in_list[' . implode(',', self::CREATABLE_ROLES) . ']',
             'department_id' => 'permit_empty|integer',
         ];
 

@@ -146,6 +146,14 @@
 
 .ac-avatar--primary { background: #0037b0; color: #fff; }
 
+.ac-avatar--blank {
+    width: 40px;
+    height: 40px;
+    background: #eceef0;
+    border: 1px solid #c4c5d7;
+    cursor: pointer;
+}
+
 /* Main area */
 
 .ac-main {
@@ -174,6 +182,59 @@
     align-items: center;
     gap: 16px;
     margin-left: auto;
+}
+
+.ac-topbar__links {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.ac-topbar__links a {
+    font-size: 13px;
+    font-weight: 500;
+    color: #434655;
+    text-decoration: none;
+    transition: color .15s ease;
+}
+
+.ac-topbar__links a:hover { color: #0037b0; }
+
+.ac-topbar__icons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-left: 16px;
+    margin-left: 4px;
+    border-left: 1px solid rgba(196, 197, 215, .4);
+}
+
+.ac-topbar__iconbtn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: none;
+    color: #515f74;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.ac-topbar__iconbtn:hover { background: #f2f4f6; color: #0037b0; }
+
+.ac-topbar__dot {
+    position: absolute;
+    top: 6px;
+    right: 7px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #dc2626;
+    border: 2px solid #f7f9fb;
 }
 
 .ac-search {
@@ -750,6 +811,113 @@
     margin: 0;
 }
 
+.ac-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #515f74;
+    margin-bottom: 8px;
+}
+
+.ac-breadcrumb a { color: #515f74; text-decoration: none; }
+.ac-breadcrumb a:hover { color: #0037b0; }
+.ac-breadcrumb .current { color: #191c1e; }
+.ac-breadcrumb .material-symbols-outlined { font-size: 16px; }
+
+.ac-detail-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.ac-detail-header__meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #515f74;
+    margin-top: 4px;
+}
+
+.ac-detail-header__meta .material-symbols-outlined { font-size: 18px; }
+
+.ac-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 16px;
+}
+
+@media (max-width: 900px) {
+    .ac-detail-grid { grid-template-columns: 1fr; }
+}
+
+.ac-metric-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ac-metric-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #eef2f7;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .05);
+}
+
+.ac-metric-card__top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #515f74;
+    margin-bottom: 8px;
+}
+
+.ac-metric-card__icon {
+    padding: 8px;
+    background: #d5e3fc;
+    color: #0037b0;
+    border-radius: 8px;
+    display: flex;
+}
+
+.ac-metric-card__value { font-size: 24px; font-weight: 800; color: #191c1e; }
+.ac-metric-card__text { font-size: 13px; color: #191c1e; }
+.ac-metric-card__note { font-size: 12.5px; color: #515f74; margin-top: auto; }
+
+.ac-program-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.ac-program-row:last-child { border-bottom: none; }
+.ac-program-row:hover { background: rgba(242, 244, 246, .6); }
+
+.ac-program-row__left { display: flex; align-items: center; gap: 16px; }
+
+.ac-program-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: #eceef0;
+    color: #515f74;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ac-program-title { font-size: 13px; font-weight: 700; color: #191c1e; margin: 0; }
+.ac-program-sub { font-size: 12.5px; color: #515f74; margin: 0; }
+
 /* ==========================================================================
    Dashboard: bento stat grid
    ========================================================================== */
@@ -1095,6 +1263,7 @@
 }
 
 .ac-badge--admin       { background: #d8dadc; color: #434655; border-color: rgba(116,118,134,.3); }
+.ac-badge--dean        { background: rgba(124,58,237,.1); color: #6d28d9; border-color: rgba(124,58,237,.2); }
 .ac-badge--chairperson { background: rgba(29,78,216,.1); color: #1d4ed8; border-color: rgba(29,78,216,.2); }
 .ac-badge--faculty     { background: rgba(213,227,252,.5); color: #0d1c2e; border-color: #d5e3fc; }
 .ac-badge--student     { background: #e6e8ea; color: #191c1e; border-color: rgba(196,197,215,.3); }

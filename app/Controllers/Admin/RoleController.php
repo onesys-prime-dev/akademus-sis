@@ -10,6 +10,17 @@ class RoleController extends BaseController
     {
         $roleModel = [
             [
+                'role'  => 'Dean',
+                'color' => '#6d28d9',
+                'bg'    => '#ede9fe',
+                'perms' => [
+                    'Oversee a college (departments, faculty, students)',
+                    'Assign / reassign department chairpersons',
+                    'Add departments under their college',
+                    'Edit college details',
+                ],
+            ],
+            [
                 'role'  => 'Chairperson',
                 'color' => '#1d4ed8',
                 'bg'    => '#e8eeff',
@@ -46,7 +57,7 @@ class RoleController extends BaseController
                 'color' => '#5b21b6',
                 'bg'    => '#ede9fe',
                 'perms' => [
-                    'Create departments & assign chairpersons',
+                    'Create colleges & departments, assign deans/chairpersons',
                     'Manage rooms, floors & academic years',
                     'Create & activate user accounts of any role',
                     'View institution-wide dashboard',

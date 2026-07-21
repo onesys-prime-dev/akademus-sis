@@ -17,7 +17,7 @@
 <?php
 $navItems = [
     'dashboard'      => ['label' => 'Overview',        'icon' => 'dashboard',      'url' => 'admin/dashboard'],
-    'departments'    => ['label' => 'Departments',     'icon' => 'hub',            'url' => 'admin/departments'],
+    'departments'    => ['label' => 'Colleges',        'icon' => 'hub',            'url' => 'admin/departments'],
     'users'          => ['label' => 'User Accounts',   'icon' => 'group',          'url' => 'admin/users'],
     'rooms'          => ['label' => 'Facilities',      'icon' => 'meeting_room',   'url' => 'admin/rooms'],
     'academic-years' => ['label' => 'Academic Years',  'icon' => 'event',          'url' => 'admin/academic-years'],
@@ -63,13 +63,33 @@ $initial  = strtoupper(substr($username, 0, 1));
 
 <main class="ac-main">
     <header class="ac-topbar">
-        <div></div>
+        <nav class="ac-topbar__links">
+            <a href="#">Directory</a>
+            <a href="#">Quick Actions</a>
+        </nav>
+
         <div class="ac-topbar__actions">
             <div class="ac-search">
                 <span class="material-symbols-outlined ac-search__icon">search</span>
                 <input class="ac-search__input" placeholder="Search Akademus..." type="text">
             </div>
+
+            <div class="ac-topbar__icons">
+                <button type="button" class="ac-topbar__iconbtn" title="Notifications">
+                    <span class="material-symbols-outlined">notifications</span>
+                    <span class="ac-topbar__dot"></span>
+                </button>
+                <button type="button" class="ac-topbar__iconbtn" title="Settings">
+                    <span class="material-symbols-outlined">settings</span>
+                </button>
+                <button type="button" class="ac-topbar__iconbtn" title="Help">
+                    <span class="material-symbols-outlined">help_outline</span>
+                </button>
+            </div>
+
             <?= $this->renderSection('headerActions') ?>
+
+            <div class="ac-avatar ac-avatar--blank" title="<?= esc($username) ?>"></div>
         </div>
     </header>
 

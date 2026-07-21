@@ -26,6 +26,7 @@ class AdminController extends BaseController
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'chairperson')
             ->where('u.department_id IS NOT NULL')
+            ->where('u.deleted_at', null)
             ->get()
             ->getResultArray();
 
@@ -35,17 +36,20 @@ class AdminController extends BaseController
         $students = $db->table('users u')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'student')
+            ->where('u.deleted_at', null)
             ->countAllResults();
 
         $faculty = $db->table('users u')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'faculty')
+            ->where('u.deleted_at', null)
             ->countAllResults();
 
         $facultyInvited = $db->table('users u')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'faculty')
             ->where('u.active', 0)
+            ->where('u.deleted_at', null)
             ->countAllResults();
 
         $stats = [
@@ -54,7 +58,7 @@ class AdminController extends BaseController
             'chaired'        => $chaired,
             'unassigned'     => $unassigned,
             'rooms'          => $roomModel->countAll(),
-            'accounts'       => $db->table('users')->countAll(),
+            'accounts'       => $db->table('users')->where('deleted_at', null)->countAllResults(),
             'students'       => $students,
             'faculty'        => $faculty,
             'faculty_invited' => $facultyInvited,
@@ -112,6 +116,7 @@ class AdminController extends BaseController
         $accounts = $db->table('users u')
             ->select('u.username, u.created_at, g.group')
             ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('u.deleted_at', null)
             ->orderBy('u.created_at', 'desc')
             ->limit(5)
             ->get()
