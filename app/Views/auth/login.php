@@ -71,7 +71,7 @@
                         <div class="alert alert-success" role="alert"><?= esc(session('message')) ?></div>
                     <?php endif ?>
 
-                    <form method="post" action="<?= url_to('login') ?>">
+                    <form method="post" action="<?= url_to('login') ?>" id="loginForm">
                         <?= csrf_field() ?>
 
                         <!-- Email -->
@@ -99,7 +99,7 @@
                         </div>
 
                         <div class="d-grid col-12 col-md-8 mx-auto m-3">
-                            <button type="submit" class="auth-btn btn btn-primary btn-block"><?= lang('Auth.login') ?></button>
+                            <button type="submit" class="auth-btn btn btn-primary btn-block" id="loginSubmit"><?= lang('Auth.login') ?></button>
                         </div>
 
                         <?php if (setting('Auth.allowRegistration')) : ?>
@@ -123,5 +123,70 @@
 
         </div>
     </div>
+
+    <div class="page-loader" id="pageLoader">
+        <div class="page-loader__panel">
+
+            <div class="page-loader__icon">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="loaderGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+                            <stop offset="0%" stop-color="var(--color-primary)"></stop>
+                            <stop offset="100%" stop-color="var(--color-primary-hover)"></stop>
+                        </linearGradient>
+                    </defs>
+
+                    <!-- Book base -->
+                    <path d="M20 70 Q20 30 50 30 Q80 30 80 70 L20 70" fill="none" stroke="url(#loaderGrad)" stroke-linecap="round" stroke-width="4">
+                        <animate attributeName="stroke-dasharray" dur="2s" from="0, 200" repeatCount="indefinite" to="200, 0"></animate>
+                    </path>
+
+                    <!-- Spine -->
+                    <path d="M50 30 L50 70" opacity="0.6" stroke="url(#loaderGrad)" stroke-linecap="round" stroke-width="2"></path>
+
+                    <!-- Flipping pages -->
+                    <path d="M50 30 Q35 30 35 50" fill="none" stroke="url(#loaderGrad)" stroke-linecap="round" stroke-width="3">
+                        <animate attributeName="d" dur="1.5s" repeatCount="indefinite" values="M50 30 Q35 30 35 50; M50 30 Q50 20 50 30; M50 30 Q35 30 35 50"></animate>
+                    </path>
+                    <path d="M50 30 Q65 30 65 50" fill="none" stroke="url(#loaderGrad)" stroke-linecap="round" stroke-width="3">
+                        <animate attributeName="d" begin="0.75s" dur="1.5s" repeatCount="indefinite" values="M50 30 Q65 30 65 50; M50 30 Q50 20 50 30; M50 30 Q65 30 65 50"></animate>
+                    </path>
+
+                    <!-- Mortarboard -->
+                    <path d="M50 15 L80 25 L50 35 L20 25 Z" fill="url(#loaderGrad)">
+                        <animateTransform attributeName="transform" dur="3s" repeatCount="indefinite" type="translate" values="0 0; 0 -5; 0 0"></animateTransform>
+                    </path>
+
+                    <!-- Tassel -->
+                    <path d="M80 25 L85 45" stroke="#f5b301" stroke-linecap="round" stroke-width="2">
+                        <animateTransform attributeName="transform" dur="2s" repeatCount="indefinite" type="rotate" values="0 80 25; 10 80 25; 0 80 25"></animateTransform>
+                    </path>
+                </svg>
+            </div>
+
+            <h2 class="page-loader__title">Signing you in&hellip;</h2>
+
+            <div class="page-loader__bar">
+                <div class="page-loader__bar-fill" id="pageLoaderBar"></div>
+            </div>
+
+        </div>
+    </div>
+
+<?= $this->endSection() ?>
+
+
+<?= $this->section('pageScripts') ?>
+
+<script>
+    document.getElementById('loginForm').addEventListener('submit', function () {
+        document.getElementById('loginSubmit').disabled = true;
+        document.getElementById('pageLoader').classList.add('is-active');
+
+        requestAnimationFrame(function () {
+            document.getElementById('pageLoaderBar').style.width = '100%';
+        });
+    });
+</script>
 
 <?= $this->endSection() ?>
