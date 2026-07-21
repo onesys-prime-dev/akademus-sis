@@ -46,6 +46,31 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->get('curriculum-subjects'       , 'Admin\CurriculumSubjectController::index');
     $routes->get('curriculum-subjects/create', 'Admin\CurriculumSubjectController::create');
     $routes->post('curriculum-subjects/store', 'Admin\CurriculumSubjectController::store');
+
+    // departments
+    $routes->get('departments'                    , 'Admin\DepartmentController::index');
+    $routes->post('departments/store'              , 'Admin\DepartmentController::store');
+    $routes->post('departments/store-chair/(:num)' , 'Admin\DepartmentController::storeChair/$1');
+
+    // rooms
+    $routes->get('rooms'                    , 'Admin\RoomController::index');
+    $routes->post('rooms/store'             , 'Admin\RoomController::store');
+    $routes->post('rooms/update/(:num)'     , 'Admin\RoomController::update/$1');
+    $routes->post('rooms/delete/(:num)'     , 'Admin\RoomController::delete/$1');
+    $routes->post('rooms/toggle-status/(:num)', 'Admin\RoomController::toggleStatus/$1');
+
+    // academic years
+    $routes->get('academic-years'                 , 'Admin\AcademicYearController::index');
+    $routes->post('academic-years/store'          , 'Admin\AcademicYearController::store');
+    $routes->post('academic-years/set-active/(:num)', 'Admin\AcademicYearController::setActive/$1');
+
+    // user accounts
+    $routes->get('users'                 , 'Admin\UserController::index');
+    $routes->post('users/store'          , 'Admin\UserController::store');
+    $routes->post('users/activate/(:num)', 'Admin\UserController::activate/$1');
+
+    // roles / permissions overview
+    $routes->get('roles', 'Admin\RoleController::index');
 });
 
 $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) {
