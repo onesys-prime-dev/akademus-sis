@@ -1887,6 +1887,7 @@
                 units: parseFloat(document.getElementById('asUnits').value),
                 duration: parseFloat(document.getElementById('asDuration').value),
                 is_lab: document.getElementById('asLab').checked,
+                program: CONTEXT.program,
             };
 
             if (!payload.code || !payload.title) {

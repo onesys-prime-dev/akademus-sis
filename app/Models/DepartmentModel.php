@@ -71,16 +71,52 @@ class DepartmentModel extends Model
      */
     public static function programDept(string $program): ?string
     {
+        $row = self::programRow($program);
+
+        if ($row === null) {
+            return null;
+        }
+
+        return db_connect()->table('sub_departments')
+            ->where('sub_dept_id', $row['sub_department_id'])
+            ->get()
+            ->getRowArray()['code'] ?? null;
+    }
+
+    /**
+     * programs.program_id for the program with this display name, or null.
+     */
+    public static function programIdOfName(string $program): ?int
+    {
+        $row = self::programRow($program);
+
+        return $row === null ? null : (int) $row['program_id'];
+    }
+
+    /**
+     * The display-name value (matching programsOfSubDept()) for a program_id.
+     */
+    public static function programNameById(int $programId): ?string
+    {
+        $row = db_connect()->table('programs')->where('program_id', $programId)->get()->getRowArray();
+
+        if ($row === null) {
+            return null;
+        }
+
+        return self::LEGACY_PROGRAM_NAMES[$row['program_code']] ?? $row['program_name'];
+    }
+
+    private static function programRow(string $program): ?array
+    {
         $code = array_search($program, self::LEGACY_PROGRAM_NAMES, true);
 
-        $builder = db_connect()->table('programs p')
-            ->select('sd.code')
-            ->join('sub_departments sd', 'sd.sub_dept_id = p.sub_department_id');
+        $builder = db_connect()->table('programs');
 
         $row = $code !== false
-            ? $builder->where('p.program_code', $code)->get()->getRowArray()
-            : $builder->where('p.program_name', $program)->get()->getRowArray();
+            ? $builder->where('program_code', $code)->get()->getRowArray()
+            : $builder->where('program_name', $program)->get()->getRowArray();
 
-        return $row['code'] ?? null;
+        return $row;
     }
 }

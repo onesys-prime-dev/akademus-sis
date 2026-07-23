@@ -11,6 +11,7 @@ class SubjectModel extends Model
 
     protected $allowedFields = [
         'sub_department_id',
+        'program_id',
         'subject_code',
         'subject_name',
         'units',

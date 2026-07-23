@@ -33,21 +33,32 @@ class ChairpersonController extends BaseController
 
     /**
      * Subject catalog from the subjects table (active rows only), scoped to
-     * the logged-in chairperson's own department, mapped to the plotting
-     * shape. No professors at plotting time — faculty are attached later
-     * (claiming / assignment).
+     * the logged-in chairperson's own department AND to one specific
+     * program ("course"). A subject only ever belongs to one course — browse
+     * a different course (even within the same department) and the catalog
+     * goes blank rather than leaking another course's subjects. Year level
+     * is not filtered here; a course's subjects span every year level unless
+     * a curriculum preset narrows them further.
      */
-    private function catalog(): array
+    private function catalog(?string $programName = null): array
     {
         $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
 
         $query = (new SubjectModel())->where('is_active', 1);
 
-        // No department (or no programs registered under it) means no
-        // catalog to show — never fall back to every department's subjects.
-        $query = $subDept === null
-            ? $query->where('sub_department_id', -1)
-            : $query->where('sub_department_id', (int) $subDept['sub_dept_id']);
+        // No department, or browsing a course this chairperson doesn't
+        // own, means no catalog to show — never fall back to everything.
+        if ($subDept === null) {
+            $query = $query->where('sub_department_id', -1);
+        } else {
+            $query = $query->where('sub_department_id', (int) $subDept['sub_dept_id']);
+
+            $programId = $programName === null ? null : DepartmentModel::programIdOfName($programName);
+
+            $query = $programId === null
+                ? $query->where('program_id', -1)
+                : $query->where('program_id', $programId);
+        }
 
         $rows = $query->orderBy('subject_code')->findAll();
 
@@ -153,7 +164,7 @@ class ChairpersonController extends BaseController
 
         $presetCodes = $preset === null ? null : (json_decode($preset['subject_codes'], true) ?: []);
 
-        $catalog = $this->catalog();
+        $catalog = $this->catalog($context['program']);
 
         $subjects = $presetCodes === null
             ? $catalog
@@ -585,7 +596,7 @@ class ChairpersonController extends BaseController
             return $this->fail('This academic year is not active. Only the active term can be edited.');
         }
 
-        $catalogCodes = array_column($this->catalog(), 'code');
+        $catalogCodes = array_column($this->catalog($context['program']), 'code');
         $codes        = [];
 
         foreach ($payload['subjects'] as $code) {
@@ -648,9 +659,16 @@ class ChairpersonController extends BaseController
 
         $isLab = ! empty($payload['is_lab']);
 
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        $programName = (string) ($payload['program'] ?? '');
 
-        if ($subDept === null) {
+        if (! in_array($programName, $this->filters()['program'], true)) {
+            return $this->fail('Invalid or missing program.');
+        }
+
+        $subDept   = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        $programId = DepartmentModel::programIdOfName($programName);
+
+        if ($subDept === null || $programId === null) {
             return $this->fail('You are not assigned to a department yet.');
         }
 
@@ -663,6 +681,7 @@ class ChairpersonController extends BaseController
 
         $row = [
             'sub_department_id' => (int) $subDept['sub_dept_id'],
+            'program_id'        => $programId,
             'subject_code'      => $code,
             'subject_name'      => $title,
             'units'             => $units,
@@ -677,7 +696,7 @@ class ChairpersonController extends BaseController
             $subjects->update($existing['subject_id'], $row);
         }
 
-        $subject = current(array_filter($this->catalog(), static fn (array $s) => $s['code'] === $code));
+        $subject = current(array_filter($this->catalog($programName), static fn (array $s) => $s['code'] === $code));
 
         return $this->response->setJSON(['ok' => true, 'subject' => $subject]);
     }
@@ -783,7 +802,8 @@ class ChairpersonController extends BaseController
             }
         }
 
-        $subject = current(array_filter($this->catalog(), static fn (array $s) => $s['code'] === $code));
+        $programName = $existing['program_id'] === null ? null : DepartmentModel::programNameById((int) $existing['program_id']);
+        $subject     = current(array_filter($this->catalog($programName), static fn (array $s) => $s['code'] === $code));
 
         return $this->response->setJSON(['ok' => true, 'subject' => $subject]);
     }
@@ -842,7 +862,7 @@ class ChairpersonController extends BaseController
             return $this->fail('This academic year is not active. Only the active term can be scheduled.');
         }
 
-        $subjectsByCode = array_column($this->catalog(), null, 'code');
+        $subjectsByCode = array_column($this->catalog($context['program']), null, 'code');
 
         $blocks = [];
 
