@@ -156,15 +156,29 @@ class DepartmentController extends BaseController
 
         $users    = auth()->getProvider();
         $existing = $users->findByCredentials(['email' => $email]);
+        $tempPassword = null;
+
+        $usernameTaken = db_connect()->table('users')
+            ->where('username', $username)
+            ->where('id !=', $existing->id ?? 0)
+            ->countAllResults() > 0;
+
+        if ($usernameTaken) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', ['username' => 'An account with that name already exists.']);
+        }
 
         if ($existing) {
             $user = $existing;
             $user->username = $username;
         } else {
+            $tempPassword = bin2hex(random_bytes(6));
             $user = new User([
                 'username' => $username,
                 'email'    => $email,
-                'password' => bin2hex(random_bytes(16)),
+                'password' => $tempPassword,
             ]);
         }
 
@@ -179,9 +193,15 @@ class DepartmentController extends BaseController
             ->where('id', $user->id)
             ->update(['department_id' => $id]);
 
+        $message = "{$username} assigned as dean of {$college['name']}.";
+
+        if ($tempPassword) {
+            $message .= " Temporary password: {$tempPassword} (share this with them — it won't be shown again).";
+        }
+
         return redirect()
             ->to("/admin/departments/{$id}")
-            ->with('message', "{$username} assigned as dean of {$college['name']}.");
+            ->with('message', $message);
     }
 
     public function storeSubDepartment($id)

@@ -15,7 +15,6 @@ use App\Models\SwapRequestModel;
 class ChairpersonController extends BaseController
 {
     private const FILTERS = [
-        'program'    => ['BS in Information Technology', 'BS in Computer Science'],
         'year_level' => ['1st Year', '2nd Year', '3rd Year', '4th Year'],
         'section'    => ['AIT1', 'AIT2', 'BIT1'],
     ];
@@ -33,16 +32,24 @@ class ChairpersonController extends BaseController
     private const COLORS = ['blue', 'purple', 'cyan', 'red', 'green', 'yellow'];
 
     /**
-     * Subject catalog from the subjects table (active rows only), mapped to
-     * the plotting shape. No professors at plotting time — faculty are
-     * attached later (claiming / assignment).
+     * Subject catalog from the subjects table (active rows only), scoped to
+     * the logged-in chairperson's own department, mapped to the plotting
+     * shape. No professors at plotting time — faculty are attached later
+     * (claiming / assignment).
      */
     private function catalog(): array
     {
-        $rows = (new SubjectModel())
-            ->where('is_active', 1)
-            ->orderBy('subject_code')
-            ->findAll();
+        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+
+        $query = (new SubjectModel())->where('is_active', 1);
+
+        // No department (or no programs registered under it) means no
+        // catalog to show — never fall back to every department's subjects.
+        $query = $subDept === null
+            ? $query->where('sub_department_id', -1)
+            : $query->where('sub_department_id', (int) $subDept['sub_dept_id']);
+
+        $rows = $query->orderBy('subject_code')->findAll();
 
         return array_map(static function (array $row): array {
             $units    = (float) $row['units'];
@@ -125,14 +132,14 @@ class ChairpersonController extends BaseController
         [$profMap, $assignments] = $this->assignmentsFor($context['academic_year']);
 
         $blocks = $this->attachProfs(
-            array_map([$this, 'rowToBlock'], $schedules->forContext(...array_values($context))),
+            array_map([$this, 'rowToBlock'], $schedules->forContext($context['academic_year'], $context['program'], $context['year_level'], $context['section'])),
             $profMap
         );
 
         // Classes plotted for other sections in the same AY: shown as ghost
         // blocks and counted for room/faculty availability.
         $otherBlocks = $this->attachProfs(
-            array_map([$this, 'rowToBlock'], $schedules->forOtherContexts(...array_values($context))),
+            array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section'])),
             $profMap
         );
 
@@ -152,10 +159,13 @@ class ChairpersonController extends BaseController
             ? $catalog
             : array_values(array_filter($catalog, static fn (array $s) => in_array($s['code'], $presetCodes, true)));
 
+        $account = auth()->user();
+        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+
         $data = [
             'user' => [
-                'name' => 'Rosemarie Perreras',
-                'role' => 'IT Department - Chairperson',
+                'name' => $account->username ?? 'Chairperson',
+                'role' => ($subDept !== null ? $subDept['name'] . ' - ' : '') . 'Chairperson',
             ],
 
             'filters'        => $this->filters(),
@@ -235,11 +245,11 @@ class ChairpersonController extends BaseController
         return $this->response->setJSON([
             'version'     => $version,
             'blocks'      => $this->attachProfs(
-                array_map([$this, 'rowToBlock'], $schedules->forContext(...array_values($context))),
+                array_map([$this, 'rowToBlock'], $schedules->forContext($context['academic_year'], $context['program'], $context['year_level'], $context['section'])),
                 $profMap
             ),
             'others'      => $this->attachProfs(
-                array_map([$this, 'rowToBlock'], $schedules->forOtherContexts(...array_values($context))),
+                array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section'])),
                 $profMap
             ),
             'assignments'    => $assignments,
@@ -638,6 +648,12 @@ class ChairpersonController extends BaseController
 
         $isLab = ! empty($payload['is_lab']);
 
+        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+
+        if ($subDept === null) {
+            return $this->fail('You are not assigned to a department yet.');
+        }
+
         $subjects = new SubjectModel();
         $existing = $subjects->where('subject_code', $code)->first();
 
@@ -646,12 +662,13 @@ class ChairpersonController extends BaseController
         }
 
         $row = [
-            'subject_code'  => $code,
-            'subject_name'  => $title,
-            'units'         => $units,
-            'contact_hours' => $duration,
-            'is_laboratory' => $isLab ? 1 : 0,
-            'is_active'     => 1,
+            'sub_department_id' => (int) $subDept['sub_dept_id'],
+            'subject_code'      => $code,
+            'subject_name'      => $title,
+            'units'             => $units,
+            'contact_hours'     => $duration,
+            'is_laboratory'     => $isLab ? 1 : 0,
+            'is_active'         => 1,
         ];
 
         if ($existing === null) {
@@ -680,10 +697,12 @@ class ChairpersonController extends BaseController
 
         $originalCode = strtoupper(trim((string) ($payload['original_code'] ?? '')));
 
+        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+
         $subjects = new SubjectModel();
         $existing = $subjects->where('subject_code', $originalCode)->where('is_active', 1)->first();
 
-        if ($existing === null) {
+        if ($existing === null || $subDept === null || (int) $existing['sub_department_id'] !== (int) $subDept['sub_dept_id']) {
             return $this->fail("Subject {$originalCode} is not in the catalog.");
         }
 
@@ -782,10 +801,12 @@ class ChairpersonController extends BaseController
             return $this->fail('Missing subject code.');
         }
 
+        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+
         $subjects = new SubjectModel();
         $subject  = $subjects->where('subject_code', $code)->where('is_active', 1)->first();
 
-        if ($subject === null) {
+        if ($subject === null || $subDept === null || (int) $subject['sub_department_id'] !== (int) $subDept['sub_dept_id']) {
             return $this->fail("Subject {$code} is not in the catalog.");
         }
 
@@ -901,7 +922,7 @@ class ChairpersonController extends BaseController
         // Against every other section in the same AY: rooms and professors
         // cannot be in two places at once.
         $schedules = new PlottedScheduleModel();
-        $others    = array_map([$this, 'rowToBlock'], $schedules->forOtherContexts(...array_values($context)));
+        $others    = array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section']));
 
         foreach ($blocks as $block) {
             foreach ($others as $other) {
@@ -953,21 +974,15 @@ class ChairpersonController extends BaseController
      */
     private function filters(): array
     {
-        $filters                 = self::FILTERS;
+        $filters                  = self::FILTERS;
         $filters['academic_year'] = $this->academicYears();
 
-        $dept = (new DepartmentModel())->codeOfUser((int) auth()->id());
+        $deptModel = new DepartmentModel();
+        $subDept   = $deptModel->subDeptOfUser((int) auth()->id());
 
-        if ($dept !== null) {
-            $programs = array_values(array_filter(
-                $filters['program'],
-                static fn (string $p) => DepartmentModel::programDept($p) === $dept
-            ));
-
-            if ($programs !== []) {
-                $filters['program'] = $programs;
-            }
-        }
+        // A chairperson only ever schedules for their own department's
+        // programs. No department assigned = no programs to schedule.
+        $filters['program'] = $subDept === null ? [] : $deptModel->programsOfSubDept((int) $subDept['sub_dept_id']);
 
         return $filters;
     }
@@ -982,7 +997,7 @@ class ChairpersonController extends BaseController
 
         foreach ($this->filters() as $key => $allowed) {
             $value = $this->request->getGet($key);
-            $context[$key] = in_array($value, $allowed, true) ? $value : $allowed[0];
+            $context[$key] = in_array($value, $allowed, true) ? $value : ($allowed[0] ?? '');
         }
 
         return $context;

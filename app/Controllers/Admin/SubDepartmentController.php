@@ -106,15 +106,29 @@ class SubDepartmentController extends BaseController
 
         $users    = auth()->getProvider();
         $existing = $users->findByCredentials(['email' => $email]);
+        $tempPassword = null;
+
+        $usernameTaken = db_connect()->table('users')
+            ->where('username', $username)
+            ->where('id !=', $existing->id ?? 0)
+            ->countAllResults() > 0;
+
+        if ($usernameTaken) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', ['username' => 'An account with that name already exists.']);
+        }
 
         if ($existing) {
             $user = $existing;
             $user->username = $username;
         } else {
+            $tempPassword = bin2hex(random_bytes(6));
             $user = new User([
                 'username' => $username,
                 'email'    => $email,
-                'password' => bin2hex(random_bytes(16)),
+                'password' => $tempPassword,
             ]);
         }
 
@@ -135,9 +149,15 @@ class SubDepartmentController extends BaseController
                 'department_id'     => $department['college_id'],
             ]);
 
+        $message = "{$username} assigned as chairperson of {$department['name']}.";
+
+        if ($tempPassword) {
+            $message .= " Temporary password: {$tempPassword} (share this with them — it won't be shown again).";
+        }
+
         return redirect()
             ->to("/admin/sub-departments/{$id}")
-            ->with('message', "{$username} assigned as chairperson of {$department['name']}.");
+            ->with('message', $message);
     }
 
     public function transfer($id)
@@ -278,10 +298,19 @@ class SubDepartmentController extends BaseController
                 ->with('errors', ['email' => 'An account with that email already exists.']);
         }
 
+        if (db_connect()->table('users')->where('username', $username)->countAllResults() > 0) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', ['username' => 'An account with that name already exists.']);
+        }
+
+        $tempPassword = bin2hex(random_bytes(6));
+
         $user = new User([
             'username' => $username,
             'email'    => $email,
-            'password' => bin2hex(random_bytes(16)),
+            'password' => $tempPassword,
         ]);
 
         $users->save($user);
@@ -297,7 +326,7 @@ class SubDepartmentController extends BaseController
 
         return redirect()
             ->to("/admin/sub-departments/{$id}")
-            ->with('message', "{$username} added to {$department['name']}.");
+            ->with('message', "{$username} added to {$department['name']}. Temporary password: {$tempPassword} (share this with them — it won't be shown again).");
     }
 
     public function updateFaculty($id, $userId)

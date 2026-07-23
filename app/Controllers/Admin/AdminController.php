@@ -95,6 +95,15 @@ class AdminController extends BaseController
             ];
         }
 
+        foreach ($db->table('sub_departments')->orderBy('created_at', 'desc')->limit(5)->get()->getResultArray() as $row) {
+            $items[] = [
+                'icon'    => 'hub',
+                'title'   => 'Department Added',
+                'detail'  => "{$row['code']} — {$row['name']}",
+                'time'    => $row['created_at'],
+            ];
+        }
+
         foreach ($db->table('rooms')->orderBy('created_at', 'desc')->limit(5)->get()->getResultArray() as $row) {
             $items[] = [
                 'icon'   => 'meeting_room',

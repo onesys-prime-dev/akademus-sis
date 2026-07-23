@@ -80,10 +80,19 @@ class UserController extends BaseController
                 ->with('errors', ['email' => 'An account with that email already exists.']);
         }
 
+        if (db_connect()->table('users')->where('username', $username)->countAllResults() > 0) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', ['username' => 'An account with that name already exists.']);
+        }
+
+        $tempPassword = bin2hex(random_bytes(6));
+
         $user = new User([
             'username' => $username,
             'email'    => $email,
-            'password' => bin2hex(random_bytes(16)),
+            'password' => $tempPassword,
         ]);
 
         $users->save($user);
@@ -98,7 +107,7 @@ class UserController extends BaseController
 
         return redirect()
             ->to('/admin/users')
-            ->with('message', "Account created for {$username}. Invitation pending activation.");
+            ->with('message', "Account created for {$username}. Temporary password: {$tempPassword} (share this with them — it won't be shown again).");
     }
 
     public function activate($id)

@@ -14,17 +14,28 @@ class DepartmentModel extends Model
     protected $useTimestamps = true;
 
     /**
-     * Which department owns each program. Moves into the programs table once
-     * programs stop being hardcoded filter strings.
+     * A few programs were seeded (plotted_schedules/faculty_assignments/etc.)
+     * with display names that predate the real `programs` table and don't
+     * match `programs.program_name` verbatim. New programs need no entry
+     * here — they resolve straight off program_name.
      */
-    public const PROGRAM_MAP = [
-        'BS in Information Technology' => 'IT',
-        'BS in Computer Science'       => 'CS',
+    private const LEGACY_PROGRAM_NAMES = [
+        'BSIT' => 'BS in Information Technology',
+        'BSCS' => 'BS in Computer Science',
     ];
 
-    public static function programDept(string $program): ?string
+    /**
+     * Sub-department (the chairperson-headed "Department" in the UI) that a
+     * user belongs to, or null when they have none.
+     */
+    public function subDeptOfUser(int $userId): ?array
     {
-        return self::PROGRAM_MAP[$program] ?? null;
+        return db_connect()->table('users u')
+            ->select('sd.sub_dept_id, sd.code, sd.name')
+            ->join('sub_departments sd', 'sd.sub_dept_id = u.sub_department_id')
+            ->where('u.id', $userId)
+            ->get()
+            ->getRowArray();
     }
 
     /**
@@ -32,12 +43,43 @@ class DepartmentModel extends Model
      */
     public function codeOfUser(int $userId): ?string
     {
-        $row = db_connect()->table('users u')
-            ->select('d.code')
-            ->join('departments d', 'd.dept_id = u.department_id')
-            ->where('u.id', $userId)
+        return $this->subDeptOfUser($userId)['code'] ?? null;
+    }
+
+    /**
+     * Active programs belonging to a sub-department, as the display-name
+     * values used throughout scheduling (plotted_schedules, faculty_assignments,
+     * curriculum_presets, ...).
+     */
+    public function programsOfSubDept(int $subDeptId): array
+    {
+        $rows = db_connect()->table('programs')
+            ->where('sub_department_id', $subDeptId)
+            ->where('is_active', 1)
+            ->orderBy('program_name')
             ->get()
-            ->getRowArray();
+            ->getResultArray();
+
+        return array_map(
+            static fn (array $r) => self::LEGACY_PROGRAM_NAMES[$r['program_code']] ?? $r['program_name'],
+            $rows
+        );
+    }
+
+    /**
+     * Sub-department code that owns the program with this display name.
+     */
+    public static function programDept(string $program): ?string
+    {
+        $code = array_search($program, self::LEGACY_PROGRAM_NAMES, true);
+
+        $builder = db_connect()->table('programs p')
+            ->select('sd.code')
+            ->join('sub_departments sd', 'sd.sub_dept_id = p.sub_department_id');
+
+        $row = $code !== false
+            ? $builder->where('p.program_code', $code)->get()->getRowArray()
+            : $builder->where('p.program_name', $program)->get()->getRowArray();
 
         return $row['code'] ?? null;
     }

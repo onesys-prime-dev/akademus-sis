@@ -1227,6 +1227,73 @@
 
     <div class="toast" id="toast"></div>
 
+    <!-- On-page error log: catches JS errors and [schedule] diagnostics without needing DevTools -->
+    <button type="button" id="debugToggle" style="position:fixed; bottom:14px; left:14px; z-index:999;
+        background:#1f2937; color:#fff; border:none; border-radius:20px; padding:8px 14px;
+        font-size:12px; font-weight:700; cursor:pointer; display:none; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(0,0,0,.25);">
+        ⚠ Errors <span id="debugCount">0</span>
+    </button>
+    <div id="debugPanel" style="position:fixed; bottom:56px; left:14px; z-index:999; width:min(520px, 92vw);
+        max-height:50vh; overflow-y:auto; background:#111827; color:#e5e7eb; border-radius:10px;
+        padding:12px; font:11px/1.5 ui-monospace,monospace; box-shadow:0 8px 24px rgba(0,0,0,.4); display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <b style="color:#fff; font-family:inherit;">Error log</b>
+            <button type="button" id="debugClear" style="background:none; border:1px solid #4b5563; color:#e5e7eb; border-radius:6px; padding:2px 8px; cursor:pointer; font-size:11px;">Clear</button>
+        </div>
+        <div id="debugList"></div>
+    </div>
+
+    <script>
+        // ---------- on-page error log ----------
+        (function () {
+            const list  = document.getElementById('debugList');
+            const panel = document.getElementById('debugPanel');
+            const toggle = document.getElementById('debugToggle');
+            const countEl = document.getElementById('debugCount');
+            let count = 0;
+
+            function logEntry(kind, message) {
+                count++;
+                countEl.textContent = count;
+                toggle.style.display = 'flex';
+
+                const time = new Date().toLocaleTimeString();
+                const row = document.createElement('div');
+                row.style.cssText = 'border-bottom:1px solid #374151; padding:6px 0; white-space:pre-wrap; word-break:break-word;';
+                row.innerHTML = '<span style="color:#f87171; font-weight:700;">[' + kind + ' ' + time + ']</span> ';
+                row.appendChild(document.createTextNode(message));
+                list.prepend(row);
+            }
+
+            toggle.addEventListener('click', () => {
+                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            });
+            document.getElementById('debugClear').addEventListener('click', () => {
+                list.innerHTML = '';
+                count = 0;
+                countEl.textContent = '0';
+                toggle.style.display = 'none';
+                panel.style.display = 'none';
+            });
+
+            window.addEventListener('error', (e) => {
+                logEntry('JS error', `${e.message} — ${e.filename}:${e.lineno}:${e.colno}`);
+            });
+            window.addEventListener('unhandledrejection', (e) => {
+                logEntry('unhandled promise', String(e.reason && e.reason.stack || e.reason));
+            });
+
+            const origError = console.error.bind(console);
+            console.error = function (...args) {
+                origError(...args);
+                logEntry('console.error', args.map(a => {
+                    try { return typeof a === 'string' ? a : JSON.stringify(a); }
+                    catch (_) { return String(a); }
+                }).join(' '));
+            };
+        })();
+    </script>
+
     <script>
         function toMinutes(hhmm) {
             const [h, m] = hhmm.split(':').map(Number);
@@ -1449,32 +1516,53 @@
             return el;
         }
 
+        // Cached once — the six day columns never get replaced, only their
+        // block children do, so re-querying the DOM every render is wasted
+        // work and (if the selector ever mismatches) a silent failure point.
+        const DAY_COLS = new Map();
+        document.querySelectorAll('.day-col').forEach(col => {
+            DAY_COLS.set(Number(col.dataset.day), col);
+        });
+
+        if (DAY_COLS.size === 0) {
+            console.error('[schedule] no .day-col elements found in the DOM — the weekly grid did not render.');
+        }
+
         function renderBlocks() {
-            document.querySelectorAll('.day-col .block').forEach(el => el.remove());
+            try {
+                document.querySelectorAll('.day-col .block').forEach(el => el.remove());
 
-            WEEK.forEach((_, day) => {
-                const col = document.querySelector(`.day-col[data-day="${day}"]`);
-                if (!col) return;
+                let placed = 0;
 
-                const items = [];
+                for (const [day, col] of DAY_COLS) {
+                    const items = [];
 
-                blocks.forEach((b, i) => {
-                    if (b.day !== day) return;
-                    items.push({ startRow: blockStartRow(b), endRow: blockEndRow(b), el: ownEl(b, i) });
-                });
+                    blocks.forEach((b, i) => {
+                        if (Number(b.day) !== day) return;
+                        items.push({ startRow: blockStartRow(b), endRow: blockEndRow(b), el: ownEl(b, i) });
+                    });
 
-                OTHERS.forEach(b => {
-                    if (b.day !== day) return;
-                    items.push({ startRow: blockStartRow(b), endRow: blockEndRow(b), el: ghostEl(b) });
-                });
+                    OTHERS.forEach(b => {
+                        if (Number(b.day) !== day) return;
+                        items.push({ startRow: blockStartRow(b), endRow: blockEndRow(b), el: ghostEl(b) });
+                    });
 
-                assignLanes(items);
+                    assignLanes(items);
 
-                items.forEach(item => {
-                    positionBlock(item.el, item);
-                    col.appendChild(item.el);
-                });
-            });
+                    items.forEach(item => {
+                        positionBlock(item.el, item);
+                        col.appendChild(item.el);
+                        placed++;
+                    });
+                }
+
+                if (blocks.length + OTHERS.length > 0 && placed === 0) {
+                    console.error('[schedule] blocks exist in memory but none were placed on the grid.', { blocks, OTHERS, days: [...DAY_COLS.keys()] });
+                }
+            } catch (err) {
+                console.error('[schedule] renderBlocks failed:', err);
+                showToast('Something went wrong drawing the schedule — check the console and reload.', 'error');
+            }
 
             updateRail();
             renderRoomOverview(); // keep the overview live with every change
