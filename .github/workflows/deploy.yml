@@ -44,6 +44,12 @@ jobs:
 
             php spark migrate --all --force
 
+            # These seeders are all idempotent (skip accounts that already
+            # exist), so re-running them on every deploy is safe.
+            php spark db:seed UserSeeder
+            php spark db:seed TestUsersSeeder
+            php spark db:seed Faculty3Seeder
+
             # deploy's files land group-owned by "sis" (CloudPanel's site
             # user/group), which is enough for its PHP-FPM pool to read them
             # — no chown needed, and deploy doesn't have rights for one anyway.

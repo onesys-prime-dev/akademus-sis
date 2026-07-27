@@ -10,49 +10,33 @@ class UserSeeder extends Seeder
     {
         $users = auth()->getProvider();
 
-        // ADMIN
-        $admin = $users->save([
-            'username' => 'admin1',
-            'active'   => 1,
-        ]);
+        $accounts = [
+            ['username' => 'admin1',   'email' => 'admin@test.com',   'password' => 'Admin@123', 'group' => 'admin'],
+            ['username' => 'faculty1', 'email' => 'faculty@test.com', 'password' => 'test123!',  'group' => 'faculty'],
+            ['username' => 'student1', 'email' => 'student@test.com', 'password' => 'Test123!',  'group' => 'student'],
+        ];
 
-        $adminUser = $users->findById($users->getInsertID());
+        foreach ($accounts as $account) {
+            if ($users->findByCredentials(['email' => $account['email']]) !== null) {
+                echo "Skipping {$account['email']} (already exists)\n";
+                continue;
+            }
 
-        $adminUser->createEmailIdentity([
-            'email'    => 'admin@test.com',
-            'password' => 'Admin@123',
-        ]);
+            $users->save([
+                'username' => $account['username'],
+                'active'   => 1,
+            ]);
 
-        $adminUser->addGroup('admin');
+            $user = $users->findById($users->getInsertID());
 
-        // FACULTY
-        $users->save([
-            'username' => 'faculty1',
-            'active'   => 1,
-        ]);
+            $user->createEmailIdentity([
+                'email'    => $account['email'],
+                'password' => $account['password'],
+            ]);
 
-        $facultyUser = $users->findById($users->getInsertID());
+            $user->addGroup($account['group']);
 
-        $facultyUser->createEmailIdentity([
-            'email'    => 'faculty@test.com',
-            'password' => 'test123!',
-        ]);
-
-        $facultyUser->addGroup('faculty');
-
-        // STUDENT
-        $users->save([
-            'username' => 'student1',
-            'active'   => 1,
-        ]);
-
-        $studentUser = $users->findById($users->getInsertID());
-
-        $studentUser->createEmailIdentity([
-            'email'    => 'student@test.com',
-            'password' => 'Test123!',
-        ]);
-
-        $studentUser->addGroup('student');
+            echo "Created {$account['email']} ({$account['group']})\n";
+        }
     }
 }
