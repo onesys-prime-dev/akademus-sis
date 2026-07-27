@@ -136,6 +136,9 @@
         .drawer-link.active { color: var(--primary-container); background: rgba(0,64,166,.1); }
         .drawer-link.active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
 
+        .drawer-link--logout { margin-top: auto; }
+        .drawer-link--logout:hover { color: var(--error); background: #fef2f2; }
+
         /* ===== Shell ===== */
         .app-main {
             flex: 1;
@@ -339,6 +342,11 @@
                 <span class="drawer-label">Schedule Plotting</span>
             </a>
         </nav>
+
+        <a class="drawer-link drawer-link--logout" href="<?= site_url('logout') ?>" title="Logout">
+            <span class="material-symbols-outlined">logout</span>
+            <span class="drawer-label">Logout</span>
+        </a>
     </aside>
 
     <div class="app-main">
