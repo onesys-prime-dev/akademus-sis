@@ -1,0 +1,53 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+
+      - run: composer validate --no-check-publish
+      - run: composer install --no-progress --prefer-dist
+
+      # Catches PHP parse errors across the whole app before they ever reach the VPS
+      - run: find app -name '*.php' -print0 | xargs -0 -n1 php -l
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+            cd ${{ secrets.VPS_APP_PATH }}
+
+            git fetch origin main
+            git reset --hard origin/main
+
+            composer install --no-dev --optimize-autoloader --no-interaction
+
+            php spark migrate --all --force
+
+            # deploy's files land group-owned by "sis" (CloudPanel's site
+            # user/group), which is enough for its PHP-FPM pool to read them
+            # — no chown needed, and deploy doesn't have rights for one anyway.
+            chmod -R ug+rwX writable
+
+            # CloudPanel restarts this site's PHP-FPM pool for you when files
+            # change underneath it; nothing else to reload here.
