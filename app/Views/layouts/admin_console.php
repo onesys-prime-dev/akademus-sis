@@ -31,7 +31,7 @@ $initial  = strtoupper(substr($username, 0, 1));
 <aside class="ac-sidebar">
     <div class="ac-sidebar__brand">
         <img src="<?= base_url('assets/images/logos/akademus.png') ?>" alt="Akademus" class="ac-sidebar__brand-logo">
-        <div>
+        <div class="ac-sidebar__brand-text">
             <h1 class="ac-sidebar__brand-name">Akademus</h1>
             <p class="ac-sidebar__brand-sub">Admin Console</p>
         </div>
@@ -39,26 +39,12 @@ $initial  = strtoupper(substr($username, 0, 1));
 
     <nav class="ac-sidebar__nav">
         <?php foreach ($navItems as $key => $item): ?>
-            <a href="<?= site_url($item['url']) ?>" class="ac-nav-item <?= $active === $key ? 'is-active' : '' ?>">
+            <a href="<?= site_url($item['url']) ?>" class="ac-nav-item <?= $active === $key ? 'is-active' : '' ?>" title="<?= esc($item['label']) ?>">
                 <span class="material-symbols-outlined <?= $active === $key ? 'icon-fill' : '' ?>"><?= $item['icon'] ?></span>
-                <span><?= esc($item['label']) ?></span>
+                <span class="ac-nav-label"><?= esc($item['label']) ?></span>
             </a>
         <?php endforeach ?>
     </nav>
-
-    <div class="ac-sidebar__footer">
-        <div class="ac-sidebar__profile">
-            <div class="ac-avatar ac-avatar--primary"><?= esc($initial) ?></div>
-            <div class="ac-sidebar__profile-text">
-                <p class="ac-sidebar__profile-name"><?= esc($username) ?></p>
-                <p class="ac-sidebar__profile-role">Administrator</p>
-            </div>
-        </div>
-        <a href="<?= site_url('/logout') ?>" class="ac-nav-item">
-            <span class="material-symbols-outlined">logout</span>
-            <span>Logout</span>
-        </a>
-    </div>
 </aside>
 
 <main class="ac-main">
@@ -89,7 +75,22 @@ $initial  = strtoupper(substr($username, 0, 1));
 
             <?= $this->renderSection('headerActions') ?>
 
-            <div class="ac-avatar ac-avatar--blank" title="<?= esc($username) ?>"></div>
+            <div class="ac-user-menu" id="acUserMenu">
+                <button type="button" class="ac-avatar ac-avatar--primary ac-user-menu__trigger" id="acUserMenuBtn" title="<?= esc($username) ?>">
+                    <?= esc($initial) ?>
+                </button>
+                <div class="ac-user-menu__dropdown">
+                    <div class="ac-user-menu__who">
+                        <p class="ac-user-menu__name"><?= esc($username) ?></p>
+                        <p class="ac-user-menu__role">Administrator</p>
+                    </div>
+                    <hr>
+                    <a href="<?= site_url('/logout') ?>" class="ac-user-menu__item ac-user-menu__item--danger">
+                        <span class="material-symbols-outlined">logout</span>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -130,6 +131,19 @@ $initial  = strtoupper(substr($username, 0, 1));
     function acCloseModal(id) {
         document.getElementById(id).classList.remove('is-open');
     }
+
+    (function () {
+        var menu = document.getElementById('acUserMenu');
+        var btn  = document.getElementById('acUserMenuBtn');
+        if (!menu || !btn) return;
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            menu.classList.toggle('is-open');
+        });
+        document.addEventListener('click', function () {
+            menu.classList.remove('is-open');
+        });
+    })();
 </script>
 
 </body>

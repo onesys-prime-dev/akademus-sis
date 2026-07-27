@@ -83,9 +83,12 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->post('academic-years/set-active/(:num)', 'Admin\AcademicYearController::setActive/$1');
 
     // user accounts
-    $routes->get('users'                 , 'Admin\UserController::index');
-    $routes->post('users/store'          , 'Admin\UserController::store');
-    $routes->post('users/activate/(:num)', 'Admin\UserController::activate/$1');
+    $routes->get('users'                       , 'Admin\UserController::index');
+    $routes->post('users/store'                , 'Admin\UserController::store');
+    $routes->post('users/update/(:num)'        , 'Admin\UserController::update/$1');
+    $routes->post('users/reset-password/(:num)', 'Admin\UserController::resetPassword/$1');
+    $routes->post('users/activate/(:num)'      , 'Admin\UserController::activate/$1');
+    $routes->post('users/deactivate/(:num)'    , 'Admin\UserController::deactivate/$1');
 
     // roles / permissions overview
     $routes->get('roles', 'Admin\RoleController::index');
@@ -111,6 +114,10 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
 
 $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($routes) {
     $routes->get('dashboard', 'ChairpersonController::index');
+    $routes->get('overview', 'ChairpersonController::overview');
+    $routes->get('profile', 'ChairpersonController::profile');
+    $routes->post('profile/update', 'ChairpersonController::updateProfile');
+    $routes->post('profile/password', 'ChairpersonController::updatePassword');
     $routes->post('schedule/sync', 'ChairpersonController::sync');
     $routes->get('schedule/state', 'ChairpersonController::state');
     $routes->post('curriculum-preset', 'ChairpersonController::savePreset');

@@ -139,6 +139,7 @@ class ChairpersonController extends BaseController
         $context = $this->contextFromRequest();
 
         $schedules = new PlottedScheduleModel();
+        $subDept   = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
 
         [$profMap, $assignments] = $this->assignmentsFor($context['academic_year']);
 
@@ -148,9 +149,12 @@ class ChairpersonController extends BaseController
         );
 
         // Classes plotted for other sections in the same AY: shown as ghost
-        // blocks and counted for room/faculty availability.
+        // blocks and counted for room/faculty availability. Scoped to this
+        // chairperson's own department — other departments' plots don't leak in.
+        $deptPrograms = $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
+
         $otherBlocks = $this->attachProfs(
-            array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section'])),
+            array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section'], $deptPrograms)),
             $profMap
         );
 
@@ -171,7 +175,6 @@ class ChairpersonController extends BaseController
             : array_values(array_filter($catalog, static fn (array $s) => in_array($s['code'], $presetCodes, true)));
 
         $account = auth()->user();
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
 
         $data = [
             'user' => [
@@ -253,6 +256,9 @@ class ChairpersonController extends BaseController
 
         [$profMap, $assignments] = $this->assignmentsFor($context['academic_year']);
 
+        $subDept      = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        $deptPrograms = $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
+
         return $this->response->setJSON([
             'version'     => $version,
             'blocks'      => $this->attachProfs(
@@ -260,7 +266,7 @@ class ChairpersonController extends BaseController
                 $profMap
             ),
             'others'      => $this->attachProfs(
-                array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section'])),
+                array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section'], $deptPrograms)),
                 $profMap
             ),
             'assignments'    => $assignments,
@@ -1056,5 +1062,139 @@ class ChairpersonController extends BaseController
     private function fail(string $message)
     {
         return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => $message]);
+    }
+
+    /**
+     * Department overview: quick stats for the chairperson's own department
+     * in the active academic year, plus a way back into Schedule Plotting.
+     */
+    public function overview()
+    {
+        $account   = auth()->user();
+        $deptModel = new DepartmentModel();
+        $subDept   = $deptModel->subDeptOfUser((int) auth()->id());
+
+        $activeYear = (new AcademicYearModel())->activeFormatted();
+        $programs   = $subDept === null ? [] : $deptModel->programsOfSubDept((int) $subDept['sub_dept_id']);
+
+        $plottedClasses = 0;
+        $curriculumSet  = 0;
+        $curriculumSlots = count($programs) * count(self::FILTERS['year_level']);
+
+        if ($programs !== [] && $activeYear !== null) {
+            $plottedClasses = (new PlottedScheduleModel())
+                ->where('academic_year', $activeYear)
+                ->whereIn('program', $programs)
+                ->countAllResults();
+
+            $presets = new CurriculumPresetModel();
+
+            foreach ($programs as $program) {
+                foreach (self::FILTERS['year_level'] as $yearLevel) {
+                    if ($presets->forContext($activeYear, $program, $yearLevel) !== null) {
+                        $curriculumSet++;
+                    }
+                }
+            }
+        }
+
+        $facultyCount = $subDept === null ? 0 : db_connect()->table('users u')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'faculty')
+            ->where('u.sub_department_id', (int) $subDept['sub_dept_id'])
+            ->where('u.deleted_at', null)
+            ->countAllResults();
+
+        return view('chairperson/overview', [
+            'pageTitle' => 'Dashboard',
+            'user' => [
+                'name' => $account->username ?? 'Chairperson',
+                'role' => ($subDept !== null ? $subDept['name'] . ' - ' : '') . 'Chairperson',
+            ],
+            'deptName'    => $subDept['name'] ?? null,
+            'activeYear'  => $activeYear,
+            'programs'    => $programs,
+            'stats' => [
+                'plotted_classes'  => $plottedClasses,
+                'faculty_count'    => $facultyCount,
+                'pending_approvals' => count($this->swapApprovals()),
+                'curriculum_set'   => $curriculumSet,
+                'curriculum_slots' => $curriculumSlots,
+            ],
+        ]);
+    }
+
+    /**
+     * Self-service account page: view/edit display name, view department,
+     * change password.
+     */
+    public function profile()
+    {
+        $account   = auth()->user();
+        $deptModel = new DepartmentModel();
+        $subDept   = $deptModel->subDeptOfUser((int) auth()->id());
+
+        return view('chairperson/profile', [
+            'pageTitle' => 'Profile',
+            'user' => [
+                'name' => $account->username ?? 'Chairperson',
+                'role' => ($subDept !== null ? $subDept['name'] . ' - ' : '') . 'Chairperson',
+            ],
+            'account' => [
+                'username' => $account->username ?? '',
+                'email'    => $account->getEmail() ?? '',
+            ],
+            'deptName' => $subDept['name'] ?? null,
+            'deptCode' => $subDept['code'] ?? null,
+        ]);
+    }
+
+    public function updateProfile()
+    {
+        $username = trim((string) $this->request->getPost('username'));
+
+        if ($username === '' || mb_strlen($username) > 100) {
+            return redirect()->back()->with('profile_error', 'Name is required (max 100 characters).');
+        }
+
+        $users = auth()->getProvider();
+        $user  = auth()->user();
+        $user->username = $username;
+        $users->save($user);
+
+        return redirect()->to('/chairperson/profile')->with('profile_message', 'Profile updated.');
+    }
+
+    public function updatePassword()
+    {
+        $current = (string) $this->request->getPost('current_password');
+        $new     = (string) $this->request->getPost('new_password');
+        $confirm = (string) $this->request->getPost('confirm_password');
+
+        if ($current === '' || $new === '' || $confirm === '') {
+            return redirect()->back()->with('profile_error', 'All password fields are required.');
+        }
+
+        if ($new !== $confirm) {
+            return redirect()->back()->with('profile_error', 'New password and confirmation do not match.');
+        }
+
+        $account = auth()->user();
+        $result  = auth()->check(['email' => $account->getEmail(), 'password' => $current]);
+
+        if (! $result->isOK()) {
+            return redirect()->back()->with('profile_error', 'Current password is incorrect.');
+        }
+
+        if (mb_strlen($new) < 8) {
+            return redirect()->back()->with('profile_error', 'New password must be at least 8 characters.');
+        }
+
+        $users = auth()->getProvider();
+        $user  = auth()->user();
+        $user->password = $new;
+        $users->save($user);
+
+        return redirect()->to('/chairperson/profile')->with('profile_message', 'Password changed.');
     }
 }

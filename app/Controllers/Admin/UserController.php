@@ -57,6 +57,7 @@ class UserController extends BaseController
             'email'         => 'required|valid_email',
             'role'          => 'required|in_list[' . implode(',', self::CREATABLE_ROLES) . ']',
             'department_id' => 'permit_empty|integer',
+            'password'      => 'permit_empty|min_length[8]',
         ];
 
         if (! $this->validate($rules)) {
@@ -87,7 +88,7 @@ class UserController extends BaseController
                 ->with('errors', ['username' => 'An account with that name already exists.']);
         }
 
-        $tempPassword = bin2hex(random_bytes(6));
+        $tempPassword = (string) $this->request->getPost('password') ?: bin2hex(random_bytes(6));
 
         $user = new User([
             'username' => $username,
@@ -107,7 +108,126 @@ class UserController extends BaseController
 
         return redirect()
             ->to('/admin/users')
-            ->with('message', "Account created for {$username}. Temporary password: {$tempPassword} (share this with them — it won't be shown again).");
+            ->with('credential', [
+                'heading'  => 'Account created',
+                'username' => $username,
+                'email'    => $email,
+                'password' => $tempPassword,
+            ]);
+    }
+
+    /**
+     * Edit an existing account's profile fields. Role can only move between
+     * CREATABLE_ROLES — chairpersons stay locked to their department's own
+     * assignment flow (Admin\SubDepartmentController::storeChair).
+     */
+    public function update($id)
+    {
+        $users = auth()->getProvider();
+        $user  = $users->findById($id);
+
+        if (! $user) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $rules = [
+            'username'      => 'required|max_length[100]',
+            'email'         => 'required|valid_email',
+            'department_id' => 'permit_empty|integer',
+        ];
+
+        $isChair = $user->inGroup('chairperson');
+
+        if (! $isChair) {
+            $rules['role'] = 'required|in_list[' . implode(',', self::CREATABLE_ROLES) . ']';
+        }
+
+        if (! $this->validate($rules)) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', $this->validator->getErrors());
+        }
+
+        $username = $this->request->getPost('username');
+        $email    = $this->request->getPost('email');
+
+        $emailTaken = db_connect()->table('auth_identities')
+            ->where('type', 'email_password')
+            ->where('secret', $email)
+            ->where('user_id !=', $id)
+            ->countAllResults() > 0;
+
+        if ($emailTaken) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', ['email' => 'An account with that email already exists.']);
+        }
+
+        $usernameTaken = db_connect()->table('users')
+            ->where('username', $username)
+            ->where('id !=', $id)
+            ->countAllResults() > 0;
+
+        if ($usernameTaken) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', ['username' => 'An account with that name already exists.']);
+        }
+
+        $user->username = $username;
+        $user->email    = $email;
+        $users->save($user);
+
+        if (! $isChair) {
+            $role         = $this->request->getPost('role');
+            $departmentId = $role === 'admin' ? null : $this->request->getPost('department_id');
+
+            $user->syncGroups($role);
+
+            db_connect()->table('users')
+                ->where('id', $id)
+                ->update(['department_id' => $departmentId]);
+        }
+
+        return redirect()
+            ->to('/admin/users')
+            ->with('message', "{$username}'s account updated.");
+    }
+
+    /**
+     * Generate a fresh temporary password for an account that forgot theirs.
+     * Shown once in the same reveal modal used at creation time.
+     */
+    public function resetPassword($id)
+    {
+        $users = auth()->getProvider();
+        $user  = $users->findById($id);
+
+        if (! $user) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $tempPassword = bin2hex(random_bytes(6));
+        $user->password = $tempPassword;
+        $users->save($user);
+
+        $email = db_connect()->table('auth_identities')
+            ->where('user_id', $id)
+            ->where('type', 'email_password')
+            ->get()
+            ->getRowArray()['secret'] ?? '';
+
+        return redirect()
+            ->to('/admin/users')
+            ->with('credential', [
+                'heading'  => 'Password reset',
+                'username' => $user->username,
+                'email'    => $email,
+                'password' => $tempPassword,
+            ]);
     }
 
     public function activate($id)
@@ -125,5 +245,22 @@ class UserController extends BaseController
         return redirect()
             ->to('/admin/users')
             ->with('message', 'Account activated.');
+    }
+
+    public function deactivate($id)
+    {
+        $users = auth()->getProvider();
+        $user  = $users->findById($id);
+
+        if (! $user) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $user->active = 0;
+        $users->save($user);
+
+        return redirect()
+            ->to('/admin/users')
+            ->with('message', 'Account deactivated.');
     }
 }

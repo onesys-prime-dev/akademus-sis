@@ -43,11 +43,26 @@ class PlottedScheduleModel extends Model
 
     /**
      * Blocks plotted for every OTHER context in the same academic year.
-     * Used to grey out occupied rooms and catch faculty overlaps.
+     *
+     * Pass $deptPrograms to restrict results to that list of program display
+     * names (used when displaying ghost blocks, so another department's
+     * plots never leak into a chairperson's view). Leave it null for
+     * school-wide room/faculty conflict checks, where every department's
+     * rows must still be considered.
      */
-    public function forOtherContexts(string $academicYear, string $program, string $yearLevel, string $section): array
+    public function forOtherContexts(string $academicYear, string $program, string $yearLevel, string $section, ?array $deptPrograms = null): array
     {
-        return $this->where('academic_year', $academicYear)
+        if ($deptPrograms === []) {
+            return [];
+        }
+
+        $query = $this->where('academic_year', $academicYear);
+
+        if ($deptPrograms !== null) {
+            $query = $query->whereIn('program', $deptPrograms);
+        }
+
+        return $query
             ->groupStart()
                 ->where('program !=', $program)
                 ->orWhere('year_level !=', $yearLevel)
