@@ -53,7 +53,7 @@ jobs:
             # deploy's files land group-owned by "sis" (CloudPanel's site
             # user/group), which is enough for its PHP-FPM pool to read them
             # — no chown needed, and deploy doesn't have rights for one anyway.
-            chmod -R ug+rwX writable
+            chmod -R ug+rwX writable || true
 
             # CloudPanel restarts this site's PHP-FPM pool for you when files
             # change underneath it; nothing else to reload here.
