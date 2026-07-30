@@ -4,6 +4,7 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Models\DepartmentModel;
+use App\Models\SectionModel;
 use CodeIgniter\Shield\Entities\User;
 
 class UserController extends BaseController
@@ -57,6 +58,7 @@ class UserController extends BaseController
             'email'         => 'required|valid_email',
             'role'          => 'required|in_list[' . implode(',', self::CREATABLE_ROLES) . ']',
             'department_id' => 'permit_empty|integer',
+            'section_id'    => 'permit_empty|integer',
             'password'      => 'permit_empty|min_length[8]',
         ];
 
@@ -71,6 +73,21 @@ class UserController extends BaseController
         $email        = $this->request->getPost('email');
         $role         = $this->request->getPost('role');
         $departmentId = $role === 'admin' ? null : $this->request->getPost('department_id');
+
+        // The minimum student->cohort link (block enrollment reads this
+        // server-side — see StudentEnrollment::enrollBlock).
+        $sectionId = null;
+
+        if ($role === 'student' && $this->request->getPost('section_id')) {
+            $sectionId = (int) $this->request->getPost('section_id');
+
+            if ((new SectionModel())->find($sectionId) === null) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('errors', ['section_id' => 'That section does not exist.']);
+            }
+        }
 
         $users = auth()->getProvider();
 
@@ -100,10 +117,13 @@ class UserController extends BaseController
         $user = $users->findById($users->getInsertID());
         $user->addGroup($role);
 
-        if ($departmentId) {
+        if ($departmentId || $sectionId) {
             db_connect()->table('users')
                 ->where('id', $user->id)
-                ->update(['department_id' => $departmentId]);
+                ->update(array_filter([
+                    'department_id' => $departmentId,
+                    'section_id'    => $sectionId,
+                ]));
         }
 
         return redirect()
@@ -134,6 +154,7 @@ class UserController extends BaseController
             'username'      => 'required|max_length[100]',
             'email'         => 'required|valid_email',
             'department_id' => 'permit_empty|integer',
+            'section_id'    => 'permit_empty|integer',
         ];
 
         $isChair = $user->inGroup('chairperson');
@@ -184,12 +205,23 @@ class UserController extends BaseController
         if (! $isChair) {
             $role         = $this->request->getPost('role');
             $departmentId = $role === 'admin' ? null : $this->request->getPost('department_id');
+            $sectionId    = $role === 'student' ? $this->request->getPost('section_id') ?: null : null;
+
+            if ($sectionId !== null && (new SectionModel())->find((int) $sectionId) === null) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('errors', ['section_id' => 'That section does not exist.']);
+            }
 
             $user->syncGroups($role);
 
             db_connect()->table('users')
                 ->where('id', $id)
-                ->update(['department_id' => $departmentId]);
+                ->update([
+                    'department_id' => $departmentId,
+                    'section_id'    => $sectionId,
+                ]);
         }
 
         return redirect()

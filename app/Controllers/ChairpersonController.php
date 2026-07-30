@@ -3,12 +3,14 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Libraries\ScheduleOverlap;
 use App\Models\AcademicYearModel;
 use App\Models\CurriculumPresetModel;
 use App\Models\DepartmentModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\PlottedScheduleModel;
 use App\Models\RoomModel;
+use App\Models\SectionModel;
 use App\Models\SubjectModel;
 use App\Models\SwapRequestModel;
 
@@ -939,7 +941,7 @@ class ChairpersonController extends BaseController
         // Within the section: no two classes may overlap in time.
         foreach ($blocks as $i => $a) {
             foreach (array_slice($blocks, $i + 1) as $b) {
-                if ($a['day'] === $b['day'] && $this->overlaps($a, $b)) {
+                if (ScheduleOverlap::clashes($a, $b)) {
                     return $this->fail("Section conflict: {$a['code']} and {$b['code']} overlap on the same day.");
                 }
             }
@@ -952,7 +954,7 @@ class ChairpersonController extends BaseController
 
         foreach ($blocks as $block) {
             foreach ($others as $other) {
-                if ($block['day'] !== $other['day'] || ! $this->overlaps($block, $other)) {
+                if (! ScheduleOverlap::clashes($block, $other)) {
                     continue;
                 }
 
@@ -991,7 +993,67 @@ class ChairpersonController extends BaseController
             $rows
         );
 
+        // A section becomes a real, stable row the moment it's plotted —
+        // this is the anchor enrollment attaches to (unlike plotted_schedules
+        // rows, which get replaced wholesale on every save).
+        (new SectionModel())->firstOrCreateForContext(
+            $context['academic_year'],
+            $context['program'],
+            $context['year_level'],
+            $context['section']
+        );
+
         return $this->response->setJSON(['ok' => true, 'saved' => count($rows)]);
+    }
+
+    /**
+     * Set (or clear) a section's enrollment capacity. Null/omitted means
+     * unlimited. Scoped the same way sync() scopes writes — the section's
+     * program must be one of the chairperson's own department's programs.
+     */
+    public function setSectionCapacity()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload)) {
+            return $this->fail('Invalid payload.');
+        }
+
+        foreach (['academic_year', 'program', 'year_level', 'section'] as $key) {
+            if (! isset($payload[$key]) || ! is_string($payload[$key]) || $payload[$key] === '') {
+                return $this->fail("Missing field: {$key}");
+            }
+        }
+
+        $filters = $this->filters();
+
+        foreach (['academic_year', 'program', 'year_level', 'section'] as $key) {
+            if (! in_array($payload[$key], $filters[$key], true)) {
+                return $this->fail("Invalid or missing context: {$key}");
+            }
+        }
+
+        $capacity = null;
+
+        if (isset($payload['capacity']) && $payload['capacity'] !== '' && $payload['capacity'] !== null) {
+            $capacity = (int) $payload['capacity'];
+
+            if ($capacity < 1) {
+                return $this->fail('Capacity must be a positive number, or left blank for unlimited.');
+            }
+        }
+
+        $sections = new SectionModel();
+        $section  = $sections->firstOrCreateForContext(
+            $payload['academic_year'],
+            $payload['program'],
+            $payload['year_level'],
+            $payload['section']
+        );
+
+        $sections->update($section['section_id'], ['capacity' => $capacity]);
+
+        return $this->response->setJSON(['ok' => true, 'capacity' => $capacity]);
     }
 
     /**
@@ -1052,11 +1114,6 @@ class ChairpersonController extends BaseController
         [$h, $m] = array_map('intval', explode(':', $hhmm));
 
         return $h * 60 + $m;
-    }
-
-    private function overlaps(array $a, array $b): bool
-    {
-        return $a['start'] < $b['end'] && $b['start'] < $a['end'];
     }
 
     private function fail(string $message)

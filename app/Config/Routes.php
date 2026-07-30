@@ -110,6 +110,9 @@ $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {
 $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->get('dashboard', 'StudentController::index');
     $routes->get('profile', 'StudentController::profile');
+    $routes->get('schedule', 'StudentEnrollment::schedule');
+    $routes->post('enroll', 'StudentEnrollment::enroll');
+    $routes->post('enroll/block', 'StudentEnrollment::enrollBlock');
 });
 
 $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($routes) {
@@ -126,6 +129,7 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('subjects/add', 'ChairpersonController::addSubject');
     $routes->post('subjects/update', 'ChairpersonController::updateSubject');
     $routes->post('subjects/delete', 'ChairpersonController::deleteSubject');
+    $routes->post('sections/capacity', 'ChairpersonController::setSectionCapacity');
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);
