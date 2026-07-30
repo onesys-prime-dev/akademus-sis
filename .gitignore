@@ -124,3 +124,6 @@ _modules/*
 
 /results/
 /phpunit.xml
+
+# Generated documentation (not part of the shipped codebase)
+/docs/

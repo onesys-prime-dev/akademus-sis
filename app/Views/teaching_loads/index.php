@@ -475,6 +475,17 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
     </div>
 </div>
 
+<!-- No department assigned -->
+<div class="modal-backdrop" id="noDeptModal">
+    <div class="modal-card">
+        <h3>No Department Assigned</h3>
+        <p>Your account isn't linked to a department yet, so there are no teaching loads to show. Please contact your administrator to have a department assigned to your account.</p>
+        <div class="modal-actions">
+            <button type="button" class="modal-btn ok" id="noDeptOk">Got it</button>
+        </div>
+    </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -485,6 +496,7 @@ const CONFIG = {
     swapRespondUrl: <?= json_encode(site_url('faculty/loads/swap/respond')) ?>,
     swapCancelUrl: <?= json_encode(site_url('faculty/loads/swap/cancel')) ?>,
     maxUnits: <?= (int) $max_units ?>,
+    noDepartment: <?= json_encode($no_department) ?>,
 };
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -1121,6 +1133,14 @@ async function longPollLoop() {
 rebuildContextFilters();
 renderBoard();
 longPollLoop();
+
+if (CONFIG.noDepartment) {
+    const noDeptModal = document.getElementById('noDeptModal');
+    noDeptModal.classList.add('open');
+    document.getElementById('noDeptOk').addEventListener('click', () => {
+        noDeptModal.classList.remove('open');
+    });
+}
 </script>
 </body>
 </html>

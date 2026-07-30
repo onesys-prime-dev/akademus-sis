@@ -40,6 +40,7 @@ class TeachingLoads extends BaseController
                 'name' => auth()->user()->username ?? 'Faculty',
                 'role' => ($dept !== null ? $dept . ' Department · ' : '') . 'Faculty',
             ],
+            'no_department' => $dept === null,
 
             // Faculty specializations are not modeled yet — placeholder until
             // the faculty management phase.
@@ -327,14 +328,15 @@ class TeachingLoads extends BaseController
     {
         $deptCode = (new DepartmentModel())->codeOfUser($userId);
 
-        $groups = $this->loadGroups();
-
-        if ($deptCode !== null) {
-            $groups = array_filter(
-                $groups,
+        // A faculty member with no assigned department has no department to
+        // scope against — show nothing rather than leaking every department's
+        // loads.
+        $groups = $deptCode === null
+            ? []
+            : array_filter(
+                $this->loadGroups(),
                 static fn (array $g) => DepartmentModel::programDept($g['context']['program']) === $deptCode
             );
-        }
 
         $assignmentRows = db_connect()->table('faculty_assignments fa')
             ->select('fa.*, u.username')
