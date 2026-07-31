@@ -1057,6 +1057,244 @@ class ChairpersonController extends BaseController
     }
 
     /**
+     * Sections page: create sections for the department up front (rather
+     * than waiting for one to be plotted), and assign/unassign students to
+     * them. Note: a section created here is NOT automatically selectable in
+     * the Schedule Plotting grid — that grid's own section list is still the
+     * fixed self::FILTERS['section'] set; wiring a dynamic section picker
+     * into plotting is a separate follow-up.
+     */
+    public function sections()
+    {
+        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+
+        $sections = $subDept === null ? [] : (new SectionModel())->forSubDepartment($subDept['code']);
+
+        $sectionIds = array_column($sections, 'section_id');
+
+        $roster = $sectionIds === [] ? [] : db_connect()->table('users u')
+            ->select('u.id, u.username, u.section_id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'student')
+            ->where('u.deleted_at', null)
+            ->whereIn('u.section_id', $sectionIds)
+            ->orderBy('u.username')
+            ->get()
+            ->getResultArray();
+
+        $rosterBySection = [];
+        foreach ($roster as $row) {
+            $rosterBySection[(int) $row['section_id']][] = $row;
+        }
+
+        $students = db_connect()->table('users u')
+            ->select('u.id, u.username, u.section_id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'student')
+            ->where('u.deleted_at', null)
+            ->orderBy('u.username')
+            ->get()
+            ->getResultArray();
+
+        return view('chairperson/sections', [
+            'pageTitle' => 'Sections',
+            'user'      => [
+                'name' => auth()->user()->username ?? 'Chairperson',
+                'role' => ($subDept !== null ? $subDept['name'] . ' - ' : '') . 'Chairperson',
+            ],
+            'deptName'        => $subDept['name'] ?? null,
+            'programs'        => $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']),
+            'yearLevels'      => self::FILTERS['year_level'],
+            'academicYears'   => $this->academicYears(),
+            'sections'        => $sections,
+            'rosterBySection' => $rosterBySection,
+            'students'        => $students,
+        ]);
+    }
+
+    /**
+     * Create a section for the department up front. Free-typed name (not
+     * restricted to self::FILTERS['section'] — see sections() docblock).
+     */
+    public function createSection()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload)) {
+            return $this->fail('Invalid payload.');
+        }
+
+        foreach (['academic_year', 'program', 'year_level', 'section'] as $key) {
+            if (! isset($payload[$key]) || ! is_string($payload[$key]) || trim($payload[$key]) === '') {
+                return $this->fail("Missing field: {$key}");
+            }
+        }
+
+        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+
+        if ($subDept === null) {
+            return $this->fail('You are not assigned to a department.');
+        }
+
+        $programs = (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
+
+        if (! in_array($payload['program'], $programs, true)) {
+            return $this->fail('Invalid program.');
+        }
+
+        if (! in_array($payload['year_level'], self::FILTERS['year_level'], true)) {
+            return $this->fail('Invalid year level.');
+        }
+
+        if (! in_array($payload['academic_year'], $this->academicYears(), true)) {
+            return $this->fail('Invalid academic year.');
+        }
+
+        $sectionName = trim($payload['section']);
+
+        if (! preg_match('/^[A-Za-z0-9][A-Za-z0-9 _-]{0,19}$/', $sectionName)) {
+            return $this->fail('Section name must be 1-20 letters/numbers (e.g. 1A, BIT2).');
+        }
+
+        $capacity = null;
+
+        if (isset($payload['capacity']) && $payload['capacity'] !== '' && $payload['capacity'] !== null) {
+            $capacity = (int) $payload['capacity'];
+
+            if ($capacity < 1) {
+                return $this->fail('Capacity must be a positive number, or left blank for unlimited.');
+            }
+        }
+
+        $sections = new SectionModel();
+
+        if ($sections->forContext($payload['academic_year'], $payload['program'], $payload['year_level'], $sectionName) !== null) {
+            return $this->fail('That section already exists.');
+        }
+
+        $sections->insert([
+            'academic_year' => $payload['academic_year'],
+            'program'       => $payload['program'],
+            'year_level'    => $payload['year_level'],
+            'section'       => $sectionName,
+            'capacity'      => $capacity,
+        ]);
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * Delete a section — only if it belongs to this department AND has no
+     * students assigned or enrolled. Blocked rather than cascaded so a
+     * roster is never silently wiped out by a delete click.
+     */
+    public function deleteSection()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload) || empty($payload['section_id'])) {
+            return $this->fail('Missing section.');
+        }
+
+        $section = $this->ownSection((int) $payload['section_id']);
+
+        if ($section === null) {
+            return $this->fail('That section does not belong to your department.');
+        }
+
+        $rosterCount = db_connect()->table('users')->where('section_id', $section['section_id'])->countAllResults();
+        $enrolledCount = db_connect()->table('enrollments')->where('section_id', $section['section_id'])->countAllResults();
+
+        if ($rosterCount > 0 || $enrolledCount > 0) {
+            return $this->fail('This section still has students assigned or enrolled — remove them first.');
+        }
+
+        (new SectionModel())->delete($section['section_id']);
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * Assign (or move) a student into one of this department's sections.
+     */
+    public function assignStudent()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload) || empty($payload['user_id']) || empty($payload['section_id'])) {
+            return $this->fail('Missing student or section.');
+        }
+
+        $section = $this->ownSection((int) $payload['section_id']);
+
+        if ($section === null) {
+            return $this->fail('That section does not belong to your department.');
+        }
+
+        $student = db_connect()->table('users u')
+            ->select('u.id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'student')
+            ->where('u.id', (int) $payload['user_id'])
+            ->get()
+            ->getRowArray();
+
+        if ($student === null) {
+            return $this->fail('Student not found.');
+        }
+
+        db_connect()->table('users')->where('id', $student['id'])->update(['section_id' => $section['section_id']]);
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * Remove a student from their section, only if that section belongs to
+     * this chairperson's own department.
+     */
+    public function unassignStudent()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload) || empty($payload['user_id'])) {
+            return $this->fail('Missing student.');
+        }
+
+        $current = db_connect()->table('users')->select('section_id')->where('id', (int) $payload['user_id'])->get()->getRowArray();
+
+        if ($current === null || $current['section_id'] === null || $this->ownSection((int) $current['section_id']) === null) {
+            return $this->fail('That student is not in one of your sections.');
+        }
+
+        db_connect()->table('users')->where('id', (int) $payload['user_id'])->update(['section_id' => null]);
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * The section row, only if it belongs to the logged-in chairperson's
+     * own department (via its program).
+     */
+    private function ownSection(int $sectionId): ?array
+    {
+        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+
+        if ($subDept === null) {
+            return null;
+        }
+
+        $section = (new SectionModel())->find($sectionId);
+
+        if ($section === null) {
+            return null;
+        }
+
+        $programs = (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
+
+        return in_array($section['program'], $programs, true) ? $section : null;
+    }
+
+    /**
      * Filter options, with programs narrowed to the chairperson's own
      * department when they belong to one.
      */

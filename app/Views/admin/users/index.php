@@ -85,6 +85,7 @@
                             'email'         => $u['email'],
                             'group'         => $u['group'],
                             'department_id' => $u['department_id'],
+                            'section_id'    => $u['section_id'],
                         ]) ?>)'>
                     <span class="material-symbols-outlined">edit</span>
                 </button>
@@ -150,13 +151,39 @@
                     </div>
                     <div class="ac-field" id="acDeptField">
                         <label>College</label>
-                        <select name="department_id" class="ac-input">
+                        <select name="department_id" id="acCollegeSelect" class="ac-input" onchange="acCascadeSections('')">
                             <?php foreach ($departments as $d): ?>
                                 <option value="<?= esc($d['dept_id']) ?>"><?= esc($d['code']) ?> — <?= esc($d['name']) ?></option>
                             <?php endforeach ?>
                         </select>
                     </div>
                 </div>
+
+                <div id="acSectionRow" style="display:none; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                    <div class="ac-field" id="acSubDeptField">
+                        <label>Department</label>
+                        <select id="acSubDeptSelect" class="ac-input" onchange="acCascadeSections('')">
+                            <option value="">— Select a department —</option>
+                        </select>
+                    </div>
+                    <div class="ac-field">
+                        <label>Year Level</label>
+                        <select id="acYearLevelSelect" class="ac-input" onchange="acCascadeSections('')">
+                            <option value="">— Any —</option>
+                            <option value="1st Year">1st Year</option>
+                            <option value="2nd Year">2nd Year</option>
+                            <option value="3rd Year">3rd Year</option>
+                            <option value="4th Year">4th Year</option>
+                        </select>
+                    </div>
+                    <div class="ac-field" id="acSectionField">
+                        <label>Section</label>
+                        <select name="section_id" id="acSectionSelect" class="ac-input">
+                            <option value="">— No section yet —</option>
+                        </select>
+                    </div>
+                </div>
+                <p id="acSectionHint" style="display:none; font-size:11.5px; color:#515f74; margin-top:-4px; margin-bottom:16px;">A section only appears here once its chairperson has plotted at least one class for it. Needed for block enrollment.</p>
 
                 <div class="ac-notice" id="acChairNotice" style="display:none;">
                     <span class="material-symbols-outlined" style="font-size:16px; color:#1d4ed8; margin-top:1px;">info</span>
@@ -209,13 +236,39 @@
                     </div>
                     <div class="ac-field" id="acEditDeptField">
                         <label>College</label>
-                        <select name="department_id" id="acEditDeptSelect" class="ac-input">
+                        <select name="department_id" id="acEditDeptSelect" class="ac-input" onchange="acCascadeSections('Edit')">
                             <?php foreach ($departments as $d): ?>
                                 <option value="<?= esc($d['dept_id']) ?>"><?= esc($d['code']) ?> — <?= esc($d['name']) ?></option>
                             <?php endforeach ?>
                         </select>
                     </div>
                 </div>
+
+                <div id="acEditSectionRow" style="display:none; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                    <div class="ac-field">
+                        <label>Department</label>
+                        <select id="acEditSubDeptSelect" class="ac-input" onchange="acCascadeSections('Edit')">
+                            <option value="">— Select a department —</option>
+                        </select>
+                    </div>
+                    <div class="ac-field">
+                        <label>Year Level</label>
+                        <select id="acEditYearLevelSelect" class="ac-input" onchange="acCascadeSections('Edit')">
+                            <option value="">— Any —</option>
+                            <option value="1st Year">1st Year</option>
+                            <option value="2nd Year">2nd Year</option>
+                            <option value="3rd Year">3rd Year</option>
+                            <option value="4th Year">4th Year</option>
+                        </select>
+                    </div>
+                    <div class="ac-field">
+                        <label>Section</label>
+                        <select name="section_id" id="acEditSectionSelect" class="ac-input">
+                            <option value="">— No section yet —</option>
+                        </select>
+                    </div>
+                </div>
+                <p id="acEditSectionHint" style="display:none; font-size:11.5px; color:#515f74; margin-top:-4px; margin-bottom:16px;">A section only appears here once its chairperson has plotted at least one class for it.</p>
 
                 <div class="ac-notice" id="acEditChairNotice" style="display:none;">
                     <span class="material-symbols-outlined" style="font-size:16px; color:#1d4ed8; margin-top:1px;">info</span>
@@ -306,10 +359,75 @@
 <script>
     var AC_USERS_BASE = '<?= site_url('admin/users') ?>';
 
+    // College -> Department -> Section cascade data. A section carries a
+    // program display-name string, not an FK, so this list is pre-resolved
+    // server-side (UserController::index) to each section's sub_dept_id /
+    // college_id via a join through `programs`.
+    var AC_SUBDEPTS = <?= json_encode(array_map(static fn (array $sd) => [
+        'id'        => (int) $sd['sub_dept_id'],
+        'label'     => $sd['code'] . ' — ' . $sd['name'],
+        'college_id' => (int) $sd['college_id'],
+    ], $subDepartments)) ?>;
+
+    var AC_SECTIONS = <?= json_encode(array_map(static fn (array $s) => [
+        'id'          => (int) $s['section_id'],
+        'label'       => $s['program'] . ' · ' . $s['year_level'] . ' · Section ' . $s['section'] . ' (' . $s['academic_year'] . ')',
+        'sub_dept_id' => $s['sub_dept_id'] !== null ? (int) $s['sub_dept_id'] : null,
+        'year_level'  => $s['year_level'],
+    ], $sections)) ?>;
+
+    /**
+     * Rebuilds the Department select from the chosen College, and the
+     * Section select from the chosen Department, for either the create
+     * form (suffix '') or the edit form (suffix 'Edit').
+     */
+    function acCascadeSections(suffix, preselect) {
+        var collegeEl    = document.getElementById(suffix === 'Edit' ? 'acEditDeptSelect' : 'acCollegeSelect');
+        var subDeptEl    = document.getElementById('ac' + suffix + 'SubDeptSelect');
+        var yearLevelEl  = document.getElementById('ac' + suffix + 'YearLevelSelect');
+        var sectionEl    = document.getElementById('ac' + suffix + 'SectionSelect');
+        var collegeId    = collegeEl.value ? parseInt(collegeEl.value, 10) : null;
+
+        var keepSubDept = preselect ? preselect.subDeptId : (subDeptEl.value ? parseInt(subDeptEl.value, 10) : null);
+
+        subDeptEl.innerHTML = '<option value="">— Select a department —</option>';
+        AC_SUBDEPTS.filter(function (sd) { return collegeId === null || sd.college_id === collegeId; })
+            .forEach(function (sd) {
+                var opt = document.createElement('option');
+                opt.value = sd.id;
+                opt.textContent = sd.label;
+                subDeptEl.appendChild(opt);
+            });
+        subDeptEl.value = keepSubDept || '';
+
+        var subDeptId = subDeptEl.value ? parseInt(subDeptEl.value, 10) : null;
+
+        yearLevelEl.value = preselect ? (preselect.yearLevel || '') : yearLevelEl.value;
+        var yearLevel = yearLevelEl.value || null;
+
+        var keepSection = preselect ? preselect.sectionId : null;
+
+        sectionEl.innerHTML = '<option value="">— No section yet —</option>';
+        AC_SECTIONS.filter(function (s) {
+                return subDeptId !== null && s.sub_dept_id === subDeptId
+                    && (yearLevel === null || s.year_level === yearLevel);
+            })
+            .forEach(function (s) {
+                var opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.label;
+                sectionEl.appendChild(opt);
+            });
+        sectionEl.value = keepSection || '';
+    }
+
     function acToggleDeptField() {
         var role = document.getElementById('acRoleSelect').value;
         document.getElementById('acDeptField').style.display = role === 'admin' ? 'none' : 'block';
         document.getElementById('acChairNotice').style.display = role === 'dean' ? 'flex' : 'none';
+        document.getElementById('acSectionRow').style.display = role === 'student' ? 'grid' : 'none';
+        document.getElementById('acSectionHint').style.display = role === 'student' ? 'block' : 'none';
+        if (role === 'student') acCascadeSections('');
     }
 
     function acGeneratePassword() {
@@ -332,15 +450,25 @@
         if (!isChair) {
             document.getElementById('acEditRoleSelect').value = user.group;
             document.getElementById('acEditDeptSelect').value = user.department_id || '';
-            acToggleEditDeptField();
+
+            var currentSection = AC_SECTIONS.find(function (s) { return s.id === user.section_id; });
+
+            acToggleEditDeptField({
+                subDeptId: currentSection ? currentSection.sub_dept_id : null,
+                yearLevel: currentSection ? currentSection.year_level : null,
+                sectionId: user.section_id || null,
+            });
         }
 
         acOpenModal('modalEditAccount');
     }
 
-    function acToggleEditDeptField() {
+    function acToggleEditDeptField(preselect) {
         var role = document.getElementById('acEditRoleSelect').value;
         document.getElementById('acEditDeptField').style.display = role === 'admin' ? 'none' : 'block';
+        document.getElementById('acEditSectionRow').style.display = role === 'student' ? 'grid' : 'none';
+        document.getElementById('acEditSectionHint').style.display = role === 'student' ? 'block' : 'none';
+        if (role === 'student') acCascadeSections('Edit', preselect);
     }
 
     function acOpenResetPassword(id, username) {

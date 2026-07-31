@@ -20,6 +20,30 @@ class SectionModel extends Model
 
     protected $useTimestamps = true;
 
+    /**
+     * Every section whose program belongs to this sub-department, newest
+     * academic year first.
+     *
+     * Resolved via DepartmentModel::programDept() rather than a SQL join on
+     * programs.program_name — some programs are stored under a legacy
+     * display alias (see DepartmentModel::LEGACY_PROGRAM_NAMES) that does
+     * NOT equal programs.program_name, so a raw name join silently drops
+     * those sections.
+     */
+    public function forSubDepartment(string $subDeptCode): array
+    {
+        $all = $this->orderBy('academic_year', 'DESC')
+            ->orderBy('program')
+            ->orderBy('year_level')
+            ->orderBy('section')
+            ->findAll();
+
+        return array_values(array_filter(
+            $all,
+            static fn (array $s) => DepartmentModel::programDept($s['program']) === $subDeptCode
+        ));
+    }
+
     public function forContext(string $academicYear, string $program, string $yearLevel, string $section): ?array
     {
         return $this->where([

@@ -5,6 +5,7 @@ namespace App\Controllers\Admin;
 use App\Controllers\BaseController;
 use App\Models\DepartmentModel;
 use App\Models\SectionModel;
+use App\Models\SubDepartmentModel;
 use CodeIgniter\Shield\Entities\User;
 
 class UserController extends BaseController
@@ -26,7 +27,7 @@ class UserController extends BaseController
         $roleFilter = $this->request->getGet('role') ?: 'all';
 
         $builder = db_connect()->table('users u')
-            ->select('u.id, u.username, i.secret as email, u.active, u.department_id, g.group, d.code as dept_code, d.name as dept_name')
+            ->select('u.id, u.username, i.secret as email, u.active, u.department_id, u.section_id, g.group, d.code as dept_code, d.name as dept_name')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->join('departments d', 'd.dept_id = u.department_id', 'left')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
@@ -41,13 +42,34 @@ class UserController extends BaseController
 
         $users = $builder->get()->getResultArray();
 
+        $subDepartments = (new SubDepartmentModel())->where('is_active', 1)->orderBy('name')->findAll();
+        $codeToSubDeptId = array_column($subDepartments, 'sub_dept_id', 'code');
+
+        // Sections carry a program DISPLAY NAME (string), not a sub-department
+        // FK, and some programs are stored under a legacy display alias that
+        // doesn't equal programs.program_name (see
+        // DepartmentModel::LEGACY_PROGRAM_NAMES) — resolve via
+        // DepartmentModel::programDept() rather than a raw SQL join, which
+        // would silently drop those sections.
+        $sections = array_map(
+            static function (array $s) use ($codeToSubDeptId) {
+                $code            = DepartmentModel::programDept($s['program']);
+                $s['sub_dept_id'] = $codeToSubDeptId[$code] ?? null;
+
+                return $s;
+            },
+            (new SectionModel())->orderBy('academic_year', 'DESC')->orderBy('program')->orderBy('section')->findAll()
+        );
+
         return view('admin/users/index', [
-            'pageTitle'   => 'User Accounts',
-            'activeAdmin' => 'users',
-            'users'       => $users,
-            'roleFilter'  => $roleFilter,
-            'roles'       => self::ROLES,
-            'departments' => $this->departmentModel->findAll(),
+            'pageTitle'      => 'User Accounts',
+            'activeAdmin'    => 'users',
+            'users'          => $users,
+            'roleFilter'     => $roleFilter,
+            'roles'          => self::ROLES,
+            'departments'    => $this->departmentModel->findAll(),
+            'subDepartments' => $subDepartments,
+            'sections'       => $sections,
         ]);
     }
 

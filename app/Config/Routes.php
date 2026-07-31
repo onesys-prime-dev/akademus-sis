@@ -130,6 +130,11 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('subjects/update', 'ChairpersonController::updateSubject');
     $routes->post('subjects/delete', 'ChairpersonController::deleteSubject');
     $routes->post('sections/capacity', 'ChairpersonController::setSectionCapacity');
+    $routes->get('sections', 'ChairpersonController::sections');
+    $routes->post('sections/create', 'ChairpersonController::createSection');
+    $routes->post('sections/delete', 'ChairpersonController::deleteSection');
+    $routes->post('sections/assign-student', 'ChairpersonController::assignStudent');
+    $routes->post('sections/unassign-student', 'ChairpersonController::unassignStudent');
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);
