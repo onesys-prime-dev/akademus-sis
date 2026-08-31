@@ -204,6 +204,43 @@ class DepartmentController extends BaseController
             ->with('message', $message);
     }
 
+    /**
+     * Removing a college only makes sense once nothing depends on it —
+     * otherwise its departments, programs, faculty, and schedules would be
+     * left pointing at a college_id that no longer exists. Blocked instead
+     * of cascading, same as the rest of the app's delete guards (subjects
+     * with plotted classes, etc.).
+     */
+    public function delete($id)
+    {
+        $college = $this->departmentModel->find($id);
+
+        if (! $college) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $deptCount = db_connect()->table('sub_departments')->where('college_id', $id)->countAllResults();
+
+        if ($deptCount > 0) {
+            return redirect()
+                ->to('/admin/departments')
+                ->with('errors', ["Cannot delete {$college['name']} — it still has {$deptCount} department" . ($deptCount === 1 ? '' : 's') . '. Remove those first.']);
+        }
+
+        // Detach (not delete) the dean account — the college is gone, but
+        // the person's account and other roles, if any, are untouched.
+        $dean = $this->deanOf((int) $id);
+        if ($dean !== null) {
+            db_connect()->table('users')->where('id', $dean['id'])->update(['department_id' => null]);
+        }
+
+        $this->departmentModel->delete($id);
+
+        return redirect()
+            ->to('/admin/departments')
+            ->with('message', "{$college['name']} deleted.");
+    }
+
     public function storeSubDepartment($id)
     {
         $college = $this->departmentModel->find($id);

@@ -10,6 +10,7 @@ use App\Models\DepartmentModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\FacultyAvailabilityModel;
 use App\Models\FacultyChangeRequestModel;
+use App\Models\FacultyOverrideModel;
 use App\Models\FacultySubjectPreferenceModel;
 use App\Models\NotificationModel;
 use App\Models\PlottedScheduleModel;
@@ -674,7 +675,7 @@ class ChairpersonController extends BaseController
     private function assignmentsFor(string $academicYear): array
     {
         $rows = db_connect()->table('faculty_assignments fa')
-            ->select('fa.program, fa.year_level, fa.section, fa.subject_code, u.username')
+            ->select('fa.program, fa.year_level, fa.section, fa.subject_code, fa.user_id, u.username')
             ->join('users u', 'u.id = fa.user_id')
             ->where('fa.academic_year', $academicYear)
             ->get()
@@ -686,7 +687,11 @@ class ChairpersonController extends BaseController
         foreach ($rows as $row) {
             $key = implode('|', [$row['program'], $row['year_level'], $row['section'], $row['subject_code']]);
 
-            $map[$key] = $row['username'];
+            // Carries both the display name and the id: the plotting rail
+            // needs `faculty_id` so a later meeting of the same subject can
+            // carry the assignment over automatically instead of asking
+            // again (see attachProfs()).
+            $map[$key] = ['username' => $row['username'], 'user_id' => (int) $row['user_id']];
             $list[]    = [
                 'key'        => $key,
                 'code'       => $row['subject_code'],
@@ -709,7 +714,8 @@ class ChairpersonController extends BaseController
             $key = implode('|', [$block['program'], $block['year_level'], $block['section'], $block['code']]);
 
             if (isset($profMap[$key])) {
-                $block['prof'] = $profMap[$key];
+                $block['prof']       = $profMap[$key]['username'];
+                $block['faculty_id'] = $profMap[$key]['user_id'];
             }
 
             return $block;
@@ -750,8 +756,27 @@ class ChairpersonController extends BaseController
 
         $userIds = array_map(static fn (array $f): int => (int) $f['id'], $faculty);
 
+        // Availability/preferences shown here are for whichever term the
+        // caller is actually working with — the plotting modal passes the
+        // term it's plotting (`for_academic_year`), so the chairperson isn't
+        // shown someone's Summer availability while assigning a 1st
+        // Semester class. Falls back to "the upcoming term" (the one
+        // faculty are currently allowed to submit for) when the caller
+        // doesn't specify one — e.g. the general Faculty drawer, which is
+        // about the upcoming submission window, not a specific plot.
+        $forAcademicYear = $this->request->getGet('for_academic_year');
+
         $upcomingTerm = (new AcademicYearModel())->upcomingTerm();
         $activeYear   = (new AcademicYearModel())->activeFormatted();
+
+        if ($forAcademicYear !== null) {
+            foreach ((new AcademicYearModel())->findAll() as $row) {
+                if (AcademicYearModel::format($row['label'], $row['semester']) === $forAcademicYear) {
+                    $upcomingTerm = $row;
+                    break;
+                }
+            }
+        }
 
         $availabilityByUser  = [];
         $preferencesByUser   = [];
@@ -1578,6 +1603,49 @@ class ChairpersonController extends BaseController
         }
 
         return $this->response->setJSON(['ok' => true, 'saved' => count($rows)]);
+    }
+
+    /**
+     * Audit record for "Proceed Anyway" — the chairperson knowingly assigned
+     * a faculty member outside their marked availability (or onto a time
+     * that conflicts with another of their classes). Recorded independently
+     * of sync() so the override reason is preserved even if the plot is
+     * later changed. Never blocks the actual plot; this is bookkeeping only.
+     */
+    public function recordFacultyOverride()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload)) {
+            return $this->fail('Invalid payload.');
+        }
+
+        foreach (['faculty_id', 'academic_year', 'program', 'year_level', 'section', 'subject_code', 'day', 'start', 'end', 'conflict_type'] as $key) {
+            if (! isset($payload[$key])) {
+                return $this->fail("Missing field: {$key}");
+            }
+        }
+
+        if (! in_array($payload['conflict_type'], ['unavailable', 'schedule_conflict'], true)) {
+            return $this->fail('Invalid conflict_type.');
+        }
+
+        (new FacultyOverrideModel())->insert([
+            'chairperson_id' => (int) auth()->id(),
+            'faculty_id'     => (int) $payload['faculty_id'],
+            'academic_year'  => (string) $payload['academic_year'],
+            'program'        => (string) $payload['program'],
+            'year_level'     => (string) $payload['year_level'],
+            'section'        => (string) $payload['section'],
+            'subject_code'   => (string) $payload['subject_code'],
+            'day'            => (int) $payload['day'],
+            'start_time'     => (string) $payload['start'],
+            'end_time'       => (string) $payload['end'],
+            'conflict_type'  => (string) $payload['conflict_type'],
+            'reason'         => isset($payload['reason']) && $payload['reason'] !== '' ? mb_substr((string) $payload['reason'], 0, 255) : null,
+        ]);
+
+        return $this->response->setJSON(['ok' => true]);
     }
 
     /**

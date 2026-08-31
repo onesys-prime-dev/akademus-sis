@@ -10,10 +10,12 @@ use App\Models\FacultySubjectPreferenceModel;
 use App\Models\SubjectModel;
 
 /**
- * Pre-semester availability + subject preference submission for faculty.
- * Scoped to the "upcoming" term (AcademicYearModel::upcomingTerm()), not the
- * currently active/being-taught term — this is what a faculty member fills
- * in BEFORE the chairperson starts plotting the next semester.
+ * Availability + subject preference submission for faculty. A faculty
+ * member can submit separately for ANY academic year/semester on record
+ * (1st, 2nd, Summer, ...) — not just a single fixed "upcoming" term —
+ * since a chairperson may be plotting any of those terms ahead of time and
+ * needs to see the right term's availability, not whichever one happens to
+ * be "next".
  */
 class AvailabilityController extends BaseController
 {
@@ -22,10 +24,26 @@ class AvailabilityController extends BaseController
 
     private const PREFERENCE_LEVELS = ['preferred', 'willing', 'qualified'];
 
+    /** The term to work with: the requested ay_id if it's real, else the "upcoming" one as a sensible default. */
+    private function resolveTerm(?string $requestedAyId): ?array
+    {
+        $ayModel = new AcademicYearModel();
+
+        if ($requestedAyId !== null && ctype_digit($requestedAyId)) {
+            $row = $ayModel->find((int) $requestedAyId);
+            if ($row !== null) {
+                return $row;
+            }
+        }
+
+        return $ayModel->upcomingTerm();
+    }
+
     public function edit()
     {
         $userId = (int) auth()->id();
-        $term   = (new AcademicYearModel())->upcomingTerm();
+        $allTerms = (new AcademicYearModel())->orderBy('label', 'desc')->orderBy('semester', 'asc')->findAll();
+        $term   = $this->resolveTerm($this->request->getGet('ay_id'));
 
         $availabilityByDay = [];
         $subjects          = [];
@@ -52,9 +70,16 @@ class AvailabilityController extends BaseController
             }
         }
 
+        $dept = (new DepartmentModel())->codeOfUser($userId);
+
         return view('faculty/availability/edit', [
+            'user' => [
+                'name' => auth()->user()->username ?? 'Faculty',
+                'role' => ($dept !== null ? $dept . ' Department · ' : '') . 'Faculty',
+            ],
             'term'              => $term,
             'termLabel'         => $term ? AcademicYearModel::format($term['label'], $term['semester']) : null,
+            'allTerms'          => $allTerms,
             'dayLabels'         => self::DAY_LABELS,
             'availabilityByDay' => $availabilityByDay,
             'subjects'          => $subjects,
@@ -66,11 +91,13 @@ class AvailabilityController extends BaseController
     public function update()
     {
         $userId = (int) auth()->id();
-        $term   = (new AcademicYearModel())->upcomingTerm();
+        $term   = $this->resolveTerm($this->request->getPost('ay_id'));
 
         if ($term === null) {
-            return redirect()->to('/faculty/availability')->with('errors', ['No upcoming term is configured yet — ask an admin to add one.']);
+            return redirect()->to('/faculty/availability')->with('errors', ['No academic term is configured yet — ask an admin to add one.']);
         }
+
+        $backUrl = '/faculty/availability?ay_id=' . (int) $term['ay_id'];
 
         $rows = [];
 
@@ -109,18 +136,20 @@ class AvailabilityController extends BaseController
         (new FacultyAvailabilityModel())->replaceForTerm($userId, (int) $term['ay_id'], $rows);
 
         return redirect()
-            ->to('/faculty/availability')
+            ->to($backUrl)
             ->with('message', 'Your availability has been saved.');
     }
 
     public function updatePreferences()
     {
         $userId = (int) auth()->id();
-        $term   = (new AcademicYearModel())->upcomingTerm();
+        $term   = $this->resolveTerm($this->request->getPost('ay_id'));
 
         if ($term === null) {
-            return redirect()->to('/faculty/availability')->with('errors', ['No upcoming term is configured yet — ask an admin to add one.']);
+            return redirect()->to('/faculty/availability')->with('errors', ['No academic term is configured yet — ask an admin to add one.']);
         }
+
+        $backUrl = '/faculty/availability?ay_id=' . (int) $term['ay_id'];
 
         $subDept   = (new DepartmentModel())->subDeptOfUser($userId);
         $subDeptId = $subDept['sub_dept_id'] ?? null;
@@ -149,7 +178,7 @@ class AvailabilityController extends BaseController
         (new FacultySubjectPreferenceModel())->replaceForTerm($userId, (int) $term['ay_id'], $rows);
 
         return redirect()
-            ->to('/faculty/availability')
+            ->to($backUrl)
             ->with('message', 'Your subject preferences have been saved.');
     }
 }

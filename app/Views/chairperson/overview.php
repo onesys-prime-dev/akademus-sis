@@ -341,10 +341,6 @@
                 <span class="material-symbols-outlined">calendar_month</span>
                 <span class="drawer-label">Schedule Plotting</span>
             </a>
-            <a class="drawer-link" href="<?= site_url('chairperson/sections') ?>" title="Sections">
-                <span class="material-symbols-outlined">groups</span>
-                <span class="drawer-label">Sections</span>
-            </a>
             <a class="drawer-link" href="<?= site_url('chairperson/curriculum') ?>" title="Curriculum">
                 <span class="material-symbols-outlined">menu_book</span>
                 <span class="drawer-label">Curriculum</span>

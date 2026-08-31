@@ -367,6 +367,14 @@ html, .ac-page { height: 100%; }
 
 .ac-btn-primary:hover { background: #1e40af; }
 
+.ac-btn-danger {
+    background: #dc2626;
+    color: #fff;
+}
+
+.ac-btn-danger:hover { background: #b91c1c; }
+.ac-btn-danger:disabled { background: #dc2626; }
+
 .ac-btn-secondary {
     background: #fff;
     color: #475569;

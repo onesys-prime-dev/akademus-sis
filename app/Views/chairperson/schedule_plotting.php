@@ -926,6 +926,10 @@
         .faculty-card .fc-tag.qualified { background: #e0e7ff; color: #3730a3; }
         .faculty-card .fc-tag.conflict { background: #fee2e2; color: #991b1b; }
         .faculty-card .fc-tag.unavailable { background: #fee2e2; color: #991b1b; }
+        .faculty-card .fc-tag.mismatch { background: #fef9c3; color: #854d0e; }
+        .fc-avail-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .fc-avail-table th, .fc-avail-table td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--outline-variant); }
+        .fc-avail-table th { color: var(--on-surface-variant); font-weight: 600; }
 
         /* Soft warnings shown inside the modal (non-blocking) */
         .modal-warning {
@@ -1231,10 +1235,6 @@
                 <span class="material-symbols-outlined">calendar_month</span>
                 <span class="drawer-label">Schedule Plotting</span>
             </a>
-            <a class="drawer-link" href="<?= site_url('chairperson/sections') ?>" title="Sections">
-                <span class="material-symbols-outlined">groups</span>
-                <span class="drawer-label">Sections</span>
-            </a>
             <a class="drawer-link" href="<?= site_url('chairperson/curriculum') ?>" title="Curriculum">
                 <span class="material-symbols-outlined">menu_book</span>
                 <span class="drawer-label">Curriculum</span>
@@ -1485,7 +1485,7 @@
                 <div id="facultyModalList"></div>
             </div>
 
-            <div class="note">Faculty already teaching at this time are disabled. You can also plot the subject without assigning faculty yet.</div>
+            <div class="note">🟢 Preferred · 🟡 Available but not preferred · 🔴 Unavailable (overridable, with confirmation) or already teaching another class at this time (not overridable). You can also plot the subject without assigning faculty yet.</div>
             <div class="actions">
                 <button type="button" class="btn btn-ghost" id="facultyModalSkip">Skip — Assign Later</button>
                 <button type="button" class="btn btn-ghost" id="facultyModalCancel">Cancel</button>
@@ -1749,6 +1749,7 @@
             syncUrl: <?= json_encode(site_url('chairperson/schedule/sync')) ?>,
             stateUrl: <?= json_encode(site_url('chairperson/schedule/state')) ?>,
             facultyPanelUrl: <?= json_encode(site_url('chairperson/faculty-panel')) ?>,
+            facultyOverrideUrl: <?= json_encode(site_url('chairperson/schedule/faculty-override')) ?>,
         };
         CONFIG.totalRows = (CONFIG.gridEndMin - CONFIG.gridStartMin) / 30;
 
@@ -1928,7 +1929,17 @@
             if (b.prof) {
                 prof = document.createElement('div');
                 prof.className = 'meta prof';
+                prof.style.cursor = 'pointer';
+                prof.style.textDecoration = 'underline dotted';
+                prof.title = 'Click to assign a different faculty member to this meeting';
                 prof.textContent = '👤 ' + b.prof;
+                prof.addEventListener('click', ev => {
+                    ev.stopPropagation();
+                    // Reopens the picker for just this one meeting — the
+                    // subject's other meetings keep whoever they already
+                    // have, only this block's assignment changes.
+                    reassignBlockFaculty(index);
+                });
             }
 
             const remove = document.createElement('button');
@@ -2779,6 +2790,20 @@
             }
 
             closeRoomModal();
+
+            // A subject is taught by one faculty member across all its
+            // meetings (enforced server-side in sync() too) — so once one
+            // meeting has an assigned faculty, every later meeting of the
+            // same subject in this section carries that assignment over
+            // automatically instead of asking again.
+            const existing = blocks.find(b => b.code === subject.code && b.faculty_id);
+
+            if (existing) {
+                pendingPlot = { subject, day, startRow, endRow, roomName: room.name };
+                finalizePlot(existing.faculty_id, existing.prof);
+                return;
+            }
+
             openFacultyModal(subject, day, startRow, endRow, room.name);
         }
 
@@ -2885,7 +2910,25 @@
 
         function finalizePlot(facultyId, facultyName) {
             if (!pendingPlot) return;
-            const { subject, day, startRow, endRow, roomName } = pendingPlot;
+            const { subject, day, startRow, endRow, roomName, reassignIndex } = pendingPlot;
+
+            if (reassignIndex != null && blocks[reassignIndex]) {
+                // Reassigning one existing meeting in place — its day/time/
+                // room don't change, only who's teaching it.
+                blocks[reassignIndex].prof = facultyName || undefined;
+                blocks[reassignIndex].faculty_id = facultyId || null;
+
+                closeFacultyModal();
+                renderBlocks();
+                scheduleSave();
+                showToast(
+                    facultyName
+                        ? `${subject.code} (${WEEK[day].day}, ${blocks[reassignIndex].time_label}) reassigned to ${facultyName}.`
+                        : `${subject.code} (${WEEK[day].day}, ${blocks[reassignIndex].time_label}) unassigned.`,
+                    'success'
+                );
+                return;
+            }
 
             blocks.push({
                 day: day,
@@ -2911,11 +2954,115 @@
             );
         }
 
-        async function openFacultyModal(subject, day, startRow, endRow, roomName) {
-            pendingPlot = { subject, day, startRow, endRow, roomName };
+        // Reopens the faculty picker for ONE already-plotted meeting, to
+        // override its carried-over assignment without touching the
+        // subject's other meetings. Clicking a candidate updates this block
+        // in place (see the reassignIndex branch in finalizePlot above).
+        function reassignBlockFaculty(index) {
+            const b = blocks[index];
+            if (!b) return;
+
+            openFacultyModal(
+                { code: b.code, title: b.title, color: b.theme, units: null },
+                b.day,
+                blockStartRow(b),
+                blockEndRow(b),
+                b.room,
+                index
+            );
+        }
+
+        // Faculty status for one proposed (day, start, end) slot, relative
+        // to their marked availability/preferences and existing meetings:
+        //   'conflict'    — 🔴 already teaching something else at this time (hard block, cannot override)
+        //   'unavailable' — 🔴 marked not available (or no availability on record for that day) — overridable, but warns first
+        //   'mismatch'    — 🟡 available, but not their preferred subject/level
+        //   'preferred'   — 🟢 available and this subject is one of their preferences
+        function classifyFacultySlot(f, subject, day, start, end, isReassign) {
+            const conflictMeeting = (f.meetings || []).find(m => {
+                if (m.day !== day || !timeOverlap(start, end, m.start, m.end)) return false;
+                // When reassigning an already-saved meeting, its own saved
+                // record (for whoever currently teaches it) exactly matches
+                // this slot — that's not a real conflict, it's the meeting
+                // being edited.
+                if (isReassign && m.start === start && m.end === end) return false;
+                return true;
+            });
+            if (conflictMeeting) {
+                return { status: 'conflict', meeting: conflictMeeting };
+            }
+
+            const dayAvail = (f.availability || []).find(a => a.day_of_week === day);
+            const availStart = dayAvail && dayAvail.start_time ? dayAvail.start_time.slice(0, 5) : null;
+            const availEnd = dayAvail && dayAvail.end_time ? dayAvail.end_time.slice(0, 5) : null;
+            const withinWindow = dayAvail && dayAvail.is_available
+                && (!availStart || availStart <= start)
+                && (!availEnd || availEnd >= end);
+
+            if (!dayAvail || !dayAvail.is_available || !withinWindow) {
+                return { status: 'unavailable', dayAvail };
+            }
+
+            const pref = (f.preferences || []).find(p => p.code === subject.code);
+
+            return pref && pref.level === 'preferred'
+                ? { status: 'preferred', pref }
+                : { status: 'mismatch', pref };
+        }
+
+        const SLOT_STATUS_META = {
+            conflict:    { icon: '🔴', label: 'Schedule conflict' },
+            unavailable: { icon: '🔴', label: 'Availability conflict' },
+            mismatch:    { icon: '🟡', label: 'Outside preferred schedule' },
+            preferred:   { icon: '🟢', label: 'Preferred' },
+        };
+
+        function facultyAvailabilityTable(f) {
+            const rows = WEEK.map((w, dayIdx) => {
+                const a = (f.availability || []).find(x => x.day_of_week === dayIdx);
+                const window = a && a.is_available
+                    ? `${rowTo12h(Math.round(toMinutes(a.start_time || '00:00') / 30))} – ${rowTo12h(Math.round(toMinutes(a.end_time || '00:00') / 30))}`
+                    : null;
+                return `<tr>
+                    <td>${w.day}</td>
+                    <td>${a ? (a.is_available ? (window || 'Available') : 'Unavailable') : '<span class="sub">Not submitted</span>'}</td>
+                </tr>`;
+            }).join('');
+
+            return `<table class="fc-avail-table"><thead><tr><th>Day</th><th>Availability</th></tr></thead><tbody>${rows}</tbody></table>`;
+        }
+
+        async function recordFacultyOverride(facultyId, conflictType, reason) {
+            const { subject, day, startRow, endRow } = pendingPlot;
+            try {
+                await fetch(CONFIG.facultyOverrideUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({
+                        faculty_id: facultyId,
+                        academic_year: CONTEXT.academic_year,
+                        program: CONTEXT.program,
+                        year_level: CONTEXT.year_level,
+                        section: CONTEXT.section,
+                        subject_code: subject.code,
+                        day: day,
+                        start: rowToHHMM(startRow),
+                        end: rowToHHMM(endRow),
+                        conflict_type: conflictType,
+                        reason: reason || '',
+                    }),
+                });
+            } catch (e) {
+                // Best-effort audit trail — never blocks the actual plot.
+            }
+        }
+
+        async function openFacultyModal(subject, day, startRow, endRow, roomName, reassignIndex) {
+            pendingPlot = { subject, day, startRow, endRow, roomName, reassignIndex: reassignIndex ?? null };
 
             document.getElementById('facultyModalSub').textContent =
                 `${subject.code} - ${subject.title} · ${WEEK[day].day}, ${rowTo12h(startRow)} - ${rowTo12h(endRow)} · ${roomName}`;
+            document.getElementById('facultyModalWarnings').innerHTML = '';
 
             const list = document.getElementById('facultyModalList');
             list.innerHTML = '<p class="sub">Loading faculty…</p>';
@@ -2923,7 +3070,8 @@
 
             let data;
             try {
-                const response = await fetch(CONFIG.facultyPanelUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' });
+                const url = CONFIG.facultyPanelUrl + '?for_academic_year=' + encodeURIComponent(CONTEXT.academic_year);
+                const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' });
                 data = await response.json();
             } catch (e) {
                 list.innerHTML = '<p class="sub">Could not load faculty. You can still skip and assign later.</p>';
@@ -2932,22 +3080,15 @@
 
             const start = rowToHHMM(startRow);
             const end = rowToHHMM(endRow);
-            const prefRank = { preferred: 0, willing: 1, qualified: 2 };
+            const statusRank = { preferred: 0, mismatch: 1, unavailable: 2, conflict: 3 };
 
             const candidates = (data.faculty || []).map(f => {
-                const pref = (f.preferences || []).find(p => p.code === subject.code);
-                const conflict = (f.meetings || []).some(m => m.day === day && timeOverlap(start, end, m.start, m.end));
-                const dayAvail = (f.availability || []).find(a => a.day_of_week === day);
-                const unavailable = dayAvail && !dayAvail.is_available;
+                const slot = classifyFacultySlot(f, subject, day, start, end, pendingPlot.reassignIndex != null);
                 const overCap = data.max_units && (f.units + (parseFloat(subject.units) || 0) > data.max_units);
-
-                return { f, pref, conflict, dayAvail, unavailable, overCap };
+                return { f, slot, overCap };
             }).sort((a, b) => {
-                const aRank = a.pref ? prefRank[a.pref.level] : 3;
-                const bRank = b.pref ? prefRank[b.pref.level] : 3;
-                if (aRank !== bRank) return aRank - bRank;
-                if (a.conflict !== b.conflict) return a.conflict ? 1 : -1;
-                return a.f.name.localeCompare(b.f.name);
+                const r = statusRank[a.slot.status] - statusRank[b.slot.status];
+                return r !== 0 ? r : a.f.name.localeCompare(b.f.name);
             });
 
             if (!candidates.length) {
@@ -2957,16 +3098,14 @@
 
             list.innerHTML = '';
 
-            candidates.forEach(({ f, pref, conflict, unavailable, overCap }) => {
-                const card = document.createElement('button');
-                card.type = 'button';
+            candidates.forEach(({ f, slot, overCap }) => {
+                const meta = SLOT_STATUS_META[slot.status];
+                const card = document.createElement('div');
                 card.className = 'faculty-card';
-                card.disabled = conflict; // hard error: cannot be in two places at once
+                card.style.cursor = slot.status === 'conflict' ? 'not-allowed' : 'pointer';
+                card.style.opacity = slot.status === 'conflict' ? '0.55' : '1';
 
-                let tags = '';
-                if (pref) tags += `<span class="fc-tag ${pref.level}">${pref.level}</span>`;
-                if (conflict) tags += '<span class="fc-tag conflict">conflict</span>';
-                else if (unavailable) tags += '<span class="fc-tag unavailable">marked unavailable</span>';
+                let tags = `<span class="fc-tag ${slot.status}">${meta.icon} ${meta.label}</span>`;
                 if (overCap) tags += '<span class="fc-tag conflict">over unit cap</span>';
 
                 const empLabel = f.employment_status === 'full_time' ? 'Full-Time' : f.employment_status === 'part_time' ? 'Part-Time' : '';
@@ -2977,9 +3116,42 @@
                         <span>${tags}</span>
                     </div>
                     <div class="fc-meta">${f.units} units · ${f.weekly_hours} hrs/week · ${f.subjects.length} subject(s) currently</div>
+                    ${slot.status === 'conflict' ? `<div class="fc-meta" style="color:#991b1b;">Already teaching ${slot.meeting.code || 'another class'} ${WEEK[day].day} ${rowTo12h(Math.round(toMinutes(slot.meeting.start) / 30))}–${rowTo12h(Math.round(toMinutes(slot.meeting.end) / 30))}.</div>` : ''}
+                    <button type="button" class="fc-avail-toggle" style="font-size:11.5px; color:var(--primary); background:none; border:none; padding:4px 0 0; cursor:pointer;">View weekly availability ▾</button>
+                    <div class="fc-avail-panel" style="display:none; margin-top:6px;"></div>
                 `;
 
-                if (!conflict) {
+                const toggleBtn = card.querySelector('.fc-avail-toggle');
+                const panel = card.querySelector('.fc-avail-panel');
+                toggleBtn.addEventListener('click', ev => {
+                    ev.stopPropagation();
+                    const open = panel.style.display !== 'none';
+                    panel.style.display = open ? 'none' : 'block';
+                    toggleBtn.textContent = open ? 'View weekly availability ▾' : 'Hide weekly availability ▴';
+                    if (!open && !panel.dataset.rendered) {
+                        panel.innerHTML = facultyAvailabilityTable(f);
+                        panel.dataset.rendered = '1';
+                    }
+                });
+
+                if (slot.status === 'conflict') {
+                    // Hard block: two classes cannot occupy the same faculty
+                    // at the same time — not overridable.
+                } else if (slot.status === 'unavailable') {
+                    card.addEventListener('click', async () => {
+                        const proceed = await confirmDialog({
+                            title: 'Faculty Availability Conflict',
+                            message: `${f.name} is marked unavailable for ${WEEK[day].day} ${rowTo12h(startRow)}–${rowTo12h(endRow)}. `
+                                + 'Choose "Cancel" to pick a different schedule or faculty member, or "Proceed Anyway" to assign them regardless (this will be recorded).',
+                            confirmLabel: 'Proceed Anyway',
+                            danger: true,
+                        });
+                        if (!proceed) return;
+                        const reason = window.prompt('Optional: reason for overriding this availability conflict', '') || '';
+                        await recordFacultyOverride(f.id, 'unavailable', reason);
+                        finalizePlot(f.id, f.name);
+                    });
+                } else {
                     card.addEventListener('click', () => finalizePlot(f.id, f.name));
                 }
 

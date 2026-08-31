@@ -35,7 +35,7 @@ html,body{height:100%}
 body{
     font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
     background:var(--bg);color:var(--ink);
-    display:flex;overflow:hidden;
+    display:flex;padding:12px;gap:12px;overflow:hidden;
     -webkit-font-smoothing:antialiased;
 }
 button{font-family:inherit;cursor:pointer;border:none;background:none}
@@ -54,56 +54,66 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
     border:1px solid rgba(255,255,255,.4);
 }
 
-/* ===== Sidebar ===== */
-.sidenav{
-    position:fixed;left:0;top:0;height:100vh;width:260px;
-    border-right:1px solid var(--border);
-    display:flex;flex-direction:column;padding:24px 0;z-index:50;
+/* ===== Sidebar: icon rail that expands to show labels on hover, and
+   retracts the instant the pointer leaves (matches the chairperson side's
+   Schedule Plotting drawer). ===== */
+.side-drawer{
+    width:64px;flex:0 0 auto;
+    display:flex;flex-direction:column;align-items:center;
+    padding:20px 0;border-radius:20px;
+    box-shadow:0 4px 24px rgba(0,0,0,.04);
+    transition:width .16s ease;overflow:hidden;z-index:50;
 }
-.brand-row{display:flex;align-items:center;gap:16px;padding:0 24px;margin-bottom:40px}
-.brand-icon{
-    width:40px;height:40px;border-radius:16px;background:var(--brand-soft);
-    display:grid;place-items:center;color:var(--brand);
-}
-.brand-icon .material-symbols-outlined{font-size:24px}
-.brand-name{font-weight:600;font-size:1.05rem;letter-spacing:-.01em}
-.brand-sub{color:var(--muted);font-size:.72rem;font-weight:500;letter-spacing:.02em}
+.side-drawer:hover{width:200px;align-items:stretch}
 
-.nav-list{list-style:none;display:flex;flex-direction:column;gap:8px;padding:0 16px;flex:1}
-.nav-link{
+.side-drawer .brand{
+    width:40px;height:40px;border-radius:10px;background:#fff;
+    box-shadow:0 1px 2px rgba(0,0,0,.08);color:var(--brand);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 24px;flex:0 0 auto;
+}
+.side-drawer:hover .brand{margin-left:12px;margin-right:auto}
+
+.side-drawer nav{display:flex;flex-direction:column;gap:8px;width:100%;align-items:center;flex:1}
+.side-drawer:hover nav{align-items:stretch;padding:0 8px}
+
+.drawer-link{
     display:flex;align-items:center;gap:12px;
-    padding:12px 16px;border-radius:12px;
-    font-size:.86rem;font-weight:500;color:var(--ink);text-decoration:none;
-    transition:background .15s,transform .1s;
+    width:44px;height:44px;border-radius:12px;
+    color:var(--muted);text-decoration:none;flex:0 0 auto;
+    justify-content:center;transition:background .15s,color .15s;
+    white-space:nowrap;overflow:hidden;
 }
-.nav-link:hover{background:rgba(0,0,0,.05)}
-.nav-link:active{transform:scale(.97)}
-.nav-link.active{background:var(--brand);color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.1)}
-.nav-link .material-symbols-outlined{font-size:20px}
+.side-drawer:hover .drawer-link{width:100%;justify-content:flex-start;padding:0 12px}
 
-.profile-card{
-    margin:auto 16px 16px;display:flex;align-items:center;gap:12px;
-    padding:12px 16px;border-radius:16px;
-    background:rgba(255,255,255,.5);border:1px solid rgba(0,0,0,.05);
-    box-shadow:0 1px 2px rgba(0,0,0,.05);
-}
-.avatar{
-    width:36px;height:36px;border-radius:50%;background:var(--brand);color:#fff;
-    display:grid;place-items:center;font-size:.72rem;font-weight:700;flex:none;
-}
-.profile-name{font-size:.84rem;font-weight:600}
-.profile-role{font-size:.72rem;color:var(--muted)}
+.drawer-link .drawer-label{font-size:.82rem;font-weight:600;display:none}
+.side-drawer:hover .drawer-label{display:inline}
+
+.drawer-link:hover{color:var(--ink);background:rgba(0,0,0,.05)}
+.drawer-link.active{color:var(--brand);background:var(--brand-soft)}
+.drawer-link.active .material-symbols-outlined{font-variation-settings:'FILL' 1}
+
+.drawer-link--logout{margin-top:auto}
+.drawer-link--logout:hover{color:var(--red);background:var(--red-soft)}
 
 /* ===== Content shell ===== */
-.content{flex:1;display:flex;flex-direction:column;margin-left:260px;height:100vh;overflow:hidden}
+.content{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;height:100%;overflow:hidden}
 
 .topbar{
-    position:sticky;top:0;z-index:40;
+    border-radius:20px;
     display:flex;justify-content:space-between;align-items:center;
-    gap:24px;padding:16px 32px;border-bottom:1px solid var(--border);
+    gap:24px;padding:16px 32px;box-shadow:0 4px 24px rgba(0,0,0,.04);
 }
 .topbar-title{font-size:1.15rem;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
 .topbar-right{display:flex;align-items:center;gap:16px;flex:1;justify-content:flex-end}
+
+.topbar-profile{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.topbar-avatar{
+    width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;
+    display:grid;place-items:center;font-size:.7rem;font-weight:700;flex:none;
+}
+.topbar-profile-name{font-size:.82rem;font-weight:600;line-height:1.2}
+.topbar-profile-role{font-size:.7rem;color:var(--muted);line-height:1.2}
 
 .search-box{position:relative;width:100%;max-width:420px}
 .search-box .material-symbols-outlined{
@@ -343,43 +353,37 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
 <body>
 
 <!-- Sidebar -->
-<nav class="sidenav glass">
-    <div class="brand-row">
-        <div class="brand-icon"><span class="material-symbols-outlined fill-icon">school</span></div>
-        <div>
-            <div class="brand-name">Faculty Portal</div>
-            <div class="brand-sub">IT Department</div>
-        </div>
-    </div>
-    <ul class="nav-list">
-        <li><a class="nav-link active" href="#">
-            <span class="material-symbols-outlined">dashboard</span> Dashboard</a></li>
-        <li><a class="nav-link" href="#" title="Coming soon">
-            <span class="material-symbols-outlined">person</span> Profile</a></li>
-        <li><a class="nav-link" href="#" title="Coming soon">
-            <span class="material-symbols-outlined">calendar_month</span> Schedule</a></li>
-        <li><a class="nav-link" href="<?= site_url('faculty/availability') ?>">
-            <span class="material-symbols-outlined">event_available</span> Availability</a></li>
-        <li><a class="nav-link" href="<?= site_url('logout') ?>">
-            <span class="material-symbols-outlined">logout</span> Logout</a></li>
-    </ul>
-    <div class="profile-card">
-        <div class="avatar"><?= esc($initials) ?></div>
-        <div>
-            <div class="profile-name"><?= esc($user['name']) ?></div>
-            <div class="profile-role">Faculty</div>
-        </div>
-    </div>
-</nav>
+<aside class="side-drawer glass">
+    <div class="brand"><span class="material-symbols-outlined fill-icon">school</span></div>
+    <nav>
+        <a class="drawer-link active" href="<?= site_url('faculty/dashboard') ?>" title="Dashboard">
+            <span class="material-symbols-outlined">dashboard</span>
+            <span class="drawer-label">Dashboard</span>
+        </a>
+        <a class="drawer-link" href="<?= site_url('faculty/profile') ?>" title="Profile">
+            <span class="material-symbols-outlined">person</span>
+            <span class="drawer-label">Profile</span>
+        </a>
+        <a class="drawer-link" href="<?= site_url('faculty/schedule') ?>" title="Schedule">
+            <span class="material-symbols-outlined">calendar_month</span>
+            <span class="drawer-label">Schedule</span>
+        </a>
+        <a class="drawer-link" href="<?= site_url('faculty/availability') ?>" title="Availability">
+            <span class="material-symbols-outlined">event_available</span>
+            <span class="drawer-label">Availability</span>
+        </a>
+    </nav>
+    <a class="drawer-link drawer-link--logout" href="<?= site_url('logout') ?>" title="Logout">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="drawer-label">Logout</span>
+    </a>
+</aside>
 
 <!-- Content -->
 <div class="content">
 
     <header class="topbar glass">
         <div style="display:flex;align-items:center;gap:16px">
-            <button class="menu-btn" type="button" aria-label="Menu">
-                <span class="material-symbols-outlined">menu</span>
-            </button>
             <div class="topbar-title">Teaching Load Management</div>
         </div>
         <div class="topbar-right">
@@ -398,6 +402,13 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
                         <button type="button" id="notifMarkAll" style="font-size:.72rem;color:var(--brand);background:none;border:none;cursor:pointer;">Mark all read</button>
                     </div>
                     <div id="notifList"></div>
+                </div>
+            </div>
+            <div class="topbar-profile">
+                <div class="topbar-avatar"><?= esc($initials) ?></div>
+                <div>
+                    <div class="topbar-profile-name"><?= esc($user['name']) ?></div>
+                    <div class="topbar-profile-role">Faculty</div>
                 </div>
             </div>
         </div>

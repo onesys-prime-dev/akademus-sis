@@ -54,6 +54,7 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->post('departments/(:num)/update'         , 'Admin\DepartmentController::update/$1');
     $routes->post('departments/(:num)/sub-departments', 'Admin\DepartmentController::storeSubDepartment/$1');
     $routes->post('departments/store-dean/(:num)'     , 'Admin\DepartmentController::storeDean/$1');
+    $routes->post('departments/(:num)/delete'         , 'Admin\DepartmentController::delete/$1');
 
     // sub-departments (departments, chairperson-headed, nested under a college)
     $routes->get('sub-departments/(:num)'              , 'Admin\SubDepartmentController::show/$1');
@@ -115,6 +116,14 @@ $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {
     $routes->post('availability/update', 'Faculty\AvailabilityController::update');
     $routes->post('preferences/update', 'Faculty\AvailabilityController::updatePreferences');
 
+    // profile
+    $routes->get('profile', 'Faculty\ProfileController::edit');
+    $routes->post('profile/update', 'Faculty\ProfileController::updateProfile');
+    $routes->post('profile/password', 'Faculty\ProfileController::updatePassword');
+
+    // read-only weekly schedule (this faculty member's own plotted classes)
+    $routes->get('schedule', 'Faculty\ScheduleController::index');
+
     // request for change on an official assignment
     $routes->post('change-requests/store', 'Faculty\ChangeRequestController::store');
     $routes->post('change-requests/cancel', 'Faculty\ChangeRequestController::cancel');
@@ -140,6 +149,7 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('profile/update', 'ChairpersonController::updateProfile');
     $routes->post('profile/password', 'ChairpersonController::updatePassword');
     $routes->post('schedule/sync', 'ChairpersonController::sync');
+    $routes->post('schedule/faculty-override', 'ChairpersonController::recordFacultyOverride');
     $routes->get('schedule/state', 'ChairpersonController::state');
     $routes->post('curriculum-preset', 'ChairpersonController::savePreset');
     $routes->post('curriculum-preset/subject-type', 'ChairpersonController::updateSubjectType');
