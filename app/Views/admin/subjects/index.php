@@ -26,6 +26,8 @@
             <th>Code</th>
             <th>Name</th>
             <th>Units</th>
+            <th>Type</th>
+            <th>Weekly Hours</th>
             <th>Description</th>
             <th>Status</th>
             <th>Actions</th>
@@ -37,6 +39,8 @@
                 <td><?= esc($subject['subject_code']) ?></td>
                 <td><?= esc($subject['subject_name']) ?></td>
                 <td><?= esc($subject['units']) ?></td>
+                <td><?= $subject['is_laboratory'] ? 'Laboratory' : 'Lecture' ?></td>
+                <td><?= esc($subject['weekly_hours']) ?></td>
                 <td><?= esc($subject['description']) ?></td>
                 <td>
                     <?= $subject['is_active'] 

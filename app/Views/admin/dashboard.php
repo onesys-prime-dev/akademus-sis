@@ -121,7 +121,7 @@
                 <div>
                     <p class="ac-spotlight__label">Active Term</p>
                     <p class="ac-spotlight__title">
-                        <?= $stats['active_ay'] ? esc($stats['active_ay']['label']) . ' · ' . esc($stats['active_ay']['semester']) . ' Sem' : 'No active term set' ?>
+                        <?= $stats['active_ay_formatted'] ? esc($stats['active_ay_formatted']) : 'No active term set' ?>
                     </p>
                 </div>
             </div>

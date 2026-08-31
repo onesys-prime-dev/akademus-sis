@@ -27,7 +27,7 @@ class UserController extends BaseController
         $roleFilter = $this->request->getGet('role') ?: 'all';
 
         $builder = db_connect()->table('users u')
-            ->select('u.id, u.username, i.secret as email, u.active, u.department_id, u.section_id, g.group, d.code as dept_code, d.name as dept_name')
+            ->select('u.id, u.username, i.secret as email, u.active, u.department_id, u.section_id, u.employment_status, g.group, d.code as dept_code, d.name as dept_name')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->join('departments d', 'd.dept_id = u.department_id', 'left')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
@@ -76,12 +76,13 @@ class UserController extends BaseController
     public function store()
     {
         $rules = [
-            'username'      => 'required|max_length[100]',
-            'email'         => 'required|valid_email',
-            'role'          => 'required|in_list[' . implode(',', self::CREATABLE_ROLES) . ']',
-            'department_id' => 'permit_empty|integer',
-            'section_id'    => 'permit_empty|integer',
-            'password'      => 'permit_empty|min_length[8]',
+            'username'          => 'required|max_length[100]',
+            'email'             => 'required|valid_email',
+            'role'              => 'required|in_list[' . implode(',', self::CREATABLE_ROLES) . ']',
+            'department_id'     => 'permit_empty|integer',
+            'section_id'        => 'permit_empty|integer',
+            'password'          => 'permit_empty|min_length[8]',
+            'employment_status' => 'permit_empty|in_list[full_time,part_time]',
         ];
 
         if (! $this->validate($rules)) {
@@ -139,12 +140,15 @@ class UserController extends BaseController
         $user = $users->findById($users->getInsertID());
         $user->addGroup($role);
 
-        if ($departmentId || $sectionId) {
+        $employmentStatus = $role === 'faculty' ? ($this->request->getPost('employment_status') ?: null) : null;
+
+        if ($departmentId || $sectionId || $employmentStatus) {
             db_connect()->table('users')
                 ->where('id', $user->id)
                 ->update(array_filter([
-                    'department_id' => $departmentId,
-                    'section_id'    => $sectionId,
+                    'department_id'     => $departmentId,
+                    'section_id'        => $sectionId,
+                    'employment_status' => $employmentStatus,
                 ]));
         }
 
@@ -173,10 +177,11 @@ class UserController extends BaseController
         }
 
         $rules = [
-            'username'      => 'required|max_length[100]',
-            'email'         => 'required|valid_email',
-            'department_id' => 'permit_empty|integer',
-            'section_id'    => 'permit_empty|integer',
+            'username'          => 'required|max_length[100]',
+            'email'             => 'required|valid_email',
+            'department_id'     => 'permit_empty|integer',
+            'section_id'        => 'permit_empty|integer',
+            'employment_status' => 'permit_empty|in_list[full_time,part_time]',
         ];
 
         $isChair = $user->inGroup('chairperson');
@@ -241,8 +246,9 @@ class UserController extends BaseController
             db_connect()->table('users')
                 ->where('id', $id)
                 ->update([
-                    'department_id' => $departmentId,
-                    'section_id'    => $sectionId,
+                    'department_id'     => $departmentId,
+                    'section_id'        => $sectionId,
+                    'employment_status' => $role === 'faculty' ? ($this->request->getPost('employment_status') ?: null) : null,
                 ]);
         }
 

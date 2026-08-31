@@ -34,4 +34,25 @@ class ScheduleOverlap
     {
         return $a['day'] === $b['day'] && self::overlaps($a, $b);
     }
+
+    /**
+     * True when any meeting in `$set` clashes with any meeting in `$others`.
+     * The common "does this gain conflict with what I already have" check
+     * (faculty load fit-checks, swap pre-checks, claim-board conflict marking).
+     *
+     * @param list<array{day: int, start: string, end: string}> $set
+     * @param list<array{day: int, start: string, end: string}> $others
+     */
+    public static function anyClash(array $set, array $others): bool
+    {
+        foreach ($set as $meeting) {
+            foreach ($others as $moment) {
+                if (self::clashes($meeting, $moment)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }

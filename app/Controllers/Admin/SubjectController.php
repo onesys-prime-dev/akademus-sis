@@ -31,10 +31,15 @@ class SubjectController extends BaseController
     public function store()
     {
         $rules = [
-            'subject_code' => 'required|max_length[20]',
-            'subject_name' => 'required|max_length[255]',
-            'units'        => 'permit_empty|decimal',
-            'description'  => 'permit_empty',
+            'subject_code'      => 'required|max_length[20]',
+            'subject_name'      => 'required|max_length[255]',
+            'units'             => 'permit_empty|decimal',
+            'contact_hours'     => 'permit_empty|decimal',
+            'is_laboratory'     => 'permit_empty|in_list[0,1]',
+            'lecture_units'     => 'permit_empty|decimal',
+            'laboratory_units'  => 'permit_empty|decimal',
+            'meetings_per_week' => 'permit_empty|integer',
+            'description'       => 'permit_empty',
         ];
 
         if (! $this->validate($rules)) {
@@ -45,10 +50,15 @@ class SubjectController extends BaseController
         }
 
         $this->subjectModel->insert([
-            'subject_code' => $this->request->getPost('subject_code'),
-            'subject_name' => $this->request->getPost('subject_name'),
-            'units'        => $this->request->getPost('units'),
-            'description'  => $this->request->getPost('description'),
+            'subject_code'      => $this->request->getPost('subject_code'),
+            'subject_name'      => $this->request->getPost('subject_name'),
+            'units'             => $this->request->getPost('units'),
+            'contact_hours'     => $this->request->getPost('contact_hours') ?: null,
+            'is_laboratory'     => $this->request->getPost('is_laboratory') ? 1 : 0,
+            'lecture_units'     => $this->request->getPost('lecture_units') ?: null,
+            'laboratory_units'  => $this->request->getPost('laboratory_units') ?: null,
+            'meetings_per_week' => $this->request->getPost('meetings_per_week') ?: null,
+            'description'       => $this->request->getPost('description'),
         ]);
 
         return redirect()
@@ -72,10 +82,15 @@ class SubjectController extends BaseController
     public function update($id)
     {
         $rules = [
-            'subject_code' => 'required|max_length[20]',
-            'subject_name' => 'required|max_length[255]',
-            'units'        => 'permit_empty|decimal',
-            'description'  => 'permit_empty',
+            'subject_code'      => 'required|max_length[20]',
+            'subject_name'      => 'required|max_length[255]',
+            'units'             => 'permit_empty|decimal',
+            'contact_hours'     => 'permit_empty|decimal',
+            'is_laboratory'     => 'permit_empty|in_list[0,1]',
+            'lecture_units'     => 'permit_empty|decimal',
+            'laboratory_units'  => 'permit_empty|decimal',
+            'meetings_per_week' => 'permit_empty|integer',
+            'description'       => 'permit_empty',
         ];
 
         if (! $this->validate($rules)) {
@@ -92,10 +107,15 @@ class SubjectController extends BaseController
         }
 
         $this->subjectModel->update($id, [
-            'subject_code' => $this->request->getPost('subject_code'),
-            'subject_name' => $this->request->getPost('subject_name'),
-            'units'        => $this->request->getPost('units'),
-            'description'  => $this->request->getPost('description'),
+            'subject_code'      => $this->request->getPost('subject_code'),
+            'subject_name'      => $this->request->getPost('subject_name'),
+            'units'             => $this->request->getPost('units'),
+            'contact_hours'     => $this->request->getPost('contact_hours') ?: null,
+            'is_laboratory'     => $this->request->getPost('is_laboratory') ? 1 : 0,
+            'lecture_units'     => $this->request->getPost('lecture_units') ?: null,
+            'laboratory_units'  => $this->request->getPost('laboratory_units') ?: null,
+            'meetings_per_week' => $this->request->getPost('meetings_per_week') ?: null,
+            'description'       => $this->request->getPost('description'),
         ]);
 
         return redirect()

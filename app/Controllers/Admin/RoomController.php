@@ -3,21 +3,35 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Models\FloorModel;
 use App\Models\RoomModel;
 
 class RoomController extends BaseController
 {
     protected RoomModel $roomModel;
+    protected FloorModel $floorModel;
 
     public function __construct()
     {
-        $this->roomModel = new RoomModel();
+        $this->roomModel  = new RoomModel();
+        $this->floorModel = new FloorModel();
     }
 
     public function index()
     {
-        $rooms       = $this->roomModel->orderBy('floor', 'asc')->orderBy('name', 'asc')->findAll();
-        $floors      = $this->roomModel->floors();
+        $rooms = $this->roomModel->orderBy('floor', 'asc')->orderBy('name', 'asc')->findAll();
+
+        // Floors is the source of truth for "which floors exist" (an empty
+        // floor with no rooms yet still needs to show up), unioned with any
+        // room floor value in case a room was ever saved with a floor that
+        // doesn't have its own floors row (defensive; shouldn't happen once
+        // store()/update() below always upsert into floors too).
+        $floors = array_values(array_unique(array_merge(
+            $this->floorModel->names(),
+            array_column($rooms, 'floor')
+        )));
+        sort($floors, SORT_NATURAL | SORT_FLAG_CASE);
+
         $activeFloor = $this->request->getGet('floor') ?: 'overview';
 
         $floorSummary = [];
@@ -61,17 +75,59 @@ class RoomController extends BaseController
         }
 
         $floor = $this->request->getPost('floor');
+        $this->ensureFloorExists($floor);
 
         $this->roomModel->insert([
-            'name'     => $this->request->getPost('name'),
-            'capacity' => (int) $this->request->getPost('capacity'),
-            'type'     => $this->request->getPost('type'),
-            'floor'    => $floor,
+            'name'          => $this->request->getPost('name'),
+            'capacity'      => (int) $this->request->getPost('capacity'),
+            'type'          => $this->request->getPost('type'),
+            'is_laboratory' => $this->request->getPost('is_laboratory') ? 1 : 0,
+            'floor'         => $floor,
         ]);
 
         return redirect()
             ->to('/admin/rooms?floor=' . urlencode($floor))
             ->with('message', 'Room added successfully.');
+    }
+
+    /**
+     * A standalone floor, with no room required — the actual "Add Floor"
+     * action. `store()`/`update()` above also upsert into `floors` when a
+     * new name is typed there, so both paths keep `floors` as the single
+     * source of truth for which floors exist.
+     */
+    public function storeFloor()
+    {
+        $rules = ['name' => 'required|max_length[30]'];
+
+        if (! $this->validate($rules)) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', $this->validator->getErrors());
+        }
+
+        $name = trim((string) $this->request->getPost('name'));
+
+        if ($this->floorModel->where('name', $name)->first() !== null) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', ['name' => "Floor \"{$name}\" already exists."]);
+        }
+
+        $this->floorModel->insert(['name' => $name]);
+
+        return redirect()
+            ->to('/admin/rooms?floor=' . urlencode($name))
+            ->with('message', "Floor \"{$name}\" added — add its first room below.");
+    }
+
+    private function ensureFloorExists(string $name): void
+    {
+        if ($this->floorModel->where('name', $name)->first() === null) {
+            $this->floorModel->insert(['name' => $name]);
+        }
     }
 
     public function update($id)
@@ -97,12 +153,14 @@ class RoomController extends BaseController
         }
 
         $floor = $this->request->getPost('floor');
+        $this->ensureFloorExists($floor);
 
         $this->roomModel->update($id, [
-            'name'     => $this->request->getPost('name'),
-            'capacity' => (int) $this->request->getPost('capacity'),
-            'type'     => $this->request->getPost('type'),
-            'floor'    => $floor,
+            'name'          => $this->request->getPost('name'),
+            'capacity'      => (int) $this->request->getPost('capacity'),
+            'type'          => $this->request->getPost('type'),
+            'is_laboratory' => $this->request->getPost('is_laboratory') ? 1 : 0,
+            'floor'         => $floor,
         ]);
 
         return redirect()

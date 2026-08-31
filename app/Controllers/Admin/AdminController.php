@@ -65,6 +65,10 @@ class AdminController extends BaseController
             'active_ay'      => $ayModel->where('is_active', 1)->first(),
         ];
 
+        $stats['active_ay_formatted'] = $stats['active_ay']
+            ? AcademicYearModel::format($stats['active_ay']['label'], $stats['active_ay']['semester'])
+            : null;
+
         $setupPercent = count($departments) > 0
             ? (int) round(($chaired / count($departments)) * 100)
             : 100;
@@ -117,7 +121,7 @@ class AdminController extends BaseController
             $items[] = [
                 'icon'   => 'event',
                 'title'  => 'Academic Year Created',
-                'detail' => "{$row['label']} · {$row['semester']} Semester",
+                'detail' => AcademicYearModel::format($row['label'], $row['semester']),
                 'time'   => $row['created_at'],
             ];
         }

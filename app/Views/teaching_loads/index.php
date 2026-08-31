@@ -1,8 +1,9 @@
 <?php
 /**
- * Available Teaching Loads — Faculty view (Akademus SIS)
+ * Teaching Loads — Faculty view (Akademus SIS)
  * Loads are generated live from the chairpersons' plotted schedules and kept
- * current via long-polling; claiming is first come, first served.
+ * current via long-polling. Assignment is chairperson-directed while
+ * plotting — faculty view their official assignments here, read-only.
  * Pure CSS — no framework.
  */
 $initials = strtoupper(mb_substr($user['name'], 0, 2));
@@ -357,6 +358,10 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
             <span class="material-symbols-outlined">person</span> Profile</a></li>
         <li><a class="nav-link" href="#" title="Coming soon">
             <span class="material-symbols-outlined">calendar_month</span> Schedule</a></li>
+        <li><a class="nav-link" href="<?= site_url('faculty/availability') ?>">
+            <span class="material-symbols-outlined">event_available</span> Availability</a></li>
+        <li><a class="nav-link" href="<?= site_url('logout') ?>">
+            <span class="material-symbols-outlined">logout</span> Logout</a></li>
     </ul>
     <div class="profile-card">
         <div class="avatar"><?= esc($initials) ?></div>
@@ -382,9 +387,19 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
                 <span class="material-symbols-outlined">search</span>
                 <input id="searchInput" placeholder="Search subject, room, section..." type="text"/>
             </div>
-            <button class="icon-btn" type="button" title="Notifications — coming soon">
-                <span class="material-symbols-outlined">notifications</span>
-            </button>
+            <div class="notif-wrap" id="notifWrap" style="position:relative;">
+                <button class="icon-btn" type="button" id="notifBtn" title="Notifications">
+                    <span class="material-symbols-outlined">notifications</span>
+                </button>
+                <span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;background:var(--red,#ef4444);color:#fff;font-size:10px;font-weight:700;border-radius:999px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px;"></span>
+                <div id="notifPanel" style="display:none;position:absolute;right:0;top:calc(100% + 8px);width:320px;max-height:400px;overflow-y:auto;background:#fff;border-radius:16px;box-shadow:var(--shadow-hover);border:1px solid var(--border);z-index:60;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);">
+                        <strong style="font-size:.86rem;">Notifications</strong>
+                        <button type="button" id="notifMarkAll" style="font-size:.72rem;color:var(--brand);background:none;border:none;cursor:pointer;">Mark all read</button>
+                    </div>
+                    <div id="notifList"></div>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -392,8 +407,8 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
         <div class="container">
 
             <div class="page-head">
-                <h1>Available Teaching Loads</h1>
-                <p>Claim subjects in your department. First come, first served — the board updates in real time.</p>
+                <h1>Teaching Loads</h1>
+                <p>Your chairperson assigns subjects while plotting the schedule. This board updates in real time.</p>
             </div>
 
             <!-- Stats card -->
@@ -419,13 +434,16 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
             <div class="panel">
                 <div class="tab-row">
                     <button type="button" class="tab active" data-tab="available">
-                        Available Loads <span class="tab-cnt" id="cntAvailable">0</span>
+                        Unassigned <span class="tab-cnt" id="cntAvailable">0</span>
                     </button>
                     <button type="button" class="tab" data-tab="mine">
                         My Assignments <span class="tab-cnt" id="cntMine">0</span>
                     </button>
                     <button type="button" class="tab" data-tab="swaps">
                         Swap Requests <span class="tab-cnt" id="cntSwaps">0</span>
+                    </button>
+                    <button type="button" class="tab" data-tab="changes">
+                        Change Requests <span class="tab-cnt" id="cntChanges">0</span>
                     </button>
                 </div>
 
@@ -463,6 +481,22 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
     </div>
 </div>
 
+<!-- Request for change modal -->
+<div class="modal-backdrop" id="changeRequestModal">
+    <div class="modal-card">
+        <h3 id="crTitle"></h3>
+        <p id="crMessage"></p>
+        <textarea id="crReason" rows="3" placeholder="Why can't you accept this assignment? (availability conflict, schedule conflict, etc.)"
+            style="width:100%;margin-bottom:12px;padding:10px 14px;border-radius:12px;border:1px solid var(--border);font-family:inherit;font-size:.86rem;resize:vertical;"></textarea>
+        <input type="text" id="crProposed" placeholder="Proposed alternative (optional)"
+            style="width:100%;margin-bottom:32px;padding:10px 14px;border-radius:12px;border:1px solid var(--border);font-family:inherit;font-size:.86rem;">
+        <div class="modal-actions">
+            <button type="button" class="modal-btn cancel" id="crCancel">Cancel</button>
+            <button type="button" class="modal-btn ok" id="crSend">Submit Request</button>
+        </div>
+    </div>
+</div>
+
 <!-- Claim confirmation -->
 <div class="modal-backdrop" id="confirmModal">
     <div class="modal-card">
@@ -491,10 +525,14 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
 <script>
 const CONFIG = {
     stateUrl: <?= json_encode(site_url('faculty/loads/state')) ?>,
-    claimUrl: <?= json_encode(site_url('faculty/loads/claim')) ?>,
     swapRequestUrl: <?= json_encode(site_url('faculty/loads/swap/request')) ?>,
     swapRespondUrl: <?= json_encode(site_url('faculty/loads/swap/respond')) ?>,
     swapCancelUrl: <?= json_encode(site_url('faculty/loads/swap/cancel')) ?>,
+    changeRequestStoreUrl: <?= json_encode(site_url('faculty/change-requests/store')) ?>,
+    changeRequestCancelUrl: <?= json_encode(site_url('faculty/change-requests/cancel')) ?>,
+    notificationsUrl: <?= json_encode(site_url('faculty/notifications')) ?>,
+    notificationsMarkReadUrl: <?= json_encode(site_url('faculty/notifications/mark-read')) ?>,
+    notificationsMarkAllReadUrl: <?= json_encode(site_url('faculty/notifications/mark-all-read')) ?>,
     maxUnits: <?= (int) $max_units ?>,
     noDepartment: <?= json_encode($no_department) ?>,
 };
@@ -507,6 +545,8 @@ let MINE  = <?= json_encode($state['mine'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_
 let UNITS = <?= json_encode($state['units']) ?>;
 let SWAPS = <?= json_encode($state['swaps'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 let FACULTY = <?= json_encode($state['faculty'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+let CHANGE_REQUESTS = <?= json_encode($state['change_requests'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+let UNREAD = <?= json_encode($state['unread_notifications']) ?>;
 
 let activeTab = 'available';
 let dayFilter = null;   // null = all days
@@ -514,7 +554,6 @@ let yearFilter = '';    // '' = all year levels
 let sectionFilter = ''; // '' = all sections
 let query = '';
 let version = '';
-let claiming = false;
 
 // ---------- toast ----------
 const toast = document.getElementById('toast');
@@ -604,8 +643,22 @@ function loadTile(l) {
             swapBtn.innerHTML = '<span class="material-symbols-outlined">swap_horiz</span> Request Swap';
             swapBtn.addEventListener('click', () => openSwapModal(l));
         }
+
+        const changeBtn = document.createElement('button');
+        changeBtn.type = 'button';
+        if (l.change_request_pending) {
+            changeBtn.className = 'tile-btn swap';
+            changeBtn.innerHTML = '<span class="material-symbols-outlined">hourglass_top</span> Change Requested';
+            changeBtn.disabled = true;
+        } else {
+            changeBtn.className = 'tile-btn decline';
+            changeBtn.innerHTML = '<span class="material-symbols-outlined">flag</span> Request Change';
+            changeBtn.addEventListener('click', () => openChangeRequestModal(l));
+        }
+
         tile.appendChild(btn);
         tile.appendChild(swapBtn);
+        tile.appendChild(changeBtn);
         return tile;
     } else if (l.state === 'taken') {
         tile.classList.add('is-taken');
@@ -628,9 +681,10 @@ function loadTile(l) {
         btn.disabled = true;
         btn.title = 'This load overlaps one of your assigned classes.';
     } else {
-        btn.className = 'tile-btn claim';
-        btn.textContent = 'Claim Subject';
-        btn.addEventListener('click', () => claimLoad(l));
+        btn.className = 'tile-btn swap';
+        btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Awaiting Assignment';
+        btn.disabled = true;
+        btn.title = 'Your chairperson has not assigned this subject to anyone yet.';
     }
 
     tile.appendChild(btn);
@@ -711,6 +765,52 @@ function swapTile(s) {
     return tile;
 }
 
+const CHANGE_STATUS = {
+    pending:      { label: 'Pending',            cls: 'pending' },
+    under_review: { label: 'Under Review',       cls: 'awaiting' },
+    approved:     { label: 'Approved',           cls: 'approved' },
+    rejected:     { label: 'Rejected',           cls: 'rejected' },
+    cancelled:    { label: 'Cancelled',          cls: 'cancelled' },
+};
+
+function changeRequestTile(cr) {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+
+    const statusInfo = CHANGE_STATUS[cr.status] || CHANGE_STATUS.cancelled;
+
+    const head = document.createElement('div');
+    head.className = 'tile-head';
+    const code = document.createElement('span');
+    code.className = 'tile-code';
+    code.textContent = cr.subject;
+    const status = document.createElement('span');
+    status.className = 'swap-status ' + statusInfo.cls;
+    status.textContent = statusInfo.label;
+    head.append(code, status);
+
+    const reason = document.createElement('div');
+    reason.className = 'swap-who';
+    reason.textContent = cr.reason;
+
+    tile.append(head, reason);
+
+    if (cr.proposed) {
+        tile.append(metaRow('lightbulb', 'Proposed: ' + cr.proposed));
+    }
+
+    if (cr.status === 'pending' || cr.status === 'under_review') {
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.className = 'tile-btn swap';
+        cancel.textContent = 'Withdraw Request';
+        cancel.addEventListener('click', () => cancelChangeRequest(cr));
+        tile.appendChild(cancel);
+    }
+
+    return tile;
+}
+
 function visibleLoads() {
     const source = activeTab === 'available' ? LOADS.concat(TAKEN) : MINE;
     const q = query.trim().toLowerCase();
@@ -733,9 +833,11 @@ function renderBoard() {
     document.getElementById('cntMine').textContent = MINE.length;
     document.getElementById('cntSwaps').textContent =
         SWAPS.filter(s => s.direction === 'incoming' && s.status === 'pending').length;
+    document.getElementById('cntChanges').textContent =
+        CHANGE_REQUESTS.filter(cr => cr.status === 'pending' || cr.status === 'under_review').length;
 
     // The day/section filters only make sense for load boards.
-    document.querySelector('.filter-bar').style.display = activeTab === 'swaps' ? 'none' : '';
+    document.querySelector('.filter-bar').style.display = (activeTab === 'swaps' || activeTab === 'changes') ? 'none' : '';
 
     if (activeTab === 'swaps') {
         if (SWAPS.length === 0) {
@@ -746,6 +848,20 @@ function renderBoard() {
         } else {
             empty.classList.remove('visible');
             SWAPS.forEach(s => grid.appendChild(swapTile(s)));
+        }
+        updateLoadBar();
+        return;
+    }
+
+    if (activeTab === 'changes') {
+        if (CHANGE_REQUESTS.length === 0) {
+            empty.classList.add('visible');
+            document.getElementById('emptyTitle').textContent = 'No change requests';
+            document.getElementById('emptySub').textContent =
+                'Request a change from the My Assignments tab if you cannot accept an assignment.';
+        } else {
+            empty.classList.remove('visible');
+            CHANGE_REQUESTS.forEach(cr => grid.appendChild(changeRequestTile(cr)));
         }
         updateLoadBar();
         return;
@@ -767,7 +883,7 @@ function renderBoard() {
                     : 'Loads will appear here in real time once a chairperson plots the schedules.';
         } else {
             document.getElementById('emptyTitle').textContent = 'No assignments yet';
-            document.getElementById('emptySub').textContent = 'Claim a load from the Available Loads tab and it will appear here.';
+            document.getElementById('emptySub').textContent = 'Your chairperson hasn\'t assigned you any subjects yet — check back once schedule plotting starts.';
         }
     } else {
         empty.classList.remove('visible');
@@ -850,40 +966,6 @@ document.getElementById('sectionFilter').addEventListener('change', e => {
     sectionFilter = e.target.value;
     renderBoard();
 });
-
-// ---------- claiming ----------
-async function claimLoad(l) {
-    if (claiming) return;
-
-    const confirmed = await confirmDialog(
-        'Claim ' + l.code + '?',
-        `${l.code} — ${l.title} · ${l.spec} · ${l.days}, ${l.time} · ${l.room}. ` +
-        `Your teaching load becomes ${UNITS + l.units} / ${CONFIG.maxUnits} units. First come, first served.`,
-        'Claim Subject'
-    );
-    if (!confirmed) return;
-
-    claiming = true;
-    try {
-        const response = await fetch(CONFIG.claimUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify({ ...l.context, code: l.code }),
-        });
-        const result = await response.json();
-
-        if (response.ok && result.ok) {
-            showToast(`${l.code} claimed — added to My Assignments.`, 'success');
-        } else {
-            showToast(result.error || 'Could not claim this load.', 'error');
-        }
-    } catch (err) {
-        showToast('Network error while claiming.', 'error');
-    } finally {
-        claiming = false;
-        refreshState();
-    }
-}
 
 // ---------- swaps ----------
 const swapModal = document.getElementById('swapModal');
@@ -1050,6 +1132,154 @@ async function cancelSwap(s) {
     }
 }
 
+// ---------- change requests ----------
+const changeRequestModal = document.getElementById('changeRequestModal');
+let pendingChangeLoad = null;
+
+function openChangeRequestModal(l) {
+    pendingChangeLoad = l;
+    document.getElementById('crTitle').textContent = 'Request Change: ' + l.code;
+    document.getElementById('crMessage').textContent =
+        `${l.code} — ${l.title} · ${l.spec} · ${l.days}, ${l.time} · ${l.room}. This goes to your chairperson for review — it does not reassign the subject on its own.`;
+    document.getElementById('crReason').value = '';
+    document.getElementById('crProposed').value = '';
+    changeRequestModal.classList.add('open');
+}
+
+function closeChangeRequestModal() {
+    pendingChangeLoad = null;
+    changeRequestModal.classList.remove('open');
+}
+
+document.getElementById('crCancel').addEventListener('click', closeChangeRequestModal);
+changeRequestModal.addEventListener('click', e => { if (e.target === changeRequestModal) closeChangeRequestModal(); });
+
+document.getElementById('crSend').addEventListener('click', async () => {
+    if (!pendingChangeLoad) return;
+    const load = pendingChangeLoad;
+    const reason = document.getElementById('crReason').value.trim();
+    const proposed = document.getElementById('crProposed').value.trim();
+
+    if (reason.length < 5) {
+        showToast('Please explain why you cannot accept this assignment.', 'error');
+        return;
+    }
+
+    closeChangeRequestModal();
+
+    try {
+        const response = await fetch(CONFIG.changeRequestStoreUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ assignment_id: load.assignment_id, reason: reason, proposed_alternative: proposed }),
+        });
+        const result = await response.json();
+
+        if (response.ok && result.ok) {
+            showToast(`Change request for ${load.code} submitted to your chairperson.`, 'success');
+        } else {
+            showToast(result.error || 'Could not submit the change request.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error while submitting the change request.', 'error');
+    } finally {
+        refreshState();
+    }
+});
+
+async function cancelChangeRequest(cr) {
+    const confirmed = await confirmDialog(
+        'Withdraw change request?',
+        `Withdraw your change request for ${cr.subject}? The assignment stays as it is.`,
+        'Withdraw'
+    );
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(CONFIG.changeRequestCancelUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ request_id: cr.id }),
+        });
+        const result = await response.json();
+        if (response.ok && result.ok) {
+            showToast(`Change request for ${cr.subject} withdrawn.`, '');
+        } else {
+            showToast(result.error || 'Could not withdraw the request.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error while withdrawing the request.', 'error');
+    } finally {
+        refreshState();
+    }
+}
+
+// ---------- notifications ----------
+function updateNotifBadge() {
+    const badge = document.getElementById('notifBadge');
+    if (UNREAD > 0) {
+        badge.textContent = UNREAD > 99 ? '99+' : UNREAD;
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+updateNotifBadge();
+
+async function loadNotifications() {
+    const list = document.getElementById('notifList');
+    list.innerHTML = '<p style="padding:16px;font-size:.8rem;color:var(--muted);">Loading…</p>';
+
+    try {
+        const response = await fetch(CONFIG.notificationsUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await response.json();
+
+        if (!data.notifications || data.notifications.length === 0) {
+            list.innerHTML = '<p style="padding:16px;font-size:.8rem;color:var(--muted);">No notifications yet.</p>';
+            return;
+        }
+
+        list.innerHTML = '';
+        data.notifications.forEach(n => {
+            const item = document.createElement('div');
+            item.style.cssText = 'padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;font-size:.8rem;'
+                + (n.is_read == 0 ? 'background:rgba(0,64,166,.04);font-weight:600;' : '');
+            item.textContent = n.message;
+            item.addEventListener('click', async () => {
+                await fetch(CONFIG.notificationsMarkReadUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ id: n.id }),
+                });
+                if (n.link) window.location.href = n.link;
+            });
+            list.appendChild(item);
+        });
+    } catch (err) {
+        list.innerHTML = '<p style="padding:16px;font-size:.8rem;color:var(--muted);">Could not load notifications.</p>';
+    }
+}
+
+const notifPanel = document.getElementById('notifPanel');
+document.getElementById('notifBtn').addEventListener('click', () => {
+    const open = notifPanel.style.display === 'block';
+    notifPanel.style.display = open ? 'none' : 'block';
+    if (!open) loadNotifications();
+});
+document.addEventListener('click', e => {
+    if (!document.getElementById('notifWrap').contains(e.target)) notifPanel.style.display = 'none';
+});
+document.getElementById('notifMarkAll').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await fetch(CONFIG.notificationsMarkAllReadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    UNREAD = 0;
+    updateNotifBadge();
+    loadNotifications();
+});
+
 // ---------- real-time (long-polling) ----------
 function applyState(data) {
     const before = new Set(LOADS.map(l => l.key));
@@ -1081,18 +1311,35 @@ function applyState(data) {
     }
     if (Array.isArray(data.faculty)) FACULTY = data.faculty;
 
+    // Toast change-request decisions.
+    if (Array.isArray(data.change_requests)) {
+        const prevCr = new Map(CHANGE_REQUESTS.map(cr => [cr.id, cr]));
+        data.change_requests.forEach(cr => {
+            const old = prevCr.get(cr.id);
+            if (old && cr.status !== old.status && (cr.status === 'approved' || cr.status === 'rejected')) {
+                showToast(`Your change request for ${cr.subject} was ${cr.status}.`, cr.status === 'approved' ? 'success' : '');
+            }
+        });
+        CHANGE_REQUESTS = data.change_requests;
+    }
+
+    if (typeof data.unread_notifications === 'number') {
+        UNREAD = data.unread_notifications;
+        updateNotifBadge();
+    }
+
     LOADS = data.loads || [];
     TAKEN = data.taken || [];
     MINE = data.mine || [];
     UNITS = data.units || 0;
     rebuildContextFilters();
 
-    // Loads that vanished without becoming ours were claimed by someone else.
+    // Loads that vanished without becoming ours were just assigned to a colleague.
     const after = new Set(LOADS.map(l => l.key));
     before.forEach(key => {
         if (!after.has(key) && !mineKeys.has(key)) {
             const code = key.split('|').pop();
-            showToast(`${code} was just claimed by another faculty member.`, '');
+            showToast(`${code} was just assigned to another faculty member.`, '');
         }
     });
 

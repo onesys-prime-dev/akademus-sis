@@ -73,6 +73,7 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     // rooms
     $routes->get('rooms'                    , 'Admin\RoomController::index');
     $routes->post('rooms/store'             , 'Admin\RoomController::store');
+    $routes->post('floors/store'            , 'Admin\RoomController::storeFloor');
     $routes->post('rooms/update/(:num)'     , 'Admin\RoomController::update/$1');
     $routes->post('rooms/delete/(:num)'     , 'Admin\RoomController::delete/$1');
     $routes->post('rooms/toggle-status/(:num)', 'Admin\RoomController::toggleStatus/$1');
@@ -92,6 +93,10 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
 
     // roles / permissions overview
     $routes->get('roles', 'Admin\RoleController::index');
+
+    // academic scheduling rules (unit->hour conversion, workload caps)
+    $routes->get('academic-settings'        , 'Admin\AcademicSettingsController::index');
+    $routes->post('academic-settings/update', 'Admin\AcademicSettingsController::update');
 });
 
 $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) {
@@ -101,10 +106,23 @@ $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) 
 $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {
     $routes->get('dashboard', 'TeachingLoads::index');
     $routes->get('loads/state', 'TeachingLoads::state');
-    $routes->post('loads/claim', 'TeachingLoads::claim');
     $routes->post('loads/swap/request', 'TeachingLoads::requestSwap');
     $routes->post('loads/swap/respond', 'TeachingLoads::respondSwap');
     $routes->post('loads/swap/cancel', 'TeachingLoads::cancelSwap');
+
+    // pre-semester availability & subject preferences
+    $routes->get('availability', 'Faculty\AvailabilityController::edit');
+    $routes->post('availability/update', 'Faculty\AvailabilityController::update');
+    $routes->post('preferences/update', 'Faculty\AvailabilityController::updatePreferences');
+
+    // request for change on an official assignment
+    $routes->post('change-requests/store', 'Faculty\ChangeRequestController::store');
+    $routes->post('change-requests/cancel', 'Faculty\ChangeRequestController::cancel');
+
+    // notifications
+    $routes->get('notifications', 'NotificationController::index');
+    $routes->post('notifications/mark-read', 'NotificationController::markRead');
+    $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
 });
 
 $routes->group('student', ['filter' => 'group:student'], function ($routes) {
@@ -124,8 +142,19 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('schedule/sync', 'ChairpersonController::sync');
     $routes->get('schedule/state', 'ChairpersonController::state');
     $routes->post('curriculum-preset', 'ChairpersonController::savePreset');
+    $routes->post('curriculum-preset/subject-type', 'ChairpersonController::updateSubjectType');
+    $routes->post('curriculum-preset/copy', 'ChairpersonController::copyCurriculum');
+    $routes->get('curriculum', 'ChairpersonController::curriculum');
     $routes->post('swaps/approve', 'ChairpersonController::approveSwap');
     $routes->post('swaps/reject', 'ChairpersonController::rejectSwap');
+    $routes->post('change-requests/approve', 'ChairpersonController::approveChangeRequest');
+    $routes->post('change-requests/reject', 'ChairpersonController::rejectChangeRequest');
+    $routes->post('change-requests/review', 'ChairpersonController::reviewChangeRequest');
+
+    // notifications
+    $routes->get('notifications', 'NotificationController::index');
+    $routes->post('notifications/mark-read', 'NotificationController::markRead');
+    $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
     $routes->post('subjects/add', 'ChairpersonController::addSubject');
     $routes->post('subjects/update', 'ChairpersonController::updateSubject');
     $routes->post('subjects/delete', 'ChairpersonController::deleteSubject');
@@ -135,6 +164,7 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('sections/delete', 'ChairpersonController::deleteSection');
     $routes->post('sections/assign-student', 'ChairpersonController::assignStudent');
     $routes->post('sections/unassign-student', 'ChairpersonController::unassignStudent');
+    $routes->get('faculty-panel', 'ChairpersonController::facultyPanel');
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);

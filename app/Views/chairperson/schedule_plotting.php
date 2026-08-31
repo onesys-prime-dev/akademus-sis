@@ -428,105 +428,6 @@
 
         .rail-btn:hover { background: #dbeafe; }
 
-        /* Curriculum preset modal */
-        .curriculum-list {
-            max-height: 320px;
-            overflow-y: auto;
-            border: 1px solid var(--outline-variant);
-            border-radius: 8px;
-            margin-bottom: 14px;
-        }
-
-        .curriculum-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 9px 12px;
-            border-bottom: 1px solid var(--surface-dim);
-            cursor: pointer;
-        }
-
-        .curriculum-row:last-child { border-bottom: none; }
-        .curriculum-row:hover { background: var(--surface-container-low); }
-
-        .curriculum-row input { flex: 0 0 auto; }
-
-        .curriculum-row .cr-details { min-width: 0; font-size: 12px; flex: 1; }
-        .curriculum-row .cr-details .code { font-weight: 700; }
-        .curriculum-row .cr-details .meta { color: var(--on-surface-variant); }
-
-        .curriculum-row .cr-delete {
-            flex: 0 0 auto;
-            border: none;
-            background: none;
-            color: var(--outline);
-            font-size: 15px;
-            line-height: 1;
-            cursor: pointer;
-            padding: 4px 6px;
-            border-radius: 6px;
-        }
-
-        .curriculum-row .cr-delete:hover { color: var(--error); background: #fef2f2; }
-
-        /* Add-subject form inside the curriculum modal */
-        .add-subject {
-            border: 1px dashed #93c5fd;
-            background: #eff6ff;
-            border-radius: 8px;
-            padding: 10px 12px;
-            margin-bottom: 12px;
-        }
-
-        .add-subject .asf-title {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            color: var(--primary);
-            margin-bottom: 8px;
-        }
-
-        .asf-grid {
-            display: grid;
-            grid-template-columns: 130px 1fr;
-            gap: 8px;
-        }
-
-        .asf-grid input[type="text"], .asf-grid input[type="number"], .asf-grid select {
-            padding: 7px 9px;
-            border: 1px solid var(--outline-variant);
-            border-radius: 6px;
-            font-family: inherit;
-            font-size: 12px;
-            min-width: 0;
-        }
-
-        .asf-grid .asf-wide { grid-column: 2; }
-
-        .asf-grid .asf-lab {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            color: #374151;
-        }
-
-        .asf-grid .asf-btn { padding: 7px 12px; font-size: 12px; }
-        .asf-actions { display: flex; gap: 6px; justify-content: flex-end; }
-
-        .curriculum-row .cr-edit {
-            flex: 0 0 auto;
-            border: none;
-            background: none;
-            color: var(--outline);
-            font-size: 13px;
-            line-height: 1;
-            cursor: pointer;
-            padding: 4px 6px;
-            border-radius: 6px;
-        }
-
-        .curriculum-row .cr-edit:hover { color: var(--primary-container); background: #eff6ff; }
 
         /* Lab subjects: Saturday-only badge */
         .lab-badge {
@@ -881,6 +782,21 @@
             padding-top: 4px;
         }
 
+        .floor-heading.recommended { color: var(--primary-container); }
+
+        .lab-room-badge {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: rgba(0,64,166,.1);
+            color: var(--primary-container);
+            margin-left: 6px;
+        }
+
         .room-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -985,6 +901,31 @@
         .room-card:disabled .room-name { color: var(--outline); }
         .room-card:disabled .room-status { color: var(--outline); }
         .room-card:disabled .room-dot { background: var(--outline); }
+
+        /* Faculty assignment modal */
+        .faculty-card {
+            width: 100%;
+            text-align: left;
+            border: 1px solid var(--outline-variant);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            background: var(--surface);
+            cursor: pointer;
+        }
+        .faculty-card:hover:not(:disabled) { box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+        .faculty-card:disabled { background: var(--surface-dim); cursor: not-allowed; opacity: .6; }
+        .faculty-card .fc-head { display: flex; align-items: center; justify-content: space-between; }
+        .faculty-card .fc-name { font-weight: 700; font-size: 13px; }
+        .faculty-card .fc-meta { font-size: 11px; color: var(--on-surface-variant); margin-top: 4px; }
+        .faculty-card .fc-tag {
+            font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; margin-left: 6px;
+        }
+        .faculty-card .fc-tag.preferred { background: #dcfce7; color: #166534; }
+        .faculty-card .fc-tag.willing { background: #fef9c3; color: #854d0e; }
+        .faculty-card .fc-tag.qualified { background: #e0e7ff; color: #3730a3; }
+        .faculty-card .fc-tag.conflict { background: #fee2e2; color: #991b1b; }
+        .faculty-card .fc-tag.unavailable { background: #fee2e2; color: #991b1b; }
 
         /* Soft warnings shown inside the modal (non-blocking) */
         .modal-warning {
@@ -1294,6 +1235,10 @@
                 <span class="material-symbols-outlined">groups</span>
                 <span class="drawer-label">Sections</span>
             </a>
+            <a class="drawer-link" href="<?= site_url('chairperson/curriculum') ?>" title="Curriculum">
+                <span class="material-symbols-outlined">menu_book</span>
+                <span class="drawer-label">Curriculum</span>
+            </a>
         </nav>
 
         <a class="drawer-link drawer-link--logout" href="<?= site_url('logout') ?>" title="Logout">
@@ -1315,7 +1260,24 @@
             <button type="button" class="btn btn-ghost" id="approvalsBtn">
                 Swap Approvals <span class="approval-badge" id="approvalBadge">0</span>
             </button>
+            <button type="button" class="btn btn-ghost" id="changeRequestsBtn">
+                Change Requests <span class="approval-badge" id="changeRequestBadge">0</span>
+            </button>
             <button type="button" class="btn btn-ghost" id="roomOverviewBtn">Room Overview</button>
+            <button type="button" class="btn btn-ghost" id="facultyPanelBtn">Faculty</button>
+            <div class="user-menu" id="notifWrap" style="position:relative;">
+                <button type="button" class="user-trigger" id="notifBtn" title="Notifications" style="padding:8px;">
+                    <span class="material-symbols-outlined">notifications</span>
+                    <span class="approval-badge zero" id="notifBadge" style="margin-left:2px;">0</span>
+                </button>
+                <div class="user-dropdown" id="notifPanel" style="min-width:320px; max-height:400px; overflow-y:auto; padding:0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--outline-variant);">
+                        <strong style="font-size:13px;">Notifications</strong>
+                        <button type="button" id="notifMarkAll" style="font-size:11.5px;color:var(--primary-container);background:none;border:none;cursor:pointer;font-weight:700;">Mark all read</button>
+                    </div>
+                    <div id="notifList"></div>
+                </div>
+            </div>
             <div class="user-menu" id="userMenu">
                 <button type="button" class="user-trigger" id="userMenuBtn">
                     <div class="avatar-sm"><?= esc(mb_strtoupper(mb_substr($user['name'], 0, 1))) ?></div>
@@ -1335,12 +1297,27 @@
     </header>
 
     <form class="filters" method="get" action="<?= site_url('chairperson/dashboard') ?>" id="contextForm">
+        <div>
+            <label>Academic Year</label>
+            <select name="ay_label" class="context-select">
+                <?php foreach ($filters['academic_year_labels'] as $label): ?>
+                    <option <?= $label === $selected['ay_label'] ? 'selected' : '' ?>><?= esc($label) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div>
+            <label>Semester</label>
+            <select name="semester" class="context-select">
+                <?php foreach ($filters['semester'] as $option): ?>
+                    <option <?= $option === $selected['semester'] ? 'selected' : '' ?>><?= esc($option) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
         <?php
         $filterLabels = [
-            'academic_year' => 'Academic Year',
-            'program'       => 'Program',
-            'year_level'    => 'Year Level',
-            'section'       => 'Section',
+            'program'    => 'Program',
+            'year_level' => 'Year Level',
+            'section'    => 'Section',
         ];
         ?>
         <?php foreach ($filterLabels as $name => $label): ?>
@@ -1369,9 +1346,9 @@
         <aside class="panel">
             <div class="rail-head">
                 <h2>Curriculum Subjects</h2>
-                <button type="button" class="rail-btn" id="curriculumBtn">
+                <a class="rail-btn" style="display:inline-block; text-decoration:none;" href="<?= site_url('chairperson/curriculum') . '?' . http_build_query($selected) ?>">
                     <?= $preset_codes === null ? 'Create Curriculum' : 'Edit Curriculum' ?>
-                </button>
+                </a>
             </div>
             <div class="rail-hint">
                 <?php if ($preset_codes === null): ?>
@@ -1392,7 +1369,7 @@
                         <div class="row1">
                             <span>
                                 <span class="code"><?= esc($subject['code']) ?></span>
-                                <?php if ($subject['is_lab']): ?><span class="lab-badge">LAB &middot; SAT</span><?php endif; ?>
+                                <?php if ($subject['is_lab']): ?><span class="lab-badge">LABORATORY</span><?php endif; ?>
                             </span>
                             <span class="units"><?= esc($subject['units']) ?></span>
                         </div>
@@ -1495,6 +1472,27 @@
         </div>
     </div>
 
+    <!-- Faculty assignment modal -->
+    <div class="modal-backdrop" id="facultyModal">
+        <div class="modal room-modal" style="width:520px;">
+            <div class="modal-head">
+                <h3>Assign faculty</h3>
+            </div>
+            <div class="sub" id="facultyModalSub"></div>
+            <div id="facultyModalWarnings"></div>
+
+            <div class="room-scroll" style="max-height:52vh;">
+                <div id="facultyModalList"></div>
+            </div>
+
+            <div class="note">Faculty already teaching at this time are disabled. You can also plot the subject without assigning faculty yet.</div>
+            <div class="actions">
+                <button type="button" class="btn btn-ghost" id="facultyModalSkip">Skip — Assign Later</button>
+                <button type="button" class="btn btn-ghost" id="facultyModalCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Swap approvals modal -->
     <div class="modal-backdrop" id="approvalsModal">
         <div class="modal">
@@ -1508,43 +1506,19 @@
         </div>
     </div>
 
-    <!-- Curriculum preset modal -->
-    <div class="modal-backdrop" id="curriculumModal">
+    <!-- Change requests modal -->
+    <div class="modal-backdrop" id="changeRequestsModal">
         <div class="modal">
-            <h3>Curriculum Preset</h3>
-            <div class="sub">
-                Choose the subjects for <b><?= esc($selected['program']) ?> &middot;
-                <?= esc($selected['year_level']) ?></b> in <?= esc($selected['academic_year']) ?>.
-                Applies to every section of this year level.
-            </div>
-            <div class="add-subject">
-                <div class="asf-title" id="asFormTitle">Add a new subject</div>
-                <div class="asf-grid">
-                    <input type="text" id="asCode" placeholder="Code (e.g. IT106)" maxlength="20">
-                    <input type="text" id="asTitle" placeholder="Subject title" maxlength="200" class="asf-wide">
-                    <input type="number" id="asUnits" min="0.5" max="6" step="0.5" value="3" title="Units">
-                    <select id="asDuration" title="Meeting length">
-                        <option value="1">1 hour</option>
-                        <option value="1.5" selected>1.5 hours</option>
-                        <option value="2">2 hours</option>
-                        <option value="2.5">2.5 hours</option>
-                        <option value="3">3 hours</option>
-                    </select>
-                    <label class="asf-lab"><input type="checkbox" id="asLab"> Lab (Sat)</label>
-                    <div class="asf-actions">
-                        <button type="button" class="btn btn-ghost asf-btn" id="asCancelEdit" style="display:none">Cancel</button>
-                        <button type="button" class="btn btn-primary asf-btn" id="asAdd">+ Add</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="curriculum-list" id="curriculumList"></div>
+            <h3>Change Requests</h3>
+            <div class="sub">Faculty members who can't accept an official assignment, waiting for your review.
+                Deciding does not reassign the subject — replot it yourself via the grid.</div>
+            <div class="approvals-list" id="changeRequestsList"></div>
             <div class="actions">
-                <button type="button" class="btn btn-ghost" id="curriculumCancel">Cancel</button>
-                <button type="button" class="btn btn-primary" id="curriculumSave">Save Curriculum</button>
+                <button type="button" class="btn btn-ghost" id="changeRequestsClose">Close</button>
             </div>
         </div>
     </div>
+
 
     <!-- Room overview modal -->
     <div class="modal-backdrop" id="overviewModal">
@@ -1563,6 +1537,18 @@
 
             <div class="actions">
                 <button type="button" class="btn btn-ghost" id="overviewClose">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Faculty context panel modal -->
+    <div class="modal-backdrop" id="facultyPanelModal">
+        <div class="modal overview-modal" style="width:560px;">
+            <h3>Department Faculty</h3>
+            <div class="sub" id="facultyPanelSub">Availability &amp; preferences for the upcoming term, current load for the active term.</div>
+            <div id="facultyPanelList" style="max-height:60vh; overflow-y:auto;"></div>
+            <div class="actions">
+                <button type="button" class="btn btn-ghost" id="facultyPanelClose">Close</button>
             </div>
         </div>
     </div>
@@ -1623,6 +1609,81 @@
                 menu.classList.toggle('open');
             });
             document.addEventListener('click', () => menu.classList.remove('open'));
+        })();
+
+        // ---------- notifications ----------
+        (function () {
+            const NOTIF_URLS = {
+                list:         <?= json_encode(site_url('chairperson/notifications')) ?>,
+                markRead:     <?= json_encode(site_url('chairperson/notifications/mark-read')) ?>,
+                markAllRead:  <?= json_encode(site_url('chairperson/notifications/mark-all-read')) ?>,
+            };
+
+            window.UNREAD = <?= json_encode((int) $unread_notifications) ?>;
+
+            function updateNotifBadge() {
+                const badge = document.getElementById('notifBadge');
+                badge.textContent = window.UNREAD > 99 ? '99+' : window.UNREAD;
+                badge.classList.toggle('zero', window.UNREAD === 0);
+            }
+            window.updateNotifBadge = updateNotifBadge;
+            updateNotifBadge();
+
+            async function loadNotifications() {
+                const list = document.getElementById('notifList');
+                list.innerHTML = '<p style="padding:14px;font-size:12px;color:var(--on-surface-variant);">Loading…</p>';
+
+                try {
+                    const response = await fetch(NOTIF_URLS.list, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    const data = await response.json();
+
+                    if (!data.notifications || data.notifications.length === 0) {
+                        list.innerHTML = '<p style="padding:14px;font-size:12px;color:var(--on-surface-variant);">No notifications yet.</p>';
+                        return;
+                    }
+
+                    list.innerHTML = '';
+                    data.notifications.forEach(n => {
+                        const item = document.createElement('div');
+                        item.style.cssText = 'padding:10px 14px;border-bottom:1px solid var(--outline-variant);cursor:pointer;font-size:12.5px;'
+                            + (n.is_read == 0 ? 'background:rgba(0,64,166,.05);font-weight:600;' : '');
+                        item.textContent = n.message;
+                        item.addEventListener('click', async () => {
+                            await fetch(NOTIF_URLS.markRead, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                                body: JSON.stringify({ id: n.id }),
+                            });
+                            if (n.link) window.location.href = n.link;
+                        });
+                        list.appendChild(item);
+                    });
+                } catch (err) {
+                    list.innerHTML = '<p style="padding:14px;font-size:12px;color:var(--on-surface-variant);">Could not load notifications.</p>';
+                }
+            }
+
+            const wrap = document.getElementById('notifWrap');
+            const btn  = document.getElementById('notifBtn');
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const opening = ! wrap.classList.contains('open');
+                document.getElementById('userMenu').classList.remove('open');
+                wrap.classList.toggle('open');
+                if (opening) loadNotifications();
+            });
+            document.addEventListener('click', () => wrap.classList.remove('open'));
+
+            document.getElementById('notifMarkAll').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await fetch(NOTIF_URLS.markAllRead, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                window.UNREAD = 0;
+                updateNotifBadge();
+                loadNotifications();
+            });
         })();
 
         // ---------- on-page error log ----------
@@ -1687,13 +1748,11 @@
             gridEndMin: toMinutes(<?= json_encode($grid_end) ?>),
             syncUrl: <?= json_encode(site_url('chairperson/schedule/sync')) ?>,
             stateUrl: <?= json_encode(site_url('chairperson/schedule/state')) ?>,
-            saturday: 5,
+            facultyPanelUrl: <?= json_encode(site_url('chairperson/faculty-panel')) ?>,
         };
         CONFIG.totalRows = (CONFIG.gridEndMin - CONFIG.gridStartMin) / 30;
 
         const SUBJECTS = <?= json_encode($subjects, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
-        const CATALOG  = <?= json_encode($catalog, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
-        const PRESET_CODES = <?= json_encode($preset_codes, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         const ROOMS    = <?= json_encode($rooms, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         const WEEK     = <?= json_encode($week, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         const CONTEXT  = <?= json_encode($selected, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
@@ -1701,6 +1760,7 @@
         let blocks     = <?= json_encode(array_values($blocks), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         let ASSIGNMENTS = <?= json_encode(array_values($assignments), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         let APPROVALS   = <?= json_encode(array_values($swap_approvals), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+        let CHANGE_REQUESTS = <?= json_encode(array_values($change_requests), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
         // Autosave state: every change syncs to the server immediately.
         let saveTimer = null;   // debounce handle
@@ -1949,22 +2009,43 @@
             renderRoomOverview(); // keep the overview live with every change
         }
 
-        const MAX_MEETINGS = 3; // a subject can meet up to 3 times a week
+        /** A subject can meet at most this many times a week (matches the server-side cap). */
+        const MAX_MEETINGS = 3;
+
+        function round1(n) { return Math.round(n * 10) / 10; }
 
         function updateRail() {
             let units = 0;
 
             SUBJECTS.forEach(s => {
-                const count = blocks.filter(b => b.code === s.code).length;
+                const subjectBlocks = blocks.filter(b => b.code === s.code);
+                const count = subjectBlocks.length;
                 const card = document.querySelector(`.subject[data-code="${s.code}"]`);
 
-                if (card) {
-                    card.classList.toggle('is-plotted', count >= MAX_MEETINGS);
-                    const counter = card.querySelector('.plot-count');
-                    if (counter) counter.textContent = count > 0 ? `✓ Plotted ${count}/${MAX_MEETINGS}` : '';
-                }
-
                 if (count > 0) units += parseFloat(s.units) || 0;
+
+                // Actual scheduled hours toward this subject's own weekly
+                // target (units x hrs/unit) — not a fixed "out of 3
+                // meetings" count. E.g. a 3-hour-per-meeting subject only
+                // needs 1 meeting; a 1.5-hour subject needs 2.
+                const weeklyHours = parseFloat(s.weekly_hours) || 0;
+
+                let subjectPlotted = 0;
+                subjectBlocks.forEach(b => {
+                    const duration = (toMinutes(b.end) - toMinutes(b.start)) / 60;
+                    const room = Math.max(0, weeklyHours - subjectPlotted);
+                    subjectPlotted += Math.min(duration, room);
+                });
+
+                if (card) {
+                    card.classList.toggle('is-plotted', weeklyHours > 0 && subjectPlotted >= weeklyHours);
+                    const counter = card.querySelector('.plot-count');
+                    if (counter) {
+                        counter.textContent = count > 0
+                            ? `✓ Plotted ${round1(subjectPlotted)}/${round1(weeklyHours)} Hours`
+                            : '';
+                    }
+                }
             });
 
             document.getElementById('plottedUnits').textContent = units;
@@ -2056,8 +2137,7 @@
                 preview.style.top = (startRow * CONFIG.rowHeight) + 'px';
                 preview.style.height = ((endRow - startRow) * CONFIG.rowHeight - 4) + 'px';
                 preview.classList.toggle('invalid',
-                    (dragged.is_lab && day !== CONFIG.saturday)
-                    || !!sectionConflict(day, startRow, endRow)
+                    !!sectionConflict(day, startRow, endRow)
                     || !!facultyConflict(dragged.prof, day, startRow, endRow));
                 if (preview.parentElement !== col) col.appendChild(preview);
             });
@@ -2076,17 +2156,6 @@
                 const { startRow, endRow } = dropRange(col, e.clientY, subject);
 
                 const attempted = { subject, day, startRow, endRow };
-
-                // Hard rule: laboratory subjects are Saturday-only.
-                if (subject.is_lab && day !== CONFIG.saturday) {
-                    showConflictModal({
-                        tag: 'Invalid Day',
-                        message: `${subject.code} is a laboratory subject — it can only be plotted on Saturdays.`,
-                        attempted,
-                        existing: null,
-                    });
-                    return;
-                }
 
                 // Hard rule: the section cannot attend two classes at once,
                 // no matter the room.
@@ -2126,249 +2195,6 @@
 
                 openRoomModal(subject, day, startRow, endRow, warnings);
             });
-        });
-
-        // ---------- curriculum preset modal ----------
-        const curriculumModal = document.getElementById('curriculumModal');
-        const curriculumUrl = <?= json_encode(site_url('chairperson/curriculum-preset')) ?>;
-
-        // Which catalog subjects are ticked for this year level's curriculum.
-        let curriculumChecked = new Map();
-
-        function renderCurriculumList() {
-            const list = document.getElementById('curriculumList');
-            list.innerHTML = '';
-
-            CATALOG.forEach(s => {
-                const row = document.createElement('label');
-                row.className = 'curriculum-row';
-
-                const box = document.createElement('input');
-                box.type = 'checkbox';
-                box.value = s.code;
-                box.checked = curriculumChecked.get(s.code) === true;
-                box.addEventListener('change', () => curriculumChecked.set(s.code, box.checked));
-
-                const details = document.createElement('div');
-                details.className = 'cr-details';
-                const code = document.createElement('span');
-                code.className = 'code';
-                code.textContent = s.code;
-                details.appendChild(code);
-                details.appendChild(document.createTextNode(' — ' + s.title));
-                const meta = document.createElement('div');
-                meta.className = 'meta';
-                meta.textContent = `${s.units} · ${s.hours}` + (s.is_lab ? ' · Lab (Saturday only)' : '');
-                details.appendChild(meta);
-
-                const edit = document.createElement('button');
-                edit.type = 'button';
-                edit.className = 'cr-edit';
-                edit.title = 'Edit this subject';
-                edit.textContent = '✎';
-                edit.addEventListener('click', e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    enterEditMode(s);
-                });
-
-                const del = document.createElement('button');
-                del.type = 'button';
-                del.className = 'cr-delete';
-                del.title = 'Delete this subject from the catalog';
-                del.textContent = '×';
-                del.addEventListener('click', e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    deleteSubject(s.code);
-                });
-
-                row.append(box, details, edit, del);
-                list.appendChild(row);
-            });
-        }
-
-        // ----- add/edit form mode -----
-        let editingCode = null; // null = adding a new subject
-
-        function enterEditMode(s) {
-            editingCode = s.code;
-            document.getElementById('asFormTitle').textContent = 'Edit subject: ' + s.code;
-            document.getElementById('asCode').value = s.code;
-            document.getElementById('asTitle').value = s.title;
-            document.getElementById('asUnits').value = parseFloat(s.units) || 3;
-            document.getElementById('asDuration').value = String(s.duration);
-            document.getElementById('asLab').checked = !!s.is_lab;
-            document.getElementById('asAdd').textContent = 'Save Changes';
-            document.getElementById('asCancelEdit').style.display = '';
-            document.getElementById('asCode').focus();
-        }
-
-        function exitEditMode() {
-            editingCode = null;
-            document.getElementById('asFormTitle').textContent = 'Add a new subject';
-            document.getElementById('asCode').value = '';
-            document.getElementById('asTitle').value = '';
-            document.getElementById('asUnits').value = 3;
-            document.getElementById('asDuration').value = '1.5';
-            document.getElementById('asLab').checked = false;
-            document.getElementById('asAdd').textContent = '+ Add';
-            document.getElementById('asCancelEdit').style.display = 'none';
-        }
-
-        document.getElementById('asCancelEdit').addEventListener('click', exitEditMode);
-
-        function openCurriculumModal() {
-            // Existing preset: check its subjects. New preset: start with
-            // everything checked and let the chairperson trim.
-            curriculumChecked = new Map(CATALOG.map(s =>
-                [s.code, PRESET_CODES === null || PRESET_CODES.includes(s.code)]));
-
-            exitEditMode();
-            renderCurriculumList();
-            curriculumModal.classList.add('open');
-        }
-
-        async function deleteSubject(code) {
-            const subject = CATALOG.find(s => s.code === code);
-            const confirmed = await confirmDialog({
-                title: 'Delete subject',
-                message: `Delete ${code}${subject ? ' — ' + subject.title : ''} from the subject catalog? It disappears from every year level's curriculum. This is blocked while the subject is plotted on any schedule.`,
-                confirmLabel: 'Delete',
-                danger: true,
-            });
-            if (!confirmed) return;
-
-            try {
-                const response = await fetch(<?= json_encode(site_url('chairperson/subjects/delete')) ?>, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ code: code }),
-                });
-                const result = await response.json();
-
-                if (response.ok && result.ok) {
-                    const index = CATALOG.findIndex(s => s.code === code);
-                    if (index !== -1) CATALOG.splice(index, 1);
-                    curriculumChecked.delete(code);
-                    renderCurriculumList();
-                    showToast(`${code} deleted from the catalog.`, 'success');
-                } else {
-                    showToast(result.error || 'Could not delete the subject.', 'error');
-                }
-            } catch (err) {
-                showToast('Network error while deleting the subject.', 'error');
-            }
-        }
-
-        document.getElementById('asAdd').addEventListener('click', async () => {
-            const payload = {
-                code: document.getElementById('asCode').value.trim().toUpperCase(),
-                title: document.getElementById('asTitle').value.trim(),
-                units: parseFloat(document.getElementById('asUnits').value),
-                duration: parseFloat(document.getElementById('asDuration').value),
-                is_lab: document.getElementById('asLab').checked,
-                program: CONTEXT.program,
-            };
-
-            if (!payload.code || !payload.title) {
-                showToast('Subject code and title are required.', 'error');
-                return;
-            }
-
-            const editing = editingCode !== null;
-            const details = `${payload.code} — ${payload.title} (${payload.units} units, ${payload.duration} ${payload.duration === 1 ? 'hour' : 'hours'}${payload.is_lab ? ', laboratory — Saturday only' : ''})`;
-
-            const confirmed = await confirmDialog(editing
-                ? {
-                    title: 'Save subject changes',
-                    message: `Save changes to ${editingCode}? New details: ${details}. Updates apply everywhere the subject is used.`,
-                    confirmLabel: 'Save Changes',
-                }
-                : {
-                    title: 'Add subject',
-                    message: `Add ${details} to the subject catalog?`,
-                    confirmLabel: 'Add Subject',
-                });
-            if (!confirmed) return;
-
-            const btn = document.getElementById('asAdd');
-            btn.disabled = true;
-
-            try {
-                const url = editing
-                    ? <?= json_encode(site_url('chairperson/subjects/update')) ?>
-                    : <?= json_encode(site_url('chairperson/subjects/add')) ?>;
-
-                const body = editing ? { ...payload, original_code: editingCode } : payload;
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify(body),
-                });
-                const result = await response.json();
-
-                if (response.ok && result.ok && result.subject) {
-                    if (editing) {
-                        // Reload so the rail, blocks, and presets all reflect
-                        // the edited subject.
-                        window.location.reload();
-                        return;
-                    }
-                    CATALOG.push(result.subject);
-                    CATALOG.sort((a, b) => a.code.localeCompare(b.code));
-                    curriculumChecked.set(result.subject.code, true);
-                    renderCurriculumList();
-                    exitEditMode();
-                    showToast(`${result.subject.code} added to the catalog.`, 'success');
-                } else {
-                    showToast(result.error || 'Could not save the subject.', 'error');
-                }
-            } catch (err) {
-                showToast('Network error while saving the subject.', 'error');
-            } finally {
-                btn.disabled = false;
-            }
-        });
-
-        document.getElementById('curriculumBtn').addEventListener('click', openCurriculumModal);
-        document.getElementById('curriculumCancel').addEventListener('click', () => curriculumModal.classList.remove('open'));
-        curriculumModal.addEventListener('click', e => { if (e.target === curriculumModal) curriculumModal.classList.remove('open'); });
-
-        document.getElementById('curriculumSave').addEventListener('click', async () => {
-            const codes = [...document.querySelectorAll('#curriculumList input:checked')].map(box => box.value);
-
-            if (codes.length === 0) {
-                showToast('Select at least one subject for the curriculum.', 'error');
-                return;
-            }
-
-            const btn = document.getElementById('curriculumSave');
-            btn.disabled = true;
-            btn.textContent = 'Saving…';
-
-            try {
-                const response = await fetch(curriculumUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ context: CONTEXT, subjects: codes }),
-                });
-                const result = await response.json();
-
-                if (response.ok && result.ok) {
-                    // Reload so the rail reflects the new curriculum.
-                    window.location.reload();
-                } else {
-                    showToast(result.error || 'Could not save the curriculum.', 'error');
-                    btn.disabled = false;
-                    btn.textContent = 'Save Curriculum';
-                }
-            } catch (err) {
-                showToast('Network error while saving the curriculum.', 'error');
-                btn.disabled = false;
-                btn.textContent = 'Save Curriculum';
-            }
         });
 
         // ---------- swap approvals ----------
@@ -2467,6 +2293,99 @@
             renderApprovals();
             approvalsModal.classList.add('open');
         });
+
+        // ===== Change requests =====
+        const changeRequestsModal = document.getElementById('changeRequestsModal');
+
+        function renderChangeRequests() {
+            const badge = document.getElementById('changeRequestBadge');
+            badge.textContent = CHANGE_REQUESTS.length;
+            badge.classList.toggle('zero', CHANGE_REQUESTS.length === 0);
+
+            const list = document.getElementById('changeRequestsList');
+            list.innerHTML = '';
+
+            if (CHANGE_REQUESTS.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'approvals-empty';
+                empty.textContent = 'No change requests waiting for review.';
+                list.appendChild(empty);
+                return;
+            }
+
+            CHANGE_REQUESTS.forEach(cr => {
+                const item = document.createElement('div');
+                item.className = 'approval-item';
+
+                const who = document.createElement('div');
+                who.className = 'ap-who';
+                who.textContent = `${cr.faculty} — ${cr.subject}`;
+
+                const reason = document.createElement('div');
+                reason.className = 'ap-loads';
+                reason.textContent = cr.reason + (cr.proposed ? ` (proposed: ${cr.proposed})` : '');
+
+                const actions = document.createElement('div');
+                actions.className = 'ap-actions';
+
+                const reject = document.createElement('button');
+                reject.type = 'button';
+                reject.className = 'btn btn-ghost';
+                reject.textContent = 'Reject';
+                reject.addEventListener('click', () => decideChangeRequest(cr, false));
+
+                const approve = document.createElement('button');
+                approve.type = 'button';
+                approve.className = 'btn btn-primary';
+                approve.textContent = 'Approve';
+                approve.addEventListener('click', () => decideChangeRequest(cr, true));
+
+                actions.append(reject, approve);
+                item.append(who, reason, actions);
+                list.appendChild(item);
+            });
+        }
+
+        async function decideChangeRequest(cr, approve) {
+            const confirmed = await confirmDialog({
+                title: (approve ? 'Approve' : 'Reject') + ' change request',
+                message: `${cr.faculty}'s request for ${cr.subject}: "${cr.reason}".`
+                    + (approve ? ' Approving does not reassign the subject — you\'ll need to replot it with a different faculty member.' : ' Rejecting keeps the assignment as it is.'),
+                confirmLabel: approve ? 'Approve' : 'Reject',
+                danger: !approve,
+            });
+            if (!confirmed) return;
+
+            try {
+                const url = approve
+                    ? <?= json_encode(site_url('chairperson/change-requests/approve')) ?>
+                    : <?= json_encode(site_url('chairperson/change-requests/reject')) ?>;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ request_id: cr.id }),
+                });
+                const result = await response.json();
+
+                if (response.ok && result.ok) {
+                    CHANGE_REQUESTS = CHANGE_REQUESTS.filter(x => x.id !== cr.id);
+                    renderChangeRequests();
+                    showToast(approve ? 'Change request approved.' : 'Change request rejected.', approve ? 'success' : '');
+                } else {
+                    showToast(result.error || 'Could not decide the change request.', 'error');
+                }
+            } catch (err) {
+                showToast('Network error while deciding the change request.', 'error');
+            }
+        }
+
+        document.getElementById('changeRequestsBtn').addEventListener('click', () => {
+            renderChangeRequests();
+            changeRequestsModal.classList.add('open');
+        });
+        document.getElementById('changeRequestsClose').addEventListener('click', () => changeRequestsModal.classList.remove('open'));
+        changeRequestsModal.addEventListener('click', e => { if (e.target === changeRequestsModal) changeRequestsModal.classList.remove('open'); });
         document.getElementById('approvalsClose').addEventListener('click', () => approvalsModal.classList.remove('open'));
         approvalsModal.addEventListener('click', e => { if (e.target === approvalsModal) approvalsModal.classList.remove('open'); });
 
@@ -2627,6 +2546,82 @@
         document.getElementById('overviewClose').addEventListener('click', () => overviewModal.classList.remove('open'));
         overviewModal.addEventListener('click', e => { if (e.target === overviewModal) overviewModal.classList.remove('open'); });
 
+        // ===== Faculty context panel =====
+        const facultyPanelModal = document.getElementById('facultyPanelModal');
+
+        function facultyStatusChip(status) {
+            if (!status) return '';
+            const label = status === 'full_time' ? 'Full-Time' : 'Part-Time';
+            return `<span style="font-size:11px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#4338ca; margin-left:6px;">${label}</span>`;
+        }
+
+        function facultyAvailabilitySummary(rows) {
+            if (!rows || !rows.length) return '<span style="color:var(--outline);">No availability submitted yet</span>';
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            return rows.map(r => {
+                if (!r.is_available || r.is_available == 0) {
+                    return `${days[r.day_of_week]}: Not available`;
+                }
+                return `${days[r.day_of_week]}: ${(r.start_time || '').slice(0, 5)}–${(r.end_time || '').slice(0, 5)}`;
+            }).join(' &middot; ');
+        }
+
+        function facultyPreferenceChips(prefs) {
+            if (!prefs || !prefs.length) return '<span style="color:var(--outline);">No preferences submitted</span>';
+            const colors = { preferred: '#dcfce7', willing: '#fef9c3', qualified: '#e0e7ff' };
+            const textColors = { preferred: '#166534', willing: '#854d0e', qualified: '#3730a3' };
+            return prefs.map(p =>
+                `<span title="${p.title}" style="font-size:11px; padding:2px 8px; border-radius:999px; background:${colors[p.level] || '#eee'}; color:${textColors[p.level] || '#333'}; margin-right:4px;">${p.code} &middot; ${p.level}</span>`
+            ).join('');
+        }
+
+        async function loadFacultyPanel() {
+            const list = document.getElementById('facultyPanelList');
+            list.innerHTML = '<p class="sub">Loading&hellip;</p>';
+
+            try {
+                const response = await fetch(CONFIG.facultyPanelUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' });
+                const data = await response.json();
+
+                document.getElementById('facultyPanelSub').textContent = data.upcoming_term
+                    ? `Availability & preferences for ${data.upcoming_term}. Current load for ${data.active_year || 'the active term'}.`
+                    : 'No upcoming term configured yet — faculty cannot submit availability until an admin adds one.';
+
+                if (!data.faculty.length) {
+                    list.innerHTML = '<p class="sub">No faculty members in your department yet.</p>';
+                    return;
+                }
+
+                list.innerHTML = data.faculty.map(f => `
+                    <div style="border:1px solid var(--outline-variant); border-radius:10px; padding:12px 14px; margin-bottom:10px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between;">
+                            <strong>${f.name}</strong>
+                            <span>${facultyStatusChip(f.employment_status)}</span>
+                        </div>
+                        <div style="font-size:12px; color:var(--on-surface-variant); margin-top:6px;">
+                            <strong>Load:</strong> ${f.units} units &middot; ${f.weekly_hours} hrs/week &middot; ${f.subjects.length} subject(s)
+                        </div>
+                        <div style="font-size:12px; margin-top:6px;">
+                            <strong>Availability:</strong> ${facultyAvailabilitySummary(f.availability)}
+                        </div>
+                        <div style="font-size:12px; margin-top:6px;">
+                            <strong>Preferences:</strong> ${facultyPreferenceChips(f.preferences)}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                list.innerHTML = '<p class="sub">Could not load faculty data.</p>';
+            }
+        }
+
+        document.getElementById('facultyPanelBtn').addEventListener('click', () => {
+            facultyPanelModal.classList.add('open');
+            loadFacultyPanel();
+        });
+
+        document.getElementById('facultyPanelClose').addEventListener('click', () => facultyPanelModal.classList.remove('open'));
+        facultyPanelModal.addEventListener('click', e => { if (e.target === facultyPanelModal) facultyPanelModal.classList.remove('open'); });
+
         // ---------- conflict warning modal ----------
         const conflictModal = document.getElementById('conflictModal');
 
@@ -2730,12 +2725,99 @@
             });
         }
 
+        function roomCard(room, subject, day, startRow, endRow) {
+            const state = roomStatus(room.name, day, startRow, endRow);
+            const occupied = state === 'grey';
+
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'room-card ' + state;
+            card.disabled = occupied;
+
+            const head = document.createElement('div');
+            head.className = 'room-head';
+
+            const name = document.createElement('div');
+            name.className = 'room-name';
+            name.textContent = room.name;
+            if (room.is_laboratory) {
+                const badge = document.createElement('span');
+                badge.className = 'lab-room-badge';
+                badge.textContent = 'Laboratory';
+                name.appendChild(badge);
+            }
+
+            const dot = document.createElement('span');
+            dot.className = 'room-dot';
+
+            head.append(name, dot);
+
+            const status = document.createElement('div');
+            status.className = 'room-status';
+            status.textContent = ROOM_STATUS_LABEL[state] + (room.capacity ? ` · Capacity: ${room.capacity}` : '');
+
+            card.append(head, status);
+
+            if (!occupied) {
+                card.addEventListener('click', () => selectRoom(subject, day, startRow, endRow, room));
+            }
+
+            return card;
+        }
+
+        async function selectRoom(subject, day, startRow, endRow, room) {
+            // Soft rule: a laboratory subject in a non-lab room is allowed,
+            // but must be explicitly confirmed — never silently plotted.
+            if (subject.is_lab && !room.is_laboratory) {
+                const confirmed = await confirmDialog({
+                    title: 'Laboratory Room Recommended',
+                    message: `${subject.code} — ${subject.title} is marked as a laboratory subject, but ${room.name} is not classified as a laboratory. Are you sure you want to continue?`,
+                    confirmLabel: 'Continue Anyway',
+                    danger: false,
+                });
+                if (!confirmed) return; // stay in the room picker
+            }
+
+            closeRoomModal();
+            openFacultyModal(subject, day, startRow, endRow, room.name);
+        }
+
         function renderRoomGrid() {
             if (!modalArgs) return;
             const [subject, day, startRow, endRow] = modalArgs;
 
             roomGrid.innerHTML = '';
 
+            const inFloor = r => floorFilter === 'all' || floorFilter === r.floor;
+
+            if (subject.is_lab) {
+                // Laboratory subject: lab rooms recommended first, then
+                // everything else — grouping takes priority over floor
+                // layout so the best options are never buried below.
+                const labRooms = ROOMS.filter(r => r.is_laboratory && inFloor(r));
+                const otherRooms = ROOMS.filter(r => !r.is_laboratory && inFloor(r));
+
+                if (labRooms.length) {
+                    const heading = document.createElement('div');
+                    heading.className = 'floor-heading recommended';
+                    heading.textContent = '⭐ Recommended — Laboratory Rooms';
+                    roomGrid.appendChild(heading);
+                    labRooms.forEach(room => roomGrid.appendChild(roomCard(room, subject, day, startRow, endRow)));
+                }
+
+                if (otherRooms.length) {
+                    const heading = document.createElement('div');
+                    heading.className = 'floor-heading';
+                    heading.textContent = 'Other Rooms';
+                    roomGrid.appendChild(heading);
+                    otherRooms.forEach(room => roomGrid.appendChild(roomCard(room, subject, day, startRow, endRow)));
+                }
+
+                return;
+            }
+
+            // Lecture subject: unchanged floor-grouped layout. Lab rooms can
+            // still appear (still usable), just not promoted.
             FLOORS.forEach(floor => {
                 if (floorFilter !== 'all' && floorFilter !== floor) return;
 
@@ -2744,55 +2826,8 @@
                 heading.textContent = floor;
                 roomGrid.appendChild(heading);
 
-                ROOMS.filter(r => r.floor === floor).forEach(room => {
-                    const state = roomStatus(room.name, day, startRow, endRow);
-                    const occupied = state === 'grey';
-
-                    const card = document.createElement('button');
-                    card.type = 'button';
-                    card.className = 'room-card ' + state;
-                    card.disabled = occupied;
-
-                    const head = document.createElement('div');
-                    head.className = 'room-head';
-
-                    const name = document.createElement('div');
-                    name.className = 'room-name';
-                    name.textContent = room.name;
-
-                    const dot = document.createElement('span');
-                    dot.className = 'room-dot';
-
-                    head.append(name, dot);
-
-                    const status = document.createElement('div');
-                    status.className = 'room-status';
-                    status.textContent = ROOM_STATUS_LABEL[state];
-
-                    card.append(head, status);
-
-                    if (!occupied) {
-                        card.addEventListener('click', () => {
-                            blocks.push({
-                                day: day,
-                                code: subject.code,
-                                title: subject.title,
-                                prof: subject.prof,
-                                time_label: `${rowTo12h(startRow)} - ${rowTo12h(endRow)}`,
-                                room: room.name,
-                                theme: subject.color,
-                                start: rowToHHMM(startRow),
-                                end: rowToHHMM(endRow),
-                            });
-                            closeRoomModal();
-                            renderBlocks();
-                            scheduleSave();
-                            showToast(`${subject.code} plotted in ${room.name}.`, 'success');
-                        });
-                    }
-
-                    roomGrid.appendChild(card);
-                });
+                ROOMS.filter(r => r.floor === floor)
+                    .forEach(room => roomGrid.appendChild(roomCard(room, subject, day, startRow, endRow)));
             });
         }
 
@@ -2835,9 +2870,131 @@
             closeRoomModal();
             document.getElementById('conflictModal').classList.remove('open');
             overviewModal.classList.remove('open');
-            curriculumModal.classList.remove('open');
             approvalsModal.classList.remove('open');
+            changeRequestsModal.classList.remove('open');
+            closeFacultyModal();
         });
+
+        // ---------- faculty assignment modal ----------
+        const facultyModal = document.getElementById('facultyModal');
+        let pendingPlot = null;
+
+        function timeOverlap(aStart, aEnd, bStart, bEnd) {
+            return aStart < bEnd && bStart < aEnd;
+        }
+
+        function finalizePlot(facultyId, facultyName) {
+            if (!pendingPlot) return;
+            const { subject, day, startRow, endRow, roomName } = pendingPlot;
+
+            blocks.push({
+                day: day,
+                code: subject.code,
+                title: subject.title,
+                prof: facultyName || undefined,
+                faculty_id: facultyId || null,
+                time_label: `${rowTo12h(startRow)} - ${rowTo12h(endRow)}`,
+                room: roomName,
+                theme: subject.color,
+                start: rowToHHMM(startRow),
+                end: rowToHHMM(endRow),
+            });
+
+            closeFacultyModal();
+            renderBlocks();
+            scheduleSave();
+            showToast(
+                facultyName
+                    ? `${subject.code} plotted in ${roomName}, assigned to ${facultyName}.`
+                    : `${subject.code} plotted in ${roomName}.`,
+                'success'
+            );
+        }
+
+        async function openFacultyModal(subject, day, startRow, endRow, roomName) {
+            pendingPlot = { subject, day, startRow, endRow, roomName };
+
+            document.getElementById('facultyModalSub').textContent =
+                `${subject.code} - ${subject.title} · ${WEEK[day].day}, ${rowTo12h(startRow)} - ${rowTo12h(endRow)} · ${roomName}`;
+
+            const list = document.getElementById('facultyModalList');
+            list.innerHTML = '<p class="sub">Loading faculty…</p>';
+            facultyModal.classList.add('open');
+
+            let data;
+            try {
+                const response = await fetch(CONFIG.facultyPanelUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' });
+                data = await response.json();
+            } catch (e) {
+                list.innerHTML = '<p class="sub">Could not load faculty. You can still skip and assign later.</p>';
+                return;
+            }
+
+            const start = rowToHHMM(startRow);
+            const end = rowToHHMM(endRow);
+            const prefRank = { preferred: 0, willing: 1, qualified: 2 };
+
+            const candidates = (data.faculty || []).map(f => {
+                const pref = (f.preferences || []).find(p => p.code === subject.code);
+                const conflict = (f.meetings || []).some(m => m.day === day && timeOverlap(start, end, m.start, m.end));
+                const dayAvail = (f.availability || []).find(a => a.day_of_week === day);
+                const unavailable = dayAvail && !dayAvail.is_available;
+                const overCap = data.max_units && (f.units + (parseFloat(subject.units) || 0) > data.max_units);
+
+                return { f, pref, conflict, dayAvail, unavailable, overCap };
+            }).sort((a, b) => {
+                const aRank = a.pref ? prefRank[a.pref.level] : 3;
+                const bRank = b.pref ? prefRank[b.pref.level] : 3;
+                if (aRank !== bRank) return aRank - bRank;
+                if (a.conflict !== b.conflict) return a.conflict ? 1 : -1;
+                return a.f.name.localeCompare(b.f.name);
+            });
+
+            if (!candidates.length) {
+                list.innerHTML = '<p class="sub">No faculty members in your department yet. You can still skip and assign later.</p>';
+                return;
+            }
+
+            list.innerHTML = '';
+
+            candidates.forEach(({ f, pref, conflict, unavailable, overCap }) => {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'faculty-card';
+                card.disabled = conflict; // hard error: cannot be in two places at once
+
+                let tags = '';
+                if (pref) tags += `<span class="fc-tag ${pref.level}">${pref.level}</span>`;
+                if (conflict) tags += '<span class="fc-tag conflict">conflict</span>';
+                else if (unavailable) tags += '<span class="fc-tag unavailable">marked unavailable</span>';
+                if (overCap) tags += '<span class="fc-tag conflict">over unit cap</span>';
+
+                const empLabel = f.employment_status === 'full_time' ? 'Full-Time' : f.employment_status === 'part_time' ? 'Part-Time' : '';
+
+                card.innerHTML = `
+                    <div class="fc-head">
+                        <span class="fc-name">${f.name}${empLabel ? ' · ' + empLabel : ''}</span>
+                        <span>${tags}</span>
+                    </div>
+                    <div class="fc-meta">${f.units} units · ${f.weekly_hours} hrs/week · ${f.subjects.length} subject(s) currently</div>
+                `;
+
+                if (!conflict) {
+                    card.addEventListener('click', () => finalizePlot(f.id, f.name));
+                }
+
+                list.appendChild(card);
+            });
+        }
+
+        function closeFacultyModal() {
+            pendingPlot = null;
+            facultyModal.classList.remove('open');
+        }
+
+        document.getElementById('facultyModalSkip').addEventListener('click', () => finalizePlot(null, null));
+        document.getElementById('facultyModalCancel').addEventListener('click', closeFacultyModal);
+        facultyModal.addEventListener('click', e => { if (e.target === facultyModal) closeFacultyModal(); });
 
         // ---------- autosave (insta-plot) ----------
         function scheduleSave() {
@@ -2929,9 +3086,9 @@
                         data.assignments.forEach(a => {
                             const label = `${a.code} (${a.section} · ${shortYear(a.year_level)})`;
                             if (!known.has(a.key)) {
-                                showToast(`${label} was claimed by ${a.username}.`, 'success');
+                                showToast(`${label} was assigned to ${a.username}.`, 'success');
                             } else if (known.get(a.key) !== a.username) {
-                                showToast(`${label} was swapped from ${known.get(a.key)} to ${a.username}.`, 'success');
+                                showToast(`${label} was reassigned from ${known.get(a.key)} to ${a.username}.`, 'success');
                             }
                         });
                         ASSIGNMENTS = data.assignments;
@@ -2947,6 +3104,23 @@
                         });
                         APPROVALS = data.swap_approvals;
                         renderApprovals();
+                    }
+
+                    // Change requests queue: toast newly arrived requests.
+                    if (Array.isArray(data.change_requests)) {
+                        const knownCrIds = new Set(CHANGE_REQUESTS.map(cr => cr.id));
+                        data.change_requests.forEach(cr => {
+                            if (!knownCrIds.has(cr.id)) {
+                                showToast(`Change request from ${cr.faculty} for ${cr.subject}.`, 'success');
+                            }
+                        });
+                        CHANGE_REQUESTS = data.change_requests;
+                        renderChangeRequests();
+                    }
+
+                    if (typeof data.unread_notifications === 'number') {
+                        window.UNREAD = data.unread_notifications;
+                        if (window.updateNotifBadge) window.updateNotifBadge();
                     }
 
                     let changed = false;
@@ -2991,6 +3165,7 @@
 
         renderBlocks();
         renderApprovals();
+        renderChangeRequests();
     </script>
 
 </body>

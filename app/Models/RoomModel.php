@@ -9,7 +9,7 @@ class RoomModel extends Model
     protected $table      = 'rooms';
     protected $primaryKey = 'room_id';
 
-    protected $allowedFields = ['name', 'capacity', 'type', 'floor', 'is_active'];
+    protected $allowedFields = ['name', 'capacity', 'type', 'is_laboratory', 'floor', 'is_active'];
 
     protected $useTimestamps = true;
 

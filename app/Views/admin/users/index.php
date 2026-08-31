@@ -54,7 +54,12 @@
 
             <div><span class="ac-badge ac-badge--<?= esc($u['group']) ?>"><?= esc(ucfirst($u['group'])) ?></span></div>
 
-            <div class="ac-cell"><?= esc($u['dept_name'] ?? '—') ?></div>
+            <div class="ac-cell">
+                <?= esc($u['dept_name'] ?? '—') ?>
+                <?php if ($u['group'] === 'faculty' && $u['employment_status']): ?>
+                    <br><span style="font-size:11px; color:#4338ca;"><?= $u['employment_status'] === 'full_time' ? 'Full-Time' : 'Part-Time' ?></span>
+                <?php endif ?>
+            </div>
 
             <div>
                 <span class="ac-status-dot <?= $u['active'] ? 'ac-status-dot--active' : 'ac-status-dot--pending' ?>">
@@ -84,8 +89,9 @@
                             'username'      => $u['username'],
                             'email'         => $u['email'],
                             'group'         => $u['group'],
-                            'department_id' => $u['department_id'],
-                            'section_id'    => $u['section_id'],
+                            'department_id'     => $u['department_id'],
+                            'section_id'        => $u['section_id'],
+                            'employment_status' => $u['employment_status'],
                         ]) ?>)'>
                     <span class="material-symbols-outlined">edit</span>
                 </button>
@@ -157,6 +163,15 @@
                             <?php endforeach ?>
                         </select>
                     </div>
+                </div>
+
+                <div class="ac-field" id="acEmpStatusField" style="display:none;">
+                    <label>Employment Status</label>
+                    <select name="employment_status" class="ac-input">
+                        <option value="">Not set</option>
+                        <option value="full_time" <?= old('employment_status') === 'full_time' ? 'selected' : '' ?>>Full-Time</option>
+                        <option value="part_time" <?= old('employment_status') === 'part_time' ? 'selected' : '' ?>>Part-Time</option>
+                    </select>
                 </div>
 
                 <div id="acSectionRow" style="display:none; grid-template-columns:1fr 1fr 1fr; gap:12px;">
@@ -242,6 +257,15 @@
                             <?php endforeach ?>
                         </select>
                     </div>
+                </div>
+
+                <div class="ac-field" id="acEditEmpStatusField" style="display:none;">
+                    <label>Employment Status</label>
+                    <select name="employment_status" id="acEditEmpStatusSelect" class="ac-input">
+                        <option value="">Not set</option>
+                        <option value="full_time">Full-Time</option>
+                        <option value="part_time">Part-Time</option>
+                    </select>
                 </div>
 
                 <div id="acEditSectionRow" style="display:none; grid-template-columns:1fr 1fr 1fr; gap:12px;">
@@ -427,6 +451,7 @@
         document.getElementById('acChairNotice').style.display = role === 'dean' ? 'flex' : 'none';
         document.getElementById('acSectionRow').style.display = role === 'student' ? 'grid' : 'none';
         document.getElementById('acSectionHint').style.display = role === 'student' ? 'block' : 'none';
+        document.getElementById('acEmpStatusField').style.display = role === 'faculty' ? 'block' : 'none';
         if (role === 'student') acCascadeSections('');
     }
 
@@ -450,6 +475,7 @@
         if (!isChair) {
             document.getElementById('acEditRoleSelect').value = user.group;
             document.getElementById('acEditDeptSelect').value = user.department_id || '';
+            document.getElementById('acEditEmpStatusSelect').value = user.employment_status || '';
 
             var currentSection = AC_SECTIONS.find(function (s) { return s.id === user.section_id; });
 
@@ -468,6 +494,7 @@
         document.getElementById('acEditDeptField').style.display = role === 'admin' ? 'none' : 'block';
         document.getElementById('acEditSectionRow').style.display = role === 'student' ? 'grid' : 'none';
         document.getElementById('acEditSectionHint').style.display = role === 'student' ? 'block' : 'none';
+        document.getElementById('acEditEmpStatusField').style.display = role === 'faculty' ? 'block' : 'none';
         if (role === 'student') acCascadeSections('Edit', preselect);
     }
 

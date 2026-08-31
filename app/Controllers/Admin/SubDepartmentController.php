@@ -275,8 +275,9 @@ class SubDepartmentController extends BaseController
         }
 
         $rules = [
-            'username' => 'required|max_length[100]',
-            'email'    => 'required|valid_email',
+            'username'          => 'required|max_length[100]',
+            'email'             => 'required|valid_email',
+            'employment_status' => 'permit_empty|in_list[full_time,part_time]',
         ];
 
         if (! $this->validate($rules)) {
@@ -322,6 +323,7 @@ class SubDepartmentController extends BaseController
             ->update([
                 'sub_department_id' => $id,
                 'department_id'     => $department['college_id'],
+                'employment_status' => $this->request->getPost('employment_status') ?: null,
             ]);
 
         return redirect()
@@ -345,8 +347,9 @@ class SubDepartmentController extends BaseController
         }
 
         $rules = [
-            'username' => 'required|max_length[100]',
-            'email'    => 'required|valid_email',
+            'username'          => 'required|max_length[100]',
+            'email'             => 'required|valid_email',
+            'employment_status' => 'permit_empty|in_list[full_time,part_time]',
         ];
 
         if (! $this->validate($rules)) {
@@ -359,6 +362,10 @@ class SubDepartmentController extends BaseController
         $user->username = $this->request->getPost('username');
         $user->email    = $this->request->getPost('email');
         $users->save($user);
+
+        db_connect()->table('users')
+            ->where('id', $user->id)
+            ->update(['employment_status' => $this->request->getPost('employment_status') ?: null]);
 
         return redirect()
             ->to("/admin/sub-departments/{$id}")
@@ -415,7 +422,7 @@ class SubDepartmentController extends BaseController
     private function facultyMembersOf(int $subDeptId): array
     {
         return db_connect()->table('users u')
-            ->select('u.id, u.username, u.active, i.secret as email')
+            ->select('u.id, u.username, u.active, u.employment_status, i.secret as email')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
             ->where('g.group', 'faculty')

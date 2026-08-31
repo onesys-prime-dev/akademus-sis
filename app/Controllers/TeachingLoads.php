@@ -3,9 +3,12 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Libraries\ScheduleOverlap;
 use App\Models\AcademicYearModel;
 use App\Models\DepartmentModel;
 use App\Models\FacultyAssignmentModel;
+use App\Models\FacultyChangeRequestModel;
+use App\Models\NotificationModel;
 use App\Models\PlottedScheduleModel;
 use App\Models\SubjectModel;
 use App\Models\SwapRequestModel;
@@ -69,7 +72,7 @@ class TeachingLoads extends BaseController
         $deadline      = microtime(true) + 20;
 
         do {
-            $version = $this->version();
+            $version = $this->version($userId);
 
             if ($clientVersion === '' || $version !== $clientVersion) {
                 break;
@@ -81,71 +84,11 @@ class TeachingLoads extends BaseController
         return $this->response->setJSON($this->buildState($userId) + ['version' => $version]);
     }
 
-    /**
-     * Claim a load. First come first served — the unique index on
-     * faculty_assignments is the tie-breaker for simultaneous claims.
-     */
-    public function claim()
-    {
-        $userId  = (int) auth()->id();
-        $payload = $this->request->getJSON(true);
-
-        if (! is_array($payload)) {
-            return $this->fail('Invalid payload.');
-        }
-
-        foreach (['academic_year', 'program', 'year_level', 'section', 'code'] as $key) {
-            if (! isset($payload[$key]) || ! is_string($payload[$key]) || $payload[$key] === '') {
-                return $this->fail("Missing field: {$key}");
-            }
-        }
-
-        if (! $this->isActiveYear($payload['academic_year'])) {
-            return $this->fail('This academic year is not active. Only the active term accepts new claims.');
-        }
-
-        $state = $this->buildState($userId);
-
-        $key  = implode('|', [$payload['academic_year'], $payload['program'], $payload['year_level'], $payload['section'], $payload['code']]);
-        $load = null;
-
-        foreach ($state['loads'] as $candidate) {
-            if ($candidate['key'] === $key) {
-                $load = $candidate;
-                break;
-            }
-        }
-
-        if ($load === null) {
-            return $this->fail('This load is not available to you — it may be outside your department or just claimed.');
-        }
-
-        if ($load['state'] === 'conflict') {
-            return $this->fail("Schedule conflict: {$load['code']} overlaps one of your assigned classes.");
-        }
-
-        if ($state['units'] + $load['units'] > self::MAX_UNITS) {
-            return $this->fail("Claiming {$load['code']} would exceed your " . self::MAX_UNITS . '-unit load limit.');
-        }
-
-        try {
-            (new FacultyAssignmentModel())->insert([
-                'user_id'       => $userId,
-                'academic_year' => $payload['academic_year'],
-                'program'       => $payload['program'],
-                'year_level'    => $payload['year_level'],
-                'section'       => $payload['section'],
-                'subject_code'  => $payload['code'],
-                'method'        => 'claimed',
-                'status'        => 'assigned',
-            ]);
-        } catch (\Exception $e) {
-            // Unique key collision: someone else won the race.
-            return $this->fail("Too late — {$load['code']} was just claimed by another faculty member.");
-        }
-
-        return $this->response->setJSON(['ok' => true, 'claimed' => $load['code']]);
-    }
+    // Faculty no longer claim loads (FCFS) — the chairperson assigns faculty
+    // directly while plotting (see ChairpersonController::sync()). Loads
+    // that show as "unassigned" here are just informational; if a faculty
+    // member disagrees with an assignment they already have, they use
+    // Request for Change instead (see Faculty\ChangeRequestController).
 
     /**
      * Create a swap request.
@@ -285,13 +228,8 @@ class TeachingLoads extends BaseController
             return $this->fail('Accepting would exceed your ' . self::MAX_UNITS . '-unit load limit.');
         }
 
-        foreach ($offeredInfo['meetings'] as $meeting) {
-            foreach ($agg['meetings'] as $moment) {
-                if ($meeting['day'] === $moment['day']
-                    && $meeting['start'] < $moment['end'] && $moment['start'] < $meeting['end']) {
-                    return $this->fail("Schedule conflict: {$offered['subject_code']} overlaps one of your classes.");
-                }
-            }
+        if (ScheduleOverlap::anyClash($offeredInfo['meetings'], $agg['meetings'])) {
+            return $this->fail("Schedule conflict: {$offered['subject_code']} overlaps one of your classes.");
         }
 
         $swaps->update($swapId, ['status' => 'accepted']);
@@ -366,6 +304,11 @@ class TeachingLoads extends BaseController
             }
         }
 
+        $openChangeRequestAssignmentIds = array_column(
+            (new FacultyChangeRequestModel())->whereIn('status', ['pending', 'under_review'])->findAll(),
+            'assignment_id'
+        );
+
         $mine      = [];
         $available = [];
         $taken     = [];
@@ -375,8 +318,9 @@ class TeachingLoads extends BaseController
                 $assignment   = $assignedTo[$key];
                 $assignmentId = (int) $assignment['assignment_id'];
 
-                $group['assignment_id'] = $assignmentId;
-                $group['swap_pending']  = isset($busyIds[$assignmentId]);
+                $group['assignment_id']          = $assignmentId;
+                $group['swap_pending']           = isset($busyIds[$assignmentId]);
+                $group['change_request_pending'] = in_array($assignmentId, $openChangeRequestAssignmentIds, true);
 
                 if ((int) $assignment['user_id'] === $userId) {
                     $group['state'] = 'assigned';
@@ -403,28 +347,45 @@ class TeachingLoads extends BaseController
 
         // Mark available loads that overlap this faculty's own classes.
         foreach ($available as &$load) {
-            $load['state'] = 'claim';
-
-            foreach ($load['meetings'] as $meeting) {
-                foreach ($myMeetings as $moment) {
-                    if ($meeting['day'] === $moment['day']
-                        && $meeting['start'] < $moment['end'] && $moment['start'] < $meeting['end']) {
-                        $load['state'] = 'conflict';
-                        break 2;
-                    }
-                }
-            }
+            $load['state'] = ScheduleOverlap::anyClash($load['meetings'], $myMeetings) ? 'conflict' : 'unassigned';
         }
         unset($load);
 
         return [
-            'loads'   => array_values($available),
-            'taken'   => array_values($taken),
-            'mine'    => array_values($mine),
-            'units'   => $units == (int) $units ? (int) $units : $units,
-            'swaps'   => $this->swapData($userId, $groups),
-            'faculty' => $this->facultyList($userId),
+            'loads'                => array_values($available),
+            'taken'                => array_values($taken),
+            'mine'                 => array_values($mine),
+            'units'                => $units == (int) $units ? (int) $units : $units,
+            'swaps'                => $this->swapData($userId, $groups),
+            'faculty'              => $this->facultyList($userId),
+            'change_requests'      => $this->changeRequestsFor($userId),
+            'unread_notifications' => (new NotificationModel())->unreadCount($userId),
         ];
+    }
+
+    /**
+     * This faculty member's own change requests, most recent first, labeled
+     * from the underlying assignment's subject/context (which may no longer
+     * be theirs — the request itself is a historical record either way).
+     */
+    private function changeRequestsFor(int $userId): array
+    {
+        $rows = db_connect()->table('faculty_change_requests cr')
+            ->select('cr.request_id, cr.reason, cr.proposed_alternative, cr.status, cr.created_at,'
+                . ' fa.subject_code, fa.section, fa.year_level')
+            ->join('faculty_assignments fa', 'fa.assignment_id = cr.assignment_id')
+            ->where('cr.faculty_id', $userId)
+            ->orderBy('cr.created_at', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        return array_map(static fn (array $row): array => [
+            'id'       => (int) $row['request_id'],
+            'subject'  => $row['subject_code'] . ' · ' . $row['section'] . ' · ' . str_replace(' Year', ' Yr', $row['year_level']),
+            'reason'   => $row['reason'],
+            'proposed' => $row['proposed_alternative'],
+            'status'   => $row['status'],
+        ], $rows);
     }
 
     /**
@@ -602,7 +563,7 @@ class TeachingLoads extends BaseController
                         'year_level'    => $row['year_level'],
                         'section'       => $row['section'],
                     ],
-                    'state' => 'claim',
+                    'state' => 'unassigned',
                 ];
             }
 
@@ -629,15 +590,16 @@ class TeachingLoads extends BaseController
     }
 
     /**
-     * Cheap change signature over schedules, assignments, and swaps.
+     * Cheap change signature over schedules, assignments, swaps, and this
+     * user's own unread notifications.
      */
-    private function version(): string
+    private function version(int $userId): string
     {
         $db = db_connect();
 
         $parts = [];
 
-        foreach (['plotted_schedules' => 'schedule_id', 'faculty_assignments' => 'assignment_id', 'swap_requests' => 'swap_id'] as $table => $pk) {
+        foreach (['plotted_schedules' => 'schedule_id', 'faculty_assignments' => 'assignment_id', 'swap_requests' => 'swap_id', 'faculty_change_requests' => 'request_id'] as $table => $pk) {
             $row = $db->table($table)
                 ->select("COUNT(*) AS n, COALESCE(MAX({$pk}), 0) AS max_id, COALESCE(MAX(updated_at), '') AS updated")
                 ->get()
@@ -645,6 +607,14 @@ class TeachingLoads extends BaseController
 
             $parts[] = "{$row['n']}|{$row['max_id']}|{$row['updated']}";
         }
+
+        $row = $db->table('notifications')
+            ->select("COUNT(*) AS n, COALESCE(MAX(id), 0) AS max_id")
+            ->where('user_id', $userId)
+            ->where('is_read', 0)
+            ->get()
+            ->getRowArray();
+        $parts[] = "{$row['n']}|{$row['max_id']}";
 
         return implode('#', $parts);
     }
@@ -655,8 +625,8 @@ class TeachingLoads extends BaseController
     }
 
     /**
-     * Only the admin-flagged active academic year accepts new claims or
-     * swap transfers. Any other term is read-only from this controller.
+     * Only the admin-flagged active academic year accepts new swap
+     * transfers. Any other term is read-only from this controller.
      */
     private function isActiveYear(string $academicYear): bool
     {

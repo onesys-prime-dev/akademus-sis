@@ -48,6 +48,57 @@
             value="<?= old('units', $subject['units']) ?>">
         <br><br>
 
+        <label>
+            <input
+                type="checkbox"
+                name="is_laboratory"
+                value="1"
+                <?= old('is_laboratory', $subject['is_laboratory']) ? 'checked' : '' ?>>
+            Laboratory subject (may only be plotted on Saturdays)
+        </label>
+        <br><br>
+
+        <label>Lecture Units (optional split, overrides Units above for hour calc)</label>
+        <br>
+        <input
+            type="number"
+            step="0.5"
+            name="lecture_units"
+            value="<?= old('lecture_units', $subject['lecture_units']) ?>">
+        <br><br>
+
+        <label>Laboratory Units (optional split, overrides Units above for hour calc)</label>
+        <br>
+        <input
+            type="number"
+            step="0.5"
+            name="laboratory_units"
+            value="<?= old('laboratory_units', $subject['laboratory_units']) ?>">
+        <br><br>
+
+        <label>Contact Hours per Meeting (e.g. 1.5)</label>
+        <br>
+        <input
+            type="number"
+            step="0.5"
+            name="contact_hours"
+            value="<?= old('contact_hours', $subject['contact_hours']) ?>">
+        <br><br>
+
+        <label>Meetings per Week (optional target; leave blank for no fixed target)</label>
+        <br>
+        <input
+            type="number"
+            step="1"
+            name="meetings_per_week"
+            value="<?= old('meetings_per_week', $subject['meetings_per_week']) ?>">
+        <br><br>
+
+        <label>Weekly Hours (derived, read-only)</label>
+        <br>
+        <input type="text" value="<?= esc($subject['weekly_hours']) ?>" disabled>
+        <br><br>
+
         <label>Description</label>
         <br>
         <textarea name="description"><?= esc($subject['description']) ?></textarea>

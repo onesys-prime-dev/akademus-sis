@@ -110,6 +110,11 @@
                                 </div>
                             </div>
                             <div style="display:flex; align-items:center; gap:10px;">
+                                <?php if ($fm['employment_status']): ?>
+                                    <span class="ac-status-dot" style="background:#eef2ff; color:#4338ca;">
+                                        <?= $fm['employment_status'] === 'full_time' ? 'Full-Time' : 'Part-Time' ?>
+                                    </span>
+                                <?php endif ?>
                                 <span class="ac-status-dot <?= $fm['active'] ? 'ac-status-dot--active' : 'ac-status-dot--pending' ?>">
                                     <?= $fm['active'] ? 'Active' : 'Invited' ?>
                                 </span>
@@ -150,6 +155,14 @@
                                         <div class="ac-field">
                                             <label>Email</label>
                                             <input type="email" name="email" class="ac-input" value="<?= esc($fm['email']) ?>" required>
+                                        </div>
+                                        <div class="ac-field">
+                                            <label>Employment Status</label>
+                                            <select name="employment_status" class="ac-input">
+                                                <option value="">Not set</option>
+                                                <option value="full_time" <?= $fm['employment_status'] === 'full_time' ? 'selected' : '' ?>>Full-Time</option>
+                                                <option value="part_time" <?= $fm['employment_status'] === 'part_time' ? 'selected' : '' ?>>Part-Time</option>
+                                            </select>
                                         </div>
                                     </div>
                                     <div class="ac-modal__actions">
@@ -325,6 +338,14 @@
                 <div class="ac-field">
                     <label>Email</label>
                     <input type="email" name="email" class="ac-input" placeholder="rconsulta@spum.edu.ph" value="<?= old('email') ?>" required>
+                </div>
+                <div class="ac-field">
+                    <label>Employment Status</label>
+                    <select name="employment_status" class="ac-input">
+                        <option value="">Not set</option>
+                        <option value="full_time" <?= old('employment_status') === 'full_time' ? 'selected' : '' ?>>Full-Time</option>
+                        <option value="part_time" <?= old('employment_status') === 'part_time' ? 'selected' : '' ?>>Part-Time</option>
+                    </select>
                 </div>
             </div>
             <div class="ac-modal__actions">

@@ -43,6 +43,32 @@
         <input type="number" step="0.5" name="units" value="<?= old('units', '3') ?>">
         <br><br>
 
+        <label>
+            <input type="checkbox" name="is_laboratory" value="1" <?= old('is_laboratory') ? 'checked' : '' ?>>
+            Laboratory subject (may only be plotted on Saturdays)
+        </label>
+        <br><br>
+
+        <label>Lecture Units (optional split, overrides Units above for hour calc)</label>
+        <br>
+        <input type="number" step="0.5" name="lecture_units" value="<?= old('lecture_units') ?>">
+        <br><br>
+
+        <label>Laboratory Units (optional split, overrides Units above for hour calc)</label>
+        <br>
+        <input type="number" step="0.5" name="laboratory_units" value="<?= old('laboratory_units') ?>">
+        <br><br>
+
+        <label>Contact Hours per Meeting (e.g. 1.5)</label>
+        <br>
+        <input type="number" step="0.5" name="contact_hours" value="<?= old('contact_hours', '1.5') ?>">
+        <br><br>
+
+        <label>Meetings per Week (optional target; leave blank for no fixed target)</label>
+        <br>
+        <input type="number" step="1" name="meetings_per_week" value="<?= old('meetings_per_week') ?>">
+        <br><br>
+
         <label>Description</label>
         <br>
         <textarea name="description"><?= old('description') ?></textarea>
