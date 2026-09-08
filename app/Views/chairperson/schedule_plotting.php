@@ -903,23 +903,60 @@
         .room-card:disabled .room-dot { background: var(--outline); }
 
         /* Faculty assignment modal */
+        .fc-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        @media (max-width: 640px) {
+            .fc-grid { grid-template-columns: 1fr; }
+        }
         .faculty-card {
             width: 100%;
             text-align: left;
             border: 1px solid var(--outline-variant);
             border-radius: 10px;
-            padding: 10px 12px;
-            margin-bottom: 8px;
+            overflow: hidden;
             background: var(--surface);
-            cursor: pointer;
+            display: flex;
+            flex-direction: column;
         }
-        .faculty-card:hover:not(:disabled) { box-shadow: 0 2px 8px rgba(0,0,0,.12); }
-        .faculty-card:disabled { background: var(--surface-dim); cursor: not-allowed; opacity: .6; }
-        .faculty-card .fc-head { display: flex; align-items: center; justify-content: space-between; }
+        .faculty-card:hover:not(.fc-disabled) { box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+        .faculty-card.fc-disabled { opacity: .6; }
+        .faculty-card .fc-band {
+            padding: 12px 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            border-bottom: 1px solid var(--outline-variant);
+        }
+        .faculty-card .fc-band.preferred { background: #f0fdf4; }
+        .faculty-card .fc-band.mismatch { background: #fefce8; }
+        .faculty-card .fc-band.unavailable,
+        .faculty-card .fc-band.conflict { background: #fef2f2; }
+        .faculty-card .fc-avatar {
+            width: 38px; height: 38px; border-radius: 50%;
+            background: var(--primary-container); color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 14px; flex: 0 0 auto;
+        }
+        .faculty-card .fc-head-text { min-width: 0; }
         .faculty-card .fc-name { font-weight: 700; font-size: 13px; }
+        .faculty-card .fc-name .fc-emp { font-weight: 400; color: var(--on-surface-variant); }
+        .faculty-card .fc-body { padding: 10px 14px 12px; display: flex; flex-direction: column; flex: 1; }
         .faculty-card .fc-meta { font-size: 11px; color: var(--on-surface-variant); margin-top: 4px; }
+        .faculty-card .fc-actions { display: flex; gap: 8px; margin-top: 10px; }
+        .faculty-card .fc-btn {
+            flex: 1; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+            cursor: pointer; text-align: center; border: 1px solid var(--outline-variant); background: var(--surface);
+        }
+        .faculty-card .fc-btn:hover { background: var(--surface-container-high); }
+        .faculty-card .fc-btn.fc-btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .faculty-card .fc-btn.fc-btn-primary:hover { filter: brightness(1.08); }
+        .faculty-card .fc-btn:disabled { cursor: not-allowed; opacity: .5; }
         .faculty-card .fc-tag {
-            font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; margin-left: 6px;
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; margin-top: 4px;
         }
         .faculty-card .fc-tag.preferred { background: #dcfce7; color: #166534; }
         .faculty-card .fc-tag.willing { background: #fef9c3; color: #854d0e; }
@@ -1474,18 +1511,23 @@
 
     <!-- Faculty assignment modal -->
     <div class="modal-backdrop" id="facultyModal">
-        <div class="modal room-modal" style="width:520px;">
+        <div class="modal room-modal" style="width:800px; max-width:94vw;">
             <div class="modal-head">
                 <h3>Assign faculty</h3>
             </div>
             <div class="sub" id="facultyModalSub"></div>
             <div id="facultyModalWarnings"></div>
 
-            <div class="room-scroll" style="max-height:52vh;">
-                <div id="facultyModalList"></div>
+            <div style="position:relative; margin:10px 0 12px;">
+                <input type="text" id="facultyModalSearch" placeholder="Search faculty by name…"
+                    style="width:100%; padding:9px 12px; border:1px solid var(--outline-variant); border-radius:8px; font-size:13px; background:var(--surface);">
             </div>
 
-            <div class="note">🟢 Preferred · 🟡 Available but not preferred · 🔴 Unavailable (overridable, with confirmation) or already teaching another class at this time (not overridable). You can also plot the subject without assigning faculty yet.</div>
+            <div class="room-scroll" style="max-height:52vh;">
+                <div id="facultyModalList" class="fc-grid"></div>
+            </div>
+
+            <div class="note"><span style="color:#166534; font-weight:700;">Preferred</span> &middot; <span style="color:#854d0e; font-weight:700;">Available but not preferred</span> &middot; <span style="color:#991b1b; font-weight:700;">Unavailable</span> (overridable, with confirmation) or already teaching another class at this time (not overridable). You can also plot the subject without assigning faculty yet.</div>
             <div class="actions">
                 <button type="button" class="btn btn-ghost" id="facultyModalSkip">Skip — Assign Later</button>
                 <button type="button" class="btn btn-ghost" id="facultyModalCancel">Cancel</button>
@@ -1776,7 +1818,10 @@
         }
 
         function rowTo12h(row) {
-            const mins = CONFIG.gridStartMin + row * 30;
+            return minutesTo12h(CONFIG.gridStartMin + row * 30);
+        }
+
+        function minutesTo12h(mins) {
             let h = Math.floor(mins / 60);
             const m = mins % 60;
             const ampm = h >= 12 ? 'PM' : 'AM';
@@ -2974,10 +3019,10 @@
 
         // Faculty status for one proposed (day, start, end) slot, relative
         // to their marked availability/preferences and existing meetings:
-        //   'conflict'    — 🔴 already teaching something else at this time (hard block, cannot override)
-        //   'unavailable' — 🔴 marked not available (or no availability on record for that day) — overridable, but warns first
-        //   'mismatch'    — 🟡 available, but not their preferred subject/level
-        //   'preferred'   — 🟢 available and this subject is one of their preferences
+        //   'conflict'    — already teaching something else at this time (hard block, cannot override)
+        //   'unavailable' — marked not available (or no availability on record for that day) — overridable, but warns first
+        //   'mismatch'    — available, but not their preferred subject/level
+        //   'preferred'   — available and this subject is one of their preferences
         function classifyFacultySlot(f, subject, day, start, end, isReassign) {
             const conflictMeeting = (f.meetings || []).find(m => {
                 if (m.day !== day || !timeOverlap(start, end, m.start, m.end)) return false;
@@ -3011,17 +3056,17 @@
         }
 
         const SLOT_STATUS_META = {
-            conflict:    { icon: '🔴', label: 'Schedule conflict' },
-            unavailable: { icon: '🔴', label: 'Availability conflict' },
-            mismatch:    { icon: '🟡', label: 'Outside preferred schedule' },
-            preferred:   { icon: '🟢', label: 'Preferred' },
+            conflict:    { label: 'Schedule conflict' },
+            unavailable: { label: 'Availability conflict' },
+            mismatch:    { label: 'Not a preferred subject' },
+            preferred:   { label: 'Preferred' },
         };
 
         function facultyAvailabilityTable(f) {
             const rows = WEEK.map((w, dayIdx) => {
                 const a = (f.availability || []).find(x => x.day_of_week === dayIdx);
                 const window = a && a.is_available
-                    ? `${rowTo12h(Math.round(toMinutes(a.start_time || '00:00') / 30))} – ${rowTo12h(Math.round(toMinutes(a.end_time || '00:00') / 30))}`
+                    ? `${minutesTo12h(toMinutes(a.start_time || '00:00'))} – ${minutesTo12h(toMinutes(a.end_time || '00:00'))}`
                     : null;
                 return `<tr>
                     <td>${w.day}</td>
@@ -3096,67 +3141,93 @@
                 return;
             }
 
-            list.innerHTML = '';
+            function renderCards(filterText) {
+                list.innerHTML = '';
+                const needle = (filterText || '').trim().toLowerCase();
 
-            candidates.forEach(({ f, slot, overCap }) => {
-                const meta = SLOT_STATUS_META[slot.status];
-                const card = document.createElement('div');
-                card.className = 'faculty-card';
-                card.style.cursor = slot.status === 'conflict' ? 'not-allowed' : 'pointer';
-                card.style.opacity = slot.status === 'conflict' ? '0.55' : '1';
+                candidates
+                    .filter(({ f }) => !needle || f.name.toLowerCase().includes(needle))
+                    .forEach(({ f, slot, overCap }) => {
+                        const meta = SLOT_STATUS_META[slot.status];
+                        const card = document.createElement('div');
+                        card.className = 'faculty-card' + (slot.status === 'conflict' ? ' fc-disabled' : '');
 
-                let tags = `<span class="fc-tag ${slot.status}">${meta.icon} ${meta.label}</span>`;
-                if (overCap) tags += '<span class="fc-tag conflict">over unit cap</span>';
+                        let tags = `<span class="fc-tag ${slot.status}">${meta.label}</span>`;
+                        if (overCap) tags += ' <span class="fc-tag conflict">over unit cap</span>';
 
-                const empLabel = f.employment_status === 'full_time' ? 'Full-Time' : f.employment_status === 'part_time' ? 'Part-Time' : '';
+                        const empLabel = f.employment_status === 'full_time' ? 'Full-Time' : f.employment_status === 'part_time' ? 'Part-Time' : '';
+                        const initials = f.name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
-                card.innerHTML = `
-                    <div class="fc-head">
-                        <span class="fc-name">${f.name}${empLabel ? ' · ' + empLabel : ''}</span>
-                        <span>${tags}</span>
-                    </div>
-                    <div class="fc-meta">${f.units} units · ${f.weekly_hours} hrs/week · ${f.subjects.length} subject(s) currently</div>
-                    ${slot.status === 'conflict' ? `<div class="fc-meta" style="color:#991b1b;">Already teaching ${slot.meeting.code || 'another class'} ${WEEK[day].day} ${rowTo12h(Math.round(toMinutes(slot.meeting.start) / 30))}–${rowTo12h(Math.round(toMinutes(slot.meeting.end) / 30))}.</div>` : ''}
-                    <button type="button" class="fc-avail-toggle" style="font-size:11.5px; color:var(--primary); background:none; border:none; padding:4px 0 0; cursor:pointer;">View weekly availability ▾</button>
-                    <div class="fc-avail-panel" style="display:none; margin-top:6px;"></div>
-                `;
+                        const dayAvail = (f.availability || []).find(a => a.day_of_week === day);
+                        const todayWindow = dayAvail
+                            ? (dayAvail.is_available
+                                ? `${minutesTo12h(toMinutes(dayAvail.start_time || '00:00'))} – ${minutesTo12h(toMinutes(dayAvail.end_time || '00:00'))}`
+                                : 'Not available')
+                            : 'Not submitted';
 
-                const toggleBtn = card.querySelector('.fc-avail-toggle');
-                const panel = card.querySelector('.fc-avail-panel');
-                toggleBtn.addEventListener('click', ev => {
-                    ev.stopPropagation();
-                    const open = panel.style.display !== 'none';
-                    panel.style.display = open ? 'none' : 'block';
-                    toggleBtn.textContent = open ? 'View weekly availability ▾' : 'Hide weekly availability ▴';
-                    if (!open && !panel.dataset.rendered) {
-                        panel.innerHTML = facultyAvailabilityTable(f);
-                        panel.dataset.rendered = '1';
-                    }
-                });
+                        card.innerHTML = `
+                            <div class="fc-band ${slot.status}">
+                                <div class="fc-avatar">${initials}</div>
+                                <div class="fc-head-text">
+                                    <div class="fc-name">${f.name}${empLabel ? ` <span class="fc-emp">· ${empLabel}</span>` : ''}</div>
+                                    <div>${tags}</div>
+                                </div>
+                            </div>
+                            <div class="fc-body">
+                                <div class="fc-meta">${f.units} units · ${f.weekly_hours} hrs/week · ${f.subjects.length} subject(s) currently</div>
+                                <div class="fc-meta"><strong>${WEEK[day].day} availability:</strong> ${todayWindow}</div>
+                                <div class="fc-meta" style="margin-top:2px;"><strong>Preferences:</strong> ${facultyPreferenceChips(f.preferences)}</div>
+                                ${slot.status === 'conflict' ? `<div class="fc-meta" style="color:#991b1b;">Already teaching ${slot.meeting.code || 'another class'} ${WEEK[day].day} ${rowTo12h(Math.round(toMinutes(slot.meeting.start) / 30))}–${rowTo12h(Math.round(toMinutes(slot.meeting.end) / 30))}.</div>` : ''}
+                                <div class="fc-avail-panel" style="display:none; margin-top:6px;"></div>
+                                <div class="fc-actions">
+                                    <button type="button" class="fc-btn fc-schedule">View Schedule</button>
+                                    <button type="button" class="fc-btn fc-btn-primary fc-assign" ${slot.status === 'conflict' ? 'disabled' : ''}>Assign</button>
+                                </div>
+                            </div>
+                        `;
 
-                if (slot.status === 'conflict') {
-                    // Hard block: two classes cannot occupy the same faculty
-                    // at the same time — not overridable.
-                } else if (slot.status === 'unavailable') {
-                    card.addEventListener('click', async () => {
-                        const proceed = await confirmDialog({
-                            title: 'Faculty Availability Conflict',
-                            message: `${f.name} is marked unavailable for ${WEEK[day].day} ${rowTo12h(startRow)}–${rowTo12h(endRow)}. `
-                                + 'Choose "Cancel" to pick a different schedule or faculty member, or "Proceed Anyway" to assign them regardless (this will be recorded).',
-                            confirmLabel: 'Proceed Anyway',
-                            danger: true,
+                        const scheduleBtn = card.querySelector('.fc-schedule');
+                        const panel = card.querySelector('.fc-avail-panel');
+                        scheduleBtn.addEventListener('click', () => {
+                            const open = panel.style.display !== 'none';
+                            panel.style.display = open ? 'none' : 'block';
+                            scheduleBtn.textContent = open ? 'View Schedule' : 'Hide Schedule';
+                            if (!open && !panel.dataset.rendered) {
+                                panel.innerHTML = facultyAvailabilityTable(f);
+                                panel.dataset.rendered = '1';
+                            }
                         });
-                        if (!proceed) return;
-                        const reason = window.prompt('Optional: reason for overriding this availability conflict', '') || '';
-                        await recordFacultyOverride(f.id, 'unavailable', reason);
-                        finalizePlot(f.id, f.name);
-                    });
-                } else {
-                    card.addEventListener('click', () => finalizePlot(f.id, f.name));
-                }
 
-                list.appendChild(card);
-            });
+                        const assignBtn = card.querySelector('.fc-assign');
+                        if (slot.status === 'conflict') {
+                            // Hard block: two classes cannot occupy the same
+                            // faculty at the same time — not overridable.
+                        } else if (slot.status === 'unavailable') {
+                            assignBtn.addEventListener('click', async () => {
+                                const proceed = await confirmDialog({
+                                    title: 'Faculty Availability Conflict',
+                                    message: `${f.name} is marked unavailable for ${WEEK[day].day} ${rowTo12h(startRow)}–${rowTo12h(endRow)}. `
+                                        + 'Choose "Cancel" to pick a different schedule or faculty member, or "Proceed Anyway" to assign them regardless (this will be recorded).',
+                                    confirmLabel: 'Proceed Anyway',
+                                    danger: true,
+                                });
+                                if (!proceed) return;
+                                const reason = window.prompt('Optional: reason for overriding this availability conflict', '') || '';
+                                await recordFacultyOverride(f.id, 'unavailable', reason);
+                                finalizePlot(f.id, f.name);
+                            });
+                        } else {
+                            assignBtn.addEventListener('click', () => finalizePlot(f.id, f.name));
+                        }
+
+                        list.appendChild(card);
+                    });
+            }
+
+            renderCards('');
+            const searchInput = document.getElementById('facultyModalSearch');
+            searchInput.value = '';
+            searchInput.oninput = () => renderCards(searchInput.value);
         }
 
         function closeFacultyModal() {

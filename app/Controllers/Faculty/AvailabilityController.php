@@ -153,9 +153,12 @@ class AvailabilityController extends BaseController
 
         $subDept   = (new DepartmentModel())->subDeptOfUser($userId);
         $subDeptId = $subDept['sub_dept_id'] ?? null;
-        $validSubjectIds = $subDeptId === null ? [] : array_column(
-            (new SubjectModel())->where('sub_department_id', $subDeptId)->where('is_active', 1)->findAll(),
-            'subject_id'
+        $validSubjectIds = $subDeptId === null ? [] : array_map(
+            'intval',
+            array_column(
+                (new SubjectModel())->where('sub_department_id', $subDeptId)->where('is_active', 1)->findAll(),
+                'subject_id'
+            )
         );
 
         $rows = [];

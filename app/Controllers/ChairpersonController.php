@@ -789,6 +789,8 @@ class ChairpersonController extends BaseController
                 ->findAll();
 
             foreach ($availabilityRows as $row) {
+                $row['day_of_week'] = (int) $row['day_of_week'];
+                $row['is_available'] = (int) $row['is_available'];
                 $availabilityByUser[(int) $row['user_id']][] = $row;
             }
 
