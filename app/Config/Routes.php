@@ -180,6 +180,11 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('sections/assign-student', 'ChairpersonController::assignStudent');
     $routes->post('sections/unassign-student', 'ChairpersonController::unassignStudent');
     $routes->get('faculty-panel', 'ChairpersonController::facultyPanel');
+
+    // section merging (course offerings)
+    $routes->get('offerings'                , 'Chairperson\OfferingController::index');
+    $routes->post('offerings/create'        , 'Chairperson\OfferingController::create');
+    $routes->post('offerings/unmerge'       , 'Chairperson\OfferingController::unmergeSection');
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);

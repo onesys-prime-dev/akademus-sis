@@ -13,6 +13,7 @@ class EnrollmentModel extends Model
     protected $allowedFields = [
         'user_id',
         'section_id',
+        'offering_id',
         'subject_code',
         'method',
         'status',
@@ -59,17 +60,30 @@ class EnrollmentModel extends Model
             return ['ok' => false, 'error' => "Schedule conflict: {$subjectCode} overlaps {$conflict}, which you're already enrolled in."];
         }
 
-        if ($section['capacity'] !== null) {
-            $alreadyMember = $this->where([
-                'section_id' => $sectionId,
-                'user_id'    => $userId,
-                'status'     => 'enrolled',
-            ])->countAllResults() > 0;
+        // If this (section, subject) has been merged into a course offering
+        // (see CourseOfferingModel::createMerge), capacity is checked
+        // against the MERGED pool across every attached section, not this
+        // section alone — that's the entire point of a merge. Sections not
+        // part of any offering behave exactly as before.
+        $offering   = (new CourseOfferingModel())->offeringForSection($sectionId, $subjectCode);
+        $offeringId = $offering['offering_id'] ?? null;
+        $capacity   = $offering !== null ? $offering['capacity'] : $section['capacity'];
 
-            if (! $alreadyMember && $this->rosterCount($sectionId) >= (int) $section['capacity']) {
+        if ($capacity !== null) {
+            $memberQuery = $offeringId !== null
+                ? ['offering_id' => $offeringId, 'user_id' => $userId, 'status' => 'enrolled']
+                : ['section_id' => $sectionId, 'user_id' => $userId, 'status' => 'enrolled'];
+
+            $alreadyMember = $this->where($memberQuery)->countAllResults() > 0;
+
+            $rosterCount = $offeringId !== null
+                ? (new CourseOfferingModel())->rosterCount($offeringId)
+                : $this->rosterCount($sectionId);
+
+            if (! $alreadyMember && $rosterCount >= (int) $capacity) {
                 $db->transRollback();
 
-                return ['ok' => false, 'error' => 'This section is full.'];
+                return ['ok' => false, 'error' => $offeringId !== null ? 'This merged class is full.' : 'This section is full.'];
             }
         }
 
@@ -77,6 +91,7 @@ class EnrollmentModel extends Model
             $inserted = $this->insert([
                 'user_id'      => $userId,
                 'section_id'   => $sectionId,
+                'offering_id'  => $offeringId,
                 'subject_code' => $subjectCode,
                 'method'       => $method,
                 'status'       => 'enrolled',
