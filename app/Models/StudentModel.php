@@ -167,4 +167,142 @@ class StudentModel extends Model
     {
         return $student;
     }
+
+    public const STATUSES = ['active', 'inactive', 'graduated', 'dropped'];
+
+    /**
+     * Student list for the registrar/admin Student Records page, joined to
+     * everything a list row needs in one query. Filters mirror the
+     * dashboard's Data Readiness expectations: program, year level (via the
+     * student's current section), status, and free-text search.
+     */
+    public function listFiltered(array $filters): array
+    {
+        $builder = $this->db->table('students s')
+            ->select('s.student_id, s.student_number, s.applicant_id, s.student_status, s.admission_date,
+                      u.id as user_id, u.first_name, u.last_name, u.username, u.section_id,
+                      i.secret as email,
+                      p.program_id, p.program_code, p.program_name,
+                      sec.section, sec.year_level, sec.academic_year')
+            ->join('users u', 'u.id = s.user_id')
+            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->join('programs p', 'p.program_id = s.program_id', 'left')
+            ->join('sections sec', 'sec.section_id = u.section_id', 'left')
+            ->where('u.deleted_at', null);
+
+        if (! empty($filters['program_id'])) {
+            $builder->where('s.program_id', (int) $filters['program_id']);
+        }
+
+        if (! empty($filters['year_level'])) {
+            $builder->where('sec.year_level', $filters['year_level']);
+        }
+
+        if (! empty($filters['section_id'])) {
+            $builder->where('u.section_id', (int) $filters['section_id']);
+        }
+
+        if (! empty($filters['status'])) {
+            $builder->where('s.student_status', $filters['status']);
+        }
+
+        if (! empty($filters['q'])) {
+            $q = $filters['q'];
+            $builder->groupStart()
+                ->like('u.first_name', $q)
+                ->orLike('u.last_name', $q)
+                ->orLike('s.student_number', $q)
+                ->orLike('i.secret', $q)
+            ->groupEnd();
+        }
+
+        return $builder->orderBy('u.last_name')->orderBy('u.first_name')->get()->getResultArray();
+    }
+
+    /**
+     * Everything the Student Records detail page needs: the student row,
+     * their section, and their full enrollment history — each sourced from
+     * whichever table actually owns it (see the roadmap's field-by-field
+     * ownership table).
+     */
+    public function findDetailed(int $studentId): ?array
+    {
+        $student = $this->db->table('students s')
+            ->select('s.*, u.id as user_id, u.username, u.first_name, u.middle_name, u.last_name, u.contact_number, u.section_id,
+                      i.secret as email, p.program_id, p.program_code, p.program_name')
+            ->join('users u', 'u.id = s.user_id')
+            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->join('programs p', 'p.program_id = s.program_id', 'left')
+            ->where('s.student_id', $studentId)
+            ->get()
+            ->getRowArray();
+
+        if ($student === null) {
+            return null;
+        }
+
+        $student['section'] = $student['section_id']
+            ? (new SectionModel())->find((int) $student['section_id'])
+            : null;
+
+        $student['enrollment_history'] = $this->db->table('enrollments e')
+            ->select('e.enrollment_id, e.subject_code, e.method, e.status, e.created_at,
+                      sec.academic_year, sec.program, sec.year_level, sec.section')
+            ->join('sections sec', 'sec.section_id = e.section_id')
+            ->where('e.user_id', $student['user_id'])
+            ->orderBy('sec.academic_year', 'DESC')
+            ->orderBy('e.subject_code')
+            ->get()
+            ->getResultArray();
+
+        $student['status_history'] = $this->db->table('student_status_logs l')
+            ->select('l.from_status, l.to_status, l.reason, l.created_at, u2.username as changed_by_username')
+            ->join('users u2', 'u2.id = l.changed_by', 'left')
+            ->where('l.student_id', $studentId)
+            ->orderBy('l.created_at', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        return $student;
+    }
+
+    /**
+     * Records an academic-status change with a required reason and the
+     * acting admin, so a status flip is never silent (roadmap completion
+     * criterion for Student Records: "Status change is audited").
+     */
+    public function changeStatus(int $studentId, string $newStatus, string $reason, ?int $changedBy): array
+    {
+        if (! in_array($newStatus, self::STATUSES, true)) {
+            return ['ok' => false, 'error' => 'Invalid status.'];
+        }
+
+        $student = $this->find($studentId);
+
+        if ($student === null) {
+            return ['ok' => false, 'error' => 'Student not found.'];
+        }
+
+        if ($student['student_status'] === $newStatus) {
+            return ['ok' => false, 'error' => 'Student is already in that status.'];
+        }
+
+        $db = $this->db;
+        $db->transStart();
+
+        $this->update($studentId, ['student_status' => $newStatus]);
+
+        $db->table('student_status_logs')->insert([
+            'student_id'  => $studentId,
+            'from_status' => $student['student_status'],
+            'to_status'   => $newStatus,
+            'reason'      => $reason,
+            'changed_by'  => $changedBy,
+            'created_at'  => date('Y-m-d H:i:s'),
+        ]);
+
+        $db->transComplete();
+
+        return ['ok' => $db->transStatus() !== false];
+    }
 }

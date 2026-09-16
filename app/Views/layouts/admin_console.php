@@ -18,6 +18,7 @@
 $navItems = [
     'dashboard'      => ['label' => 'Overview',        'icon' => 'dashboard',      'url' => 'admin/dashboard'],
     'departments'    => ['label' => 'Colleges',        'icon' => 'hub',            'url' => 'admin/departments'],
+    'students'       => ['label' => 'Student Records', 'icon' => 'school',         'url' => 'admin/students'],
     'users'          => ['label' => 'User Accounts',   'icon' => 'group',          'url' => 'admin/users'],
     'rooms'          => ['label' => 'Facilities',      'icon' => 'meeting_room',   'url' => 'admin/rooms'],
     'academic-years' => ['label' => 'Academic Years',  'icon' => 'event',          'url' => 'admin/academic-years'],

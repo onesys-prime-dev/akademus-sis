@@ -98,6 +98,11 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     // academic scheduling rules (unit->hour conversion, workload caps)
     $routes->get('academic-settings'        , 'Admin\AcademicSettingsController::index');
     $routes->post('academic-settings/update', 'Admin\AcademicSettingsController::update');
+
+    // student records
+    $routes->get('students'                     , 'Admin\StudentRecordController::index');
+    $routes->get('students/(:num)'              , 'Admin\StudentRecordController::show/$1');
+    $routes->post('students/(:num)/status'      , 'Admin\StudentRecordController::changeStatus/$1');
 });
 
 $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) {
