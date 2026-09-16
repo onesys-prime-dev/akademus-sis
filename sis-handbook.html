@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modern SIS — Research &amp; Recommendations Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+  :root{
+    --bg:#fbfbf8;
+    --surface:#f1efe8;
+    --ink:#1b1b17;
+    --ink-soft:#54524a;
+    --line:#ddd8cb;
+    --accent:#2b5d6b;      /* deep teal-blue */
+    --accent-soft:#e4edee;
+    --brick:#a6432b;        /* legal/critical */
+    --brick-soft:#f5e6e0;
+    --gold:#8a6d1f;         /* research/evidence */
+    --gold-soft:#f2ecd8;
+    --mono:'IBM Plex Mono', monospace;
+    --serif:'Source Serif 4', Georgia, serif;
+    --sans:'IBM Plex Sans', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth; scroll-padding-top:24px;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--sans); line-height:1.6; font-size:16px;
+  }
+  a{color:var(--accent); text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  a:focus-visible, button:focus-visible, .navlink:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  /* ---------- layout ---------- */
+  .shell{display:flex; min-height:100vh;}
+  .sidebar{
+    width:296px; flex-shrink:0; background:var(--surface);
+    border-right:1px solid var(--line); padding:28px 0 60px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .brand{padding:0 24px 20px; border-bottom:1px solid var(--line); margin-bottom:16px;}
+  .brand .kicker{font-size:11px; letter-spacing:.04em; color:var(--ink-soft); font-family:var(--mono);}
+  .brand h1{font-family:var(--serif); font-size:19px; margin:6px 0 0; line-height:1.3; font-weight:600;}
+  nav.toc{padding:0 12px;}
+  nav.toc details{margin-bottom:2px;}
+  nav.toc summary{
+    cursor:pointer; list-style:none; padding:7px 12px; border-radius:6px;
+    font-size:13.5px; font-weight:600; color:var(--ink);
+  }
+  nav.toc summary::-webkit-details-marker{display:none;}
+  nav.toc summary::before{content:"›"; display:inline-block; width:14px; transition:transform .15s; color:var(--ink-soft);}
+  nav.toc details[open] summary::before{transform:rotate(90deg);}
+  nav.toc summary:hover{background:rgba(0,0,0,0.04);}
+  nav.toc .navlink{
+    display:block; padding:6px 12px 6px 34px; font-size:13px; color:var(--ink-soft); border-radius:6px;
+  }
+  nav.toc .navlink:hover{background:rgba(0,0,0,0.04); color:var(--ink); text-decoration:none;}
+  nav.toc .navlink.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  main{flex:1; min-width:0; padding:52px 56px 140px; max-width:900px;}
+  .doc-header{margin-bottom:44px; padding-bottom:28px; border-bottom:2px solid var(--ink);}
+  .doc-header .kicker{font-family:var(--mono); font-size:12px; color:var(--accent); letter-spacing:.03em;}
+  .doc-header h1{font-family:var(--serif); font-size:40px; line-height:1.15; margin:10px 0 12px; font-weight:700;}
+  .doc-header p{color:var(--ink-soft); font-size:16.5px; max-width:640px; margin:0;}
+
+  section.part{padding-top:8px; margin-bottom:8px;}
+  section.part h2{
+    font-family:var(--serif); font-size:27px; margin:64px 0 6px; padding-top:16px;
+    border-top:1px solid var(--line); font-weight:700;
+  }
+  section.part h2:first-of-type, section.part:first-child h2{border-top:none; margin-top:0;}
+  section.part .part-sub{color:var(--ink-soft); font-size:14.5px; margin:0 0 22px;}
+  h3{font-family:var(--serif); font-size:20px; margin:30px 0 10px; font-weight:600;}
+  h4{font-family:var(--sans); font-size:14px; text-transform:none; margin:22px 0 8px; font-weight:600; color:var(--ink);}
+  p{margin:0 0 14px; max-width:74ch;}
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:5px;}
+  strong{font-weight:600;}
+
+  /* tags */
+  .tag{
+    display:inline-block; font-family:var(--mono); font-size:10.5px; letter-spacing:.02em;
+    padding:2px 7px; border-radius:4px; font-weight:500; margin-right:6px; white-space:nowrap;
+  }
+  .tag-legal{background:var(--brick-soft); color:var(--brick);}
+  .tag-research{background:var(--gold-soft); color:var(--gold);}
+  .tag-analysis{background:#e7e3f5; color:#5b4a99;}
+  .tag-reco{background:var(--accent-soft); color:var(--accent);}
+
+  /* callouts */
+  .box{border-left:3px solid var(--accent); background:var(--accent-soft); padding:14px 18px; margin:16px 0; border-radius:0 6px 6px 0;}
+  .box.legal{border-color:var(--brick); background:var(--brick-soft);}
+  .box.research{border-color:var(--gold); background:var(--gold-soft);}
+  .box p:last-child{margin-bottom:0;}
+  .box .box-label{font-family:var(--mono); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; display:block; margin-bottom:6px; color:inherit;}
+
+  /* recommendation cards */
+  .reco{border:1px solid var(--line); border-radius:8px; padding:18px 20px; margin:18px 0; background:#fff;}
+  .reco-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:10px; flex-wrap:wrap;}
+  .reco-head h4{margin:0; font-size:15.5px;}
+  .priority{font-family:var(--mono); font-size:10.5px; padding:2px 8px; border-radius:10px; font-weight:600; letter-spacing:.03em;}
+  .priority.critical{background:var(--brick); color:#fff;}
+  .priority.high{background:#d98936; color:#fff;}
+  .priority.medium{background:#c8bb63; color:#3a3419;}
+  .priority.low{background:#cfcabc; color:#4a4638;}
+  .reco dl{margin:0; display:grid; grid-template-columns:110px 1fr; gap:6px 14px; font-size:14px;}
+  .reco dt{color:var(--ink-soft); font-weight:600;}
+  .reco dd{margin:0;}
+
+  /* tables */
+  table{border-collapse:collapse; width:100%; margin:16px 0 22px; font-size:13.5px;}
+  th,td{border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top;}
+  th{background:var(--surface); font-weight:600; font-size:12.5px;}
+  tr:nth-child(even) td{background:#faf9f5;}
+  .table-wrap{overflow-x:auto; margin-bottom:22px;}
+
+  code{font-family:var(--mono); font-size:.88em; background:var(--surface); padding:1px 5px; border-radius:3px;}
+
+  .mermaid{background:#fff; border:1px solid var(--line); border-radius:8px; padding:18px; margin:18px 0;}
+
+  .module-card{border:1px solid var(--line); border-radius:8px; margin:14px 0; overflow:hidden;}
+  .module-card summary{cursor:pointer; padding:12px 16px; font-weight:600; background:var(--surface); font-size:14.5px; list-style:none; display:flex; justify-content:space-between; gap:10px;}
+  .module-card summary::-webkit-details-marker{display:none;}
+  .module-card summary::after{content:"+"; color:var(--ink-soft); font-family:var(--mono);}
+  .module-card[open] summary::after{content:"–";}
+  .module-card .card-body{padding:14px 18px 6px;}
+  .module-card .card-body p{margin-bottom:10px;}
+  .module-card .badge-row{display:flex; gap:6px; flex-wrap:wrap;}
+  .mini-tag{font-family:var(--mono); font-size:10px; background:var(--surface); border:1px solid var(--line); padding:1px 6px; border-radius:3px; color:var(--ink-soft);}
+
+  .refs-cat h3{margin-top:36px;}
+  .ref-item{padding:10px 0; border-bottom:1px solid var(--line); font-size:14px;}
+  .ref-item .ref-num{font-family:var(--mono); color:var(--accent); font-weight:600;}
+  .ref-item .ref-meta{color:var(--ink-soft); font-size:12.5px; margin-top:2px;}
+
+  footer.doc-footer{margin-top:70px; padding-top:24px; border-top:1px solid var(--line); color:var(--ink-soft); font-size:13px;}
+
+  .top-btn{
+    position:fixed; right:28px; bottom:28px; width:42px; height:42px; border-radius:50%;
+    background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 14px rgba(0,0,0,.2); border:none; cursor:pointer; font-size:18px; opacity:0; pointer-events:none;
+    transition:opacity .2s;
+  }
+  .top-btn.show{opacity:1; pointer-events:auto;}
+
+  @media (max-width:860px){
+    .sidebar{position:fixed; left:-300px; z-index:40; transition:left .2s; box-shadow:0 0 0 100vmax rgba(0,0,0,0);}
+    .sidebar.open{left:0; box-shadow:0 0 40px rgba(0,0,0,.25);}
+    main{padding:80px 20px 100px;}
+    .menu-btn{position:fixed; top:14px; left:14px; z-index:41; background:var(--ink); color:#fff; border:none; border-radius:8px; padding:8px 12px; font-family:var(--mono); font-size:12px;}
+  }
+  @media (min-width:861px){ .menu-btn{display:none;} }
+</style>
+</head>
+<body>
+
+<button class="menu-btn" id="menuBtn">MENU</button>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="kicker">AKADEMUS SIS · REFERENCE</div>
+      <h1>Modern Student Information System — Research &amp; Recommendations Handbook</h1>
+    </div>
+    <nav class="toc" id="toc"></nav>
+  </aside>
+
+  <main id="main">
+    <div class="doc-header">
+      <div class="kicker">RESEARCH → ANALYSIS → FINDINGS → RECOMMENDATIONS</div>
+      <h1>Modern Student Information System</h1>
+      <p>A research-backed technical handbook for designing, building, and auditing a production-ready SIS for a Philippine college or university — compiled as reference material for the Akademus SIS project and for AI coding assistants working on it.</p>
+    </div>
+
+    <!-- ============ PART I — EXECUTIVE SUMMARY ============ -->
+    <section class="part" id="exec-summary">
+      <h2>Part I · Executive Summary</h2>
+      <p class="part-sub">What was researched, why it matters, and the overall recommended direction.</p>
+
+      <p>This handbook researched how mature Student Information Systems are designed and operated — drawing on vendor documentation (Ellucian Banner, Oracle PeopleSoft Campus Solutions, Workday Student, Anthology Student, Jenzabar, openSIS and others), software-architecture literature, database-design research, OWASP/NIST/ISO 27001 security guidance, university timetabling research, and Philippine data-privacy and higher-education regulation (RA 10173, the National Privacy Commission, CHED). The goal was to determine — from evidence, not assumption — how a real, secure, scalable, auditable SIS should be built.</p>
+
+      <div class="box research">
+        <span class="box-label">Major findings</span>
+        <ul>
+          <li>Mature SIS platforms converge on the same lifecycle and module set regardless of vendor: identity/curriculum/enrollment/scheduling/grading/finance/documents/audit, glued together with strict role-based permissions.</li>
+          <li>A <strong>modular monolith</strong> — not microservices — is the evidence-backed starting architecture for a single-institution SIS; both Twilio Segment and Amazon Prime Video migrated <em>away</em> from microservices back toward consolidated services, citing cost and complexity.</li>
+          <li>Curriculum and student records must be <strong>versioned and append-only</strong>; overwriting them is the single most common cause of corrupted academic history in real deployments.</li>
+          <li>University timetabling is a proven NP-hard problem; full AI/genetic-algorithm optimization is real but is an enhancement, not a Day-1 requirement — assisted, constraint-checked scheduling is the practical baseline.</li>
+          <li>Grades and academic records are <strong>Sensitive Personal Information</strong> under the Philippine Data Privacy Act (RA 10173) — this converts RBAC, encryption, and audit logging from “nice to have” into legal necessities.</li>
+        </ul>
+      </div>
+
+      <div class="box legal">
+        <span class="box-label">Major risks identified</span>
+        <ul>
+          <li>Broken access control remains the #1 real-world web risk (OWASP Top 10) — the majority of SIS-shaped systems fail here first.</li>
+          <li>Hard-deleting or overwriting historical academic records silently corrupts transcripts and degree audits with no recovery path.</li>
+          <li>Premature microservices adoption increases cost and failure surface without a matching increase in reliability for a single-institution system.</li>
+          <li>Un-tested backups and undefined RPO/RTO turn a routine incident into an unrecoverable one.</li>
+          <li>Undefined source-of-truth boundaries between Admissions, SIS, LMS, and Accounting create silently conflicting records.</li>
+        </ul>
+      </div>
+
+      <div class="box">
+        <span class="box-label">Overall recommended direction</span>
+        <p>Build Akademus SIS as a modular monolith with explicit domain boundaries; make the student-identity model, curriculum versioning, and record-immutability decisions correctly from Phase 1 because they are the most expensive to reverse; enforce deny-by-default RBAC with full audit logging; treat scheduling and sectioning as assisted-not-fully-automatic workflows; and delegate heavy accounting to a dedicated finance system reconciled against SIS-owned enrollment and assessment data.</p>
+      </div>
+    </section>
+
+    <!-- ============ PART II — INTRODUCTION ============ -->
+    <section class="part" id="introduction">
+      <h2>Part II · Introduction</h2>
+      <p class="part-sub">What an SIS is, who uses it, and where its boundaries sit relative to neighboring systems.</p>
+
+      <p><span class="tag tag-research">RESEARCH</span>A Student Information System is the institution's system of record for the academic student lifecycle. Vendor documentation for Oracle PeopleSoft Campus Solutions describes it as orchestrating the student lifecycle "from recruiting to graduation" across admissions, records, enrollment, advisement, and student financials in a shared community record.</p>
+
+      <h3>SIS vs. neighboring systems</h3>
+      <div class="table-wrap"><table>
+        <tr><th>System</th><th>Owns</th><th>Relationship to SIS</th></tr>
+        <tr><td>LMS (e.g. Moodle)</td><td>Course delivery, content, gradebook activities</td><td>Feeds component grades in; SIS owns the official final grade &amp; transcript</td></tr>
+        <tr><td>Admissions / CRM</td><td>Applicant funnel up to "accepted"</td><td>Hands off "accepted applicant" event; SIS creates the official student record</td></tr>
+        <tr><td>ERP / Accounting</td><td>General ledger, official receipts, refunds</td><td>SIS owns tuition assessment tied to enrollment; reconciles with ERP</td></tr>
+        <tr><td>Student Portal</td><td>Presentation layer</td><td>Not a system of record — a UI over the SIS</td></tr>
+        <tr><td>School Management System</td><td>General K-12/admin term</td><td>"SIS" in higher ed implies full lifecycle + curriculum versioning + degree audit</td></tr>
+      </table></div>
+
+      <h3>Student lifecycle</h3>
+      <div class="mermaid">
+graph LR
+  A[Applicant] --> B[Admission]
+  B --> C[Student Record Creation]
+  C --> D[Curriculum Assignment]
+  D --> E[Enrollment]
+  E --> F[Class Scheduling]
+  F --> G[Attendance]
+  G --> H[Grading]
+  H --> I[Academic Progress]
+  I --> E
+  I --> J[Graduation]
+  J --> K[Historical / Alumni Record]
+      </div>
+      <p><span class="tag tag-reco">ANALYSIS</span>The SIS should <strong>own</strong>: student record, curriculum, enrollment, sectioning, scheduling, attendance, grades, academic standing, graduation/degree audit. It should <strong>integrate with, not own</strong>: the applicant funnel (Admissions/CRM), course delivery (LMS), the general ledger (ERP), payment processing (gateway), HR/payroll, and the library system.</p>
+    </section>
+
+    <!-- ============ PART III — LITERATURE & INDUSTRY REVIEW ============ -->
+    <section class="part" id="industry-review">
+      <h2>Part III · Literature &amp; Industry Review</h2>
+      <p class="part-sub">What existing SIS platforms reveal, beyond their marketing pages.</p>
+
+      <p><span class="tag tag-research">RESEARCH</span>Per Ellucian's own materials, cited by Inside Higher Ed (2019), "more than 1,400 institutions worldwide use Banner to manage student grades, staff payrolls, course schedules, admissions and student financial aid" — deep functional coverage, but architecturally fragmented into separate student/financial/HR modules bolted together over decades. <strong>Workday Student</strong> is cloud-native with a unified data model shared with HCM/Financials (launched 2019; 18–36 month implementations). <strong>Oracle PeopleSoft Campus Solutions</strong> is metadata-driven (PeopleTools) with 30+ years of functional depth and an Integration Broker for external systems. <strong>Anthology Student</strong> and <strong>Jenzabar One</strong> offer configurable degree-audit modules within a modular ERP. Open-source options — <strong>Fedena</strong> (Ruby on Rails, 50+ modules) and <strong>openSIS</strong> (PHP/MySQL, K-12-leaning) — show the same core module set implemented at far smaller scale.</p>
+
+      <div class="box">
+        <span class="box-label">Analysis</span>
+        <p>Despite wildly different tech stacks and eras, every mature platform converges on the same pattern: a versioned curriculum, an enrollment engine gated by prerequisite/capacity rules, a locked-grade workflow, role-scoped portals, and an audit trail. This convergence — not any single vendor's implementation — is the strongest evidence for what Akademus SIS's module boundaries should look like.</p>
+      </div>
+    </section>
+
+    <!-- ============ PART IV — MODULE RESEARCH ============ -->
+    <section class="part" id="modules">
+      <h2>Part IV · SIS Module Research</h2>
+      <p class="part-sub">Purpose, users, workflow, rules, and best practice for each core module. Expand any module for detail.</p>
+
+      <details class="module-card" open>
+        <summary>1–4 · Authentication &amp; Authorization <span class="mini-tag">CORE</span></summary>
+        <div class="card-body">
+          <p><strong>Purpose:</strong> gate every read/write by identity and role. <strong>Users:</strong> everyone. <strong>Workflow:</strong> SSO/OIDC login → role + scope resolved → every request re-checked server-side.</p>
+          <p><strong>Business rules:</strong> deny-by-default; a chairperson's approval scope is limited to their own department; an adviser sees only their advisees.</p>
+          <p><span class="tag tag-legal">STANDARD</span>Follow the OWASP Authorization and Authentication Cheat Sheets and NIST SP 800-63B for password/session handling. <strong>Common mistake:</strong> checking roles only in the frontend — trivially bypassed.</p>
+        </div>
+      </details>
+
+      <details class="module-card">
+        <summary>Student Records &amp; Admissions Integration <span class="mini-tag">CORE</span></summary>
+        <div class="card-body">
+          <p><strong>Purpose:</strong> the immutable core identity plus mutable current-state fields (contact info, current program). <strong>Data:</strong> identity, admission record, program history, curriculum assignment. <strong>Rule:</strong> student identity is created once from an "ApplicantAccepted" event and never duplicated — dedupe at admission time, not after.</p>
+        </div>
+      </details>
+
+      <details class="module-card">
+        <summary>Academic Structure, Curriculum &amp; Program Management <span class="mini-tag">CORE</span></summary>
+        <div class="card-body">
+          <p><strong>Purpose:</strong> colleges → departments → programs → versioned curricula → subjects. <strong>Rule:</strong> a curriculum change never edits an existing version — it creates a new one, so historical enrollment stays linked to the curriculum version under which it actually occurred. Full detail in Part V.</p>
+        </div>
+      </details>
+
+      <details class="module-card">
+        <summary>Academic Year, Semester &amp; Section Management</summary>
+        <div class="card-body">
+          <p><strong>Common mistake:</strong> hardcoding the "current" academic year in code — breaks every new term and forces annual code deploys. Terms and sections must be configurable data, carrying status (planning/open/active/grading/closed/archived).</p>
+          <p><strong>Section creation:</strong> should be <em>system-suggested, human-approved</em> — e.g. 65 students at a 30-seat cap → system proposes Sections A(30)/B(30)/C(5) and flags C as under minimum for a merge decision.</p>
+        </div>
+      </details>
+
+      <details class="module-card">
+        <summary>Enrollment &amp; Registration <span class="mini-tag">CORE</span></summary>
+        <div class="card-body"><p>See full workflow research in Part VI.</p></div>
+      </details>
+
+      <details class="module-card">
+        <summary>Scheduling, Room Management &amp; Faculty Assignment</summary>
+        <div class="card-body"><p>See full constraint research in Part VII. Faculty assignment default: chairperson/department assigns (enforces expertise-matching and workload balance); faculty self-claiming is an optional layer within chair-approved limits.</p></div>
+      </details>
+
+      <details class="module-card">
+        <summary>Attendance, Grading &amp; Academic Progress</summary>
+        <div class="card-body"><p>See Part VIII.</p></div>
+      </details>
+
+      <details class="module-card">
+        <summary>Billing &amp; Payments, Scholarships &amp; Discounts</summary>
+        <div class="card-body">
+          <p><strong>Recommendation:</strong> the SIS owns tuition <em>assessment</em> tied to enrollment; heavy accounting (general ledger, official receipts, refunds) belongs in a dedicated accounting/ERP system, reconciled nightly against SIS enrollment records. The SIS should never store raw card data — route payments through a gateway.</p>
+        </div>
+      </details>
+
+      <details class="module-card">
+        <summary>Portals — Student, Faculty, Registrar, Chairperson</summary>
+        <div class="card-body"><p>Each is a role-scoped view over the same data, not a separate system. See UX guidance in Part XV.</p></div>
+      </details>
+
+      <details class="module-card">
+        <summary>Document Management &amp; Clearance</summary>
+        <div class="card-body">
+          <p><span class="tag tag-legal">STANDARD</span>Follow the OWASP File Upload Cheat Sheet: allow-list file types, validate by magic bytes (not extension), store outside the webroot with no execute permission, AV-scan before acceptance, and authorize every download individually to prevent IDOR. Documents (transcripts, IDs, transfer credentials) contain Sensitive Personal Information — encrypt at rest.</p>
+          <p><strong>Clearance</strong> is a multi-department sign-off gate (library, accounting, lab, guidance) blocking enrollment/graduation until all departments approve.</p>
+        </div>
+      </details>
+
+      <details class="module-card">
+        <summary>Notifications, Reports &amp; Analytics</summary>
+        <div class="card-body"><p>Event-driven, queued, multi-channel (in-app/email/SMS/push). Large reports and bulk notifications must run as background jobs, never inside the HTTP request that triggered them.</p></div>
+      </details>
+
+      <details class="module-card">
+        <summary>Graduation Management</summary>
+        <div class="card-body"><p>Automated eligibility determination (degree audit + credits + documents + clearance) with mandatory registrar verification before conferral. Under CHED's Manual of Regulations for Private Higher Education (CMO No. 40 s.2008), Sec. 102 conditions release of credentials on settlement of accountabilities — model clearance as a hard gate before graduation.</p></div>
+      </details>
+
+      <details class="module-card">
+        <summary>Audit Logging &amp; System Configuration <span class="mini-tag">CORE</span></summary>
+        <div class="card-body"><p>See Part X. Configuration (terms, grading schemes, fee tables, honors thresholds) must be data, not code, so institutional policy changes don't require a redeploy.</p></div>
+      </details>
+
+      <details class="module-card">
+        <summary>APIs &amp; Integration</summary>
+        <div class="card-body"><p>See Part XIII for source-of-truth boundaries between Admissions, SIS, LMS, and Accounting.</p></div>
+      </details>
+    </section>
+
+    <!-- ============ PART V — CURRICULUM ============ -->
+    <section class="part" id="curriculum">
+      <h2>Part V · Curriculum &amp; Academic Records Research</h2>
+      <p class="part-sub">Why curriculum versioning is one of the hardest decisions to retrofit.</p>
+
+      <p><span class="tag tag-research">RESEARCH</span>Degree-audit platforms like Stellic explicitly model how existing credits map onto new program requirements when a student changes majors or when requirements change — this mapping only works if each curriculum revision is a distinct, addressable version rather than an in-place edit.</p>
+
+      <div class="box">
+        <span class="box-label">Recommendation</span>
+        <p>Model <code>Program → CurriculumVersion → CurriculumSubject</code> so "BS Computer Science — Curriculum 2024" and "BS Computer Science — Curriculum 2026" are fully independent, immutable snapshots. Each student is assigned to one specific version at admission. When requirements change, create a <strong>new</strong> version; existing students remain on their original version unless formally migrated through an adviser-approved equivalency mapping, itself audited.</p>
+      </div>
+
+      <p><span class="tag tag-analysis">ANALYSIS</span>Editing an existing curriculum record in place is the single most common cause of corrupted historical data in SIS deployments: a subject removed from "the curriculum" silently orphans every past student's completed-subject record, breaking degree audits retroactively. General-education requirement blocks should follow CHED CMO No. 20, s.2013 (roughly 36 units / 8 core GE courses) as a reusable block referenced by every program's curriculum version, not duplicated per program.</p>
+    </section>
+
+    <!-- ============ PART VI — ENROLLMENT ============ -->
+    <section class="part" id="enrollment">
+      <h2>Part VI · Enrollment Research</h2>
+      <div class="mermaid">
+graph TB
+  S[Start] --> EL{Eligible?}
+  EL -->|No| STOP[Hold / Reject]
+  EL -->|Yes| CE[Curriculum Evaluation]
+  CE --> AV[Available Subjects]
+  AV --> PR{Prerequisites met?}
+  PR -->|No| OVR[Override — adviser approval]
+  PR -->|Yes| SEL[Section Selection]
+  OVR --> SEL
+  SEL --> CF{Conflict / capacity OK?}
+  CF -->|No| SEL
+  CF -->|Yes| AP[Approval, if required]
+  AP --> BILL[Billing Assessment]
+  BILL --> PAY[Payment / Downpayment]
+  PAY --> OFF[Official Enrollment — transactional]
+      </div>
+      <div class="table-wrap"><table>
+        <tr><th>Validation</th><th>Should be</th></tr>
+        <tr><td>Prerequisite completion</td><td>Automatic; overridable with adviser approval</td></tr>
+        <tr><td>Duplicate subject / schedule conflict</td><td>Automatic, hard-blocked</td></tr>
+        <tr><td>Capacity limit</td><td>Automatic; overridable by registrar</td></tr>
+        <tr><td>Overload / underload units</td><td>Requires human approval</td></tr>
+        <tr><td>Late enrollment</td><td>Requires human approval</td></tr>
+        <tr><td>Irregular-student subject mix</td><td>Per-subject validation against the student's curriculum version</td></tr>
+      </table></div>
+      <p><span class="tag tag-reco">RECOMMENDATION</span>Add/drop/section-change must re-trigger conflict, capacity, and billing re-assessment inside the same transaction — never as a separate follow-up step, or a partial state can persist.</p>
+    </section>
+
+    <!-- ============ PART VII — SCHEDULING ============ -->
+    <section class="part" id="scheduling">
+      <h2>Part VII · Scheduling Research</h2>
+      <p><span class="tag tag-research">RESEARCH</span>The University Course Timetabling Problem is a well-studied, combinatorial NP-hard problem, commonly modeled as a Constraint Satisfaction Problem and solved with genetic algorithms, integer programming, simulated annealing, or hybrids of these (multiple ScienceDirect / arXiv studies on constraint-based and GA-based university timetabling).</p>
+
+      <div class="table-wrap"><table>
+        <tr><th>Hard constraints (never violated)</th><th>Soft constraints (optimized where possible)</th></tr>
+        <tr><td>Faculty cannot teach two classes at once</td><td>Faculty's preferred teaching hours</td></tr>
+        <tr><td>Students cannot have overlapping required classes</td><td>Minimized student idle time between classes</td></tr>
+        <tr><td>Rooms cannot host two classes at once</td><td>Minimized room changes</td></tr>
+        <tr><td>Lab subjects require suitable lab rooms</td><td>Balanced faculty schedules</td></tr>
+        <tr><td>Room capacity ≥ enrolled headcount</td><td>Department schedule preferences</td></tr>
+      </table></div>
+
+      <div class="box">
+        <span class="box-label">Recommendation</span>
+        <p>For a single-institution SIS, <strong>rule-based / assisted scheduling</strong> — the system enforces hard constraints and proposes conflict-free assignments while a human (chairperson/registrar) makes the final call — is the practical baseline. Full metaheuristic optimization (genetic algorithms, integer programming) is a legitimate future enhancement, worth adding only once manual scheduling is a measured bottleneck, not a Day-1 requirement.</p>
+      </div>
+    </section>
+
+    <!-- ============ PART VIII — GRADING/ATTENDANCE/PROGRESS ============ -->
+    <section class="part" id="grading">
+      <h2>Part VIII · Grading, Attendance &amp; Academic Progress</h2>
+      <h3>Attendance</h3>
+      <p>States: present/absent/late/excused, plus class cancellation and makeup classes. Corrections require an approval workflow and are audited; entries are bound to the scheduled session and timestamped to resist manipulation.</p>
+
+      <h3>Grading</h3>
+      <div class="mermaid">
+graph LR
+  A[Faculty enters components] --> B[Submit]
+  B --> C[Dept / Chair Review]
+  C -->|reject| A
+  C -->|approve| D[Registrar Approval]
+  D --> E[Locked / Published]
+  E --> F[Change requires formal request + approval + audit]
+      </div>
+      <div class="box legal">
+        <span class="box-label">Legal requirement</span>
+        <p>Grades are Sensitive Personal Information under RA 10173 §3(l)(2) — the highest protection tier under the Philippine Data Privacy Act. Direct, unaudited grade edits are both a security anti-pattern and a compliance gap.</p>
+      </div>
+
+      <h3>Academic progress</h3>
+      <p>Automated <strong>degree audit</strong> computing completed/remaining/failed subjects, prerequisite deficiencies, GPA/GWA, credits completed, curriculum-completion %, academic standing (Dean's List/probation), and graduation eligibility — with human verification retained for edge cases, mirroring platforms like Stellic and uAchieve (used by 1,800+ institutions).</p>
+    </section>
+
+    <!-- ============ PART IX — SECURITY ============ -->
+    <section class="part" id="security">
+      <h2>Part IX · Security &amp; Access Control Research</h2>
+      <div class="box legal">
+        <span class="box-label">Standard / regulation</span>
+        <ul>
+          <li>OWASP Authorization Cheat Sheet: deny by default, least privilege, per-request server-side checks — Broken Access Control is #1 on the OWASP Top 10.</li>
+          <li>NIST SP 800-63B: favor password length over forced complexity/rotation; screen against breached-password lists.</li>
+          <li>OWASP File Upload, Session Management, and OAuth2 Cheat Sheets for documents, sessions, and API auth respectively.</li>
+        </ul>
+      </div>
+      <p><span class="tag tag-research">RESEARCH</span>Higher education is a heavily targeted sector: UpGuard's university security-rating research found software with known exploited vulnerabilities detected at 48% of all universities studied and 70% of the top 500, with phishing and social engineering as the leading threat vector.</p>
+      <p><span class="tag tag-reco">RECOMMENDATION</span>Apply the highest protection tier — MFA, encryption at rest and in transit, strict access logging — specifically to grades, financial data, and uploaded documents, since these are the categories both regulation and real-world attackers target first.</p>
+    </section>
+
+    <!-- ============ PART X — AUDIT & OVERRIDES ============ -->
+    <section class="part" id="audit">
+      <h2>Part X · Audit &amp; Override Research</h2>
+      <p>Audit every: record/grade/enrollment/attendance/payment/curriculum/scheduling/faculty-assignment/permission/account change, document verification, and administrative override.</p>
+      <div class="table-wrap"><table>
+        <tr><th>Audit entry field</th><th>Purpose</th></tr>
+        <tr><td>Actor (user + role)</td><td>Who performed it</td></tr>
+        <tr><td>Action &amp; entity</td><td>What was changed</td></tr>
+        <tr><td>Original value / new value</td><td>Before / after state</td></tr>
+        <tr><td>Reason</td><td>Why (mandatory for overrides)</td></tr>
+        <tr><td>Timestamp, IP/device</td><td>When and from where</td></tr>
+        <tr><td>Approver (if applicable)</td><td>Who authorized it</td></tr>
+      </table></div>
+      <div class="box legal">
+        <span class="box-label">Non-overridable, even by administrators</span>
+        <ul>
+          <li>Duplicate official student identity</li>
+          <li>Re-enrolling in an already-passed/credited subject outside a formal retake workflow</li>
+          <li>Grades outside the valid scale, or editing a locked grade without the formal change-request workflow</li>
+          <li>Graduating without meeting curriculum credit requirements</li>
+          <li>Bypassing Data Privacy Act consent or security controls</li>
+        </ul>
+      </div>
+      <p><span class="tag tag-legal">STANDARD</span>Protect audit logs from alteration: append-only storage, written to a store separate from transactional data, delete-restricted, ideally hash-chained (per OWASP Logging Cheat Sheet and ISO 27001 logging controls).</p>
+    </section>
+
+    <!-- ============ PART XI — DATABASE ============ -->
+    <section class="part" id="database">
+      <h2>Part XI · Database &amp; Data Architecture Research</h2>
+      <p><span class="tag tag-research">RESEARCH</span>Temporal/system-versioned tables (per Microsoft's SQL Server temporal-table documentation) and append-only history are the documented alternative to blanket soft-deletion, which is a recognized anti-pattern for anything with legal or historical significance (Cultured Systems; Credera).</p>
+      <div class="box legal">
+        <span class="box-label">Dangerous anti-patterns</span>
+        <ul>
+          <li>Hard-deleting historical rows (grades, enrollment, curriculum)</li>
+          <li>Mutating grades or curriculum in place instead of versioning</li>
+          <li>Mixing current and historical state in one mutable row</li>
+          <li>No referential integrity ("God table") or natural keys that can change (name/email as primary key)</li>
+          <li>Hardcoded term values in application code</li>
+        </ul>
+      </div>
+      <p><span class="tag tag-reco">RECOMMENDATION</span>Core entities: Student, Faculty, Department, Program, Curriculum, CurriculumVersion, Subject, Section, AcademicYear, Semester, Enrollment, StudentSubject (junction), FacultyAssignment, Room, Schedule, Attendance, Grade, Payment, Document, Notification, AuditLog — with surrogate PKs, FK-enforced integrity, unique constraints (e.g., one active enrollment per student-subject-term), and status columns driving lifecycle state.</p>
+    </section>
+
+    <!-- ============ PART XII — SYSTEM ARCHITECTURE ============ -->
+    <section class="part" id="architecture">
+      <h2>Part XII · System Architecture Research</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Style</th><th>Best for</th><th>Cost to Akademus SIS</th></tr>
+        <tr><td>Modular Monolith</td><td>Single institution, small-to-mid team, transactional integrity needs</td><td>Low — recommended</td></tr>
+        <tr><td>Microservices</td><td>Large multi-team orgs (30–40+ devs), divergent scaling needs</td><td>High — unjustified at this scale</td></tr>
+        <tr><td>SOA</td><td>Enterprise integration across many legacy systems</td><td>Overkill for one institution</td></tr>
+        <tr><td>Event-Driven (internal)</td><td>Decoupling modules like notifications from the core transaction</td><td>Useful <em>inside</em> a monolith</td></tr>
+      </table></div>
+      <div class="box research">
+        <span class="box-label">Research finding</span>
+        <p>Twilio Segment publicly documented migrating away from 140+ microservices back to a consolidated architecture ("Goodbye Microservices"). Amazon Prime Video's engineering team reported that moving a service back to a monolith "reduced our infrastructure cost by over 90%. It also increased our scaling capabilities." Neither team lacked engineering sophistication — both concluded microservices overhead outweighed the benefit for their actual workload.</p>
+      </div>
+      <p><span class="tag tag-reco">RECOMMENDATION</span>Build Akademus SIS as a <strong>modular monolith</strong>: one deployable unit with strict internal module boundaries and internal APIs, giving ACID transactions across enrollment/billing (critical for correctness), simpler debugging, lower operating cost, and a clear path to extract a module (e.g., notifications, reporting) into its own service later if it genuinely needs to scale independently.</p>
+    </section>
+
+    <!-- ============ PART XIII — INTEGRATION ============ -->
+    <section class="part" id="integration">
+      <h2>Part XIII · System Integration Research</h2>
+      <div class="mermaid">
+graph LR
+  CRM[Admissions/CRM] -->|ApplicantAccepted event| SIS[SIS]
+  SIS -->|StudentEnrolled event| LMS[LMS]
+  LMS -->|component grades feedback| SIS
+  SIS <-->|reconcile via REST| ERP[Accounting/ERP]
+  SIS -->|charge| PAY[Payment Gateway]
+  SIS --> OUT[Outbox] --> Q[Queue/Webhooks] --> NOTIF[Email/SMS]
+      </div>
+      <p><span class="tag tag-research">RESEARCH</span>Exactly-once delivery across a network is a provably unsolved problem (the Two Generals Problem). The documented practical alternative is <strong>at-least-once delivery with idempotent consumers</strong> — unique event IDs, retries, and a dead-letter queue for anything that repeatedly fails (Digital Applied; Cockroach Labs engineering writeups).</p>
+      <table>
+        <tr><th>Data domain</th><th>Source of truth</th></tr>
+        <tr><td>Applicant funnel</td><td>Admissions/CRM</td></tr>
+        <tr><td>Official student record, curriculum, enrollment, grades</td><td>SIS</td></tr>
+        <tr><td>Course delivery, component-grade activities</td><td>LMS</td></tr>
+        <tr><td>General ledger, official receipts</td><td>ERP/Accounting</td></tr>
+      </table>
+    </section>
+
+    <!-- ============ PART XIV — PHILIPPINE LEGAL ============ -->
+    <section class="part" id="legal">
+      <h2>Part XIV · Philippine Legal &amp; Regulatory Research</h2>
+      <div class="box legal">
+        <span class="box-label">Legal requirement</span>
+        <ul>
+          <li><strong>RA 10173 (Data Privacy Act of 2012):</strong> governs all personal-data processing; academic/education records and grades are Sensitive Personal Information under §3(l)(2), the highest protection class.</li>
+          <li><strong>NPC Circular 16-03:</strong> breach notification to the NPC and affected data subjects within <strong>72 hours</strong> of knowledge/reasonable belief of a breach, with a full report due within 5 days; failure to notify within 5 days is presumed a violation.</li>
+          <li><strong>Data subject rights</strong> (be informed, object, access, rectify, erase/block, port data, claim damages) must be technically implementable in the SIS.</li>
+          <li><strong>CMO No. 40, s.2008 (MORPHE):</strong> the omnibus CHED framework for private HEI records, transfer credentials, and honors; Sec. 102 conditions release of credentials on settled accountabilities.</li>
+          <li><strong>CMO No. 20, s.2013:</strong> sets the General Education curriculum (~36 units / 8 core courses).</li>
+        </ul>
+      </div>
+      <div class="box research">
+        <span class="box-label">Recommended best practice (not independently mandated)</span>
+        <p>Data minimization, purpose limitation, privacy-by-design, explicit consent capture, a Privacy Impact Assessment for any analytics/AI feature, and access logging — strongly supportive of DPA compliance, but implemented at institutional discretion rather than dictated line-by-line by law.</p>
+      </div>
+      <p><span class="tag tag-legal">CAVEAT</span>No verified, standalone CHED circular fixing national Latin-honors GWA cutoffs or a dedicated records-retention CMO could be confirmed — MORPHE (CMO 40 s.2008) requires each HEI to adopt its own honors policy (Sec. 112). Treat honors thresholds and retention periods as configurable, institution-set values rather than hardcoded legal constants.</p>
+    </section>
+
+    <!-- ============ PART XV — PERFORMANCE ============ -->
+    <section class="part" id="performance">
+      <h2>Part XV · Performance, Reliability &amp; Recovery</h2>
+      <h3>Performance under peak load</h3>
+      <p>Plan explicitly for: enrollment opening, grade-submission deadlines, portal traffic spikes, large reports, schedule generation, and large student searches. Techniques: indexing, query optimization, caching hot counters (e.g., remaining section slots), pagination, and background workers/job queues for anything that isn't instant.</p>
+      <p><span class="tag tag-reco">RECOMMENDATION</span>Never run inside a normal HTTP request: report generation, timetable optimization, bulk notifications, batch transcript generation, or analytics rollups — push these to background jobs.</p>
+
+      <h3>Backup &amp; disaster recovery</h3>
+      <p>Automated backups with point-in-time recovery, following the <strong>3-2-1 rule</strong> (3 copies, 2 media types, 1 offsite). Define RPO (max tolerable data loss) and RTO (max tolerable downtime) per NIST SP 800-34 — suggested targets: RPO 15–60 minutes (daily full + hourly incrementals), RTO a few hours. <strong>Restores must be tested regularly</strong> — an untested backup is not a backup.</p>
+    </section>
+
+    <!-- ============ PART XVI — TESTING ============ -->
+    <section class="part" id="testing">
+      <h2>Part XVI · Testing &amp; Quality Assurance</h2>
+      <p>Coverage required: unit, integration, API, database, permission/authorization, security (OWASP-aligned), workflow, regression, load (enrollment-peak simulation), and User Acceptance Testing with real registrars and faculty.</p>
+      <div class="mermaid">
+graph LR
+  A[Create Student] --> B[Assign Curriculum]
+  B --> C[Enroll]
+  C --> D[Assign Subjects/Sections]
+  D --> E[Schedule Classes]
+  E --> F[Record Attendance]
+  F --> G[Submit &amp; Lock Grades]
+  G --> H[Complete Semester]
+  H --> I[Evaluate Academic Progress]
+  I --> J[Evaluate Graduation Eligibility]
+      </div>
+      <p>This end-to-end scenario should be automated as a standing regression suite — every phase of the roadmap in Part XXII should keep it green.</p>
+    </section>
+
+    <!-- ============ PART XVII — RESEARCH FINDINGS ============ -->
+    <section class="part" id="findings">
+      <h2>Part XVII · Research Findings</h2>
+      <p class="part-sub">Synthesized conclusions from all preceding research.</p>
+
+      <h3>Finding 1 — Curriculum and records must be versioned, never overwritten</h3>
+      <p><strong>Evidence:</strong> degree-audit vendor documentation (Stellic), temporal-table database guidance (Microsoft), soft-delete anti-pattern writeups (Cultured Systems, Credera). <strong>Importance:</strong> this is the most common cause of silently corrupted transcripts in real SIS deployments. <strong>Development impact:</strong> curriculum, enrollment, and grades must be modeled as append-only/temporal from schema Day 1 — retrofitting later requires a full data migration with no guarantee of recovering already-lost history.</p>
+
+      <h3>Finding 2 — A modular monolith outperforms microservices at this scale</h3>
+      <p><strong>Evidence:</strong> Thoughtworks and getDX architecture comparisons; Twilio Segment and Amazon Prime Video's public migrations away from microservices. <strong>Importance:</strong> avoids unjustified operational cost and complexity for a single-institution system. <strong>Development impact:</strong> one deployable, one database (with clear internal module boundaries), ACID transactions across enrollment and billing.</p>
+
+      <h3>Finding 3 — Broken access control is the top real-world risk</h3>
+      <p><strong>Evidence:</strong> OWASP Top 10 (Broken Access Control ranked #1); UpGuard's university security research showing widespread known-vulnerability exposure. <strong>Importance:</strong> student, financial, and grade data are all high-value, high-sensitivity targets. <strong>Development impact:</strong> deny-by-default, per-request server-side authorization checks on every module — no exceptions for "internal" admin tools.</p>
+
+      <h3>Finding 4 — Grades and records are legally Sensitive Personal Information in the Philippines</h3>
+      <p><strong>Evidence:</strong> RA 10173 §3(l)(2); NPC Circular 16-03's 72-hour breach rule. <strong>Importance:</strong> converts security and audit-logging practices from best-practice into legal obligation, with real breach-notification deadlines. <strong>Development impact:</strong> encryption at rest/in transit, full audit trails, and a documented breach-response runbook are launch-blocking, not post-launch improvements.</p>
+
+      <h3>Finding 5 — Scheduling is provably hard; assisted beats fully automatic at MVP stage</h3>
+      <p><strong>Evidence:</strong> university timetabling is a documented NP-hard constraint-satisfaction problem in the academic literature. <strong>Importance:</strong> full optimization (GA/IP) is real engineering effort with real payoff only past a certain complexity threshold. <strong>Development impact:</strong> build hard-constraint checking and human-reviewed proposals first; treat automated optimization as a scoped Phase-2+ enhancement.</p>
+    </section>
+
+    <!-- ============ PART XVIII — RECOMMENDATIONS ============ -->
+    <section class="part" id="recommendations">
+      <h2>Part XVIII · Recommendations for Akademus SIS</h2>
+      <p class="part-sub">Concrete engineering decisions translated from the research above.</p>
+
+      <div class="reco">
+        <div class="reco-head"><h4>Model curriculum as versioned, immutable snapshots</h4><span class="priority critical">CRITICAL</span></div>
+        <dl>
+          <dt>Why</dt><dd>Retrofitting versioning after live data exists risks unrecoverable historical corruption (Finding 1).</dd>
+          <dt>Evidence</dt><dd>Part V, Part XI, Finding 1.</dd>
+          <dt>Implementation</dt><dd><code>Program → CurriculumVersion → CurriculumSubject</code>; every student assigned to one version at admission; version migrations are explicit, approved, audited events.</dd>
+          <dt>Risk if ignored</dt><dd>Silent, retroactive breakage of past students' degree audits when curricula change.</dd>
+        </dl>
+      </div>
+
+      <div class="reco">
+        <div class="reco-head"><h4>Build as a modular monolith</h4><span class="priority critical">CRITICAL</span></div>
+        <dl>
+          <dt>Why</dt><dd>ACID transactions across enrollment/billing, lower operating cost, simpler debugging for a small team building for one institution (Finding 2).</dd>
+          <dt>Evidence</dt><dd>Part XII.</dd>
+          <dt>Implementation</dt><dd>One deployable app; enforce module boundaries at the code-organization level (e.g., separate packages/namespaces per domain) even though it's one process.</dd>
+          <dt>Risk if ignored</dt><dd>Distributed-system complexity (eventual consistency, service discovery) with no corresponding scale benefit.</dd>
+        </dl>
+      </div>
+
+      <div class="reco">
+        <div class="reco-head"><h4>Deny-by-default RBAC with per-request server-side authorization</h4><span class="priority critical">CRITICAL</span></div>
+        <dl>
+          <dt>Why</dt><dd>Broken access control is the top real-world SIS risk (Finding 3).</dd>
+          <dt>Evidence</dt><dd>Part IV, Part IX.</dd>
+          <dt>Implementation</dt><dd>Central authorization middleware checked on every route/handler; role-and-scope model (department, advisee-list) not just role name.</dd>
+          <dt>Risk if ignored</dt><dd>Any user able to view or modify data outside their scope — a Data Privacy Act violation as well as a security failure.</dd>
+        </dl>
+      </div>
+
+      <div class="reco">
+        <div class="reco-head"><h4>Full audit trail with append-only storage</h4><span class="priority critical">CRITICAL</span></div>
+        <dl>
+          <dt>Why</dt><dd>Required for override accountability, grade-change traceability, and DPA-aligned data-subject transparency.</dd>
+          <dt>Evidence</dt><dd>Part X.</dd>
+          <dt>Implementation</dt><dd>Separate audit store or append-only table; capture actor, action, entity, before/after, reason, timestamp on every write to sensitive domains.</dd>
+          <dt>Risk if ignored</dt><dd>No accountability for grade fraud, unauthorized overrides, or breach investigation.</dd>
+        </dl>
+      </div>
+
+      <div class="reco">
+        <div class="reco-head"><h4>Enforce concurrency safety on enrollment and room booking</h4><span class="priority high">HIGH</span></div>
+        <dl>
+          <dt>Why</dt><dd>Last-seat and room-double-booking races are common, well-documented failure modes.</dd>
+          <dt>Evidence</dt><dd>Part XI database research; optimistic/pessimistic locking literature.</dd>
+          <dt>Implementation</dt><dd>Database transactions + unique constraints as the backstop; pessimistic locking (<code>SELECT ... FOR UPDATE</code>) on last-seat enrollment specifically.</dd>
+          <dt>Risk if ignored</dt><dd>Oversold sections, double-booked rooms, corrupted enrollment counts.</dd>
+        </dl>
+      </div>
+
+      <div class="reco">
+        <div class="reco-head"><h4>Grade workflow: enter → submit → review → approve → lock</h4><span class="priority high">HIGH</span></div>
+        <dl>
+          <dt>Why</dt><dd>Separation of duties prevents unilateral grade fraud; grades are legally SPI.</dd>
+          <dt>Evidence</dt><dd>Part VIII.</dd>
+          <dt>Implementation</dt><dd>Locked grades editable only via a formal change-request workflow with second approver and audit entry.</dd>
+          <dt>Risk if ignored</dt><dd>Unaudited grade tampering; loss of institutional trust in the transcript.</dd>
+        </dl>
+      </div>
+
+      <div class="reco">
+        <div class="reco-head"><h4>Assisted (not fully automatic) scheduling and sectioning</h4><span class="priority medium">MEDIUM</span></div>
+        <dl>
+          <dt>Why</dt><dd>Timetabling is NP-hard; full optimization is expensive to build correctly and isn't needed at MVP scale (Finding 5).</dd>
+          <dt>Evidence</dt><dd>Part VII, Part IX (section management).</dd>
+          <dt>Implementation</dt><dd>System enforces hard constraints and proposes assignments; chairperson/registrar approves. Defer GA/IP optimization to a later phase if manual review becomes a bottleneck.</dd>
+          <dt>Risk if ignored (over-building)</dt><dd>Significant early engineering effort spent on optimization the institution doesn't yet need.</dd>
+        </dl>
+      </div>
+
+      <div class="reco">
+        <div class="reco-head"><h4>Delegate heavy accounting to a dedicated finance system</h4><span class="priority medium">MEDIUM</span></div>
+        <dl>
+          <dt>Why</dt><dd>Keeps SIS scope focused on academic-financial assessment rather than reimplementing a general ledger.</dd>
+          <dt>Evidence</dt><dd>Part IV (billing module), Part XIII (integration).</dd>
+          <dt>Implementation</dt><dd>SIS owns assessment tied to enrollment; nightly reconciliation job against ERP; payments routed through a gateway, never storing card data.</dd>
+          <dt>Risk if ignored</dt><dd>Duplicated, conflicting financial records between systems.</dd>
+        </dl>
+      </div>
+
+      <div class="reco">
+        <div class="reco-head"><h4>Document a breach-response runbook aligned to the 72-hour NPC rule</h4><span class="priority high">HIGH</span></div>
+        <dl>
+          <dt>Why</dt><dd>Legal deadline, not best practice — failure to notify within 5 days is presumed a violation.</dd>
+          <dt>Evidence</dt><dd>Part XIV; NPC Circular 16-03.</dd>
+          <dt>Implementation</dt><dd>Predefined breach-classification criteria, notification templates, and an on-call escalation path, tested before go-live.</dd>
+          <dt>Risk if ignored</dt><dd>Regulatory penalty and reputational damage compounding an already-bad incident.</dd>
+        </dl>
+      </div>
+    </section>
+
+    <!-- ============ PART XIX — RECOMMENDED MODULES ============ -->
+    <section class="part" id="final-modules">
+      <h2>Part XIX · Final Recommended Module Architecture</h2>
+      <p><span class="tag tag-analysis">ANALYSIS</span>Relative to the module list originally proposed, this research elevates <strong>Degree Audit</strong> and <strong>Clearance</strong> to first-class modules (they were previously folded into "Academic Progress" and "Documents"), and explicitly narrows <strong>Billing</strong> to assessment-only, with heavy accounting delegated externally.</p>
+      <div class="table-wrap"><table>
+        <tr><th>Module</th><th>Priority</th><th>Key dependency</th></tr>
+        <tr><td>Identity / RBAC</td><td>Must Have</td><td>None — foundation</td></tr>
+        <tr><td>Audit Logging</td><td>Must Have</td><td>Identity</td></tr>
+        <tr><td>Academic Structure</td><td>Must Have</td><td>None</td></tr>
+        <tr><td>Curriculum (versioned)</td><td>Must Have</td><td>Academic Structure</td></tr>
+        <tr><td>Student Records</td><td>Must Have</td><td>Admissions Integration</td></tr>
+        <tr><td>Enrollment / Registration</td><td>Must Have</td><td>Curriculum, Student Records</td></tr>
+        <tr><td>Section Management</td><td>Must Have</td><td>Enrollment</td></tr>
+        <tr><td>Scheduling / Room Mgmt</td><td>Should Have</td><td>Sections, Faculty</td></tr>
+        <tr><td>Faculty Assignment</td><td>Should Have</td><td>Scheduling</td></tr>
+        <tr><td>Attendance</td><td>Should Have</td><td>Scheduling</td></tr>
+        <tr><td>Grading</td><td>Must Have</td><td>Enrollment</td></tr>
+        <tr><td>Academic Progress / Degree Audit</td><td>Should Have</td><td>Grading, Curriculum</td></tr>
+        <tr><td>Billing / Assessment</td><td>Should Have</td><td>Enrollment</td></tr>
+        <tr><td>Clearance</td><td>Should Have</td><td>Billing, Documents</td></tr>
+        <tr><td>Documents</td><td>Should Have</td><td>Identity</td></tr>
+        <tr><td>Notifications</td><td>Nice to Have</td><td>All above (event source)</td></tr>
+        <tr><td>Graduation Management</td><td>Should Have</td><td>Degree Audit, Clearance</td></tr>
+        <tr><td>Reports / Analytics</td><td>Nice to Have</td><td>All domains</td></tr>
+        <tr><td>Integration / API layer</td><td>Advanced</td><td>Core modules stable</td></tr>
+      </table></div>
+    </section>
+
+    <!-- ============ PART XX — RECOMMENDED ARCHITECTURE ============ -->
+    <section class="part" id="final-architecture">
+      <h2>Part XX · Recommended Architecture</h2>
+      <h3>Overall system architecture</h3>
+      <div class="mermaid">
+graph TB
+  subgraph Clients
+    SP[Student Portal]
+    FP[Faculty Portal]
+    RP[Registrar / Chair Admin]
+    MP[Management Dashboard]
+  end
+  GW[API Gateway — OIDC + MFA]
+  subgraph SIS[Modular Monolith — Akademus SIS]
+    ID[Identity and RBAC]
+    AS[Academic Structure]
+    CU[Curriculum]
+    SR[Student Records]
+    EN[Enrollment]
+    SC[Scheduling]
+    AT[Attendance]
+    GR[Grading]
+    FIN[Finance / Assessment]
+    DOC[Documents]
+    NOT[Communication]
+    ADM[Administration / Audit]
+  end
+  DB[(Primary DB + Temporal History)]
+  RR[(Read Replica / Reporting)]
+  Q[Message Queue + Workers]
+  OBJ[(Object Storage — encrypted)]
+  subgraph External
+    ADMIS[Admissions / CRM]
+    LMS[LMS]
+    ERP[Accounting / ERP]
+    PAY[Payment Gateway]
+  end
+  SP & FP & RP & MP --> GW --> SIS
+  SIS --> DB --> RR
+  SIS --> Q --> NOT
+  DOC --> OBJ
+  ADMIS --> SIS
+  SIS --> LMS
+  LMS --> GR
+  SIS <--> ERP
+  FIN --> PAY
+      </div>
+      <h3>RBAC architecture</h3>
+      <div class="mermaid">
+graph TB
+  U[User] --> R[Roles]
+  R --> P[Permissions]
+  P --> RES[Resource + Action]
+  R --> SCOPE[Relationship Scope — dept / advisees / own]
+  RES --> CHK{Deny by default — per-request check}
+  SCOPE --> CHK
+  CHK -->|allow| ACT[Action performed + audited]
+  CHK -->|deny| ERR[403 + logged]
+      </div>
+    </section>
+
+    <!-- ============ PART XXI — DATABASE DESIGN ============ -->
+    <section class="part" id="final-database">
+      <h2>Part XXI · Recommended Database Design</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Domain</th><th>Key entities</th><th>Nature</th></tr>
+        <tr><td>Identity</td><td>User, Role, Permission</td><td>Mutable</td></tr>
+        <tr><td>Academic Structure</td><td>College, Department, Program</td><td>Mutable, low-change</td></tr>
+        <tr><td>Curriculum</td><td>CurriculumVersion, CurriculumSubject</td><td><strong>Versioned, immutable once published</strong></td></tr>
+        <tr><td>Student Records</td><td>Student, ProgramHistory, CurriculumAssignment</td><td>Identity immutable; history append-only</td></tr>
+        <tr><td>Enrollment</td><td>Enrollment, StudentSubject</td><td>Immutable once official; transactional writes</td></tr>
+        <tr><td>Scheduling</td><td>Room, Section, Schedule, FacultyAssignment</td><td>Mutable pre-publish, then versioned</td></tr>
+        <tr><td>Attendance</td><td>Attendance (per session)</td><td>Append-only with audited corrections</td></tr>
+        <tr><td>Grading</td><td>Grade</td><td><strong>Immutable once locked</strong>, versioned on formal change</td></tr>
+        <tr><td>Finance</td><td>Assessment, Payment, Discount</td><td>Append-only ledger entries</td></tr>
+        <tr><td>Documents</td><td>Document</td><td>Versioned, encrypted</td></tr>
+        <tr><td>Communication</td><td>Notification, Announcement</td><td>Mutable/ephemeral</td></tr>
+        <tr><td>Administration</td><td>AuditLog, Configuration</td><td><strong>AuditLog: append-only, tamper-evident</strong></td></tr>
+      </table></div>
+    </section>
+
+    <!-- ============ PART XXII — ROADMAP ============ -->
+    <section class="part" id="roadmap">
+      <h2>Part XXII · Recommended Development Roadmap</h2>
+
+      <h3>Phase 1 — Foundation</h3>
+      <p><strong>Modules:</strong> Identity/RBAC, audit logging, academic structure, system configuration, term management. <strong>Dependencies:</strong> none. <strong>Risks:</strong> weak permissions here are expensive to retrofit. <strong>Definition of Done:</strong> deny-by-default authorization tested; every write audited; no hardcoded terms anywhere in code.</p>
+
+      <h3>Phase 2 — Academic Core</h3>
+      <p><strong>Modules:</strong> curriculum versioning, subjects/prerequisites, student records, program/curriculum assignment. <strong>Dependencies:</strong> Phase 1. <strong>Definition of Done:</strong> two curriculum versions coexist correctly; historical-integrity regression tests pass.</p>
+
+      <h3>Phase 3 — Enrollment</h3>
+      <p><strong>Modules:</strong> sections, enrollment workflow, validations, concurrency handling, billing assessment. <strong>Definition of Done:</strong> last-slot race-condition test passes; all business rules enforced server-side.</p>
+
+      <h3>Phase 4 — Scheduling</h3>
+      <p><strong>Modules:</strong> rooms, assisted scheduling, faculty assignment, conflict detection. <strong>Definition of Done:</strong> no hard-constraint violation is publishable.</p>
+
+      <h3>Phase 5 — Academic Operations</h3>
+      <p><strong>Modules:</strong> attendance, grading workflow with locking and change-audit. <strong>Definition of Done:</strong> locked grades immutable outside the approved change workflow.</p>
+
+      <h3>Phase 6 — Supporting Services</h3>
+      <p><strong>Modules:</strong> documents (OWASP-aligned), notifications, clearance, portal polish. <strong>Definition of Done:</strong> file-upload validation and download authorization both pass security tests.</p>
+
+      <h3>Phase 7 — Graduation &amp; Reporting</h3>
+      <p><strong>Modules:</strong> degree audit, graduation eligibility with human verification, reports/analytics as background jobs. <strong>Definition of Done:</strong> graduation cannot be conferred without registrar sign-off.</p>
+
+      <h3>Phase 8 — Production Readiness</h3>
+      <p><strong>Modules:</strong> backups with tested restores, defined RPO/RTO, load testing, security testing, monitoring, documented breach-response runbook. <strong>Definition of Done:</strong> a restore drill has actually been performed, not just scheduled.</p>
+    </section>
+
+    <!-- ============ PART XXIII — PRIORITY MATRIX ============ -->
+    <section class="part" id="priority-matrix">
+      <h2>Part XXIII · Priority Matrix</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Feature / Module</th><th>Priority</th><th>Complexity</th><th>Risk</th><th>Dependency</th><th>Phase</th></tr>
+        <tr><td>Identity / RBAC</td><td>Must Have</td><td>Medium</td><td>Critical</td><td>—</td><td>1</td></tr>
+        <tr><td>Audit Logging</td><td>Must Have</td><td>Low</td><td>Critical</td><td>Identity</td><td>1</td></tr>
+        <tr><td>Curriculum Versioning</td><td>Must Have</td><td>High</td><td>Critical</td><td>Academic Structure</td><td>2</td></tr>
+        <tr><td>Enrollment Engine</td><td>Must Have</td><td>High</td><td>Critical</td><td>Curriculum, Records</td><td>3</td></tr>
+        <tr><td>Concurrency Safety</td><td>Must Have</td><td>Medium</td><td>High</td><td>Enrollment</td><td>3</td></tr>
+        <tr><td>Assisted Scheduling</td><td>Should Have</td><td>High</td><td>Medium</td><td>Sections, Faculty</td><td>4</td></tr>
+        <tr><td>Grade Lock Workflow</td><td>Must Have</td><td>Medium</td><td>Critical</td><td>Enrollment</td><td>5</td></tr>
+        <tr><td>Degree Audit</td><td>Should Have</td><td>High</td><td>Medium</td><td>Grading, Curriculum</td><td>7</td></tr>
+        <tr><td>Document Security</td><td>Should Have</td><td>Medium</td><td>High</td><td>Identity</td><td>6</td></tr>
+        <tr><td>Notifications</td><td>Nice to Have</td><td>Low</td><td>Low</td><td>All domains</td><td>6</td></tr>
+        <tr><td>AI/GA Schedule Optimization</td><td>Advanced / Future</td><td>Very High</td><td>Low</td><td>Assisted Scheduling</td><td>Future</td></tr>
+        <tr><td>Backup &amp; Restore Testing</td><td>Must Have</td><td>Low</td><td>Critical</td><td>—</td><td>8</td></tr>
+      </table></div>
+    </section>
+
+    <!-- ============ PART XXIV — TOP 20 ============ -->
+    <section class="part" id="top20">
+      <h2>Part XXIV · Top 20 Recommendations</h2>
+      <ol>
+        <li><strong>Deny-by-default RBAC, checked server-side on every request</strong> — the single most common real-world SIS failure is here.</li>
+        <li><strong>Immutable/versioned academic records</strong> — never hard-delete or overwrite curriculum, enrollment, or grade history.</li>
+        <li><strong>Curriculum versioning with per-student version assignment.</strong></li>
+        <li><strong>Stable surrogate student identity</strong>, deduplicated at admission time.</li>
+        <li><strong>Transactions + locking + unique constraints</strong> for enrollment and room-booking concurrency.</li>
+        <li><strong>Comprehensive, tamper-evident audit logging</strong> on every sensitive-domain write.</li>
+        <li><strong>Grade workflow with locking and audited change requests</strong> — never a direct edit.</li>
+        <li><strong>Server-side enforcement of every business rule</strong> — the frontend is not a security boundary.</li>
+        <li><strong>Encrypt Sensitive Personal Information</strong> at rest and in transit; manage secrets properly.</li>
+        <li><strong>MFA for privileged roles</strong>; NIST-aligned password policy.</li>
+        <li><strong>OWASP-aligned file-upload handling</strong>; authorize every document download individually.</li>
+        <li><strong>Configuration as data</strong> — terms, curricula, fee tables, honors thresholds — never hardcoded.</li>
+        <li><strong>Explicit integration source-of-truth boundaries</strong> with idempotent, retriable events.</li>
+        <li><strong>Automated degree audit with mandatory human verification</strong> before graduation.</li>
+        <li><strong>Background jobs for anything non-instant</strong> — reports, notifications, optimization.</li>
+        <li><strong>Tested backups with defined RPO/RTO</strong> — an untested backup is not a backup.</li>
+        <li><strong>Documented, drilled breach-response process</strong> aligned to the NPC's 72-hour rule.</li>
+        <li><strong>Separation of duties</strong> — the grade enterer is never the sole approver/locker.</li>
+        <li><strong>Safe, logged, approved override workflow</strong>, with clearly non-overridable rules enforced in code.</li>
+        <li><strong>Modular monolith over premature microservices</strong> for this scale of institution.</li>
+      </ol>
+    </section>
+
+    <!-- ============ PART XXV — COMMON MISTAKES ============ -->
+    <section class="part" id="mistakes">
+      <h2>Part XXV · Common Mistakes to Avoid</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Mistake</th><th>Why dangerous</th><th>Example consequence</th><th>Prevention</th></tr>
+        <tr><td>Hardcoded academic years</td><td>Breaks every new term</td><td>Manual code deploy every year</td><td>Make term data-driven and configurable</td></tr>
+        <tr><td>Deleting historical academic data</td><td>Destroys transcripts/audit trail</td><td>Accreditation or legal failure</td><td>Versioning + archival, never hard-delete</td></tr>
+        <tr><td>Poor curriculum versioning</td><td>Corrupts records on curriculum change</td><td>Wrong degree audits for past cohorts</td><td>Immutable curriculum versions</td></tr>
+        <tr><td>Weak/front-end-only permissions</td><td>Trivially bypassed</td><td>Data breach, DPA violation</td><td>Server-side deny-by-default RBAC</td></tr>
+        <tr><td>Missing audit trails</td><td>No accountability</td><td>Undetected grade fraud</td><td>Append-only audit log on sensitive writes</td></tr>
+        <tr><td>Direct grade modification</td><td>Bypasses review</td><td>Grade fraud/tampering</td><td>Submit → review → approve → lock workflow</td></tr>
+        <tr><td>Poor integration boundaries</td><td>Duplicated/contradictory data</td><td>Reconciliation nightmares between systems</td><td>Explicit source-of-truth per data domain</td></tr>
+        <tr><td>Duplicate student identities</td><td>Split records</td><td>Wrong audits, wrong finance</td><td>Unique identity + dedup at admission</td></tr>
+        <tr><td>Mixing current and historical records</td><td>Overwrites history</td><td>Lost past academic state</td><td>Separate current-state and temporal tables</td></tr>
+        <tr><td>Excessive administrator privileges</td><td>Large breach blast radius</td><td>Insider risk realized</td><td>Least privilege + separation of duties</td></tr>
+        <tr><td>Missing transaction handling</td><td>Race conditions</td><td>Oversold sections, corrupted finance</td><td>Transactions + locking + unique constraints</td></tr>
+        <tr><td>Unsafe administrative overrides</td><td>Silent rule bypass</td><td>Integrity loss, undetectable fraud</td><td>Logged, approved, reason-captured overrides</td></tr>
+        <tr><td>Poor file security</td><td>Malware/IDOR/data leak</td><td>SPI exposure</td><td>OWASP file-upload controls</td></tr>
+        <tr><td>Frontend-only business logic</td><td>Trivially bypassed</td><td>Invalid/corrupted data accepted</td><td>Enforce every rule server-side</td></tr>
+      </table></div>
+    </section>
+
+    <!-- ============ PART XXVI — CONCLUSION ============ -->
+    <section class="part" id="conclusion">
+      <h2>Part XXVI · Final Conclusion</h2>
+      <p><strong>If we were building a modern, secure, scalable, maintainable, auditable, production-ready Student Information System for a real college or university from scratch today, how should it be designed?</strong></p>
+      <div class="box">
+        <p>Build it as a <strong>modular monolith</strong> with strict internal domain boundaries and ACID transactions, on a relational database using <strong>versioned/temporal patterns</strong> for all academic history. Get the <strong>student identity model, curriculum versioning, and record-immutability</strong> decisions right in Phase 1 — they are the most expensive to reverse later. Enforce <strong>deny-by-default RBAC with separation of duties</strong> and a tamper-evident audit log, because grades and academic records are legally Sensitive Personal Information under the Philippine Data Privacy Act. Automate validations and degree audits, but keep humans in the loop for overrides, grade locking, sectioning, and graduation conferral. Use <strong>assisted, constraint-checked scheduling</strong> rather than full optimization at MVP stage. Integrate with Admissions, the LMS, and accounting through clear source-of-truth boundaries and idempotent events. Harden per OWASP/NIST/ISO 27001, and back the whole system with <strong>tested</strong> point-in-time recovery and a documented breach-response runbook aligned to the NPC's 72-hour rule.</p>
+      </div>
+    </section>
+
+    <!-- ============ PART XXVII — REFERENCES ============ -->
+    <section class="part" id="references">
+      <h2>Part XXVII · Sources &amp; References</h2>
+      <p class="part-sub">Complete reference library, organized by category. Every link is the original, verifiable source used in this handbook.</p>
+
+      <div class="refs-cat">
+        <h3>SIS Architecture &amp; Platforms</h3>
+        <div class="ref-item"><span class="ref-num">[01]</span> Ellucian Banner vs Workday Student — Ibl.ai, Industry comparison, 2026 <div class="ref-meta">Useful for: vendor module/architecture comparison — <a href="https://ibl.ai/resources/comparisons/banner-vs-workday-student" target="_blank" rel="noopener">ibl.ai/resources/comparisons/banner-vs-workday-student</a></div></div>
+        <div class="ref-item"><span class="ref-num">[02]</span> PeopleSoft Campus Solutions vs Workday Student — Ibl.ai, Industry comparison, 2026 <div class="ref-meta">Useful for: enrollment/curriculum/financial-aid comparison — <a href="https://ibl.ai/resources/comparisons/peoplesoft-vs-workday-student" target="_blank" rel="noopener">ibl.ai/resources/comparisons/peoplesoft-vs-workday-student</a></div></div>
+        <div class="ref-item"><span class="ref-num">[03]</span> Oracle PeopleSoft Campus Solutions Overview — Cleverence, Vendor documentation <div class="ref-meta">Useful for: student-lifecycle orchestration model — <a href="https://www.cleverence.com/articles/oracle-documentation/campus-solutions-2487/" target="_blank" rel="noopener">cleverence.com/articles/oracle-documentation/campus-solutions-2487</a></div></div>
+        <div class="ref-item"><span class="ref-num">[04]</span> Best Ellucian Alternatives 2026 — Full Fabric, Industry <div class="ref-meta">Useful for: SIS competitive landscape — <a href="https://www.fullfabric.com/articles/ellucian-alternatives-competitors-2026" target="_blank" rel="noopener">fullfabric.com/articles/ellucian-alternatives-competitors-2026</a></div></div>
+        <div class="ref-item"><span class="ref-num">[05]</span> Free Student Information System: Open Source Options — OpenEduCat, Industry <div class="ref-meta">Useful for: open-source SIS module coverage — <a href="https://openeducat.org/articles/free-student-information-system-open-source/" target="_blank" rel="noopener">openeducat.org/articles/free-student-information-system-open-source</a></div></div>
+        <div class="ref-item"><span class="ref-num">[06]</span> Top 10 Best Degree Audit Software of 2026 — ZipDo Software Advice, Industry <div class="ref-meta">Useful for: degree-audit vendor landscape — <a href="https://zipdo.co/best/degree-audit-software/" target="_blank" rel="noopener">zipdo.co/best/degree-audit-software</a></div></div>
+      </div>
+
+      <div class="refs-cat">
+        <h3>System Architecture</h3>
+        <div class="ref-item"><span class="ref-num">[07]</span> When (modular) monolith is the better way — Thoughtworks, Industry <div class="ref-meta"><a href="https://www.thoughtworks.com/en-us/insights/blog/microservices/modular-monolith-better-way-build-software" target="_blank" rel="noopener">thoughtworks.com — modular monolith better way</a></div></div>
+        <div class="ref-item"><span class="ref-num">[08]</span> Monolithic vs Microservices Architecture — getDX, Industry <div class="ref-meta"><a href="https://getdx.com/blog/monolithic-vs-microservices/" target="_blank" rel="noopener">getdx.com/blog/monolithic-vs-microservices</a></div></div>
+        <div class="ref-item"><span class="ref-num">[09]</span> Modular Monolith vs Microservices — DO OK, Industry <div class="ref-meta"><a href="https://dook.pro/blog/tips-tricks/how-to-choose-modular-monolith-vs-microservices-architecture/" target="_blank" rel="noopener">dook.pro — modular monolith vs microservices</a></div></div>
+        <div class="ref-item"><span class="ref-num">[10]</span> Prime Video engineering — monolith migration, cost/scaling results — AWS Prime Video Tech, Vendor engineering blog, 2023 <div class="ref-meta"><a href="https://www.primevideotech.com" target="_blank" rel="noopener">primevideotech.com</a></div></div>
+      </div>
+
+      <div class="refs-cat">
+        <h3>Curriculum, Enrollment &amp; Database Design</h3>
+        <div class="ref-item"><span class="ref-num">[11]</span> Degree Audit Automation — Stellic, Vendor <div class="ref-meta"><a href="https://www.stellic.com/resources/degree-audit-automation" target="_blank" rel="noopener">stellic.com/resources/degree-audit-automation</a></div></div>
+        <div class="ref-item"><span class="ref-num">[12]</span> Degree Audit Reporting System Guide — OpenEduCat, Industry <div class="ref-meta"><a href="https://openeducat.org/articles/degree-audit-reporting-system-guide/" target="_blank" rel="noopener">openeducat.org/articles/degree-audit-reporting-system-guide</a></div></div>
+        <div class="ref-item"><span class="ref-num">[13]</span> Manage Historical Data in System-Versioned Temporal Tables — Microsoft Learn, Vendor documentation <div class="ref-meta"><a href="https://learn.microsoft.com/en-us/sql/relational-databases/tables/manage-retention-of-historical-data-in-system-versioned-temporal-tables" target="_blank" rel="noopener">learn.microsoft.com — temporal tables</a></div></div>
+        <div class="ref-item"><span class="ref-num">[14]</span> Avoiding the soft delete anti-pattern — Cultured Systems, Industry <div class="ref-meta"><a href="https://www.cultured.systems/2024/04/24/Soft-delete/" target="_blank" rel="noopener">cultured.systems/2024/04/24/Soft-delete</a></div></div>
+        <div class="ref-item"><span class="ref-num">[15]</span> Optimistic Concurrency Control — Wikipedia <div class="ref-meta"><a href="https://en.wikipedia.org/wiki/Optimistic_concurrency_control" target="_blank" rel="noopener">en.wikipedia.org/wiki/Optimistic_concurrency_control</a></div></div>
+        <div class="ref-item"><span class="ref-num">[16]</span> Optimistic vs Pessimistic Locking Race Conditions — Vlad Mihalcea, Industry <div class="ref-meta"><a href="https://vladmihalcea.com/how-to-fix-optimistic-locking-race-conditions-with-pessimistic-locking/" target="_blank" rel="noopener">vladmihalcea.com — locking race conditions</a></div></div>
+      </div>
+
+      <div class="refs-cat">
+        <h3>Scheduling (Academic)</h3>
+        <div class="ref-item"><span class="ref-num">[17]</span> Incorporating constraint propagation in a genetic algorithm for university timetable planning — ScienceDirect, Academic <div class="ref-meta"><a href="https://www.sciencedirect.com/science/article/abs/pii/S095219769900007X" target="_blank" rel="noopener">sciencedirect.com/science/article/abs/pii/S095219769900007X</a></div></div>
+        <div class="ref-item"><span class="ref-num">[18]</span> A Utilization-based Genetic Algorithm for University Timetabling — ScienceDirect, Academic <div class="ref-meta"><a href="https://www.sciencedirect.com/science/article/pii/S1110016816000703" target="_blank" rel="noopener">sciencedirect.com/science/article/pii/S1110016816000703</a></div></div>
+        <div class="ref-item"><span class="ref-num">[19]</span> A Visual Entity-Relationship Model for Constraint-Based University Timetabling — arXiv, Academic <div class="ref-meta"><a href="https://arxiv.org/pdf/1109.6112" target="_blank" rel="noopener">arxiv.org/pdf/1109.6112</a></div></div>
+      </div>
+
+      <div class="refs-cat">
+        <h3>Security Standards &amp; Research</h3>
+        <div class="ref-item"><span class="ref-num">[20]</span> Authorization Cheat Sheet — OWASP Foundation, Security standard <div class="ref-meta"><a href="https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html" target="_blank" rel="noopener">cheatsheetseries.owasp.org/Authorization_Cheat_Sheet</a></div></div>
+        <div class="ref-item"><span class="ref-num">[21]</span> Authentication Cheat Sheet — OWASP Foundation, Security standard <div class="ref-meta"><a href="https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html" target="_blank" rel="noopener">cheatsheetseries.owasp.org/Authentication_Cheat_Sheet</a></div></div>
+        <div class="ref-item"><span class="ref-num">[22]</span> File Upload Cheat Sheet — OWASP Foundation, Security standard <div class="ref-meta"><a href="https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html" target="_blank" rel="noopener">cheatsheetseries.owasp.org/File_Upload_Cheat_Sheet</a></div></div>
+        <div class="ref-item"><span class="ref-num">[23]</span> OAuth2 Cheat Sheet — OWASP Foundation, Security standard <div class="ref-meta"><a href="https://cheatsheetseries.owasp.org/cheatsheets/OAuth2_Cheat_Sheet.html" target="_blank" rel="noopener">cheatsheetseries.owasp.org/OAuth2_Cheat_Sheet</a></div></div>
+        <div class="ref-item"><span class="ref-num">[24]</span> SP 800-63B Digital Identity Guidelines — NIST, Government standard <div class="ref-meta"><a href="https://pages.nist.gov/800-63-4/sp800-63b.html" target="_blank" rel="noopener">pages.nist.gov/800-63-4/sp800-63b.html</a></div></div>
+        <div class="ref-item"><span class="ref-num">[25]</span> ISO 27001 Controls Overview — NordLayer, Industry summary of standard <div class="ref-meta"><a href="https://nordlayer.com/learn/iso/iso-27001-controls/" target="_blank" rel="noopener">nordlayer.com/learn/iso/iso-27001-controls</a></div></div>
+        <div class="ref-item"><span class="ref-num">[26]</span> Data security crisis in universities — Nature (Humanities &amp; Social Sciences Communications), Academic <div class="ref-meta"><a href="https://www.nature.com/articles/s41599-023-01757-0" target="_blank" rel="noopener">nature.com/articles/s41599-023-01757-0</a></div></div>
+        <div class="ref-item"><span class="ref-num">[27]</span> The State of University Cybersecurity — UpGuard, Industry research <div class="ref-meta"><a href="https://www.upguard.com/blog/top-cybersecurity-problems-for-universities-colleges" target="_blank" rel="noopener">upguard.com/blog/top-cybersecurity-problems-for-universities-colleges</a></div></div>
+        <div class="ref-item"><span class="ref-num">[28]</span> K-12 Education: Actions Needed to Better Protect Data — U.S. GAO, Government <div class="ref-meta"><a href="https://www.gao.gov/products/gao-20-644" target="_blank" rel="noopener">gao.gov/products/gao-20-644</a></div></div>
+      </div>
+
+      <div class="refs-cat">
+        <h3>Philippine Regulations</h3>
+        <div class="ref-item"><span class="ref-num">[29]</span> Breach Reporting (72-hour rule) — National Privacy Commission, Government <div class="ref-meta"><a href="https://privacy.gov.ph/pips-and-pics/breach-reporting/" target="_blank" rel="noopener">privacy.gov.ph/pips-and-pics/breach-reporting</a></div></div>
+        <div class="ref-item"><span class="ref-num">[30]</span> NPC Circular 16-03 — Personal Data Breach Management, National Privacy Commission, Regulatory (PDF) <div class="ref-meta"><a href="https://privacy.gov.ph/wp-content/uploads/2022/01/sgd-npc-circular-16-03-personal-data-breach-management.pdf" target="_blank" rel="noopener">privacy.gov.ph — NPC Circular 16-03 (PDF)</a></div></div>
+        <div class="ref-item"><span class="ref-num">[31]</span> NPC Advisory Opinion 2025-017 — National Privacy Commission, Regulatory (PDF) <div class="ref-meta"><a href="https://privacy.gov.ph/wp-content/uploads/2026/01/NPC-Advisory-Opinion-No.-2025-017_Redactedv2.pdf" target="_blank" rel="noopener">privacy.gov.ph — Advisory Opinion 2025-017 (PDF)</a></div></div>
+        <div class="ref-item"><span class="ref-num">[32]</span> Data Privacy for Student Grades in the Philippines — Respicio &amp; Co., Legal commentary <div class="ref-meta"><a href="https://www.respicio.ph/commentaries/data-privacy-for-student-grades-in-the-philippines" target="_blank" rel="noopener">respicio.ph/commentaries/data-privacy-for-student-grades</a></div></div>
+        <div class="ref-item"><span class="ref-num">[33]</span> CMO No. 40, s.2008 (MORPHE) — CHED, Government regulation <div class="ref-meta"><a href="https://ched.gov.ph/cmo-40-s-2008/" target="_blank" rel="noopener">ched.gov.ph/cmo-40-s-2008</a></div></div>
+        <div class="ref-item"><span class="ref-num">[34]</span> CMO No. 20, s.2013 — General Education Curriculum, CHED, Government regulation (PDF) <div class="ref-meta"><a href="https://ched.gov.ph/wp-content/uploads/2017/10/CMO-No.20-s2013.pdf" target="_blank" rel="noopener">ched.gov.ph — CMO 20 s.2013 (PDF)</a></div></div>
+        <div class="ref-item"><span class="ref-num">[35]</span> RA 7722 — Higher Education Act of 1994, Official Gazette, Law <div class="ref-meta"><a href="https://www.officialgazette.gov.ph/1994/05/18/republic-act-no-7722/" target="_blank" rel="noopener">officialgazette.gov.ph/1994/05/18/republic-act-no-7722</a></div></div>
+        <div class="ref-item"><span class="ref-num">[36]</span> RA 8292 — Higher Education Modernization Act of 1997, LawPhil, Law <div class="ref-meta"><a href="https://www.lawphil.net/statutes/repacts/ra1997/ra_8292_1997.html" target="_blank" rel="noopener">lawphil.net/statutes/repacts/ra1997/ra_8292_1997</a></div></div>
+      </div>
+
+      <div class="refs-cat">
+        <h3>APIs, Integration &amp; Reliability</h3>
+        <div class="ref-item"><span class="ref-num">[37]</span> Event-Driven Architecture &amp; Message Queues: 2026 Reference — Digital Applied, Industry <div class="ref-meta"><a href="https://www.digitalapplied.com/blog/event-driven-architecture-message-queues-2026-engineering-reference" target="_blank" rel="noopener">digitalapplied.com — event-driven architecture reference</a></div></div>
+        <div class="ref-item"><span class="ref-num">[38]</span> Idempotency and Ordering in Event-Driven Systems — Cockroach Labs, Industry <div class="ref-meta"><a href="https://www.cockroachlabs.com/blog/idempotency-and-ordering-in-event-driven-systems/" target="_blank" rel="noopener">cockroachlabs.com/blog/idempotency-and-ordering</a></div></div>
+        <div class="ref-item"><span class="ref-num">[39]</span> RTO vs RPO: Key Differences &amp; Best Practices — Object First, Industry <div class="ref-meta"><a href="https://objectfirst.com/guides/data-backup/rto-vs-rpo/" target="_blank" rel="noopener">objectfirst.com/guides/data-backup/rto-vs-rpo</a></div></div>
+        <div class="ref-item"><span class="ref-num">[40]</span> RTO vs RPO (NIST SP 800-34) — SentinelOne, Industry <div class="ref-meta"><a href="https://www.sentinelone.com/cybersecurity-101/cloud-security/rto-vs-rpo/" target="_blank" rel="noopener">sentinelone.com — RTO vs RPO</a></div></div>
+        <div class="ref-item"><span class="ref-num">[41]</span> RTO vs RPO Disaster Recovery Guide — DataCamp, Industry <div class="ref-meta"><a href="https://www.datacamp.com/blog/rto-vs-rpo" target="_blank" rel="noopener">datacamp.com/blog/rto-vs-rpo</a></div></div>
+        <div class="ref-item"><span class="ref-num">[42]</span> What is RTO vs RPO — AvePoint, Industry <div class="ref-meta"><a href="https://www.avepoint.com/blog/backup/rto-rpo-recovery-time-and-recovery-point-objectives-explained" target="_blank" rel="noopener">avepoint.com/blog/backup/rto-rpo</a></div></div>
+      </div>
+
+      <div class="refs-cat">
+        <h3>Concurrency</h3>
+        <div class="ref-item"><span class="ref-num">[43]</span> How to Solve Race Conditions in a Booking System — HackerNoon, Industry <div class="ref-meta"><a href="https://hackernoon.com/how-to-solve-race-conditions-in-a-booking-system" target="_blank" rel="noopener">hackernoon.com/how-to-solve-race-conditions-in-a-booking-system</a></div></div>
+        <div class="ref-item"><span class="ref-num">[44]</span> Solving Race Conditions With EF Core Optimistic Locking — Milan Jovanović, Industry <div class="ref-meta"><a href="https://milanjovanovic.tech/blog/solving-race-conditions-with-ef-core-optimistic-locking" target="_blank" rel="noopener">milanjovanovic.tech — optimistic locking</a></div></div>
+        <div class="ref-item"><span class="ref-num">[45]</span> Implementing Concurrent Control with ORM — Leapcell, Industry <div class="ref-meta"><a href="https://leapcell.io/blog/implementing-concurrent-control-with-orm-a-deep-dive-into-pessimistic-and-optimistic-locking" target="_blank" rel="noopener">leapcell.io — concurrent control with ORM</a></div></div>
+      </div>
+    </section>
+
+    <footer class="doc-footer">
+      <p>Tag legend: <span class="tag tag-legal">STANDARD / LEGAL</span> requirement supported by an authoritative standard, regulator, or law &nbsp;·&nbsp; <span class="tag tag-research">RESEARCH</span> finding supported by academic or industry sources &nbsp;·&nbsp; <span class="tag tag-analysis">ANALYSIS</span> interpretation of the collected evidence &nbsp;·&nbsp; <span class="tag tag-reco">RECOMMENDATION</span> proposed engineering decision.</p>
+      <p>Compiled as a technical reference for the Akademus SIS project. All cited sources are linked directly to their original publication.</p>
+    </footer>
+  </main>
+</div>
+
+<button class="top-btn" id="topBtn" aria-label="Back to top">↑</button>
+
+<script>
+  mermaid.initialize({ startOnLoad:true, theme:'neutral', securityLevel:'loose',
+    themeVariables:{ fontFamily:'IBM Plex Sans, sans-serif', primaryColor:'#e4edee', primaryBorderColor:'#2b5d6b', lineColor:'#8a8672', primaryTextColor:'#1b1b17' } });
+
+  // Build sidebar TOC from h2 sections
+  const toc = document.getElementById('toc');
+  const parts = document.querySelectorAll('section.part');
+  const groups = [
+    {label:'Research', ids:['exec-summary','introduction','industry-review','modules','curriculum','enrollment','scheduling','grading','security','audit','database','architecture','integration','legal','performance','testing']},
+    {label:'Findings & Recommendations', ids:['findings','recommendations']},
+    {label:'Final Design', ids:['final-modules','final-architecture','final-database','roadmap','priority-matrix','top20','mistakes','conclusion']},
+    {label:'References', ids:['references']}
+  ];
+  const titleOf = id => document.getElementById(id).querySelector('h2').textContent.replace(/^Part [IVXL]+\\s*·\\s*/,'');
+
+  groups.forEach((g, gi) => {
+    const det = document.createElement('details');
+    det.open = gi < 2;
+    const sum = document.createElement('summary');
+    sum.textContent = g.label;
+    det.appendChild(sum);
+    g.ids.forEach(id => {
+      if(!document.getElementById(id)) return;
+      const a = document.createElement('a');
+      a.href = '#'+id; a.className = 'navlink'; a.dataset.id = id;
+      a.textContent = titleOf(id);
+      det.appendChild(a);
+    });
+    toc.appendChild(det);
+  });
+
+  // scrollspy
+  const links = toc.querySelectorAll('.navlink');
+  const obs = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(l=>l.classList.remove('active'));
+        const l = toc.querySelector('.navlink[data-id="'+e.target.id+'"]');
+        if(l){ l.classList.add('active'); l.closest('details').open = true; }
+      }
+    });
+  }, {rootMargin:'-15% 0px -70% 0px'});
+  parts.forEach(p=>obs.observe(p));
+
+  // mobile menu
+  const sidebar = document.getElementById('sidebar');
+  document.getElementById('menuBtn').addEventListener('click', ()=> sidebar.classList.toggle('open'));
+  links.forEach(l=>l.addEventListener('click', ()=> sidebar.classList.remove('open')));
+
+  // back to top
+  const topBtn = document.getElementById('topBtn');
+  window.addEventListener('scroll', ()=>{ topBtn.classList.toggle('show', window.scrollY > 600); });
+  topBtn.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+</script>
+</body>
+</html>
