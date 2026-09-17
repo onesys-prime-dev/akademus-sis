@@ -9,27 +9,31 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-    --primary:            #003385;
+    /* Aliased onto the shared design-system tokens (public/assets/css/design-system/tokens.css,
+       linked separately in each view's <head>) so the rules below keep
+       working unchanged while pulling from one source of truth. */
+    --primary:            var(--color-primary-hover);
     --primary-dark:       #001849;
-    --primary-container:  #0040a6;
-    --primary-fixed:      #dae1ff;
-    --warning:            #FFB200;
-    --error:              #EF4444;
-    --success:            #10B981;
-    --success-container:  #e6f7ec;
-    --surface:            #F5F5F7;
-    --surface-container-lowest: #ffffff;
-    --surface-container-low:    #f7f7f9;
-    --surface-container-high:   #e4e4e8;
-    --on-surface:         #1d1d1f;
-    --on-surface-variant: #6e6e73;
-    --outline:            #86868b;
-    --outline-variant:    #e5e5ea;
-    --radius-sm: 12px;
-    --radius-md: 16px;
-    --radius-lg: 20px;
-    --shadow-sm: 0 2px 12px rgba(0,0,0,.03), 0 0 1px rgba(0,0,0,.1);
-    --shadow-md: 0 8px 24px -6px rgba(0,0,0,.08), 0 0 1px rgba(0,0,0,.1);
+    --primary-container:  var(--color-primary);
+    --primary-fixed:      var(--color-primary-soft);
+    --warning:            var(--color-warning);
+    --error:              var(--color-danger);
+    --success:            var(--color-success);
+    --success-container:  var(--color-success-soft);
+    --surface:            var(--color-background);
+    --surface-container-lowest: var(--color-surface);
+    --surface-container-low:    var(--color-surface-secondary);
+    --surface-container-high:   var(--color-surface-sunken);
+    --on-surface:         var(--color-text-primary);
+    --on-surface-variant: var(--color-text-secondary);
+    --outline:            var(--color-text-tertiary);
+    --outline-variant:    var(--color-border);
+    --radius-sm: var(--radius-md);
+    --radius-md: var(--radius-lg);
+    --radius-lg: var(--radius-xl);
+    /* --shadow-sm / --shadow-md come straight from tokens.css — same names,
+       same values, no local override needed (and redefining them here in
+       terms of themselves would be a circular reference). */
 }
 
 html, body { height: 100%; }
@@ -409,6 +413,23 @@ table.schedule-table tr:last-child td { border-bottom: none; }
     margin: 20px 0 8px;
 }
 .day-heading:first-child { margin-top: 0; }
+
+/* ===== Responsive ===== */
+@media (max-width: 900px) {
+    .content { padding: 4px 4px; }
+    .topbar { padding: 12px 16px; }
+}
+
+@media (max-width: 640px) {
+    body { padding: 6px; gap: 6px; }
+    .side-drawer { width: 52px; }
+    .panel { padding: 16px; }
+    .field-row { grid-template-columns: 1fr; }
+    .stat-grid { grid-template-columns: 1fr; }
+    table.schedule-table { display: block; overflow-x: auto; white-space: nowrap; }
+    .view-toggle { width: 100%; }
+    .view-toggle button { flex: 1; }
+}
 
 /* ===== Schedule: view toggle ===== */
 .view-toggle {

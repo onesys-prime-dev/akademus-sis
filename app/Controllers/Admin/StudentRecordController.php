@@ -25,16 +25,27 @@ class StudentRecordController extends BaseController
             'q'          => trim((string) $this->request->getGet('q')),
         ];
 
-        $students = $studentModel->listFiltered($filters);
+        $allStudents = $studentModel->listFiltered($filters);
+
+        $perPage      = 20;
+        $totalStudents = count($allStudents);
+        $totalPages   = max(1, (int) ceil($totalStudents / $perPage));
+        $page         = (int) ($this->request->getGet('page') ?: 1);
+        $page         = max(1, min($page, $totalPages));
+        $students     = array_slice($allStudents, ($page - 1) * $perPage, $perPage);
 
         return view('admin/students/index', [
-            'pageTitle'   => 'Student Records',
-            'activeAdmin' => 'students',
-            'students'    => $students,
-            'programs'    => (new ProgramModel())->where('is_active', 1)->orderBy('program_name')->findAll(),
-            'yearLevels'  => ['1st Year', '2nd Year', '3rd Year', '4th Year'],
-            'statuses'    => StudentModel::STATUSES,
-            'filters'     => $filters,
+            'pageTitle'     => 'Student Records',
+            'activeAdmin'   => 'students',
+            'students'      => $students,
+            'programs'      => (new ProgramModel())->where('is_active', 1)->orderBy('program_name')->findAll(),
+            'yearLevels'    => ['1st Year', '2nd Year', '3rd Year', '4th Year'],
+            'statuses'      => StudentModel::STATUSES,
+            'filters'       => $filters,
+            'page'          => $page,
+            'totalPages'    => $totalPages,
+            'totalStudents' => $totalStudents,
+            'perPage'       => $perPage,
         ]);
     }
 

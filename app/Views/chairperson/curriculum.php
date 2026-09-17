@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/tokens.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/tokens.css') ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/base.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/base.css') ?>">
     <style>
         <?= $this->include('components/shell/style') ?>
 
@@ -331,7 +333,7 @@
                 </div>
 
                 <!-- Add / edit subject modal -->
-                <div class="modal-backdrop" id="subjectModal">
+                <div class="modal-backdrop" id="subjectModal" role="dialog" aria-modal="true" aria-labelledby="formTitle">
                     <div class="modal-card">
                         <h2 id="formTitle">Add a New Subject</h2>
                         <p class="modal-sub" id="formSub">Creates a subject in <?= esc($selected['program']) ?>'s catalog and assigns it to <?= esc($selected['year_level']) ?> right away.</p>
@@ -614,21 +616,48 @@
 
         // ----- Add / edit a subject modal -----
         const subjectModal = document.getElementById('subjectModal');
+        let subjectModalLastFocused = null;
 
         function openAddModal() {
             exitEditMode();
+            subjectModalLastFocused = document.activeElement;
             subjectModal.classList.add('open');
             document.getElementById('asCode').focus();
         }
 
         function closeSubjectModal() {
             subjectModal.classList.remove('open');
+            if (subjectModalLastFocused && typeof subjectModalLastFocused.focus === 'function') subjectModalLastFocused.focus();
         }
 
         document.getElementById('addToggle')?.addEventListener('click', openAddModal);
         document.getElementById('modalCancel').addEventListener('click', closeSubjectModal);
         subjectModal.addEventListener('click', e => { if (e.target === subjectModal) closeSubjectModal(); });
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSubjectModal(); });
+        document.addEventListener('keydown', e => {
+            if (!subjectModal.classList.contains('open')) return;
+
+            if (e.key === 'Escape') {
+                closeSubjectModal();
+                return;
+            }
+
+            if (e.key === 'Tab') {
+                const focusables = Array.prototype.slice.call(
+                    subjectModal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])')
+                );
+                if (!focusables.length) return;
+                const first = focusables[0];
+                const last  = focusables[focusables.length - 1];
+
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        });
 
         // ----- Copy from another term (explicit, one-click, never automatic) -----
         document.getElementById('copyToggle')?.addEventListener('click', () => {
@@ -669,6 +698,7 @@
 
         function enterEditMode(s) {
             editingCode = s.code;
+            subjectModalLastFocused = document.activeElement;
             subjectModal.classList.add('open');
             document.getElementById('formTitle').textContent = 'Edit Subject: ' + s.code;
             document.getElementById('formSub').textContent = 'Changes apply everywhere this subject is used, across every year level.';

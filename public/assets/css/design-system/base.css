@@ -1,0 +1,44 @@
+/**
+ * Akademus SIS — base layer.
+ * Resets, focus handling, and motion preferences shared by every role shell.
+ * Load after tokens.css.
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Visible, consistent focus ring everywhere — never remove outline without
+   replacing it. Mouse/touch users don't get the ring (:focus-visible),
+   keyboard users always do. */
+:focus { outline: none; }
+
+:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* Comfortable touch targets for anything clickable that doesn't already
+   have generous padding. */
+button, a, input, select, textarea { font-family: inherit; }
+
+/* Visually hidden but still announced by screen readers. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}

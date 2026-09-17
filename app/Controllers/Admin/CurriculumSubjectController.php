@@ -43,7 +43,8 @@ class CurriculumSubjectController extends BaseController
         return view(
             'admin/curriculum-subjects/index',
             [
-                'curriculumSubjects' => $curriculumSubjects
+                'curriculumSubjects' => $curriculumSubjects,
+                'activeAdmin'        => 'curriculum-subjects',
             ]
         );
     }
@@ -61,8 +62,9 @@ class CurriculumSubjectController extends BaseController
         return view(
             'admin/curriculum-subjects/create',
             [
-                'curricula' => $curricula,
-                'subjects'  => $subjects
+                'curricula'   => $curricula,
+                'subjects'    => $subjects,
+                'activeAdmin' => 'curriculum-subjects',
             ]
         );
     }

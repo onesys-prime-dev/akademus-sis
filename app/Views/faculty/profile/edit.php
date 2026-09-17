@@ -14,18 +14,21 @@ $initials = strtoupper(mb_substr($user['name'], 0, 2));
 <title>Profile · Akademus SIS</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="<?= base_url('assets/css/design-system/tokens.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/tokens.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/design-system/base.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/base.css') ?>">
 <style>
 :root{
-    --brand:#0040A6;
-    --brand-soft:rgba(0,64,166,.1);
-    --bg:#f5f5f7;
-    --border:rgba(0,0,0,.08);
-    --ink:#1d1d1f;
-    --muted:#86868b;
-    --green:#16a34a; --green-soft:#f0fdf4; --green-border:#bbf7d0;
-    --red:#ef4444; --red-soft:#fef2f2; --red-border:#fecaca;
-    --shadow-apple:0 4px 24px rgba(0,0,0,.04);
-    --shadow-hover:0 8px 32px rgba(0,0,0,.08);
+    /* Aliased onto the shared design-system tokens (public/assets/css/design-system/tokens.css). */
+    --brand:var(--color-primary);
+    --brand-soft:var(--color-primary-soft);
+    --bg:var(--color-background);
+    --border:var(--color-border);
+    --ink:var(--color-text-primary);
+    --muted:var(--color-text-secondary);
+    --green:var(--color-success); --green-soft:var(--color-success-soft); --green-border:#bbf7d0;
+    --red:var(--color-danger); --red-soft:var(--color-danger-soft); --red-border:#fecaca;
+    --shadow-apple:var(--shadow-sm);
+    --shadow-hover:var(--shadow-md);
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
@@ -138,6 +141,18 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
 }
 .btn-primary:hover{background:#003080}
 .btn-primary:active{transform:scale(.97)}
+
+@media (max-width:900px){
+    .container{padding:24px 20px}
+}
+
+@media (max-width:640px){
+    body{padding:6px;gap:6px}
+    .side-drawer{width:56px}
+    .container{padding:16px}
+    .topbar{padding:12px 16px}
+    .field-row{grid-template-columns:1fr}
+}
 </style>
 </head>
 

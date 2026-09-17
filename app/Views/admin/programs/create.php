@@ -1,53 +1,53 @@
-<!DOCTYPE html>
-<html lang="en">
+<?= $this->extend('layouts/admin_console') ?>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
+<?= $this->section('content') ?>
 
-<body>
-    <?php if (session()->has('errors')): ?>
-        <div style="color:red;">
+<div class="ac-page-header">
+    <div>
+        <div class="ac-breadcrumb">
+            <a href="<?= site_url('admin/programs') ?>">Programs</a>
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+            <span class="current">Add Program</span>
+        </div>
+        <h2 class="ac-page-header__title">Add Program</h2>
+    </div>
+</div>
+
+<?php if (session()->has('errors')): ?>
+    <div class="ac-alert" style="background:#fef2f2; border-color:#fecaca;">
+        <span class="material-symbols-outlined" style="color:var(--color-danger);" aria-hidden="true">error</span>
+        <div class="ac-alert__text" style="color:var(--color-danger);">
             <?php foreach (session('errors') as $error): ?>
                 <p><?= esc($error) ?></p>
             <?php endforeach ?>
         </div>
-    <?php endif ?>
+    </div>
+<?php endif ?>
 
-    <?php if (session()->has('message')): ?>
-        <div style="color:green;">
-            <?= session('message') ?>
-        </div>
-    <?php endif ?>
-    
-    <h1>Create Program</h1>
-
+<div class="ac-card" style="max-width:560px;">
     <form method="post" action="<?= site_url('admin/programs/store') ?>">
-
         <?= csrf_field() ?>
 
-        <label>Program Code</label>
-        <br>
-        <input type="text" name="program_code" value="<?= old('program_code') ?>">
-        <br><br>
+        <div class="ac-field">
+            <label for="program_code">Program Code</label>
+            <input type="text" id="program_code" name="program_code" class="ac-input" placeholder="BSCS" value="<?= old('program_code') ?>" required>
+        </div>
 
-        <label>Program Name</label>
-        <br>
-        <input type="text" name="program_name" value="<?= old('program_name') ?>">
-        <br><br>
+        <div class="ac-field">
+            <label for="program_name">Program Name</label>
+            <input type="text" id="program_name" name="program_name" class="ac-input" placeholder="BS Computer Science" value="<?= old('program_name') ?>" required>
+        </div>
 
-        <label>Description</label>
-        <br>
-        <textarea name="description"><?= old('description') ?></textarea>
-        <br><br>
+        <div class="ac-field">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" class="ac-input" rows="3"><?= old('description') ?></textarea>
+        </div>
 
-        <button type="submit">
-            Create Program
-        </button>
-
+        <div style="display:flex; gap:10px; margin-top:8px;">
+            <a href="<?= site_url('admin/programs') ?>" class="ac-btn ac-btn-secondary">Cancel</a>
+            <button type="submit" class="ac-btn ac-btn-primary">Create Program</button>
+        </div>
     </form>
-</body>
+</div>
 
-</html>
+<?= $this->endSection() ?>

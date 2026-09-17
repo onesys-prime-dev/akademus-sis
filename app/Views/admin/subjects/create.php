@@ -1,84 +1,90 @@
-<!DOCTYPE html>
-<html lang="en">
+<?= $this->extend('layouts/admin_console') ?>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
+<?= $this->section('content') ?>
 
-<body>
-    <?php if (session()->has('errors')): ?>
-        <div style="color:red;">
+<div class="ac-page-header">
+    <div>
+        <div class="ac-breadcrumb">
+            <a href="<?= site_url('admin/subjects') ?>">Subjects</a>
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+            <span class="current">Add Subject</span>
+        </div>
+        <h2 class="ac-page-header__title">Add Subject</h2>
+    </div>
+</div>
+
+<?php if (session()->has('errors')): ?>
+    <div class="ac-alert" style="background:#fef2f2; border-color:#fecaca;">
+        <span class="material-symbols-outlined" style="color:var(--color-danger);" aria-hidden="true">error</span>
+        <div class="ac-alert__text" style="color:var(--color-danger);">
             <?php foreach (session('errors') as $error): ?>
                 <p><?= esc($error) ?></p>
             <?php endforeach ?>
         </div>
-    <?php endif ?>
+    </div>
+<?php endif ?>
 
-    <?php if (session()->has('message')): ?>
-        <div style="color:green;">
-            <?= session('message') ?>
-        </div>
-    <?php endif ?>
-
-    <h1>Create Subject</h1>
-
+<div class="ac-card" style="max-width:640px;">
     <form method="post" action="<?= site_url('admin/subjects/store') ?>">
-
         <?= csrf_field() ?>
 
-        <label>Subject Code</label>
-        <br>
-        <input type="text" name="subject_code" value="<?= old('subject_code') ?>">
-        <br><br>
+        <div class="ac-field">
+            <label for="subject_code">Subject Code</label>
+            <input type="text" id="subject_code" name="subject_code" class="ac-input" placeholder="CS101" value="<?= old('subject_code') ?>" required>
+        </div>
 
-        <label>Subject Name</label>
-        <br>
-        <input type="text" name="subject_name" value="<?= old('subject_name') ?>">
-        <br><br>
+        <div class="ac-field">
+            <label for="subject_name">Subject Name</label>
+            <input type="text" id="subject_name" name="subject_name" class="ac-input" placeholder="Introduction to Computing" value="<?= old('subject_name') ?>" required>
+        </div>
 
-        <label>Units</label>
-        <br>
-        <input type="number" step="0.5" name="units" value="<?= old('units', '3') ?>">
-        <br><br>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="ac-field">
+                <label for="units">Units</label>
+                <input type="number" step="0.5" id="units" name="units" class="ac-input" value="<?= old('units', '3') ?>">
+            </div>
+            <div class="ac-field">
+                <label style="display:flex; align-items:center; gap:8px; margin-top:22px;">
+                    <input type="checkbox" name="is_laboratory" value="1" <?= old('is_laboratory') ? 'checked' : '' ?>>
+                    <span style="text-transform:none; font-weight:600; color:var(--color-text-primary); font-size:13px;">Laboratory subject</span>
+                </label>
+                <p style="font-size:11.5px; color:var(--color-text-secondary); margin-top:4px;">May only be plotted on Saturdays.</p>
+            </div>
+        </div>
 
-        <label>
-            <input type="checkbox" name="is_laboratory" value="1" <?= old('is_laboratory') ? 'checked' : '' ?>>
-            Laboratory subject (may only be plotted on Saturdays)
-        </label>
-        <br><br>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="ac-field">
+                <label for="lecture_units">Lecture Units</label>
+                <input type="number" step="0.5" id="lecture_units" name="lecture_units" class="ac-input" value="<?= old('lecture_units') ?>">
+                <p class="ac-field-hint" style="font-size:11.5px; color:var(--color-text-secondary); margin-top:4px;">Optional split; overrides Units above for hour calc.</p>
+            </div>
+            <div class="ac-field">
+                <label for="laboratory_units">Laboratory Units</label>
+                <input type="number" step="0.5" id="laboratory_units" name="laboratory_units" class="ac-input" value="<?= old('laboratory_units') ?>">
+            </div>
+        </div>
 
-        <label>Lecture Units (optional split, overrides Units above for hour calc)</label>
-        <br>
-        <input type="number" step="0.5" name="lecture_units" value="<?= old('lecture_units') ?>">
-        <br><br>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="ac-field">
+                <label for="contact_hours">Contact Hours per Meeting</label>
+                <input type="number" step="0.5" id="contact_hours" name="contact_hours" class="ac-input" value="<?= old('contact_hours', '1.5') ?>">
+            </div>
+            <div class="ac-field">
+                <label for="meetings_per_week">Meetings per Week</label>
+                <input type="number" step="1" id="meetings_per_week" name="meetings_per_week" class="ac-input" placeholder="Optional" value="<?= old('meetings_per_week') ?>">
+            </div>
+        </div>
 
-        <label>Laboratory Units (optional split, overrides Units above for hour calc)</label>
-        <br>
-        <input type="number" step="0.5" name="laboratory_units" value="<?= old('laboratory_units') ?>">
-        <br><br>
+        <div class="ac-field">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" class="ac-input" rows="3"><?= old('description') ?></textarea>
+        </div>
 
-        <label>Contact Hours per Meeting (e.g. 1.5)</label>
-        <br>
-        <input type="number" step="0.5" name="contact_hours" value="<?= old('contact_hours', '1.5') ?>">
-        <br><br>
-
-        <label>Meetings per Week (optional target; leave blank for no fixed target)</label>
-        <br>
-        <input type="number" step="1" name="meetings_per_week" value="<?= old('meetings_per_week') ?>">
-        <br><br>
-
-        <label>Description</label>
-        <br>
-        <textarea name="description"><?= old('description') ?></textarea>
-        <br><br>
-
-        <button type="submit">
-            Create Subject
-        </button>
-
+        <div style="display:flex; gap:10px; margin-top:8px;">
+            <a href="<?= site_url('admin/subjects') ?>" class="ac-btn ac-btn-secondary">Cancel</a>
+            <button type="submit" class="ac-btn ac-btn-primary">Create Subject</button>
+        </div>
     </form>
-</body>
+</div>
 
-</html>
+<?= $this->endSection() ?>

@@ -1,116 +1,72 @@
-<!DOCTYPE html>
-<html lang="en">
+<?= $this->extend('layouts/admin_console') ?>
 
-<head>
-    <meta charset="UTF-8">
-    <title>Curricula</title>
-</head>
+<?= $this->section('headerActions') ?>
+<a href="<?= site_url('admin/curriculum/create') ?>" class="ac-btn ac-btn-primary">
+    <span class="material-symbols-outlined" style="font-size:18px;" aria-hidden="true">add</span>
+    <span>Add Curriculum</span>
+</a>
+<?= $this->endSection() ?>
 
-<body>
+<?= $this->section('content') ?>
 
-    <?php if (session()->has('message')): ?>
+<div class="ac-page-header">
+    <div>
+        <h2 class="ac-page-header__title">Curricula</h2>
+        <p class="ac-page-header__sub">Curriculum sets per program and academic year — subjects are assigned to these from Curriculum Subjects.</p>
+    </div>
+</div>
 
-        <div style="color:green;">
-            <?= session('message') ?>
-        </div>
+<?php if (session()->has('message')): ?>
+    <div class="ac-notice" style="margin-bottom:16px;">
+        <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-success); margin-top:1px;" aria-hidden="true">check_circle</span>
+        <span class="ac-notice__text"><?= esc(session('message')) ?></span>
+    </div>
+<?php endif ?>
 
-    <?php endif; ?>
+<?php if (empty($curriculum)): ?>
+    <div class="ac-empty-block">
+        <p>No curricula yet.</p>
+        <p style="margin-top:6px;"><a href="<?= site_url('admin/curriculum/create') ?>">Add the first curriculum</a> to get started.</p>
+    </div>
+<?php else: ?>
+    <div class="ac-table-card">
+        <table class="ac-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Curriculum</th>
+                    <th>Program</th>
+                    <th>Academic Year</th>
+                    <th>Status</th>
+                    <th style="text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($curriculum as $item): ?>
+                    <tr>
+                        <td><span class="ac-cell-bold"><?= esc($item['curriculum_code']) ?></span></td>
+                        <td><?= esc($item['curriculum_name']) ?></td>
+                        <td class="ac-muted"><?= esc($item['program_name']) ?></td>
+                        <td class="ac-muted"><?= esc($item['academic_year']) ?></td>
+                        <td>
+                            <span class="ac-status-dot <?= $item['is_active'] ? 'ac-status-dot--active' : 'ac-status-dot--inactive' ?>">
+                                <?= $item['is_active'] ? 'Active' : 'Inactive' ?>
+                            </span>
+                        </td>
+                        <td class="ac-actions-cell">
+                            <a href="<?= site_url('admin/curriculum/edit/' . $item['curriculum_id']) ?>" class="ac-btn-outline">Edit</a>
+                            <form method="post" action="<?= site_url('admin/curriculum/toggle/' . $item['curriculum_id']) ?>">
+                                <?= csrf_field() ?>
+                                <button type="submit" class="ac-btn-outline" onclick="return confirm('Change curriculum status?')">
+                                    <?= $item['is_active'] ? 'Deactivate' : 'Activate' ?>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach ?>
+            </tbody>
+        </table>
+    </div>
+<?php endif ?>
 
-    <h1>Curricula</h1>
-
-    <a href="<?= site_url('admin/curriculum/create') ?>">
-        Add Curriculum
-    </a>
-
-    <br><br>
-
-    <table border="1" cellpadding="8">
-
-        <tr>
-
-            <th>Code</th>
-
-            <th>Curriculum</th>
-
-            <th>Program</th>
-
-            <th>Academic Year</th>
-
-            <th>Status</th>
-
-            <th>Actions</th>
-
-        </tr>
-
-        <?php foreach ($curriculum as $item): ?>
-
-            <tr>
-
-                <td><?= esc($item['curriculum_code']) ?></td>
-
-                <td><?= esc($item['curriculum_name']) ?></td>
-
-                <td><?= esc($item['program_name']) ?></td>
-
-                <td><?= esc($item['academic_year']) ?></td>
-
-                <td>
-
-                    <?php if ($item['is_active']): ?>
-
-                        <span style="color:green">
-
-                            Active
-
-                        </span>
-
-                    <?php else: ?>
-
-                        <span style="color:red">
-
-                            Inactive
-
-                        </span>
-
-                    <?php endif; ?>
-
-                </td>
-
-                <td>
-
-                    <a href="<?= site_url('admin/curriculum/edit/' . $item['curriculum_id']) ?>">
-
-                        Edit
-
-                    </a>
-
-                    <form
-                        method="post"
-                        action="<?= site_url('admin/curriculum/toggle/' . $item['curriculum_id']) ?>"
-                        style="display:inline;">
-
-                        <?= csrf_field() ?>
-
-                        <button
-                            type="submit"
-                            onclick="return confirm('Change curriculum status?')">
-
-                            <?= $item['is_active']
-                                ? 'Deactivate'
-                                : 'Activate' ?>
-
-                        </button>
-
-                    </form>
-
-                </td>
-
-            </tr>
-
-        <?php endforeach; ?>
-
-    </table>
-
-</body>
-
-</html>
+<?= $this->endSection() ?>

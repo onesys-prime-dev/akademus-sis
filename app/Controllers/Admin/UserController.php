@@ -40,7 +40,14 @@ class UserController extends BaseController
             $builder->whereIn('g.group', self::ROLES);
         }
 
-        $users = $builder->get()->getResultArray();
+        $allUsers = $builder->get()->getResultArray();
+
+        $perPage    = 20;
+        $totalUsers = count($allUsers);
+        $totalPages = max(1, (int) ceil($totalUsers / $perPage));
+        $page       = (int) ($this->request->getGet('page') ?: 1);
+        $page       = max(1, min($page, $totalPages));
+        $users      = array_slice($allUsers, ($page - 1) * $perPage, $perPage);
 
         $subDepartments = (new SubDepartmentModel())->where('is_active', 1)->orderBy('name')->findAll();
         $codeToSubDeptId = array_column($subDepartments, 'sub_dept_id', 'code');
@@ -70,6 +77,10 @@ class UserController extends BaseController
             'departments'    => $this->departmentModel->findAll(),
             'subDepartments' => $subDepartments,
             'sections'       => $sections,
+            'page'           => $page,
+            'totalPages'     => $totalPages,
+            'totalUsers'     => $totalUsers,
+            'perPage'        => $perPage,
         ]);
     }
 

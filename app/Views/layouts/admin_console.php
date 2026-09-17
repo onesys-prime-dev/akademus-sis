@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
 
+    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/tokens.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/tokens.css') ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/base.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/base.css') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/pages/admin-console.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/admin-console.css') ?>">
     <?= $this->renderSection('styles') ?>
 </head>
@@ -16,13 +18,18 @@
 
 <?php
 $navItems = [
-    'dashboard'      => ['label' => 'Overview',        'icon' => 'dashboard',      'url' => 'admin/dashboard'],
-    'departments'    => ['label' => 'Colleges',        'icon' => 'hub',            'url' => 'admin/departments'],
-    'students'       => ['label' => 'Student Records', 'icon' => 'school',         'url' => 'admin/students'],
-    'users'          => ['label' => 'User Accounts',   'icon' => 'group',          'url' => 'admin/users'],
-    'rooms'          => ['label' => 'Facilities',      'icon' => 'meeting_room',   'url' => 'admin/rooms'],
-    'academic-years' => ['label' => 'Academic Years',  'icon' => 'event',          'url' => 'admin/academic-years'],
-    'roles'          => ['label' => 'Roles',           'icon' => 'admin_panel_settings', 'url' => 'admin/roles'],
+    'dashboard'            => ['label' => 'Overview',        'icon' => 'dashboard',      'url' => 'admin/dashboard'],
+    'departments'          => ['label' => 'Colleges',        'icon' => 'hub',            'url' => 'admin/departments'],
+    'programs'             => ['label' => 'Programs',        'icon' => 'workspace_premium', 'url' => 'admin/programs'],
+    'curriculum'           => ['label' => 'Curricula',       'icon' => 'auto_stories',   'url' => 'admin/curriculum'],
+    'curriculum-subjects'  => ['label' => 'Curriculum Subjects', 'icon' => 'library_books', 'url' => 'admin/curriculum-subjects'],
+    'subjects'             => ['label' => 'Subjects',        'icon' => 'menu_book',      'url' => 'admin/subjects'],
+    'students'             => ['label' => 'Student Records', 'icon' => 'school',         'url' => 'admin/students'],
+    'users'                => ['label' => 'User Accounts',   'icon' => 'group',          'url' => 'admin/users'],
+    'rooms'                => ['label' => 'Facilities',      'icon' => 'meeting_room',   'url' => 'admin/rooms'],
+    'academic-years'       => ['label' => 'Academic Years',  'icon' => 'event',          'url' => 'admin/academic-years'],
+    'academic-settings'    => ['label' => 'Scheduling Rules', 'icon' => 'tune',          'url' => 'admin/academic-settings'],
+    'roles'                => ['label' => 'Roles',           'icon' => 'admin_panel_settings', 'url' => 'admin/roles'],
 ];
 $active   = $activeAdmin ?? '';
 $username = auth()->user()->username ?? 'Administrator';
@@ -38,10 +45,10 @@ $initial  = strtoupper(substr($username, 0, 1));
         </div>
     </div>
 
-    <nav class="ac-sidebar__nav">
+    <nav class="ac-sidebar__nav" aria-label="Admin console">
         <?php foreach ($navItems as $key => $item): ?>
-            <a href="<?= site_url($item['url']) ?>" class="ac-nav-item <?= $active === $key ? 'is-active' : '' ?>" title="<?= esc($item['label']) ?>">
-                <span class="material-symbols-outlined <?= $active === $key ? 'icon-fill' : '' ?>"><?= $item['icon'] ?></span>
+            <a href="<?= site_url($item['url']) ?>" class="ac-nav-item <?= $active === $key ? 'is-active' : '' ?>" title="<?= esc($item['label']) ?>" <?= $active === $key ? 'aria-current="page"' : '' ?>>
+                <span class="material-symbols-outlined <?= $active === $key ? 'icon-fill' : '' ?>" aria-hidden="true"><?= $item['icon'] ?></span>
                 <span class="ac-nav-label"><?= esc($item['label']) ?></span>
             </a>
         <?php endforeach ?>
@@ -56,31 +63,32 @@ $initial  = strtoupper(substr($username, 0, 1));
         </nav>
 
         <div class="ac-topbar__actions">
-            <div class="ac-search">
-                <span class="material-symbols-outlined ac-search__icon">search</span>
-                <input class="ac-search__input" placeholder="Search Akademus..." type="text">
+            <div class="ac-search" role="search">
+                <span class="material-symbols-outlined ac-search__icon" aria-hidden="true">search</span>
+                <label for="acSearchInput" class="sr-only">Search Akademus</label>
+                <input class="ac-search__input" id="acSearchInput" placeholder="Search Akademus..." type="text">
             </div>
 
             <div class="ac-topbar__icons">
-                <button type="button" class="ac-topbar__iconbtn" title="Notifications">
-                    <span class="material-symbols-outlined">notifications</span>
+                <button type="button" class="ac-topbar__iconbtn" title="Notifications" aria-label="Notifications">
+                    <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
                     <span class="ac-topbar__dot"></span>
                 </button>
-                <button type="button" class="ac-topbar__iconbtn" title="Settings">
-                    <span class="material-symbols-outlined">settings</span>
+                <button type="button" class="ac-topbar__iconbtn" title="Settings" aria-label="Settings">
+                    <span class="material-symbols-outlined" aria-hidden="true">settings</span>
                 </button>
-                <button type="button" class="ac-topbar__iconbtn" title="Help">
-                    <span class="material-symbols-outlined">help_outline</span>
+                <button type="button" class="ac-topbar__iconbtn" title="Help" aria-label="Help">
+                    <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
                 </button>
             </div>
 
             <?= $this->renderSection('headerActions') ?>
 
             <div class="ac-user-menu" id="acUserMenu">
-                <button type="button" class="ac-avatar ac-avatar--primary ac-user-menu__trigger" id="acUserMenuBtn" title="<?= esc($username) ?>">
+                <button type="button" class="ac-avatar ac-avatar--primary ac-user-menu__trigger" id="acUserMenuBtn" title="<?= esc($username) ?>" aria-haspopup="true" aria-expanded="false">
                     <?= esc($initial) ?>
                 </button>
-                <div class="ac-user-menu__dropdown">
+                <div class="ac-user-menu__dropdown" role="menu">
                     <div class="ac-user-menu__who">
                         <p class="ac-user-menu__name"><?= esc($username) ?></p>
                         <p class="ac-user-menu__role">Administrator</p>
@@ -100,7 +108,7 @@ $initial  = strtoupper(substr($username, 0, 1));
     </div>
 </main>
 
-<div class="ac-toast-container" id="acToastContainer"></div>
+<div class="ac-toast-container" id="acToastContainer" role="status" aria-live="polite"></div>
 
 <?= $this->renderSection('scripts') ?>
 
@@ -125,13 +133,66 @@ $initial  = strtoupper(substr($username, 0, 1));
         });
     })();
 
+    var acLastFocused = null;
+
+    function acFocusablesIn(el) {
+        return Array.prototype.slice.call(
+            el.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')
+        ).filter(function (n) { return n.offsetParent !== null; });
+    }
+
     function acOpenModal(id) {
-        document.getElementById(id).classList.add('is-open');
+        var modal = document.getElementById(id);
+        if (!modal) return;
+        acLastFocused = document.activeElement;
+        modal.classList.add('is-open');
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        var focusables = acFocusablesIn(modal);
+        if (focusables.length) focusables[0].focus();
     }
 
     function acCloseModal(id) {
-        document.getElementById(id).classList.remove('is-open');
+        var modal = document.getElementById(id);
+        if (!modal) return;
+        modal.classList.remove('is-open');
+        if (acLastFocused && typeof acLastFocused.focus === 'function') acLastFocused.focus();
     }
+
+    // Escape closes the topmost open modal; Tab is trapped inside it.
+    document.addEventListener('keydown', function (e) {
+        var openModal = document.querySelector('.ac-modal.is-open');
+        if (!openModal) return;
+
+        if (e.key === 'Escape') {
+            openModal.classList.remove('is-open');
+            if (acLastFocused && typeof acLastFocused.focus === 'function') acLastFocused.focus();
+            return;
+        }
+
+        if (e.key === 'Tab') {
+            var focusables = acFocusablesIn(openModal);
+            if (!focusables.length) return;
+            var first = focusables[0];
+            var last  = focusables[focusables.length - 1];
+
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        }
+    });
+
+    // Clicking the dimmed backdrop (not the panel itself) closes the modal.
+    document.addEventListener('click', function (e) {
+        if (e.target.classList && e.target.classList.contains('ac-modal') && e.target.classList.contains('is-open')) {
+            e.target.classList.remove('is-open');
+            if (acLastFocused && typeof acLastFocused.focus === 'function') acLastFocused.focus();
+        }
+    });
 
     (function () {
         var menu = document.getElementById('acUserMenu');
@@ -139,10 +200,19 @@ $initial  = strtoupper(substr($username, 0, 1));
         if (!menu || !btn) return;
         btn.addEventListener('click', function (e) {
             e.stopPropagation();
-            menu.classList.toggle('is-open');
+            var open = menu.classList.toggle('is-open');
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
         document.addEventListener('click', function () {
             menu.classList.remove('is-open');
+            btn.setAttribute('aria-expanded', 'false');
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && menu.classList.contains('is-open')) {
+                menu.classList.remove('is-open');
+                btn.setAttribute('aria-expanded', 'false');
+                btn.focus();
+            }
         });
     })();
 </script>

@@ -37,16 +37,19 @@ $colors = [
 <title>Schedule · Akademus SIS</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="<?= base_url('assets/css/design-system/tokens.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/tokens.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/design-system/base.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/base.css') ?>">
 <style>
 :root{
-    --brand:#0040A6;
-    --brand-soft:rgba(0,64,166,.1);
-    --bg:#f5f5f7;
-    --border:rgba(0,0,0,.08);
-    --ink:#1d1d1f;
-    --muted:#86868b;
-    --red:#ef4444; --red-soft:#fef2f2;
-    --shadow-apple:0 4px 24px rgba(0,0,0,.04);
+    /* Aliased onto the shared design-system tokens (public/assets/css/design-system/tokens.css). */
+    --brand:var(--color-primary);
+    --brand-soft:var(--color-primary-soft);
+    --bg:var(--color-background);
+    --border:var(--color-border);
+    --ink:var(--color-text-primary);
+    --muted:var(--color-text-secondary);
+    --red:var(--color-danger); --red-soft:var(--color-danger-soft);
+    --shadow-apple:var(--shadow-sm);
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
@@ -135,6 +138,19 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 .stat{display:flex;flex-direction:column}
 .stat .num{font-size:1.3rem;font-weight:700}
 .stat .lbl{font-size:.72rem;color:var(--muted)}
+
+@media (max-width:900px){
+    .grid-wrap{padding:16px}
+}
+
+@media (max-width:640px){
+    body{padding:6px;gap:6px}
+    .side-drawer{width:56px}
+    .topbar{padding:12px 16px}
+    .grid-wrap{padding:12px;overflow-x:auto}
+    .grid{min-width:760px}
+    .stats-strip{padding:12px 16px;gap:16px}
+}
 </style>
 </head>
 

@@ -19,13 +19,16 @@ class ProgramController extends BaseController
         $programs = $this->programModel->findAll();
 
         return view('admin/programs/index', [
-            'programs' => $programs
+            'programs'    => $programs,
+            'activeAdmin' => 'programs',
         ]);
     }
 
     public function create()
     {
-        return view('admin/programs/create');
+        return view('admin/programs/create', [
+            'activeAdmin' => 'programs',
+        ]);
     }
 
     public function store()
@@ -63,7 +66,8 @@ class ProgramController extends BaseController
         }
 
         return view('admin/programs/edit', [
-            'program' => $program
+            'program'     => $program,
+            'activeAdmin' => 'programs',
         ]);
     }
 

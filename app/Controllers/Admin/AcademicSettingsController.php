@@ -15,6 +15,7 @@ class AcademicSettingsController extends BaseController
             'maxFacultyUnits'     => setting('Academic.maxFacultyUnits') ?? 24,
             'maxMeetingsPerWeek'  => setting('Academic.maxMeetingsPerWeek') ?? 3,
             'partTimeMaxUnits'    => setting('Academic.partTimeMaxUnits'),
+            'activeAdmin'         => 'academic-settings',
         ]);
     }
 

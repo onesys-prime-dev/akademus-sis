@@ -88,7 +88,38 @@
         </div>
     <?php endforeach ?>
 
-    <div class="ac-dtable__footer">Showing <?= count($students) ?> student<?= count($students) === 1 ? '' : 's' ?></div>
+    <?php
+        $rangeStart = $totalStudents === 0 ? 0 : (($page - 1) * $perPage) + 1;
+        $rangeEnd   = min($page * $perPage, $totalStudents);
+        $qs         = array_filter([
+            'q'          => $filters['q'] ?? '',
+            'program_id' => $filters['program_id'] ?? '',
+            'year_level' => $filters['year_level'] ?? '',
+            'status'     => $filters['status'] ?? '',
+        ], static fn ($v) => $v !== '' && $v !== null);
+    ?>
+    <div class="ac-pagination">
+        <span>Showing <?= $rangeStart ?>–<?= $rangeEnd ?> of <?= $totalStudents ?> student<?= $totalStudents === 1 ? '' : 's' ?></span>
+
+        <?php if ($totalPages > 1): ?>
+            <div class="ac-pagination__pages">
+                <?php
+                    $pageUrl = static function (int $p) use ($qs) {
+                        return site_url('admin/students') . '?' . http_build_query($qs + ['page' => $p]);
+                    };
+                ?>
+                <a class="ac-pagination__link" href="<?= $pageUrl(max(1, $page - 1)) ?>" aria-disabled="<?= $page <= 1 ? 'true' : 'false' ?>" aria-label="Previous page">
+                    <span class="material-symbols-outlined" style="font-size:16px;" aria-hidden="true">chevron_left</span>
+                </a>
+                <?php for ($p = 1; $p <= $totalPages; $p++): ?>
+                    <a class="ac-pagination__link <?= $p === $page ? 'is-active' : '' ?>" href="<?= $pageUrl($p) ?>" <?= $p === $page ? 'aria-current="page"' : '' ?>><?= $p ?></a>
+                <?php endfor ?>
+                <a class="ac-pagination__link" href="<?= $pageUrl(min($totalPages, $page + 1)) ?>" aria-disabled="<?= $page >= $totalPages ? 'true' : 'false' ?>" aria-label="Next page">
+                    <span class="material-symbols-outlined" style="font-size:16px;" aria-hidden="true">chevron_right</span>
+                </a>
+            </div>
+        <?php endif ?>
+    </div>
 </div>
 
 <?= $this->endSection() ?>

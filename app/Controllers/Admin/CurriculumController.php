@@ -26,7 +26,8 @@ class CurriculumController extends BaseController
             ->findAll();
 
         return view('admin/curriculum/index', [
-            'curriculum' => $curriculum
+            'curriculum'  => $curriculum,
+            'activeAdmin' => 'curriculum',
         ]);
     }
 
@@ -37,7 +38,8 @@ class CurriculumController extends BaseController
             ->findAll();
 
         return view('admin/curriculum/create', [
-            'programs' => $programs
+            'programs'    => $programs,
+            'activeAdmin' => 'curriculum',
         ]);
     }
 
@@ -80,8 +82,9 @@ class CurriculumController extends BaseController
         }
 
         return view('admin/curriculum/edit', [
-            'curriculum' => $curriculum,
-            'programs'   => $programs
+            'curriculum'  => $curriculum,
+            'programs'    => $programs,
+            'activeAdmin' => 'curriculum',
         ]);
     }
 

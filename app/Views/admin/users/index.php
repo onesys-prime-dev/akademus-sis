@@ -42,32 +42,32 @@
         <?php $initials = strtoupper(substr($u['username'], 0, 1) . (strpos($u['username'], ' ') !== false ? substr(strrchr($u['username'], ' '), 1, 1) : '')); ?>
         <div class="ac-dtable__row">
 
-            <div class="ac-user-cell">
-                <div class="ac-avatar ac-avatar--primary"><?= esc($initials) ?></div>
+            <div class="ac-user-cell" data-label="Name">
+                <div class="ac-avatar ac-avatar--primary" aria-hidden="true"><?= esc($initials) ?></div>
                 <div>
                     <p class="ac-user-cell__name"><?= esc($u['username']) ?></p>
                     <p class="ac-user-cell__id">ID #<?= esc($u['id']) ?></p>
                 </div>
             </div>
 
-            <div class="ac-cell-muted"><?= esc($u['email']) ?></div>
+            <div class="ac-cell-muted" data-label="Email"><?= esc($u['email']) ?></div>
 
-            <div><span class="ac-badge ac-badge--<?= esc($u['group']) ?>"><?= esc(ucfirst($u['group'])) ?></span></div>
+            <div data-label="Role"><span class="ac-badge ac-badge--<?= esc($u['group']) ?>"><?= esc(ucfirst($u['group'])) ?></span></div>
 
-            <div class="ac-cell">
+            <div class="ac-cell" data-label="Department">
                 <?= esc($u['dept_name'] ?? '—') ?>
                 <?php if ($u['group'] === 'faculty' && $u['employment_status']): ?>
                     <br><span style="font-size:11px; color:#4338ca;"><?= $u['employment_status'] === 'full_time' ? 'Full-Time' : 'Part-Time' ?></span>
                 <?php endif ?>
             </div>
 
-            <div>
+            <div data-label="Status">
                 <span class="ac-status-dot <?= $u['active'] ? 'ac-status-dot--active' : 'ac-status-dot--pending' ?>">
                     <?= $u['active'] ? 'Active' : 'Pending' ?>
                 </span>
             </div>
 
-            <div class="ac-actions-cell">
+            <div class="ac-actions-cell" data-label="Actions">
                 <?php if (! $u['active']): ?>
                     <form method="post" action="<?= site_url('admin/users/activate/' . $u['id']) ?>">
                         <?= csrf_field() ?>
@@ -76,8 +76,8 @@
                 <?php else: ?>
                     <form method="post" action="<?= site_url('admin/users/deactivate/' . $u['id']) ?>">
                         <?= csrf_field() ?>
-                        <button type="submit" class="ac-icon-btn ac-icon-btn--danger" title="Deactivate">
-                            <span class="material-symbols-outlined">block</span>
+                        <button type="submit" class="ac-icon-btn ac-icon-btn--danger" title="Deactivate" aria-label="Deactivate <?= esc($u['username']) ?>">
+                            <span class="material-symbols-outlined" aria-hidden="true">block</span>
                         </button>
                     </form>
                 <?php endif ?>
@@ -92,21 +92,44 @@
                             'department_id'     => $u['department_id'],
                             'section_id'        => $u['section_id'],
                             'employment_status' => $u['employment_status'],
-                        ]) ?>)'>
-                    <span class="material-symbols-outlined">edit</span>
+                        ]) ?>)'
+                        aria-label="Edit <?= esc($u['username']) ?>">
+                    <span class="material-symbols-outlined" aria-hidden="true">edit</span>
                 </button>
 
                 <button type="button" class="ac-icon-btn"
                         title="Reset password"
-                        onclick="acOpenResetPassword(<?= (int) $u['id'] ?>, '<?= esc($u['username'], 'js') ?>')">
-                    <span class="material-symbols-outlined">key</span>
+                        onclick="acOpenResetPassword(<?= (int) $u['id'] ?>, '<?= esc($u['username'], 'js') ?>')"
+                        aria-label="Reset password for <?= esc($u['username']) ?>">
+                    <span class="material-symbols-outlined" aria-hidden="true">key</span>
                 </button>
             </div>
 
         </div>
     <?php endforeach ?>
 
-    <div class="ac-dtable__footer">Showing <?= count($users) ?> of <?= count($users) ?> users</div>
+    <?php
+        $rangeStart = $totalUsers === 0 ? 0 : (($page - 1) * $perPage) + 1;
+        $rangeEnd   = min($page * $perPage, $totalUsers);
+        $baseQuery  = $roleFilter !== 'all' ? '?role=' . urlencode($roleFilter) . '&page=' : '?page=';
+    ?>
+    <div class="ac-pagination">
+        <span>Showing <?= $rangeStart ?>–<?= $rangeEnd ?> of <?= $totalUsers ?> users</span>
+
+        <?php if ($totalPages > 1): ?>
+            <div class="ac-pagination__pages">
+                <a class="ac-pagination__link" href="<?= site_url('admin/users' . $baseQuery . max(1, $page - 1)) ?>" aria-disabled="<?= $page <= 1 ? 'true' : 'false' ?>" aria-label="Previous page">
+                    <span class="material-symbols-outlined" style="font-size:16px;" aria-hidden="true">chevron_left</span>
+                </a>
+                <?php for ($p = 1; $p <= $totalPages; $p++): ?>
+                    <a class="ac-pagination__link <?= $p === $page ? 'is-active' : '' ?>" href="<?= site_url('admin/users' . $baseQuery . $p) ?>" <?= $p === $page ? 'aria-current="page"' : '' ?>><?= $p ?></a>
+                <?php endfor ?>
+                <a class="ac-pagination__link" href="<?= site_url('admin/users' . $baseQuery . min($totalPages, $page + 1)) ?>" aria-disabled="<?= $page >= $totalPages ? 'true' : 'false' ?>" aria-label="Next page">
+                    <span class="material-symbols-outlined" style="font-size:16px;" aria-hidden="true">chevron_right</span>
+                </a>
+            </div>
+        <?php endif ?>
+    </div>
 
 </div>
 

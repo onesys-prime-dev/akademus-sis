@@ -1,90 +1,66 @@
-<!DOCTYPE html>
-<html lang="en">
+<?= $this->extend('layouts/admin_console') ?>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Academic Scheduling Rules</title>
-</head>
+<?= $this->section('content') ?>
 
-<body>
-    <?php if (session()->has('errors')): ?>
-        <div style="color:red;">
+<div class="ac-page-header">
+    <div>
+        <h2 class="ac-page-header__title">Academic Scheduling Rules</h2>
+        <p class="ac-page-header__sub">Institution-wide defaults used to derive a subject's weekly contact hours when it doesn't specify its own. A subject's own explicit values always override these.</p>
+    </div>
+</div>
+
+<?php if (session()->has('errors')): ?>
+    <div class="ac-alert" style="background:#fef2f2; border-color:#fecaca;">
+        <span class="material-symbols-outlined" style="color:var(--color-danger);" aria-hidden="true">error</span>
+        <div class="ac-alert__text" style="color:var(--color-danger);">
             <?php foreach (session('errors') as $error): ?>
                 <p><?= esc($error) ?></p>
             <?php endforeach ?>
         </div>
-    <?php endif ?>
+    </div>
+<?php endif ?>
 
-    <?php if (session()->has('message')): ?>
-        <div style="color:green;">
-            <?= session('message') ?>
-        </div>
-    <?php endif ?>
+<?php if (session()->has('message')): ?>
+    <div class="ac-notice" style="margin-bottom:16px;">
+        <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-success); margin-top:1px;" aria-hidden="true">check_circle</span>
+        <span class="ac-notice__text"><?= esc(session('message')) ?></span>
+    </div>
+<?php endif ?>
 
-    <h1>Academic Scheduling Rules</h1>
-
-    <p>
-        These are institution-wide defaults used to derive a subject's
-        weekly contact hours when the subject doesn't specify its own
-        contact hours / meetings-per-week or lecture/laboratory unit split.
-        A subject's own explicit values always override these.
-    </p>
-
+<div class="ac-card" style="max-width:560px;">
     <form method="post" action="<?= site_url('admin/academic-settings/update') ?>">
-
         <?= csrf_field() ?>
 
-        <label>Lecture Hours per Unit</label>
-        <br>
-        <input
-            type="number"
-            step="0.5"
-            name="lecture_hours_per_unit"
-            value="<?= old('lecture_hours_per_unit', $lectureHoursPerUnit) ?>">
-        <br><br>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="ac-field">
+                <label for="lecture_hours_per_unit">Lecture Hours per Unit</label>
+                <input type="number" step="0.5" id="lecture_hours_per_unit" name="lecture_hours_per_unit" class="ac-input" value="<?= old('lecture_hours_per_unit', $lectureHoursPerUnit) ?>">
+            </div>
+            <div class="ac-field">
+                <label for="lab_hours_per_unit">Laboratory Hours per Unit</label>
+                <input type="number" step="0.5" id="lab_hours_per_unit" name="lab_hours_per_unit" class="ac-input" value="<?= old('lab_hours_per_unit', $labHoursPerUnit) ?>">
+            </div>
+        </div>
 
-        <label>Laboratory Hours per Unit</label>
-        <br>
-        <input
-            type="number"
-            step="0.5"
-            name="lab_hours_per_unit"
-            value="<?= old('lab_hours_per_unit', $labHoursPerUnit) ?>">
-        <br><br>
+        <div class="ac-field">
+            <label for="max_faculty_units">Max Faculty Units per Semester</label>
+            <input type="number" step="1" id="max_faculty_units" name="max_faculty_units" class="ac-input" value="<?= old('max_faculty_units', $maxFacultyUnits) ?>">
+        </div>
 
-        <label>Max Faculty Units per Semester</label>
-        <br>
-        <input
-            type="number"
-            step="1"
-            name="max_faculty_units"
-            value="<?= old('max_faculty_units', $maxFacultyUnits) ?>">
-        <br><br>
+        <div class="ac-field">
+            <label for="max_meetings_per_week">Max Meetings per Week (per subject)</label>
+            <input type="number" step="1" id="max_meetings_per_week" name="max_meetings_per_week" class="ac-input" value="<?= old('max_meetings_per_week', $maxMeetingsPerWeek) ?>">
+        </div>
 
-        <label>Max Meetings per Week (per subject)</label>
-        <br>
-        <input
-            type="number"
-            step="1"
-            name="max_meetings_per_week"
-            value="<?= old('max_meetings_per_week', $maxMeetingsPerWeek) ?>">
-        <br><br>
+        <div class="ac-field">
+            <label for="part_time_max_units">Part-Time Faculty Max Units</label>
+            <input type="number" step="1" id="part_time_max_units" name="part_time_max_units" class="ac-input" placeholder="Leave blank to use the same cap as full-time" value="<?= old('part_time_max_units', $partTimeMaxUnits) ?>">
+        </div>
 
-        <label>Part-Time Faculty Max Units (optional; leave blank to use the same cap as full-time)</label>
-        <br>
-        <input
-            type="number"
-            step="1"
-            name="part_time_max_units"
-            value="<?= old('part_time_max_units', $partTimeMaxUnits) ?>">
-        <br><br>
-
-        <button type="submit">
-            Save Rules
-        </button>
-
+        <div style="margin-top:8px;">
+            <button type="submit" class="ac-btn ac-btn-primary">Save Rules</button>
+        </div>
     </form>
-</body>
+</div>
 
-</html>
+<?= $this->endSection() ?>

@@ -8,19 +8,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/tokens.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/tokens.css') ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/base.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/base.css') ?>">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-            /* Apple-glass inspired palette */
-            --primary:            #003385;
+            /* Apple-glass inspired palette — core surfaces/text/primary aliased
+               onto the shared design-system tokens (public/assets/css/design-system/tokens.css);
+               the extra secondary/tertiary accents below are specific to this
+               page's scheduling grid and have no shared equivalent yet. */
+            --primary:            var(--color-primary-hover);
             --primary-dark:       #001849;
-            --primary-container:  #0040a6;
+            --primary-container:  var(--color-primary);
             --on-primary:         #ffffff;
             --on-primary-container: #dae1ff;
-            --primary-fixed:      #dae1ff;
+            --primary-fixed:      var(--color-primary-soft);
 
-            --warning:            #FFB200;
+            --warning:            var(--color-warning);
             --warning-dark:       #d99800;
             --secondary:          #7f5700;
             --secondary-container: #ffb204;
@@ -28,30 +33,28 @@
             --tertiary:           #832700;
             --tertiary-container: #ffdbcf;
 
-            --error:              #EF4444;
+            --error:              var(--color-danger);
             --error-container:    #ffdad6;
             --on-error-container: #93000a;
 
-            --success:            #10B981;
-            --success-container:  #e6f7ec;
+            --success:            var(--color-success);
+            --success-container:  var(--color-success-soft);
 
-            --surface:            #F5F5F7;
+            --surface:            var(--color-background);
             --surface-dim:        #eef0f3;
-            --surface-container-lowest: #ffffff;
-            --surface-container-low:    #f7f7f9;
+            --surface-container-lowest: var(--color-surface);
+            --surface-container-low:    var(--color-surface-secondary);
             --surface-container:        #eeeef1;
-            --surface-container-high:   #e4e4e8;
+            --surface-container-high:   var(--color-surface-sunken);
 
-            --on-surface:         #1d1d1f;
-            --on-surface-variant: #6e6e73;
-            --outline:            #86868b;
-            --outline-variant:    #e5e5ea;
+            --on-surface:         var(--color-text-primary);
+            --on-surface-variant: var(--color-text-secondary);
+            --outline:            var(--color-text-tertiary);
+            --outline-variant:    var(--color-border);
 
-            --radius-sm: 12px;
-            --radius-md: 16px;
-            --radius-lg: 20px;
-            --shadow-sm: 0 2px 12px rgba(0,0,0,.03), 0 0 1px rgba(0,0,0,.1);
-            --shadow-md: 0 8px 24px -6px rgba(0,0,0,.08), 0 0 1px rgba(0,0,0,.1);
+            --radius-sm: var(--radius-md);
+            --radius-md: var(--radius-lg);
+            --radius-lg: var(--radius-xl);
         }
 
         body {
@@ -1486,7 +1489,7 @@
     </div>
 
     <!-- Room assignment modal -->
-    <div class="modal-backdrop" id="roomModal">
+    <div class="modal-backdrop" id="roomModal" role="dialog" aria-modal="true" aria-label="Assign a room">
         <div class="modal room-modal" id="roomModalBox">
             <div class="modal-head">
                 <h3>Assign a room</h3>
@@ -1510,7 +1513,7 @@
     </div>
 
     <!-- Faculty assignment modal -->
-    <div class="modal-backdrop" id="facultyModal">
+    <div class="modal-backdrop" id="facultyModal" role="dialog" aria-modal="true" aria-label="Assign faculty">
         <div class="modal room-modal" style="width:800px; max-width:94vw;">
             <div class="modal-head">
                 <h3>Assign faculty</h3>
@@ -1536,7 +1539,7 @@
     </div>
 
     <!-- Swap approvals modal -->
-    <div class="modal-backdrop" id="approvalsModal">
+    <div class="modal-backdrop" id="approvalsModal" role="dialog" aria-modal="true" aria-label="Swap Approvals">
         <div class="modal">
             <h3>Swap Approvals</h3>
             <div class="sub">Faculty-agreed swaps in your department, waiting for your decision.
@@ -1549,7 +1552,7 @@
     </div>
 
     <!-- Change requests modal -->
-    <div class="modal-backdrop" id="changeRequestsModal">
+    <div class="modal-backdrop" id="changeRequestsModal" role="dialog" aria-modal="true" aria-label="Change Requests">
         <div class="modal">
             <h3>Change Requests</h3>
             <div class="sub">Faculty members who can't accept an official assignment, waiting for your review.
@@ -1563,7 +1566,7 @@
 
 
     <!-- Room overview modal -->
-    <div class="modal-backdrop" id="overviewModal">
+    <div class="modal-backdrop" id="overviewModal" role="dialog" aria-modal="true" aria-label="Room Overview">
         <div class="modal overview-modal">
             <h3>Room Overview</h3>
             <div class="sub">Every class plotted in a room for a day — all programs, year levels
@@ -1584,7 +1587,7 @@
     </div>
 
     <!-- Faculty context panel modal -->
-    <div class="modal-backdrop" id="facultyPanelModal">
+    <div class="modal-backdrop" id="facultyPanelModal" role="dialog" aria-modal="true" aria-label="Department Faculty">
         <div class="modal overview-modal" style="width:560px;">
             <h3>Department Faculty</h3>
             <div class="sub" id="facultyPanelSub">Availability &amp; preferences for the upcoming term, current load for the active term.</div>
@@ -1596,7 +1599,7 @@
     </div>
 
     <!-- Conflict warning modal -->
-    <div class="modal-backdrop" id="conflictModal">
+    <div class="modal-backdrop" id="conflictModal" role="dialog" aria-modal="true" aria-label="Cannot plot here">
         <div class="modal">
             <h3>Cannot plot here</h3>
             <div class="sub" id="conflictMessage"></div>
@@ -1612,7 +1615,7 @@
     </div>
 
     <!-- Generic confirmation modal (stacks above the other modals) -->
-    <div class="modal-backdrop confirm-top" id="confirmModal">
+    <div class="modal-backdrop confirm-top" id="confirmModal" role="dialog" aria-modal="true" aria-label="Confirm">
         <div class="modal confirm-modal">
             <h3 id="confirmTitle"></h3>
             <div class="sub" id="confirmMessage"></div>
@@ -1725,6 +1728,42 @@
                 window.UNREAD = 0;
                 updateNotifBadge();
                 loadNotifications();
+            });
+        })();
+
+        // ---------- generic modal accessibility: Tab-trap for whichever of
+        // the 8 modals above is currently open. Escape is deliberately left
+        // alone here — it already has a more specific handler further down
+        // (search "confirmResolve") that correctly unwinds the confirm-modal
+        // stack, and duplicating that logic here risked racing it. ----------
+        (function () {
+            function topOpenModal() {
+                const open = Array.prototype.slice.call(document.querySelectorAll('.modal-backdrop.open'));
+                if (!open.length) return null;
+                // .confirm-top stacks above the others, so prefer it if present.
+                return open.find(m => m.classList.contains('confirm-top')) || open[open.length - 1];
+            }
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key !== 'Tab') return;
+
+                const modal = topOpenModal();
+                if (!modal) return;
+
+                const focusables = Array.prototype.slice.call(
+                    modal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')
+                ).filter(n => n.offsetParent !== null);
+                if (!focusables.length) return;
+                const first = focusables[0];
+                const last  = focusables[focusables.length - 1];
+
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
             });
         })();
 

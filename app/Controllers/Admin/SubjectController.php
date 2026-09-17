@@ -19,13 +19,16 @@ class SubjectController extends BaseController
         $subjects = $this->subjectModel->findAll();
 
         return view('admin/subjects/index', [
-            'subjects' => $subjects
+            'subjects'    => $subjects,
+            'activeAdmin' => 'subjects',
         ]);
     }
 
     public function create()
     {
-        return view('admin/subjects/create');
+        return view('admin/subjects/create', [
+            'activeAdmin' => 'subjects',
+        ]);
     }
 
     public function store()
@@ -75,7 +78,8 @@ class SubjectController extends BaseController
         }
 
         return view('admin/subjects/edit', [
-            'subject' => $subject
+            'subject'     => $subject,
+            'activeAdmin' => 'subjects',
         ]);
     }
 

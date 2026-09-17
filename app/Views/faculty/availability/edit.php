@@ -15,20 +15,25 @@ $initials = strtoupper(mb_substr($user['name'], 0, 2));
 <title>Availability &amp; Preferences · Akademus SIS</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="<?= base_url('assets/css/design-system/tokens.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/tokens.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/design-system/base.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/base.css') ?>">
 <style>
 :root{
-    --brand:#0040A6;
-    --brand-soft:rgba(0,64,166,.1);
-    --bg:#f5f5f7;
-    --border:rgba(0,0,0,.08);
-    --ink:#1d1d1f;
-    --muted:#86868b;
-    --green:#16a34a; --green-soft:#f0fdf4; --green-border:#bbf7d0;
-    --red:#ef4444; --red-soft:#fef2f2; --red-border:#fecaca;
-    --amber:#f59e0b; --amber-soft:#fef9c3; --amber-border:#fde68a;
+    /* Aliased onto the shared design-system tokens (public/assets/css/design-system/tokens.css)
+       so this page's own rules below don't need rewriting — they just keep
+       referencing these names. */
+    --brand:var(--color-primary);
+    --brand-soft:var(--color-primary-soft);
+    --bg:var(--color-background);
+    --border:var(--color-border);
+    --ink:var(--color-text-primary);
+    --muted:var(--color-text-secondary);
+    --green:var(--color-success); --green-soft:var(--color-success-soft); --green-border:#bbf7d0;
+    --red:var(--color-danger); --red-soft:var(--color-danger-soft); --red-border:#fecaca;
+    --amber:var(--color-warning); --amber-soft:var(--color-warning-soft); --amber-border:#fde68a;
     --indigo:#4338ca; --indigo-soft:#e0e7ff; --indigo-border:#c7d2fe;
-    --shadow-apple:0 4px 24px rgba(0,0,0,.04);
-    --shadow-hover:0 8px 32px rgba(0,0,0,.08);
+    --shadow-apple:var(--shadow-sm);
+    --shadow-hover:var(--shadow-md);
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
@@ -203,6 +208,20 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;margin-bottom:16px}
 .legend span{display:inline-flex;align-items:center;gap:6px;font-size:.76rem;color:var(--muted)}
 .legend .dot{width:8px;height:8px;border-radius:50%}
+
+@media (max-width:900px){
+    .container{padding:24px 20px}
+}
+
+@media (max-width:640px){
+    body{padding:6px;gap:6px}
+    .side-drawer{width:56px}
+    .container{padding:16px}
+    .topbar{padding:12px 16px}
+    .avail-row{grid-template-columns:1fr;gap:6px;padding:14px 4px}
+    .subj-row{grid-template-columns:1fr;gap:6px;padding:14px 4px}
+    .term-bar{padding:12px 16px}
+}
 </style>
 </head>
 
