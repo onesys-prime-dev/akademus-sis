@@ -55,6 +55,55 @@ class StudentController extends BaseController
         ]);
     }
 
+    public function updateProfile()
+    {
+        $username = trim((string) $this->request->getPost('username'));
+
+        if ($username === '' || mb_strlen($username) > 100) {
+            return redirect()->back()->with('profile_error', 'Name is required (max 100 characters).');
+        }
+
+        $users = auth()->getProvider();
+        $user  = auth()->user();
+        $user->username = $username;
+        $users->save($user);
+
+        return redirect()->to('/student/profile')->with('profile_message', 'Profile updated.');
+    }
+
+    public function updatePassword()
+    {
+        $current = (string) $this->request->getPost('current_password');
+        $new     = (string) $this->request->getPost('new_password');
+        $confirm = (string) $this->request->getPost('confirm_password');
+
+        if ($current === '' || $new === '' || $confirm === '') {
+            return redirect()->back()->with('profile_error', 'All password fields are required.');
+        }
+
+        if ($new !== $confirm) {
+            return redirect()->back()->with('profile_error', 'New password and confirmation do not match.');
+        }
+
+        $account = auth()->user();
+        $result  = auth()->check(['email' => $account->getEmail(), 'password' => $current]);
+
+        if (! $result->isOK()) {
+            return redirect()->back()->with('profile_error', 'Current password is incorrect.');
+        }
+
+        if (mb_strlen($new) < 8) {
+            return redirect()->back()->with('profile_error', 'New password must be at least 8 characters.');
+        }
+
+        $users = auth()->getProvider();
+        $user  = auth()->user();
+        $user->password = $new;
+        $users->save($user);
+
+        return redirect()->to('/student/profile')->with('profile_message', 'Password changed.');
+    }
+
     private function mySection(): ?array
     {
         $me = db_connect()->table('users')->select('section_id')->where('id', (int) auth()->id())->get()->getRowArray();

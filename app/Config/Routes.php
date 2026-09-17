@@ -142,6 +142,8 @@ $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {
 $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->get('dashboard', 'StudentController::index');
     $routes->get('profile', 'StudentController::profile');
+    $routes->post('profile/update', 'StudentController::updateProfile');
+    $routes->post('profile/password', 'StudentController::updatePassword');
     $routes->get('schedule', 'StudentEnrollment::schedule');
     $routes->post('enroll', 'StudentEnrollment::enroll');
     $routes->post('enroll/block', 'StudentEnrollment::enrollBlock');

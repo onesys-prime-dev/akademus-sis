@@ -8,6 +8,9 @@ use App\Models\SectionModel;
 
 class StudentEnrollment extends BaseController
 {
+    /** Mirrors ChairpersonController::COLORS so blocks use the same accent per subject. */
+    private const COLORS = ['blue', 'purple', 'cyan', 'red', 'green', 'yellow'];
+
     /**
      * Per-subject enrollment: the student names an exact section + subject
      * (e.g. an irregular student picking a specific class offering, possibly
@@ -147,9 +150,25 @@ class StudentEnrollment extends BaseController
             }
         }
 
+        $blocks = array_map(function (array $m): array {
+            return [
+                'day'        => (int) $m['day'],
+                'code'       => $m['subject_code'],
+                'title'      => $m['subject_title'],
+                'room'       => $m['room'],
+                'section'    => $m['section'],
+                'year_level' => $m['year_level'],
+                'time_label' => $m['time_label'],
+                'start'      => substr($m['start_time'], 0, 5),
+                'end'        => substr($m['end_time'], 0, 5),
+                'color'      => self::COLORS[array_sum(array_map('ord', str_split($m['subject_code']))) % count(self::COLORS)],
+            ];
+        }, $meetings);
+
         return view('student/schedule', [
             'pageTitle' => 'My Schedule',
             'meetings'  => $meetings,
+            'blocks'    => $blocks,
         ]);
     }
 
