@@ -92,4 +92,31 @@ class StudentRecordController extends BaseController
             ->to('/admin/students/' . $id)
             ->with('message', 'Student status updated.');
     }
+
+    public function assignCurriculum($id)
+    {
+        $rules = [
+            'curriculum_id' => 'required|integer',
+            'reason'        => 'required|min_length[5]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()->back()->with('errors', $this->validator->getErrors());
+        }
+
+        $result = (new StudentModel())->assignCurriculum(
+            (int) $id,
+            (int) $this->request->getPost('curriculum_id'),
+            $this->request->getPost('reason'),
+            (int) auth()->id()
+        );
+
+        if (! $result['ok']) {
+            return redirect()->back()->with('errors', [$result['error'] ?? 'Could not assign curriculum.']);
+        }
+
+        return redirect()
+            ->to('/admin/students/' . $id)
+            ->with('message', 'Curriculum assignment updated.');
+    }
 }

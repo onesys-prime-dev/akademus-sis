@@ -37,14 +37,18 @@
                     <th>Subject</th>
                     <th>Year Level</th>
                     <th>Semester</th>
+                    <th style="text-align:right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($curriculumSubjects as $cs): ?>
+                    <?php $draft = $cs['curriculum_status'] === 'draft'; ?>
                     <tr>
                         <td>
                             <span class="ac-cell-bold"><?= esc($cs['curriculum_code']) ?></span>
-                            <div class="ac-muted" style="font-size:12px;"><?= esc($cs['curriculum_name']) ?></div>
+                            <div class="ac-muted" style="font-size:12px;">
+                                <?= esc($cs['curriculum_name']) ?> &middot; v<?= esc($cs['version_number']) ?> &middot; <?= esc(ucfirst($cs['curriculum_status'])) ?>
+                            </div>
                         </td>
                         <td>
                             <span class="ac-cell-bold"><?= esc($cs['subject_code']) ?></span>
@@ -52,6 +56,17 @@
                         </td>
                         <td class="ac-muted">Year <?= esc($cs['year_level']) ?></td>
                         <td class="ac-muted">Semester <?= esc($cs['semester']) ?></td>
+                        <td class="ac-actions-cell">
+                            <?php if ($draft): ?>
+                                <a href="<?= site_url('admin/curriculum-subjects/edit/' . $cs['curriculum_subject_id']) ?>" class="ac-btn-outline">Edit</a>
+                                <form method="post" action="<?= site_url('admin/curriculum-subjects/delete/' . $cs['curriculum_subject_id']) ?>" style="display:inline;">
+                                    <?= csrf_field() ?>
+                                    <button type="submit" class="ac-btn-outline" onclick="return confirm('Remove this subject from the curriculum?')">Remove</button>
+                                </form>
+                            <?php else: ?>
+                                <span class="ac-muted" style="font-size:12px;">Locked (published)</span>
+                            <?php endif ?>
+                        </td>
                     </tr>
                 <?php endforeach ?>
             </tbody>

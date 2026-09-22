@@ -51,11 +51,66 @@
 <div class="ac-table-card sr-panel" id="sr-program" hidden>
     <div style="padding:20px 24px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
         <div><label class="ac-muted" style="font-size:11px; text-transform:uppercase;">Program</label><p><?= esc($s['program_name'] ?? '—') ?> <?= $s['program_code'] ? '(' . esc($s['program_code']) . ')' : '' ?></p></div>
+        <div>
+            <label class="ac-muted" style="font-size:11px; text-transform:uppercase;">Curriculum Version</label>
+            <p>
+                <?php if ($s['curriculum_code']): ?>
+                    <?= esc($s['curriculum_code']) ?> &middot; v<?= esc($s['curriculum_version']) ?>
+                    <span class="ac-status-dot ac-status-dot--<?= $s['curriculum_status'] === 'published' ? 'active' : 'inactive' ?>"><?= esc(ucfirst($s['curriculum_status'])) ?></span>
+                <?php else: ?>
+                    <span class="ac-muted">Not assigned</span>
+                <?php endif ?>
+            </p>
+        </div>
     </div>
-    <p style="padding:0 24px 16px; font-size:11.5px; color:#515f74;">
-        Curriculum assignment is not shown here: this SIS currently has two parallel curriculum systems
-        (<code>curriculum_subjects</code> and the chairperson-facing <code>curriculum_presets</code>) that have not yet
-        been reconciled — see the "Curriculum" module in the SIS development roadmap before wiring this tab to either one.
+
+    <div style="padding:0 24px 20px; max-width:720px;">
+        <form method="post" action="<?= site_url('admin/students/' . $s['student_id'] . '/curriculum') ?>" style="display:grid; grid-template-columns:1fr 2fr auto; gap:10px; align-items:end;">
+            <?= csrf_field() ?>
+            <div class="ac-field" style="margin:0;">
+                <label>Assign Curriculum Version</label>
+                <select name="curriculum_id" class="ac-input" required>
+                    <option value="">— Select —</option>
+                    <?php foreach ($s['available_curricula'] as $c): ?>
+                        <option value="<?= $c['curriculum_id'] ?>" <?= (int) $s['curriculum_id'] === (int) $c['curriculum_id'] ? 'disabled' : '' ?>>
+                            <?= esc($c['curriculum_code']) ?> — v<?= esc($c['version_number']) ?><?= $c['is_current'] ? ' (current)' : '' ?>
+                        </option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+            <div class="ac-field" style="margin:0;">
+                <label>Reason (required)</label>
+                <input type="text" name="reason" class="ac-input" placeholder="Why is this student moving curriculum versions?" required minlength="5">
+            </div>
+            <button type="submit" class="ac-btn ac-btn-primary" onclick="return confirm('Reassign this student\'s curriculum version? This is recorded permanently.')">Assign</button>
+        </form>
+        <?php if (empty($s['available_curricula'])): ?>
+            <p class="ac-muted" style="font-size:11.5px; margin-top:8px;">No published curriculum exists for this student's program yet — publish one from Admin &rarr; Curricula.</p>
+        <?php endif ?>
+    </div>
+
+    <h4 style="padding:0 24px; font-size:13px;">Curriculum History</h4>
+    <table class="ac-table">
+        <thead><tr><th>When</th><th>From</th><th>To</th><th>Reason</th><th>Changed By</th></tr></thead>
+        <tbody>
+        <?php if (empty($s['curriculum_history'])): ?>
+            <tr><td colspan="5" class="ac-muted">No curriculum reassignments recorded yet.</td></tr>
+        <?php endif ?>
+        <?php foreach ($s['curriculum_history'] as $log): ?>
+            <tr>
+                <td><?= esc(date('M j, Y g:i A', strtotime($log['created_at']))) ?></td>
+                <td><?= esc($log['from_code'] ? $log['from_code'] . ' v' . $log['from_version'] : '—') ?></td>
+                <td><?= esc($log['to_code'] ? $log['to_code'] . ' v' . $log['to_version'] : '—') ?></td>
+                <td><?= esc($log['reason']) ?></td>
+                <td><?= esc($log['changed_by_username'] ?? '—') ?></td>
+            </tr>
+        <?php endforeach ?>
+        </tbody>
+    </table>
+    <p style="padding:12px 24px; font-size:11.5px; color:#515f74;">
+        This governs the <code>curriculum</code>/<code>curriculum_subjects</code> system only. The chairperson-facing
+        <code>curriculum_presets</code> (used for schedule-plotting templates) is a separate, still-unreconciled concept —
+        see the SIS development roadmap.
     </p>
 </div>
 

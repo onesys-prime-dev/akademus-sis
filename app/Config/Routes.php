@@ -42,10 +42,17 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->post('curriculum/update/(:num)', 'Admin\CurriculumController::update/$1');
 
     $routes->post('curriculum/toggle/(:num)', 'Admin\CurriculumController::toggleStatus/$1');
+    $routes->post('curriculum/publish/(:num)', 'Admin\CurriculumController::publish/$1');
+    $routes->post('curriculum/new-version/(:num)', 'Admin\CurriculumController::newVersion/$1');
 
     $routes->get('curriculum-subjects'       , 'Admin\CurriculumSubjectController::index');
     $routes->get('curriculum-subjects/create', 'Admin\CurriculumSubjectController::create');
     $routes->post('curriculum-subjects/store', 'Admin\CurriculumSubjectController::store');
+
+    $routes->get('curriculum-subjects/edit/(:num)'    , 'Admin\CurriculumSubjectController::edit/$1');
+    $routes->post('curriculum-subjects/update/(:num)' , 'Admin\CurriculumSubjectController::update/$1');
+    $routes->post('curriculum-subjects/toggle/(:num)' , 'Admin\CurriculumSubjectController::toggleStatus/$1');
+    $routes->post('curriculum-subjects/delete/(:num)' , 'Admin\CurriculumSubjectController::destroy/$1');
 
     // departments (colleges, dean-headed)
     $routes->get('departments'                        , 'Admin\DepartmentController::index');
@@ -103,6 +110,7 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->get('students'                     , 'Admin\StudentRecordController::index');
     $routes->get('students/(:num)'              , 'Admin\StudentRecordController::show/$1');
     $routes->post('students/(:num)/status'      , 'Admin\StudentRecordController::changeStatus/$1');
+    $routes->post('students/(:num)/curriculum'  , 'Admin\StudentRecordController::assignCurriculum/$1');
 
     // grading scale (numeric GWA / percentage / letter — one active at a time)
     $routes->get('grading-scales'               , 'Admin\GradingScaleController::index');

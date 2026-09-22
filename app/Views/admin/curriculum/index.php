@@ -37,7 +37,9 @@
                     <th>Curriculum</th>
                     <th>Program</th>
                     <th>Academic Year</th>
-                    <th>Status</th>
+                    <th>Version</th>
+                    <th>Lifecycle</th>
+                    <th>Visibility</th>
                     <th style="text-align:right;">Actions</th>
                 </tr>
             </thead>
@@ -48,17 +50,38 @@
                         <td><?= esc($item['curriculum_name']) ?></td>
                         <td class="ac-muted"><?= esc($item['program_name']) ?></td>
                         <td class="ac-muted"><?= esc($item['academic_year']) ?></td>
+                        <td class="ac-muted">
+                            v<?= esc($item['version_number']) ?>
+                            <?= $item['is_current'] ? '<span class="ac-status-dot ac-status-dot--active" style="margin-left:4px;">Current</span>' : '' ?>
+                        </td>
+                        <td>
+                            <?php
+                                $lifecycleClass = $item['status'] === 'published' ? 'active' : ($item['status'] === 'archived' ? 'inactive' : 'pending');
+                            ?>
+                            <span class="ac-status-dot ac-status-dot--<?= $lifecycleClass ?>"><?= esc(ucfirst($item['status'])) ?></span>
+                        </td>
                         <td>
                             <span class="ac-status-dot <?= $item['is_active'] ? 'ac-status-dot--active' : 'ac-status-dot--inactive' ?>">
-                                <?= $item['is_active'] ? 'Active' : 'Inactive' ?>
+                                <?= $item['is_active'] ? 'Visible' : 'Hidden' ?>
                             </span>
                         </td>
                         <td class="ac-actions-cell">
-                            <a href="<?= site_url('admin/curriculum/edit/' . $item['curriculum_id']) ?>" class="ac-btn-outline">Edit</a>
-                            <form method="post" action="<?= site_url('admin/curriculum/toggle/' . $item['curriculum_id']) ?>">
+                            <a href="<?= site_url('admin/curriculum/edit/' . $item['curriculum_id']) ?>" class="ac-btn-outline"><?= $item['status'] === 'draft' ? 'Edit' : 'View' ?></a>
+                            <?php if ($item['status'] === 'draft'): ?>
+                                <form method="post" action="<?= site_url('admin/curriculum/publish/' . $item['curriculum_id']) ?>" style="display:inline;">
+                                    <?= csrf_field() ?>
+                                    <button type="submit" class="ac-btn-outline" onclick="return confirm('Publish this curriculum? It becomes immutable and the current version for its program.')">Publish</button>
+                                </form>
+                            <?php else: ?>
+                                <form method="post" action="<?= site_url('admin/curriculum/new-version/' . $item['curriculum_id']) ?>" style="display:inline;">
+                                    <?= csrf_field() ?>
+                                    <button type="submit" class="ac-btn-outline">New Version</button>
+                                </form>
+                            <?php endif ?>
+                            <form method="post" action="<?= site_url('admin/curriculum/toggle/' . $item['curriculum_id']) ?>" style="display:inline;">
                                 <?= csrf_field() ?>
-                                <button type="submit" class="ac-btn-outline" onclick="return confirm('Change curriculum status?')">
-                                    <?= $item['is_active'] ? 'Deactivate' : 'Activate' ?>
+                                <button type="submit" class="ac-btn-outline" onclick="return confirm('Change curriculum visibility?')">
+                                    <?= $item['is_active'] ? 'Hide' : 'Show' ?>
                                 </button>
                             </form>
                         </td>
