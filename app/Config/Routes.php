@@ -214,8 +214,5 @@ $routes->post('reset-password'      , 'Auth\ForgotPasswordController::resetPassw
 
 $routes->group('api', function($routes) {
     $routes->post('students/promote'   , 'API\StudentAPIController::promote');
-
-    // DEV ONLY
-    $routes->get('students/promote', 'API\StudentAPIController::promote');
 });
 
