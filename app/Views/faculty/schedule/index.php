@@ -176,6 +176,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
             <span class="material-symbols-outlined">event_available</span>
             <span class="drawer-label">Availability</span>
         </a>
+        <a class="drawer-link" href="<?= site_url('faculty/grading') ?>" title="Grading">
+            <span class="material-symbols-outlined">grade</span>
+            <span class="drawer-label">Grading</span>
+        </a>
     </nav>
     <a class="drawer-link drawer-link--logout" href="<?= site_url('logout') ?>" title="Logout">
         <span class="material-symbols-outlined">logout</span>

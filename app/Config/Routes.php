@@ -103,6 +103,11 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->get('students'                     , 'Admin\StudentRecordController::index');
     $routes->get('students/(:num)'              , 'Admin\StudentRecordController::show/$1');
     $routes->post('students/(:num)/status'      , 'Admin\StudentRecordController::changeStatus/$1');
+
+    // grading scale (numeric GWA / percentage / letter — one active at a time)
+    $routes->get('grading-scales'               , 'Admin\GradingScaleController::index');
+    $routes->post('grading-scales/store'        , 'Admin\GradingScaleController::store');
+    $routes->post('grading-scales/set-active/(:num)', 'Admin\GradingScaleController::setActive/$1');
 });
 
 $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) {
@@ -137,6 +142,13 @@ $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {
     $routes->get('notifications', 'NotificationController::index');
     $routes->post('notifications/mark-read', 'NotificationController::markRead');
     $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
+
+    // grading (my classes -> enter/submit grades -> request a correction once locked)
+    $routes->get('grading', 'Faculty\GradingController::index');
+    $routes->get('grading/class', 'Faculty\GradingController::show');
+    $routes->post('grading/save', 'Faculty\GradingController::saveDraft');
+    $routes->post('grading/submit', 'Faculty\GradingController::submit');
+    $routes->post('grading/request-change', 'Faculty\GradingController::requestChange');
 });
 
 $routes->group('student', ['filter' => 'group:student'], function ($routes) {
@@ -147,6 +159,7 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->get('schedule', 'StudentEnrollment::schedule');
     $routes->post('enroll', 'StudentEnrollment::enroll');
     $routes->post('enroll/block', 'StudentEnrollment::enrollBlock');
+    $routes->get('grades', 'StudentGrades::index');
 });
 
 $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($routes) {
@@ -187,6 +200,13 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->get('offerings'                , 'Chairperson\OfferingController::index');
     $routes->post('offerings/create'        , 'Chairperson\OfferingController::create');
     $routes->post('offerings/unmerge'       , 'Chairperson\OfferingController::unmergeSection');
+
+    // grade approvals: lock a faculty-submitted class, decide correction requests
+    $routes->get('grade-approvals'                     , 'Chairperson\GradeApprovalController::index');
+    $routes->get('grade-approvals/class'                , 'Chairperson\GradeApprovalController::show');
+    $routes->post('grade-approvals/lock'                , 'Chairperson\GradeApprovalController::lock');
+    $routes->post('grade-approvals/change-requests/approve', 'Chairperson\GradeApprovalController::approveChange');
+    $routes->post('grade-approvals/change-requests/reject'  , 'Chairperson\GradeApprovalController::rejectChange');
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);

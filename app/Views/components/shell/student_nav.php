@@ -1,6 +1,6 @@
 <?php
 /**
- * Sidebar nav for the student shell. $activePage: 'dashboard'|'profile'|'schedule'.
+ * Sidebar nav for the student shell. $activePage: 'dashboard'|'profile'|'schedule'|'grades'.
  */
 ?>
 <aside class="side-drawer glass">
@@ -13,6 +13,10 @@
         <a class="drawer-link <?= $activePage === 'schedule' ? 'active' : '' ?>" href="<?= site_url('student/schedule') ?>" title="My Schedule">
             <span class="material-symbols-outlined">calendar_month</span>
             <span class="drawer-label">My Schedule</span>
+        </a>
+        <a class="drawer-link <?= $activePage === 'grades' ? 'active' : '' ?>" href="<?= site_url('student/grades') ?>" title="My Grades">
+            <span class="material-symbols-outlined">grade</span>
+            <span class="drawer-label">My Grades</span>
         </a>
         <a class="drawer-link <?= $activePage === 'profile' ? 'active' : '' ?>" href="<?= site_url('student/profile') ?>" title="Profile">
             <span class="material-symbols-outlined">person</span>

@@ -69,6 +69,25 @@ class CourseOfferingModel extends Model
     }
 
     /**
+     * Every actively-enrolled student across every section merged into this
+     * offering — the class list grading needs for a merged (section,
+     * subject) pair, in place of any single section's own roster.
+     *
+     * @return list<array{enrollment_id: int, user_id: int, username: string}>
+     */
+    public function listRoster(int $offeringId): array
+    {
+        return $this->db->table('enrollments e')
+            ->select('e.enrollment_id, e.user_id, u.username')
+            ->join('users u', 'u.id = e.user_id')
+            ->where('e.offering_id', $offeringId)
+            ->where('e.status', 'enrolled')
+            ->orderBy('u.username')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
      * Creates a merged offering for $subjectCode across $sectionIds (2 or
      * more), then backfills offering_id onto every already-enrolled
      * student's existing row for that subject in those sections, so a

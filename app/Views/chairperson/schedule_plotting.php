@@ -1279,6 +1279,10 @@
                 <span class="material-symbols-outlined">menu_book</span>
                 <span class="drawer-label">Curriculum</span>
             </a>
+            <a class="drawer-link" href="<?= site_url('chairperson/grade-approvals') ?>" title="Grade Approvals">
+                <span class="material-symbols-outlined">grade</span>
+                <span class="drawer-label">Grade Approvals</span>
+            </a>
         </nav>
 
         <a class="drawer-link drawer-link--logout" href="<?= site_url('logout') ?>" title="Logout">

@@ -138,6 +138,26 @@ class EnrollmentModel extends Model
     }
 
     /**
+     * Every actively-enrolled student in this section for this one subject
+     * (not the whole section's roster) — the class list grading needs when
+     * the (section, subject) pair is NOT merged into a course offering.
+     *
+     * @return list<array{enrollment_id: int, user_id: int, username: string}>
+     */
+    public function listRosterForSectionSubject(int $sectionId, string $subjectCode): array
+    {
+        return db_connect()->table('enrollments e')
+            ->select('e.enrollment_id, e.user_id, u.username')
+            ->join('users u', 'u.id = e.user_id')
+            ->where('e.section_id', $sectionId)
+            ->where('e.subject_code', $subjectCode)
+            ->where('e.status', 'enrolled')
+            ->orderBy('u.username')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
      * Roster count = distinct students with an active enrollment in this
      * section, NOT a row count — one student holds several subject rows
      * under the same section without consuming several seats.
