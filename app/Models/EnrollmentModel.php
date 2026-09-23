@@ -52,6 +52,14 @@ class EnrollmentModel extends Model
             return ['ok' => false, 'error' => "{$subjectCode} is not scheduled for this section."];
         }
 
+        $missing = $this->unmetPrerequisites($userId, $subjectCode);
+
+        if ($missing !== []) {
+            $db->transRollback();
+
+            return ['ok' => false, 'error' => "Prerequisite not met for {$subjectCode}: " . implode(', ', $missing) . ' must be passed first.'];
+        }
+
         $conflict = $this->findConflict($userId, $section['academic_year'], $meetings, $subjectCode);
 
         if ($conflict !== null) {
@@ -208,6 +216,59 @@ class EnrollmentModel extends Model
             'start' => substr($r['start_time'], 0, 5),
             'end'   => substr($r['end_time'], 0, 5),
         ], $rows);
+    }
+
+    /**
+     * Subject codes of every prerequisite $subjectCode has that the student
+     * has NOT yet passed (a locked grade with is_passing = 1, from any prior
+     * term/section — prerequisite credit doesn't expire). Empty array means
+     * clear to enroll. If $subjectCode isn't in the subject catalog at all
+     * (e.g. plotted under a code the admin hasn't registered as a Subject
+     * row yet), the check is skipped rather than blocking enrollment on a
+     * data gap that isn't the student's fault.
+     *
+     * @return string[]
+     */
+    private function unmetPrerequisites(int $userId, string $subjectCode): array
+    {
+        $subject = (new SubjectModel())->where('subject_code', $subjectCode)->first();
+
+        if ($subject === null) {
+            return [];
+        }
+
+        $prereqIds = array_column(
+            (new SubjectPrerequisiteModel())->where('subject_id', $subject['subject_id'])->findAll(),
+            'prerequisite_subject_id'
+        );
+
+        if ($prereqIds === []) {
+            return [];
+        }
+
+        $prereqSubjects = (new SubjectModel())->whereIn('subject_id', $prereqIds)->findAll();
+
+        $passedCodes = array_column(
+            $this->db->table('grades')
+                ->select('subject_code')
+                ->where('user_id', $userId)
+                ->where('status', 'locked')
+                ->where('is_passing', 1)
+                ->distinct()
+                ->get()
+                ->getResultArray(),
+            'subject_code'
+        );
+
+        $missing = [];
+
+        foreach ($prereqSubjects as $prereq) {
+            if (! in_array($prereq['subject_code'], $passedCodes, true)) {
+                $missing[] = $prereq['subject_code'];
+            }
+        }
+
+        return $missing;
     }
 
     /**

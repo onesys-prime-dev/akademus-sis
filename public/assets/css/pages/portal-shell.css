@@ -18,8 +18,10 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--motion-instant) var(--ease-standard);
 }
+
+.btn:active:not(:disabled) { transform: scale(.97); }
 
 .btn-primary { background: var(--color-primary); color: #fff; }
 .btn-primary:hover { background: var(--color-primary-hover); }
@@ -201,6 +203,7 @@ table.grade-table tr:last-child td { border-bottom: none; }
 
 /* ===== View toggle (list / calendar) ===== */
 .view-toggle {
+    position: relative;
     display: inline-flex;
     background: var(--color-surface-sunken);
     border-radius: var(--radius-sm);
@@ -209,7 +212,18 @@ table.grade-table tr:last-child td { border-bottom: none; }
     gap: 4px;
 }
 
+/* The active "pill" is now a single element that slides (see
+   acInitSegmented), instead of each button re-painting its own background —
+   that's what let it snap instantly before. */
+.view-toggle .ac-segmented__indicator {
+    background: var(--color-surface);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-xs);
+}
+
 .view-toggle button {
+    position: relative;
+    z-index: 1;
     border: none;
     background: none;
     font-family: inherit;
@@ -222,15 +236,25 @@ table.grade-table tr:last-child td { border-bottom: none; }
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    transition: background-color var(--transition-fast), color var(--transition-fast);
+    transition: color var(--transition-fast);
 }
 
 .view-toggle button .material-symbols-outlined { font-size: 17px; }
 .view-toggle button:hover { color: var(--color-text-primary); }
-.view-toggle button.active { background: var(--color-surface); color: var(--color-primary); box-shadow: var(--shadow-xs); }
+.view-toggle button.active { color: var(--color-primary); }
 
-.schedule-view { display: none; }
-.schedule-view.active { display: block; }
+.schedule-view {
+    display: none;
+}
+.schedule-view.active {
+    display: block;
+    animation: acContentIn var(--motion-normal) var(--ease-enter);
+}
+
+@keyframes acContentIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: none; }
+}
 
 /* ===== Weekly calendar grid ===== */
 .grid-wrap { padding: 4px; }

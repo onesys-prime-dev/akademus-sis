@@ -75,10 +75,11 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     box-shadow: var(--shadow-apple); border: 1px solid var(--border);
     display: flex; flex-direction: column; height: 640px;
 }
-.tab-row { display: flex; gap: 8px; padding: 20px 24px 0; flex-wrap: wrap; background: var(--color-surface); }
-.tab { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--muted); transition: background .15s, color .15s; }
+.tab-row { position: relative; display: flex; gap: 8px; padding: 20px 24px 0; flex-wrap: wrap; background: var(--color-surface); }
+.tab-row .ac-segmented__indicator { top: 20px; bottom: 8px; background: var(--brand); border-radius: 999px; box-shadow: var(--shadow-xs); }
+.tab { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--muted); transition: color .15s; }
 .tab:hover:not(:disabled):not(.active) { color: var(--ink); background: var(--color-surface-sunken); }
-.tab.active { background: var(--brand); color: #fff; box-shadow: var(--shadow-xs); }
+.tab.active { color: #fff; }
 .tab:disabled { color: var(--color-text-tertiary); cursor: not-allowed; }
 .tab-cnt { background: var(--color-surface-sunken); color: var(--muted); font-size: 11px; border-radius: 999px; padding: 2px 8px; font-weight: 600; }
 .tab.active .tab-cnt { background: rgba(255,255,255,.2); color: #fff; }
@@ -150,9 +151,22 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 .empty-state p { font-size: 13px; color: var(--muted); max-width: 380px; line-height: 1.6; }
 
 /* ===== Confirm / swap / change-request modals ===== */
-.modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, .5); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 70; }
-.modal-backdrop.open { display: flex; }
-.modal-card { background: var(--color-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); box-shadow: var(--shadow-hover); width: 100%; max-width: 440px; padding: 28px; }
+.modal-backdrop {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, .5);
+    display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 70;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity var(--motion-normal) var(--ease-standard), visibility 0s linear var(--motion-normal);
+}
+.modal-backdrop.open {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition: opacity var(--motion-normal) var(--ease-standard), visibility 0s linear 0s;
+}
+.modal-card {
+    background: var(--color-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); box-shadow: var(--shadow-hover); width: 100%; max-width: 440px; padding: 28px;
+    transform: scale(.97) translateY(8px); opacity: 0;
+    transition: transform var(--motion-normal) var(--ease-enter), opacity var(--motion-normal) var(--ease-enter);
+}
+.modal-backdrop.open .modal-card { transform: scale(1) translateY(0); opacity: 1; }
 .modal-card h3 { font-size: 17px; font-weight: 600; letter-spacing: -.01em; margin-bottom: 10px; color: var(--ink); }
 .modal-card p { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
@@ -669,11 +683,16 @@ function updateLoadBar() {
 }
 
 // ---------- tabs / filters ----------
+const tabRowIndicator = window.acInitSegmented
+    ? window.acInitSegmented(document.querySelector('.tab-row'), { buttonSelector: '.tab' })
+    : null;
+
 document.querySelectorAll('.tab[data-tab]').forEach(tab =>
     tab.addEventListener('click', () => {
         activeTab = tab.dataset.tab;
         document.querySelectorAll('.tab[data-tab]').forEach(t =>
             t.classList.toggle('active', t.dataset.tab === activeTab));
+        if (tabRowIndicator) tabRowIndicator.move(tab, true);
         renderBoard();
     }));
 

@@ -15,6 +15,8 @@
 
 <body class="bg-light">
 
+<?= $this->include('components/loading-splash') ?>
+
     <main role="main" class="w-full h-full">
         <?= $this->renderSection('main') ?>
     </main>

@@ -43,7 +43,7 @@ html, .ac-page { height: 100%; }
     box-shadow: var(--shadow-sm);
     z-index: 50;
     overflow: hidden;
-    transition: width .16s ease;
+    transition: width var(--motion-normal) var(--ease-enter);
 }
 
 .ac-sidebar:hover { width: 230px; overflow-y: auto; }
@@ -69,8 +69,20 @@ html, .ac-page { height: 100%; }
     flex: 0 0 auto;
 }
 
-.ac-sidebar__brand-text { display: none; min-width: 0; white-space: nowrap; }
-.ac-sidebar:hover .ac-sidebar__brand-text { display: block; }
+.ac-sidebar__brand-text {
+    display: block;
+    min-width: 0;
+    max-width: 0;
+    white-space: nowrap;
+    opacity: 0;
+    overflow: hidden;
+    transition: opacity var(--motion-fast) var(--ease-standard), max-width var(--motion-normal) var(--ease-enter);
+}
+.ac-sidebar:hover .ac-sidebar__brand-text {
+    max-width: 160px;
+    opacity: 1;
+    transition-delay: 0s, 0s;
+}
 
 .ac-sidebar__brand-name {
     font-size: 16px;
@@ -115,7 +127,7 @@ html, .ac-page { height: 100%; }
 .ac-nav-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 0;
     width: 44px;
     height: 44px;
     justify-content: center;
@@ -127,13 +139,25 @@ html, .ac-page { height: 100%; }
     text-decoration: none;
     white-space: nowrap;
     overflow: hidden;
-    transition: background-color .15s ease, color .15s ease;
+    transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), transform var(--motion-instant) var(--ease-standard), gap var(--motion-normal) var(--ease-enter);
 }
 
-.ac-sidebar:hover .ac-nav-item { width: 100%; justify-content: flex-start; padding: 0 12px; }
+.ac-nav-item:active { transform: scale(.96); }
 
-.ac-nav-label { display: none; }
-.ac-sidebar:hover .ac-nav-label { display: inline; }
+/* .ac-nav-label collapses to max-width:0 when not hovered (see below), so
+   the icon+label flex gap must collapse to 0 too — otherwise the gap still
+   reserves space next to the invisible label and visibly pushes the icon
+   off-center in the collapsed rail (the bug this fixes). */
+.ac-sidebar:hover .ac-nav-item { width: 100%; justify-content: flex-start; padding: 0 12px; gap: 12px; }
+
+.ac-nav-label {
+    display: inline-block;
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity var(--motion-fast) var(--ease-standard), max-width var(--motion-normal) var(--ease-enter);
+}
+.ac-sidebar:hover .ac-nav-label { max-width: 160px; opacity: 1; }
 
 .ac-nav-item:hover { background: var(--color-surface-sunken); }
 
@@ -180,11 +204,20 @@ html, .ac-page { height: 100%; }
     border: 1px solid #e1e4ea;
     border-radius: var(--radius-md);
     box-shadow: 0 12px 28px rgba(11, 28, 48, .12);
-    display: none;
+    display: block;
     z-index: 60;
+    transform-origin: top right;
+    opacity: 0;
+    transform: scale(.96) translateY(-4px);
+    pointer-events: none;
+    transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-spring);
 }
 
-.ac-notif.is-open .ac-notif__panel { display: block; }
+.ac-notif.is-open .ac-notif__panel {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    pointer-events: auto;
+}
 
 .ac-notif__head {
     display: flex;
@@ -247,11 +280,20 @@ html, .ac-page { height: 100%; }
     border-radius: var(--radius-md);
     box-shadow: 0 12px 28px rgba(11, 28, 48, .12);
     padding: 8px;
-    display: none;
+    display: block;
     z-index: 60;
+    transform-origin: top right;
+    opacity: 0;
+    transform: scale(.96) translateY(-4px);
+    pointer-events: none;
+    transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-spring);
 }
 
-.ac-user-menu.is-open .ac-user-menu__dropdown { display: block; }
+.ac-user-menu.is-open .ac-user-menu__dropdown {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    pointer-events: auto;
+}
 
 .ac-user-menu__who { padding: 8px 10px 10px; }
 .ac-user-menu__name { font-size: 13px; font-weight: 700; color: #0b1c30; }
@@ -348,10 +390,11 @@ html, .ac-page { height: 100%; }
     background: none;
     color: var(--color-text-secondary);
     cursor: pointer;
-    transition: background-color .15s ease, color .15s ease;
+    transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), transform var(--motion-instant) var(--ease-standard);
 }
 
 .ac-topbar__iconbtn:hover { background: var(--color-surface-sunken); color: var(--color-primary); }
+.ac-topbar__iconbtn:active { transform: scale(.92); }
 
 .ac-topbar__dot {
     position: absolute;
@@ -406,13 +449,13 @@ html, .ac-page { height: 100%; }
 
 .animate-enter {
     opacity: 0;
-    transform: translateY(15px);
-    animation: acSpringFadeIn .8s cubic-bezier(.175, .885, .32, 1.275) forwards;
+    transform: translateY(6px);
+    animation: acSpringFadeIn var(--motion-slow) var(--ease-enter) forwards;
 }
 
-@keyframes acSpringFadeIn { 0% { opacity: 0; transform: translateY(15px); } 100% { opacity: 1; transform: none; } }
+@keyframes acSpringFadeIn { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }
 
-.spring-hover { transition: transform .4s cubic-bezier(.175,.885,.32,1.275), box-shadow .4s cubic-bezier(.175,.885,.32,1.275); }
+.spring-hover { transition: transform var(--motion-fast) var(--ease-spring), box-shadow var(--motion-fast) var(--ease-standard); }
 .spring-hover:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 10px 25px -5px rgba(0,0,0,.1), 0 8px 10px -6px rgba(0,0,0,.05); }
 
 /* Buttons */
@@ -427,10 +470,14 @@ html, .ac-page { height: 100%; }
     border: none;
     font-size: 13px;
     font-weight: 700;
+    transition: background-color var(--motion-fast) var(--ease-standard), transform var(--motion-instant) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+    transform: scale(1);
     cursor: pointer;
     text-decoration: none;
     white-space: nowrap;
 }
+
+.ac-btn:active { transform: scale(.97); }
 
 .ac-btn-primary {
     background: var(--color-primary);
@@ -470,7 +517,7 @@ html, .ac-page { height: 100%; }
     border-radius: var(--radius-lg);
     padding: 18px;
     border: 1px solid var(--color-border);
-    transition: transform .1s ease, box-shadow .1s ease;
+    transition: transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
 }
 
 .ac-card:hover { box-shadow: 0 8px 22px rgba(0, 0, 0, .08); }
@@ -763,14 +810,23 @@ html, .ac-page { height: 100%; }
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, .55);
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     z-index: 70;
     padding: 16px;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity var(--motion-normal) var(--ease-standard), visibility 0s linear var(--motion-normal);
 }
 
-.ac-modal.is-open { display: flex; }
+.ac-modal.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity var(--motion-normal) var(--ease-standard), visibility 0s linear 0s;
+}
 
 .ac-modal__panel {
     background: #fff;
@@ -781,6 +837,14 @@ html, .ac-page { height: 100%; }
     overflow-y: auto;
     padding: 22px;
     box-shadow: 0 30px 60px rgba(0, 0, 0, .35);
+    transform: scale(.97) translateY(8px);
+    opacity: 0;
+    transition: transform var(--motion-normal) var(--ease-enter), opacity var(--motion-normal) var(--ease-enter);
+}
+
+.ac-modal.is-open .ac-modal__panel {
+    transform: scale(1) translateY(0);
+    opacity: 1;
 }
 
 .ac-modal__header {
@@ -949,6 +1013,20 @@ html, .ac-page { height: 100%; }
     align-items: flex-start;
     font-size: 12px;
     color: #475569;
+}
+
+/* Segmented control indicator (see acInitSegmented in layouts/admin_console.php).
+   Base positioning/motion only — each segmented control (view-toggle,
+   tab-row, day-chips, ...) sets its own indicator color/shape/inset via its
+   own stylesheet, since they're visually distinct components. */
+.ac-segmented__indicator {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 0;
+    pointer-events: none;
+    transition: transform var(--motion-normal) var(--ease-spring), width var(--motion-normal) var(--ease-spring);
 }
 
 /* Toasts */

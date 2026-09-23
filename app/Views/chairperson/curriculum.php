@@ -114,14 +114,22 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     /* ===== Add/edit subject modal ===== */
     .modal-backdrop {
         position: fixed; inset: 0; background: rgba(15, 23, 42, .5);
-        display: none; align-items: center; justify-content: center; z-index: 70;
+        display: flex; align-items: center; justify-content: center; z-index: 70;
+        opacity: 0; visibility: hidden; pointer-events: none;
+        transition: opacity var(--motion-normal) var(--ease-standard), visibility 0s linear var(--motion-normal);
     }
-    .modal-backdrop.open { display: flex; }
+    .modal-backdrop.open {
+        opacity: 1; visibility: visible; pointer-events: auto;
+        transition: opacity var(--motion-normal) var(--ease-standard), visibility 0s linear 0s;
+    }
     .modal-card {
         background: var(--color-surface); border-radius: var(--radius-lg);
         width: 560px; max-width: calc(100vw - 48px); max-height: calc(100vh - 64px);
         overflow-y: auto; padding: 32px; box-shadow: var(--shadow-md); box-sizing: border-box;
+        transform: scale(.97) translateY(8px); opacity: 0;
+        transition: transform var(--motion-normal) var(--ease-enter), opacity var(--motion-normal) var(--ease-enter);
     }
+    .modal-backdrop.open .modal-card { transform: scale(1) translateY(0); opacity: 1; }
     .modal-card h2 { font-size: 21px; font-weight: 800; margin-bottom: 8px; letter-spacing: -.01em; }
     .modal-card .modal-sub { font-size: 13.5px; color: var(--color-text-secondary); margin-bottom: 28px; line-height: 1.5; }
     .modal-card .field { margin-bottom: 20px; min-width: 0; }
@@ -163,7 +171,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <?= $this->section('content') ?>
 
 <div class="ac-page-header">
-    <div><h2 class="ac-page-header__title">Curriculum</h2></div>
+    <div>
+        <h2 class="ac-page-header__title">Curriculum</h2>
+        <p class="ac-page-header__sub">Assign subjects per year level and manage your program's subject catalog.</p>
+    </div>
 </div>
 
 <?php if ($deptName === null): ?>

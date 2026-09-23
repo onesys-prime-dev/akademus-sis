@@ -36,7 +36,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <?= $this->section('content') ?>
 
 <div class="ac-page-header">
-    <div><h2 class="ac-page-header__title">Grade Approvals</h2></div>
+    <div>
+        <h2 class="ac-page-header__title">Grade Approvals</h2>
+        <p class="ac-page-header__sub">Lock faculty-submitted grades and review correction requests.</p>
+    </div>
 </div>
 
 <?php if ($deptName === null): ?>
@@ -48,7 +51,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     </div>
 <?php else: ?>
 
-    <div class="panel" id="feedback" style="display:none;"></div>
+    <div id="feedback" class="flash" style="display:none;"></div>
 
     <div class="panel">
         <h2>Awaiting Your Approval</h2>
@@ -112,7 +115,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     function showFeedback(message, isError) {
         const el = document.getElementById('feedback');
         el.style.display = 'block';
-        el.style.color = isError ? '#a11414' : '#056945';
+        el.className = 'flash ' + (isError ? 'error' : 'success');
         el.textContent = message;
     }
 

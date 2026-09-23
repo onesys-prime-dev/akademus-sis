@@ -4,7 +4,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token-value" content="<?= esc(csrf_hash()) ?>">
     <title>Akademus SIS | <?= esc($pageTitle ?? $brandSub ?? 'Admin Console') ?></title>
+
+    <script>
+        // Every role's pages POST via fetch() repeatedly from a single page
+        // load (schedule plotting, grading, sections, teaching-load claims,
+        // swaps) rather than submitting a <form>. Re-enabling CSRF protection
+        // app-wide (see app/Config/Filters.php) would reject every one of
+        // those calls unless they carry the token — rather than editing every
+        // fetch() call site individually, this patches window.fetch once so
+        // every same-origin, state-changing request automatically carries it.
+        // Must run before any page script below fires its own fetch() calls.
+        (function () {
+            var tokenValue = document.querySelector('meta[name="csrf-token-value"]').content;
+            var originalFetch = window.fetch;
+
+            window.fetch = function (input, init) {
+                init = init || {};
+                var method = (init.method || 'GET').toUpperCase();
+
+                if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+                    var url = typeof input === 'string' ? input : input.url;
+                    var isSameOrigin = url.indexOf('http://') !== 0 && url.indexOf('https://') !== 0
+                        || url.indexOf(window.location.origin) === 0;
+
+                    if (isSameOrigin) {
+                        init.headers = new Headers(init.headers || {});
+                        if (!init.headers.has('X-CSRF-TOKEN')) {
+                            init.headers.set('X-CSRF-TOKEN', tokenValue);
+                        }
+                    }
+                }
+
+                return originalFetch.call(this, input, init);
+            };
+
+            // csrf_field()-rendered <form> posts still work unchanged (CI4
+            // reads the same token from the POST body); this only needed to
+            // cover the fetch() paths, which carried nothing before.
+        })();
+    </script>
 
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
@@ -15,6 +55,8 @@
     <?= $this->renderSection('styles') ?>
 </head>
 <body class="ac-page">
+
+<?= $this->include('components/loading-splash') ?>
 
 <?php
 /**
@@ -79,9 +121,10 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
 
 <main class="ac-main">
     <header class="ac-topbar">
-        <nav class="ac-topbar__links">
-            <?= $this->renderSection('topbarLinks') ?: '<a href="#">Directory</a><a href="#">Quick Actions</a>' ?>
-        </nav>
+        <?php $topbarLinks = $this->renderSection('topbarLinks'); ?>
+        <?php if ($topbarLinks !== ''): ?>
+            <nav class="ac-topbar__links"><?= $topbarLinks ?></nav>
+        <?php endif ?>
 
         <div class="ac-topbar__actions">
             <div class="ac-search" role="search">
@@ -141,6 +184,64 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
 </main>
 
 <div class="ac-toast-container" id="acToastContainer" role="status" aria-live="polite"></div>
+
+<script>
+    // Reusable sliding "active" indicator for segmented controls (a real
+    // client-side tab/toggle group — List/Calendar, board tabs, day chips —
+    // as opposed to sidebar links, which are full page navigations and
+    // can't share this kind of continuity). Pages call
+    // acInitSegmented(container, { indicatorClass, buttonSelector }) once
+    // per group; the container just needs position:relative and an
+    // ".active" class already on the initially-selected button.
+    //
+    // Defined in its OWN script block here, before renderSection('scripts')
+    // — pages' own scripts (which call this) render before the layout's
+    // main trailing <script> block, so defining it down there left
+    // window.acInitSegmented undefined when callers actually ran, silently
+    // skipping the indicator (no error — the `if (window.acInitSegmented)`
+    // guard in callers just evaluated false).
+    window.acInitSegmented = function (root, opts) {
+        if (!root) return null;
+        opts = opts || {};
+        var buttonSelector = opts.buttonSelector || 'button';
+        var indicatorClass = opts.indicatorClass || 'ac-segmented__indicator';
+
+        var indicator = document.createElement('span');
+        indicator.className = indicatorClass;
+        indicator.setAttribute('aria-hidden', 'true');
+        root.insertBefore(indicator, root.firstChild);
+
+        function move(btn, animate) {
+            if (!btn) return;
+            if (!animate) indicator.style.transition = 'none';
+            indicator.style.width = btn.offsetWidth + 'px';
+            indicator.style.transform = 'translateX(' + btn.offsetLeft + 'px)';
+            if (!animate) {
+                // Force layout so the "no transition" jump is committed
+                // before transitions are re-enabled on the next frame —
+                // otherwise the very first move would also animate from 0.
+                void indicator.offsetWidth;
+                requestAnimationFrame(function () { indicator.style.transition = ''; });
+            }
+        }
+
+        var initial = root.querySelector(buttonSelector + '.active') || root.querySelector(buttonSelector);
+        move(initial, false);
+
+        root.querySelectorAll(buttonSelector).forEach(function (btn) {
+            btn.addEventListener('click', function () { move(btn, true); });
+        });
+
+        // The sidebar's hover-expand and other layout shifts can change
+        // button positions without a click (e.g. the window resizing) —
+        // keep the indicator honest without re-measuring on every frame.
+        window.addEventListener('resize', function () {
+            move(root.querySelector(buttonSelector + '.active') || root.querySelector(buttonSelector), false);
+        });
+
+        return { move: move };
+    };
+</script>
 
 <?= $this->renderSection('scripts') ?>
 

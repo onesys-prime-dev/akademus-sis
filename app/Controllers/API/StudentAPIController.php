@@ -17,20 +17,15 @@ class StudentAPIController extends BaseController
      * point: Reservation Fee marked PAID). Idempotent on applicant_id — a
      * retried call with the same applicant_id returns the existing student
      * rather than creating a duplicate.
+     *
+     * X-API-KEY auth now happens at the route/filter layer (ApiKeyFilter,
+     * 'apikey' filter on the 'api' group in Routes.php) before this method is
+     * even reached — matching how every other role group is protected, and
+     * using a constant-time comparison instead of the plain !== this method
+     * used to do inline.
      */
     public function promote()
     {
-        $key = $this->request->getHeaderLine('X-API-KEY');
-
-        if ($key === '' || $key !== env('API_KEY')) {
-            return $this->response
-                ->setStatusCode(401)
-                ->setJSON([
-                    'success' => false,
-                    'message' => 'Unauthorized',
-                ]);
-        }
-
         $data = $this->request->getJSON(true);
 
         if (! is_array($data)) {

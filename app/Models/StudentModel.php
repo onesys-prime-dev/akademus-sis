@@ -346,6 +346,16 @@ class StudentModel extends Model
 
         $db->transComplete();
 
+        if ($db->transStatus() !== false) {
+            helper('url');
+            (new NotificationModel())->notify(
+                (int) $student['user_id'],
+                'status_changed',
+                "Your academic status has been changed to " . ucfirst($newStatus) . '.',
+                site_url('student/profile')
+            );
+        }
+
         return ['ok' => $db->transStatus() !== false];
     }
 

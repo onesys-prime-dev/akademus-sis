@@ -70,8 +70,16 @@ class Security extends BaseConfig
      * --------------------------------------------------------------------------
      *
      * Regenerate CSRF Token on every submission.
+     *
+     * False: the app is fetch()-heavy (schedule plotting, grading, sections,
+     * teaching-load claiming all POST repeatedly from one page load without a
+     * reload in between). A rotating per-request token would go stale after
+     * the first successful call and reject every one after it. A stable
+     * per-session token is still a valid CSRF defense (the attacker's page
+     * still can't read or guess it) — it's the standard tradeoff for apps
+     * that aren't doing a full page reload per POST.
      */
-    public bool $regenerate = true;
+    public bool $regenerate = false;
 
     /**
      * --------------------------------------------------------------------------

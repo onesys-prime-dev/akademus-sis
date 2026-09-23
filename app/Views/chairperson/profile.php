@@ -32,7 +32,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <div class="container">
 
     <div class="ac-page-header">
-        <div><h2 class="ac-page-header__title">Profile</h2></div>
+        <div>
+            <h2 class="ac-page-header__title">Profile</h2>
+            <p class="ac-page-header__sub">Manage your display name, password, and account details.</p>
+        </div>
     </div>
 
     <?php if (session('profile_message')): ?>

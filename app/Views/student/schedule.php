@@ -162,6 +162,7 @@ $toMinutes = static function (string $hhmm) {
     (function () {
         const toggle = document.querySelector('.view-toggle');
         if (!toggle) return;
+        if (window.acInitSegmented) window.acInitSegmented(toggle);
         toggle.addEventListener('click', (e) => {
             const btn = e.target.closest('button[data-view]');
             if (!btn) return;

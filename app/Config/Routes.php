@@ -250,7 +250,7 @@ $routes->post('forgot-password'     , 'Auth\ForgotPasswordController::sendResetL
 $routes->get('reset-password/(:any)', 'Auth\ForgotPasswordController::showResetForm/$1');
 $routes->post('reset-password'      , 'Auth\ForgotPasswordController::resetPassword');
 
-$routes->group('api', function($routes) {
+$routes->group('api', ['filter' => 'apikey'], function($routes) {
     $routes->post('students/promote'   , 'API\StudentAPIController::promote');
 });
 

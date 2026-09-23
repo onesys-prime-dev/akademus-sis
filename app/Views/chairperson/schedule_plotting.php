@@ -34,47 +34,28 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     </button>
     <button type="button" class="btn btn-ghost" id="roomOverviewBtn">Room Overview</button>
     <button type="button" class="btn btn-ghost" id="facultyPanelBtn">Faculty</button>
-    <div class="user-menu" id="notifWrap" style="position:relative;">
-        <button type="button" class="user-trigger" id="notifBtn" title="Notifications" style="padding:8px;">
-            <span class="material-symbols-outlined">notifications</span>
-            <span class="approval-badge zero" id="notifBadge" style="margin-left:2px;">0</span>
-        </button>
-        <div class="user-dropdown" id="notifPanel" style="min-width:320px; max-height:400px; overflow-y:auto; padding:0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--outline-variant);">
-                <strong style="font-size:13px;">Notifications</strong>
-                <button type="button" id="notifMarkAll" style="font-size:11.5px;color:var(--primary-container);background:none;border:none;cursor:pointer;font-weight:700;">Mark all read</button>
-            </div>
-            <div id="notifList"></div>
-        </div>
-    </div>
-    <div class="user-menu" id="userMenu">
-        <button type="button" class="user-trigger" id="userMenuBtn">
-            <div class="avatar-sm"><?= esc(mb_strtoupper(mb_substr($user['name'], 0, 1))) ?></div>
-            <div class="user-text">
-                <div class="name"><?= esc($user['name']) ?></div>
-                <div class="role"><?= esc($user['role']) ?></div>
-            </div>
-            <span class="material-symbols-outlined chevron">expand_more</span>
-        </button>
-        <div class="user-dropdown">
-            <a href="<?= site_url('chairperson/profile') ?>"><span class="material-symbols-outlined" style="font-size:18px;">settings</span> Settings</a>
-            <hr>
-            <a href="<?= site_url('logout') ?>" class="danger"><span class="material-symbols-outlined" style="font-size:18px;">logout</span> Logout</a>
-        </div>
-    </div>
 </div>
 <?= $this->endSection() ?>
 
 <?= $this->section('styles') ?>
 <style>
-        /* This page ships its own notification bell + avatar menu in
-           headerActions (id-coupled to its own JS below) — hide the shared
-           layout's generic ones here instead of duplicating both. */
-        .ac-notif, .ac-user-menu { display: none; }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        :root {
+        /* Scoped to .ac-main (not :root!) — this used to be a bare :root
+           block, which silently overwrote the shared --radius-sm/md/lg
+           tokens for the ENTIRE document, including the sidebar from
+           layouts/admin_console.php. .ac-main is the shared layout's
+           wrapper around BOTH .ac-topbar (this page's headerActions —
+           the sync pill, Swap Approvals, Change Requests, Room Overview,
+           Faculty buttons all live there) and .ac-content (filters, the
+           plotting grid, every modal, the toast, the debug panel) while
+           still excluding .ac-sidebar. Scoping to .ac-content alone (an
+           earlier version of this fix) broke the headerActions buttons —
+           .btn-ghost/.sync-status/.approval-badge all reference these same
+           local aliases, and outside .ac-content those custom properties
+           were undefined, so their background/border/color silently
+           dropped out, leaving plain unstyled text. */
+        .ac-main {
             /* Apple-glass inspired palette — core surfaces/text/primary aliased
                onto the shared design-system tokens (public/assets/css/design-system/tokens.css);
                the extra secondary/tertiary accents below are specific to this
@@ -126,7 +107,12 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             -webkit-font-smoothing: antialiased;
         }
 
-        .material-symbols-outlined {
+        /* Scoped to .ac-content — a bare .material-symbols-outlined rule here
+           would directly set font-size on every icon with that class on the
+           page, including the shared sidebar/topbar's nav icons (which
+           normally just inherit ~13px from .ac-nav-item), making them
+           render larger only on this page. */
+        .ac-content .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
             font-size: 20px;
             line-height: 1;
@@ -138,86 +124,13 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         ::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 8px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--outline); }
 
-        /* ===== headerActions controls (sync status, approvals, notif bell,
-           legacy avatar menu) — relocated into the shared ac-topbar's
-           headerActions slot; the old .topbar/.side-drawer chrome that used
-           to hold them is gone. .right lays them out in a row the way
-           .topbar .right used to. .user-menu/.user-trigger/.user-dropdown/
-           .avatar-sm still style the page's own notification bell and its
-           legacy avatar dropdown (kept only because this page's script
-           below unconditionally references #userMenu — see notifBtn click
-           handler — so removing that markup would throw and break the
-           notification bell). ===== */
+        /* ===== headerActions controls (sync status, approvals) — relocated
+           into the shared ac-topbar's headerActions slot; the old
+           .topbar/.side-drawer chrome that used to hold them is gone. The
+           notification bell and avatar/logout menu now come from the
+           shared layout (.ac-notif/.ac-user-menu) like every other page,
+           instead of this page's own duplicate copies. ===== */
         .right { display: flex; align-items: center; gap: 16px; }
-
-        .user-menu { position: relative; }
-
-        .user-trigger {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 4px 8px 4px 4px;
-            border-radius: var(--radius-sm);
-            font-family: inherit;
-            transition: background .15s;
-        }
-
-        .user-trigger:hover { background: var(--surface-container-high); }
-
-        .avatar-sm {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            background: var(--primary-container);
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 14px;
-            flex: 0 0 auto;
-        }
-
-        .user-trigger .user-text { text-align: left; }
-        .user-trigger .name { font-weight: 700; font-size: 13px; color: var(--on-surface); }
-        .user-trigger .role { font-size: 11.5px; color: var(--on-surface-variant); }
-        .user-trigger .chevron { font-size: 18px; color: var(--on-surface-variant); transition: transform .15s; }
-        .user-menu.open .chevron { transform: rotate(180deg); }
-
-        .user-dropdown {
-            position: absolute;
-            top: calc(100% + 8px);
-            right: 0;
-            min-width: 190px;
-            background: var(--surface-container-lowest);
-            border-radius: var(--radius-sm);
-            box-shadow: var(--shadow-md);
-            padding: 6px;
-            display: none;
-            z-index: 50;
-        }
-
-        .user-menu.open .user-dropdown { display: block; }
-
-        .user-dropdown a {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 9px 10px;
-            border-radius: 8px;
-            color: var(--on-surface);
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .user-dropdown a:hover { background: var(--surface-container-high); }
-        .user-dropdown a.danger { color: var(--error); }
-        .user-dropdown a.danger:hover { background: #fde8e8; }
-        .user-dropdown hr { border: none; border-top: 1px solid var(--outline-variant); margin: 4px 0; }
 
         .btn {
             border: none;
@@ -351,14 +264,26 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             flex-shrink: 0;
         }
 
+        /* The shared layout caps .ac-content at 1280px so normal text-heavy
+           pages stay readable — but that wastes space here and forces the
+           3-column plotting grid to scroll sooner than it needs to. This
+           page gets the full width instead. */
+        .ac-content { max-width: none; }
+
         /* ===== Layout ===== */
         .layout {
             display: grid;
-            grid-template-columns: 280px 1fr 300px;
+            grid-template-columns: 280px minmax(0, 1fr) 300px;
             gap: 16px;
             padding: 16px 24px;
             align-items: start;
         }
+
+        /* Grid items default to min-width:auto, so without this the middle
+           column refuses to shrink below the plotting grid's 800px
+           min-width and drags the whole page into horizontal overflow
+           instead of scrolling inside its own .panel-scroll. */
+        .layout > .panel { min-width: 0; }
 
         .panel {
             background: var(--surface-container-lowest);
@@ -759,32 +684,52 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .modal-backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(17, 24, 39, .5);
-            display: none;
+            background: transparent;
+            display: flex;
             align-items: center;
             justify-content: center;
             z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity var(--motion-normal, 220ms) var(--ease-standard, ease), visibility 0s linear var(--motion-normal, 220ms);
         }
 
-        .modal-backdrop.open { display: flex; }
+        .modal-backdrop.open {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transition: opacity var(--motion-normal, 220ms) var(--ease-standard, ease), visibility 0s linear 0s;
+        }
 
         .modal {
-            background: #fff;
-            border-radius: 12px;
+            background: var(--surface-container-lowest);
+            border-radius: var(--radius-lg);
             width: 440px;
             max-width: calc(100vw - 32px);
-            padding: 18px 20px;
-            box-shadow: 0 20px 50px rgba(0,0,0,.25);
+            padding: 24px;
+            box-shadow: var(--shadow-lg);
+            transform: scale(.97) translateY(8px);
+            opacity: 0;
+            transition: transform var(--motion-normal, 220ms) var(--ease-enter, ease-out), opacity var(--motion-normal, 220ms) var(--ease-enter, ease-out);
         }
 
-        .modal h3 { font-size: 16px; margin-bottom: 4px; }
+        .modal-backdrop.open .modal {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
 
-        .modal .sub { font-size: 12px; color: var(--on-surface-variant); margin-bottom: 14px; }
+        .modal h3 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; color: var(--on-surface); margin-bottom: 4px; }
+
+        .modal .sub { font-size: 12.5px; color: var(--on-surface-variant); margin-bottom: 16px; line-height: 1.5; }
 
         .modal .modal-head {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--outline-variant);
             gap: 10px;
         }
 
@@ -1037,32 +982,67 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         }
 
         /* ===== Room overview modal ===== */
-        .overview-modal { width: 480px; }
+        .overview-modal { width: 920px; max-width: calc(100vw - 32px); max-height: 88vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+
+        .ov-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 22px 24px;
+            border-bottom: 1px solid var(--outline-variant);
+            background: var(--surface-container-low);
+            flex: 0 0 auto;
+        }
+
+        .ov-head__title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .ov-head h3 { font-size: 18px; font-weight: 800; margin: 0; }
+
+        .ov-summary-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: var(--success-container);
+            color: #14532d;
+        }
+
+        .ov-summary-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+        .ov-head .sub { margin: 6px 0 0; font-size: 12.5px; }
+
+        .ov-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px; }
 
         .ov-label {
             font-size: 11px;
             font-weight: 700;
             color: var(--on-surface-variant);
             text-transform: uppercase;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
+            letter-spacing: .04em;
         }
 
         .day-chips {
             display: flex;
             gap: 6px;
             flex-wrap: wrap;
-            margin-bottom: 14px;
+            margin-bottom: 18px;
         }
 
         .day-chip {
-            padding: 6px 12px;
+            padding: 7px 14px;
             border-radius: 999px;
             border: 1px solid var(--outline-variant);
             background: #fff;
             color: #374151;
-            font-size: 12px;
+            font-size: 12.5px;
+            font-weight: 600;
             font-family: inherit;
             cursor: pointer;
+            transition: background .15s, border-color .15s, color .15s;
         }
 
         .day-chip:hover { border-color: #93c5fd; }
@@ -1071,33 +1051,82 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             background: var(--primary-container);
             border-color: var(--primary-container);
             color: #fff;
-            font-weight: 600;
+            box-shadow: var(--shadow-sm);
         }
 
+        .ov-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--on-surface-variant); margin-bottom: 12px; }
+        .ov-legend span { display: inline-flex; align-items: center; gap: 5px; }
+        .ov-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .ov-legend .lg-green { background: var(--success); }
+        .ov-legend .lg-yellow { background: var(--warning); }
+        .ov-legend .lg-red { background: var(--error); }
+
         .overview-rooms {
-            grid-template-columns: repeat(3, 1fr);
-            margin-bottom: 14px;
-            max-height: 250px;
-            overflow-y: auto;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            margin-bottom: 22px;
         }
+
+        .ov-floor-group { margin-bottom: 18px; }
+        .ov-floor-group:last-child { margin-bottom: 0; }
+
+        .floor-heading.ov-floor-heading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            padding: 0 0 8px;
+        }
+
+        .floor-heading.ov-floor-heading .count { font-weight: 500; color: var(--outline); text-transform: none; letter-spacing: 0; }
 
         .room-card.selected {
             outline: 2px solid var(--primary-container);
             outline-offset: 1px;
         }
 
+        /* Overview-only room card additions (type/capacity badges + timeline
+           bar) — scoped under .overview-rooms so the simpler room-picker
+           modal (roomModal/facultyModal, which shares the base .room-card
+           class) is unaffected. */
+        .overview-rooms .room-card {
+            align-items: stretch;
+            text-align: left;
+            padding: 12px;
+        }
+
+        .ov-card-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 2px; }
+
+        .ov-type-badge {
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            padding: 2px 7px;
+            border-radius: 5px;
+            background: var(--surface-container-high);
+            color: var(--on-surface-variant);
+        }
+
+        .ov-type-badge.is-lab { background: rgba(0,64,166,.1); color: var(--primary-container); }
+
+        .ov-capacity { font-size: 10.5px; font-weight: 600; color: var(--on-surface-variant); white-space: nowrap; }
+
+        .ov-timeline { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,.06); }
+        .ov-timeline-track { position: relative; height: 7px; border-radius: 999px; background: var(--success-container); overflow: hidden; }
+        .ov-timeline-seg { position: absolute; top: 0; bottom: 0; background: var(--warning); }
+        .ov-timeline-seg.is-red { background: var(--error); }
+
         .overview-list {
-            max-height: 340px;
+            max-height: 320px;
             overflow-y: auto;
             border: 1px solid var(--outline-variant);
-            border-radius: 8px;
-            margin-bottom: 14px;
+            border-radius: var(--radius-md);
         }
 
         .overview-row {
             display: flex;
             gap: 12px;
-            padding: 9px 12px;
+            padding: 10px 14px;
             border-bottom: 1px solid var(--surface-dim);
             align-items: flex-start;
         }
@@ -1179,6 +1208,13 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+
+    <div class="ac-page-header">
+        <div>
+            <h2 class="ac-page-header__title">Schedule Plotting</h2>
+            <p class="ac-page-header__sub">Drag subjects onto the weekly grid to plot rooms, faculty, and meeting times.</p>
+        </div>
+    </div>
 
     <form class="filters" method="get" action="<?= site_url('chairperson/dashboard') ?>" id="contextForm">
         <div>
@@ -1409,20 +1445,36 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     <!-- Room overview modal -->
     <div class="modal-backdrop" id="overviewModal" role="dialog" aria-modal="true" aria-label="Room Overview">
         <div class="modal overview-modal">
-            <h3>Room Overview</h3>
-            <div class="sub">Every class plotted in a room for a day — all programs, year levels
-                and sections in <?= esc($selected['academic_year']) ?>, live.</div>
+            <div class="ov-head">
+                <div>
+                    <div class="ov-head__title-row">
+                        <h3>Room Overview</h3>
+                        <span class="ov-summary-badge" id="overviewSummary"><span class="dot"></span></span>
+                    </div>
+                    <div class="sub">Every class plotted in a room for a day — all programs, year levels
+                        and sections in <?= esc($selected['academic_year']) ?>, live.</div>
+                </div>
+                <button type="button" class="expand-btn" id="overviewClose" title="Close">&#x2715;</button>
+            </div>
 
-            <div class="ov-label">Day</div>
-            <div class="day-chips" id="overviewDays"></div>
+            <div class="ov-body">
+                <div class="ov-label">Day</div>
+                <div class="day-chips" id="overviewDays"></div>
 
-            <div class="ov-label">Room</div>
-            <div class="room-grid overview-rooms" id="overviewRooms"></div>
+                <div class="ov-label">Room</div>
+                <div class="ov-legend">
+                    <span><i class="lg-green"></i> Free all day</span>
+                    <span><i class="lg-yellow"></i> 1&ndash;2 classes plotted</span>
+                    <span><i class="lg-red"></i> 3+ classes (busy)</span>
+                </div>
+                <div id="overviewRoomsWrap"></div>
 
-            <div class="overview-list" id="overviewList"></div>
+                <div class="ov-label" id="overviewListLabel">Schedule</div>
+                <div class="overview-list" id="overviewList"></div>
+            </div>
 
-            <div class="actions">
-                <button type="button" class="btn btn-ghost" id="overviewClose">Close</button>
+            <div class="actions" style="padding:16px 24px; border-top:1px solid var(--outline-variant);">
+                <button type="button" class="btn btn-ghost" id="overviewCloseBottom">Close</button>
             </div>
         </div>
     </div>
@@ -1488,91 +1540,9 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
 <?= $this->section('scripts') ?>
     <script>
-        // ---------- user menu (avatar dropdown) ----------
-        (function () {
-            const menu = document.getElementById('userMenu');
-            const btn  = document.getElementById('userMenuBtn');
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menu.classList.toggle('open');
-            });
-            document.addEventListener('click', () => menu.classList.remove('open'));
-        })();
-
-        // ---------- notifications ----------
-        (function () {
-            const NOTIF_URLS = {
-                list:         <?= json_encode(site_url('chairperson/notifications')) ?>,
-                markRead:     <?= json_encode(site_url('chairperson/notifications/mark-read')) ?>,
-                markAllRead:  <?= json_encode(site_url('chairperson/notifications/mark-all-read')) ?>,
-            };
-
-            window.UNREAD = <?= json_encode((int) $unread_notifications) ?>;
-
-            function updateNotifBadge() {
-                const badge = document.getElementById('notifBadge');
-                badge.textContent = window.UNREAD > 99 ? '99+' : window.UNREAD;
-                badge.classList.toggle('zero', window.UNREAD === 0);
-            }
-            window.updateNotifBadge = updateNotifBadge;
-            updateNotifBadge();
-
-            async function loadNotifications() {
-                const list = document.getElementById('notifList');
-                list.innerHTML = '<p style="padding:14px;font-size:12px;color:var(--on-surface-variant);">Loading…</p>';
-
-                try {
-                    const response = await fetch(NOTIF_URLS.list, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-                    const data = await response.json();
-
-                    if (!data.notifications || data.notifications.length === 0) {
-                        list.innerHTML = '<p style="padding:14px;font-size:12px;color:var(--on-surface-variant);">No notifications yet.</p>';
-                        return;
-                    }
-
-                    list.innerHTML = '';
-                    data.notifications.forEach(n => {
-                        const item = document.createElement('div');
-                        item.style.cssText = 'padding:10px 14px;border-bottom:1px solid var(--outline-variant);cursor:pointer;font-size:12.5px;'
-                            + (n.is_read == 0 ? 'background:rgba(0,64,166,.05);font-weight:600;' : '');
-                        item.textContent = n.message;
-                        item.addEventListener('click', async () => {
-                            await fetch(NOTIF_URLS.markRead, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                                body: JSON.stringify({ id: n.id }),
-                            });
-                            if (n.link) window.location.href = n.link;
-                        });
-                        list.appendChild(item);
-                    });
-                } catch (err) {
-                    list.innerHTML = '<p style="padding:14px;font-size:12px;color:var(--on-surface-variant);">Could not load notifications.</p>';
-                }
-            }
-
-            const wrap = document.getElementById('notifWrap');
-            const btn  = document.getElementById('notifBtn');
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const opening = ! wrap.classList.contains('open');
-                document.getElementById('userMenu').classList.remove('open');
-                wrap.classList.toggle('open');
-                if (opening) loadNotifications();
-            });
-            document.addEventListener('click', () => wrap.classList.remove('open'));
-
-            document.getElementById('notifMarkAll').addEventListener('click', async (e) => {
-                e.stopPropagation();
-                await fetch(NOTIF_URLS.markAllRead, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                });
-                window.UNREAD = 0;
-                updateNotifBadge();
-                loadNotifications();
-            });
-        })();
+        // The notification bell and avatar/logout menu are now handled by
+        // the shared layout (layouts/admin_console.php), same as every
+        // other page — this page no longer ships its own duplicate copies.
 
         // ---------- generic modal accessibility: Tab-trap for whichever of
         // the 8 modals above is currently open. Escape is deliberately left
@@ -2335,6 +2305,40 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             return blocks.concat(OTHERS).filter(b => b.room === room && b.day === day).length;
         }
 
+        function overviewRoomBlocks(room, day) {
+            return blocks.concat(OTHERS)
+                .filter(b => b.room === room && b.day === day)
+                .sort((a, b) => blockStartRow(a) - blockStartRow(b));
+        }
+
+        function overviewTimeline(room, day, state) {
+            const track = document.createElement('div');
+            track.className = 'ov-timeline-track';
+            overviewRoomBlocks(room, day).forEach(b => {
+                const seg = document.createElement('div');
+                seg.className = 'ov-timeline-seg' + (state === 'red' ? ' is-red' : '');
+                const left = (blockStartRow(b) / CONFIG.totalRows) * 100;
+                const width = ((blockEndRow(b) - blockStartRow(b)) / CONFIG.totalRows) * 100;
+                seg.style.left = left + '%';
+                seg.style.width = width + '%';
+                seg.title = `${b.code}: ${rowTo12h(blockStartRow(b))} - ${rowTo12h(blockEndRow(b))}`;
+                track.appendChild(seg);
+            });
+            return track;
+        }
+
+        function renderOverviewSummary() {
+            const day = overviewState.day;
+            const free = ROOMS.filter(r => overviewRoomLoad(r.name, day) === 0).length;
+            const pct = ROOMS.length ? Math.round((free / ROOMS.length) * 100) : 0;
+            const badge = document.getElementById('overviewSummary');
+            badge.innerHTML = '';
+            const dot = document.createElement('span');
+            dot.className = 'dot';
+            badge.appendChild(dot);
+            badge.appendChild(document.createTextNode(`${ROOMS.length} Active Spaces · ${pct}% Free ${WEEK[day].day}`));
+        }
+
         function renderOverviewControls() {
             const daysBox = document.getElementById('overviewDays');
             daysBox.innerHTML = '';
@@ -2350,22 +2354,43 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 daysBox.appendChild(chip);
             });
 
-            const roomsBox = document.getElementById('overviewRooms');
+            renderOverviewSummary();
+
+            const roomsBox = document.getElementById('overviewRoomsWrap');
             roomsBox.innerHTML = '';
 
             FLOORS.forEach(floor => {
-                const heading = document.createElement('div');
-                heading.className = 'floor-heading';
-                heading.textContent = floor;
-                roomsBox.appendChild(heading);
+                const floorRooms = ROOMS.filter(r => r.floor === floor);
+                if (floorRooms.length === 0) return;
 
-                ROOMS.filter(r => r.floor === floor).forEach(room => {
+                const group = document.createElement('div');
+                group.className = 'ov-floor-group';
+
+                const heading = document.createElement('div');
+                heading.className = 'floor-heading ov-floor-heading';
+                heading.innerHTML = `<span>${floor}</span><span class="count">${floorRooms.length} ${floorRooms.length === 1 ? 'space' : 'spaces'}</span>`;
+                group.appendChild(heading);
+
+                const grid = document.createElement('div');
+                grid.className = 'room-grid overview-rooms';
+
+                floorRooms.forEach(room => {
                     const load = overviewRoomLoad(room.name, overviewState.day);
                     const state = load >= 3 ? 'red' : load >= 2 ? 'yellow' : 'green';
 
                     const card = document.createElement('button');
                     card.type = 'button';
                     card.className = 'room-card ' + state + (room.name === overviewState.room ? ' selected' : '');
+
+                    const top = document.createElement('div');
+                    top.className = 'ov-card-top';
+                    const typeBadge = document.createElement('span');
+                    typeBadge.className = 'ov-type-badge' + (room.is_laboratory ? ' is-lab' : '');
+                    typeBadge.textContent = room.is_laboratory ? 'Laboratory' : (room.type || 'Room');
+                    const capacity = document.createElement('span');
+                    capacity.className = 'ov-capacity';
+                    capacity.textContent = room.capacity > 0 ? `Cap: ${room.capacity}` : '';
+                    top.append(typeBadge, capacity);
 
                     const head = document.createElement('div');
                     head.className = 'room-head';
@@ -2378,16 +2403,25 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
                     const status = document.createElement('div');
                     status.className = 'room-status';
-                    status.textContent = load === 0 ? 'Free all day' : `${load} ${load === 1 ? 'class' : 'classes'}`;
+                    status.textContent = load === 0 ? 'Free all day' : `${load} ${load === 1 ? 'class' : 'classes'} plotted`;
 
-                    card.append(head, status);
+                    const timelineWrap = document.createElement('div');
+                    timelineWrap.className = 'ov-timeline';
+                    timelineWrap.appendChild(overviewTimeline(room.name, overviewState.day, state));
+
+                    card.append(top, head, status, timelineWrap);
                     card.addEventListener('click', () => {
                         overviewState.room = room.name;
                         renderRoomOverview();
                     });
-                    roomsBox.appendChild(card);
+                    grid.appendChild(card);
                 });
+
+                group.appendChild(grid);
+                roomsBox.appendChild(group);
             });
+
+            document.getElementById('overviewListLabel').textContent = `Schedule — ${overviewState.room}`;
         }
 
         function overviewSectionLabel(b) {
@@ -2482,6 +2516,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         });
 
         document.getElementById('overviewClose').addEventListener('click', () => overviewModal.classList.remove('open'));
+        document.getElementById('overviewCloseBottom').addEventListener('click', () => overviewModal.classList.remove('open'));
         overviewModal.addEventListener('click', e => { if (e.target === overviewModal) overviewModal.classList.remove('open'); });
 
         // ===== Faculty context panel =====

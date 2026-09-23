@@ -38,7 +38,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     </div>
 </div>
 
-<div class="panel" id="feedback" style="display:none;"></div>
+<div id="feedback" class="flash" style="display:none;"></div>
 
 <div class="panel">
     <?php if ($offering !== null): ?>
@@ -88,7 +88,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     function showFeedback(message, isError) {
         const el = document.getElementById('feedback');
         el.style.display = 'block';
-        el.style.color = isError ? '#a11414' : '#056945';
+        el.className = 'flash ' + (isError ? 'error' : 'success');
         el.textContent = message;
     }
 

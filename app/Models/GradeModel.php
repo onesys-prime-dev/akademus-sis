@@ -206,6 +206,23 @@ class GradeModel extends Model
             ->set(['status' => 'locked', 'locked_at' => date('Y-m-d H:i:s'), 'locked_by' => $chairpersonId])
             ->update();
 
+        // Locked is the moment a grade becomes visible to the student
+        // (forStudent() only returns status = 'locked' rows) — the right
+        // point to notify, not on draft/submit. helper('url') is loaded
+        // explicitly rather than assumed, since Models (unlike
+        // BaseController) don't get it autoloaded.
+        helper('url');
+        $notifications = new NotificationModel();
+
+        foreach ($rows as $row) {
+            $notifications->notify(
+                (int) $row['user_id'],
+                'grade_posted',
+                "Your grade for {$row['subject_code']} ({$row['academic_year']}) has been posted.",
+                site_url('student/grades')
+            );
+        }
+
         return ['ok' => true];
     }
 
@@ -293,6 +310,16 @@ class GradeModel extends Model
 
         $db->transComplete();
 
+        if ($db->transStatus() !== false) {
+            helper('url');
+            (new NotificationModel())->notify(
+                (int) $request['requested_by'],
+                'grade_change_approved',
+                "Your grade change request for {$grade['subject_code']} was approved.",
+                site_url('faculty/dashboard')
+            );
+        }
+
         return ['ok' => $db->transStatus() !== false];
     }
 
@@ -311,6 +338,18 @@ class GradeModel extends Model
             'review_notes' => $notes,
             'reviewed_at'  => date('Y-m-d H:i:s'),
         ]);
+
+        $grade = $this->find((int) $request['grade_id']);
+
+        if ($grade !== null) {
+            helper('url');
+            (new NotificationModel())->notify(
+                (int) $request['requested_by'],
+                'grade_change_rejected',
+                "Your grade change request for {$grade['subject_code']} was rejected." . ($notes ? " Reason: {$notes}" : ''),
+                site_url('faculty/dashboard')
+            );
+        }
 
         return ['ok' => true];
     }

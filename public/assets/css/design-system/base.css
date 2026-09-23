@@ -6,6 +6,27 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Every "tab" in this app that isn't already a client-side JS toggle is a
+   real full-page navigation (CodeIgniter renders each route server-side —
+   there's no SPA router here, and adding one to animate page-to-page
+   transitions would be a much bigger architectural change than this pass
+   calls for). This one line opts every same-origin navigation into the
+   browser's native cross-document View Transition: a soft crossfade
+   between the old and new page instead of a hard cut. Chrome/Edge 126+
+   apply it automatically; everywhere else this rule is simply ignored and
+   navigation behaves exactly as it does today — zero JS, zero risk. */
+@view-transition {
+    navigation: auto;
+}
+
+@media not (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation-duration: var(--motion-normal, 220ms);
+        animation-timing-function: var(--ease-standard, ease);
+    }
+}
+
 /* Visible, consistent focus ring everywhere — never remove outline without
    replacing it. Mouse/touch users don't get the ring (:focus-visible),
    keyboard users always do. */

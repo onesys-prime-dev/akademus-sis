@@ -87,9 +87,27 @@
     --shadow-md: 0 8px 24px -6px rgba(0,0,0,.08), 0 0 1px rgba(0,0,0,.1);
     --shadow-lg: 0 20px 50px -12px rgba(0,0,0,.25);
 
-    /* ---- Motion ---- */
-    --transition-fast:   120ms ease;
-    --transition-normal: 200ms ease;
+    /* ---- Motion ----
+       A small, consistent set of durations + easings used everywhere instead
+       of one-off transition values per component. Pick a duration by what's
+       changing (micro-interaction vs. a tab/content swap vs. a modal), and
+       an easing by direction (something entering vs. leaving vs. a toggle
+       that should feel alive). Kept restrained on purpose — quick response,
+       minimal overshoot, fast settling; never the bouncy/elastic kind. */
+    --motion-instant: 100ms;
+    --motion-fast:     150ms;
+    --motion-normal:   220ms;
+    --motion-slow:     320ms;
+
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);   /* symmetric, default */
+    --ease-enter:    cubic-bezier(0.22, 1, 0.36, 1);  /* decelerate — things appearing/growing */
+    --ease-exit:     cubic-bezier(0.4, 0, 1, 1);      /* accelerate — things leaving/shrinking */
+    --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1); /* slight settle-overshoot — active-state snaps, toggles */
+
+    /* Back-compat aliases — existing rules already reference these; keep
+       them pointing at the new scale instead of duplicating values. */
+    --transition-fast:   var(--motion-fast) var(--ease-standard);
+    --transition-normal: var(--motion-normal) var(--ease-standard);
     --focus-ring: 0 0 0 3px var(--color-primary-soft);
 
     /* ---- Z-index scale ---- */

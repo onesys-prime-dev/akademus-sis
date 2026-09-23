@@ -23,25 +23,85 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <?= $this->section('styles') ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
 <style>
-    .section-card { margin-bottom: 14px; }
-    .section-card__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .section-card__title { font-size: 14.5px; font-weight: 700; color: var(--color-text-primary); }
-    .section-card__meta { font-size: 12px; color: var(--color-text-secondary); }
-    .roster-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--color-border); }
-    .roster-row:last-child { border-bottom: none; }
-    .roster-row__name { font-size: 13.5px; font-weight: 600; color: var(--color-text-primary); }
-    .roster-empty { font-size: 12.5px; color: var(--color-text-secondary); padding: 8px 0; }
-    select.ac-inline-select { padding: 7px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font-family: inherit; font-size: 12.5px; background: var(--color-surface-sunken); }
     .icon-btn { border: none; background: none; cursor: pointer; color: var(--color-text-secondary); padding: 4px; border-radius: var(--radius-sm); display: flex; }
     .icon-btn:hover { background: var(--color-danger-soft); color: var(--color-danger); }
-    select.ac-input { width: 100%; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-sunken); font-family: inherit; }
+
+    /* ===== Create Section card ===== */
+    .cs-card { padding: 0; }
+    .cs-card__head { padding: 20px 24px; border-bottom: 1px solid var(--color-border); }
+    .cs-card__title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .cs-card__title-row h2 { margin: 0; font-size: 16px; font-weight: 800; color: var(--color-text-primary); }
+    .cs-card__head p { margin: 6px 0 0; font-size: 12.5px; color: var(--color-text-secondary); }
+
+    .cs-ready-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--color-success-soft); color: #166534; flex: none; }
+    .cs-ready-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); }
+
+    .cs-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; padding: 24px; }
+    .cs-field label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-secondary); margin-bottom: 6px; }
+    .cs-field label .optional { text-transform: none; font-weight: 500; color: var(--color-text-tertiary); }
+    .cs-field select, .cs-field input { width: 100%; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 13.5px; font-family: inherit; color: var(--color-text-primary); background: var(--color-surface); }
+    .cs-field select:focus, .cs-field input:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+    .cs-field .unit-hint { position: relative; }
+    .cs-field .unit-hint input { padding-right: 52px; }
+    .cs-field .unit-hint span { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--color-text-tertiary); pointer-events: none; }
+
+    .cs-form-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px 24px; border-top: 1px solid var(--color-border); flex-wrap: wrap; }
+    .cs-form-footer .hint { font-size: 12px; color: var(--color-text-tertiary); }
+
+    /* ===== Section list ===== */
+    .cs-list-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0 16px; }
+    .cs-list-head h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--color-text-primary); }
+
+    .section-card { margin-bottom: 16px; padding: 0; overflow: hidden; }
+    .section-card:last-child { margin-bottom: 0; }
+    .section-card__head { padding: 20px 24px; border-bottom: 1px solid var(--color-border); }
+    .section-card__top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+    .section-card__title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .section-card__title-row h3 { margin: 0; font-size: 15.5px; font-weight: 800; color: var(--color-text-primary); }
+
+    .cap-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-sm); white-space: nowrap; }
+    .cap-badge--full { background: var(--color-success-soft); color: #166534; }
+    .cap-badge--open { background: var(--color-info-soft); color: var(--color-info); }
+    .cap-badge--unlimited { background: var(--color-surface-sunken); color: var(--color-text-secondary); }
+
+    .section-card__meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--color-text-secondary); margin-top: 4px; }
+    .section-card__meta .dot { color: var(--color-text-tertiary); }
+    .section-card__meta strong { color: var(--color-text-primary); font-weight: 700; }
+
+    .section-card__assign { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .section-card__assign select { min-width: 220px; padding: 9px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-family: inherit; font-size: 12.5px; background: var(--color-surface); color: var(--color-text-primary); }
+    .section-card__assign select:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+
+    .section-card__progress { padding: 16px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--color-border); }
+    .section-card__progress .track { flex: 1; max-width: 360px; height: 6px; border-radius: 999px; background: var(--color-surface-sunken); overflow: hidden; }
+    .section-card__progress .fill { height: 100%; background: var(--color-primary); border-radius: 999px; }
+    .section-card__progress .label { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); white-space: nowrap; }
+
+    table.roster-table { width: 100%; border-collapse: collapse; }
+    table.roster-table th { text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-secondary); background: var(--color-surface-secondary); padding: 10px 24px; border-bottom: 1px solid var(--color-border); }
+    table.roster-table td { padding: 10px 24px; font-size: 13px; color: var(--color-text-primary); border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+    table.roster-table tr:last-child td { border-bottom: none; }
+    table.roster-table tbody tr:hover { background: var(--color-surface-secondary); }
+
+    .roster-student { display: flex; align-items: center; gap: 10px; }
+    .roster-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; color: #fff; flex: none; }
+
+    .roster-empty { font-size: 12.5px; color: var(--color-text-secondary); padding: 20px 24px; }
+
+    @media (max-width: 640px) {
+        .section-card__top { flex-direction: column; align-items: stretch; }
+        .section-card__assign select { min-width: 0; flex: 1; }
+    }
 </style>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 
 <div class="ac-page-header">
-    <div><h2 class="ac-page-header__title">Sections</h2></div>
+    <div>
+        <h2 class="ac-page-header__title">Sections</h2>
+        <p class="ac-page-header__sub">Create sections and manage student rosters for your department.</p>
+    </div>
 </div>
 
 <?php if ($deptName === null): ?>
@@ -53,53 +113,62 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     </div>
 <?php else: ?>
 
-    <div class="panel" id="feedback" style="display:none;"></div>
+    <div id="feedback" class="flash" style="display:none;"></div>
 
-    <div class="panel">
-        <h2>Create a Section</h2>
-        <p class="panel-sub">Sections created here are ready for student assignment right away — no schedule needs to be plotted first.</p>
+    <div class="panel cs-card">
+        <div class="cs-card__head">
+            <div class="cs-card__title-row">
+                <h2>Create a Section</h2>
+                <span class="cs-ready-badge"><span class="cs-ready-dot"></span> Ready to Assign</span>
+            </div>
+            <p>Sections created here are ready for student assignment right away — no schedule needs to be plotted first.</p>
+        </div>
 
-        <div class="field-row">
-            <div class="field">
-                <label>Program</label>
-                <select id="newProgram" class="ac-input">
+        <div class="cs-form-grid">
+            <div class="cs-field">
+                <label for="newProgram">Program</label>
+                <select id="newProgram">
                     <?php foreach ($programs as $p): ?>
                         <option value="<?= esc($p) ?>"><?= esc($p) ?></option>
                     <?php endforeach ?>
                 </select>
             </div>
-            <div class="field">
-                <label>Year Level</label>
-                <select id="newYearLevel" class="ac-input">
+            <div class="cs-field">
+                <label for="newYearLevel">Year Level</label>
+                <select id="newYearLevel">
                     <?php foreach ($yearLevels as $yl): ?>
                         <option value="<?= esc($yl) ?>"><?= esc($yl) ?></option>
                     <?php endforeach ?>
                 </select>
             </div>
-        </div>
-        <div class="field-row">
-            <div class="field">
-                <label>Academic Year</label>
-                <select id="newAcademicYear" class="ac-input">
+            <div class="cs-field">
+                <label for="newAcademicYear">Academic Year</label>
+                <select id="newAcademicYear">
                     <?php foreach ($academicYears as $ay): ?>
                         <option value="<?= esc($ay) ?>"><?= esc($ay) ?></option>
                     <?php endforeach ?>
                 </select>
             </div>
-            <div class="field">
-                <label>Section Name</label>
-                <input type="text" id="newSectionName" placeholder="e.g. 1A" maxlength="20">
+            <div class="cs-field">
+                <label for="newSectionName">Section Name</label>
+                <input type="text" id="newSectionName" placeholder="e.g. AIT3 or 1A" maxlength="20">
+            </div>
+            <div class="cs-field">
+                <label for="newCapacity">Capacity <span class="optional">(Optional)</span></label>
+                <div class="unit-hint">
+                    <input type="number" id="newCapacity" min="1" placeholder="Leave blank for unlimited">
+                    <span>seats</span>
+                </div>
             </div>
         </div>
-        <div class="field">
-            <label>Capacity (optional)</label>
-            <input type="number" id="newCapacity" min="1" placeholder="Leave blank for unlimited" style="max-width:200px;">
-        </div>
 
-        <button type="button" class="btn btn-primary" onclick="createSection()">
-            <span class="material-symbols-outlined" style="font-size:18px;">add</span>
-            Create Section
-        </button>
+        <div class="cs-form-footer">
+            <span class="hint">Newly created sections will appear immediately in your roster directory.</span>
+            <button type="button" class="btn btn-primary" onclick="createSection()">
+                <span class="material-symbols-outlined" style="font-size:18px;">add</span>
+                Create Section
+            </button>
+        </div>
     </div>
 
     <?php if ($sections === []): ?>
@@ -110,43 +179,100 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             </div>
         </div>
     <?php else: ?>
+        <div class="cs-list-head">
+            <h2>Active Department Sections</h2>
+            <span class="ac-badge-active"><?= count($sections) ?> Section<?= count($sections) === 1 ? '' : 's' ?></span>
+        </div>
+
+        <?php
+            $avatarColors = ['#2563eb', '#7c3aed', '#d97706', '#0891b2', '#db2777', '#16a34a'];
+        ?>
         <?php foreach ($sections as $sec): ?>
-            <?php $roster = $rosterBySection[(int) $sec['section_id']] ?? []; ?>
+            <?php
+                $roster = $rosterBySection[(int) $sec['section_id']] ?? [];
+                $count  = count($roster);
+                $cap    = $sec['capacity'];
+
+                if ($cap === null) {
+                    $badgeClass = 'cap-badge--unlimited';
+                    $badgeLabel = 'Unlimited';
+                } elseif ($count >= $cap) {
+                    $badgeClass = 'cap-badge--full';
+                    $badgeLabel = 'Full Capacity';
+                } else {
+                    $remaining  = $cap - $count;
+                    $badgeClass = 'cap-badge--open';
+                    $badgeLabel = $remaining . ' Seat' . ($remaining === 1 ? '' : 's') . ' Available';
+                }
+
+                $pct = ($cap !== null && $cap > 0) ? round($count / $cap * 100) : null;
+            ?>
             <div class="panel section-card">
                 <div class="section-card__head">
-                    <div>
-                        <div class="section-card__title"><?= esc($sec['program']) ?> · <?= esc($sec['year_level']) ?> · Section <?= esc($sec['section']) ?></div>
-                        <div class="section-card__meta">
-                            <?= esc($sec['academic_year']) ?> &middot;
-                            <?= count($roster) ?><?= $sec['capacity'] !== null ? ' / ' . esc($sec['capacity']) : '' ?> student<?= count($roster) === 1 ? '' : 's' ?>
+                    <div class="section-card__top">
+                        <div>
+                            <div class="section-card__title-row">
+                                <h3><?= esc($sec['program']) ?> · <?= esc($sec['year_level']) ?> · Section <?= esc($sec['section']) ?></h3>
+                                <span class="cap-badge <?= $badgeClass ?>"><?= $badgeLabel ?></span>
+                            </div>
+                            <div class="section-card__meta">
+                                <span><?= esc($sec['academic_year']) ?></span>
+                                <span class="dot">&middot;</span>
+                                <span><strong><?= $count ?></strong> student<?= $count === 1 ? '' : 's' ?> enrolled</span>
+                            </div>
+                        </div>
+                        <div class="section-card__assign">
+                            <select id="assign-<?= esc($sec['section_id']) ?>">
+                                <option value="">Add a student…</option>
+                                <?php foreach ($students as $s): ?>
+                                    <?php if ((int) ($s['section_id'] ?? 0) === (int) $sec['section_id']) continue; ?>
+                                    <option value="<?= esc($s['id']) ?>"><?= esc($s['username']) ?><?= $s['section_id'] ? ' (currently assigned elsewhere)' : '' ?></option>
+                                <?php endforeach ?>
+                            </select>
+                            <button type="button" class="btn btn-secondary" onclick="assignStudent(<?= (int) $sec['section_id'] ?>)">Add</button>
+                            <button type="button" class="icon-btn" title="Delete section" onclick='deleteSection(<?= (int) $sec['section_id'] ?>, <?= json_encode($sec['program'] . ' · ' . $sec['year_level'] . ' · Section ' . $sec['section'], JSON_HEX_APOS) ?>)'>
+                                <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
+                            </button>
                         </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <select class="ac-inline-select" id="assign-<?= esc($sec['section_id']) ?>">
-                            <option value="">Add a student…</option>
-                            <?php foreach ($students as $s): ?>
-                                <?php if ((int) ($s['section_id'] ?? 0) === (int) $sec['section_id']) continue; ?>
-                                <option value="<?= esc($s['id']) ?>"><?= esc($s['username']) ?><?= $s['section_id'] ? ' (currently assigned elsewhere)' : '' ?></option>
-                            <?php endforeach ?>
-                        </select>
-                        <button type="button" class="btn btn-secondary" onclick="assignStudent(<?= (int) $sec['section_id'] ?>)">Add</button>
-                        <button type="button" class="icon-btn" title="Delete section" onclick='deleteSection(<?= (int) $sec['section_id'] ?>, <?= json_encode($sec['program'] . ' · ' . $sec['year_level'] . ' · Section ' . $sec['section'], JSON_HEX_APOS) ?>)'>
-                            <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
-                        </button>
-                    </div>
                 </div>
+
+                <?php if ($pct !== null): ?>
+                    <div class="section-card__progress">
+                        <span class="label">Capacity</span>
+                        <div class="track"><div class="fill" style="width:<?= min(100, $pct) ?>%;"></div></div>
+                        <span class="label"><?= $count ?> / <?= esc($cap) ?> (<?= $pct ?>%)</span>
+                    </div>
+                <?php endif ?>
 
                 <?php if ($roster === []): ?>
                     <div class="roster-empty">No students assigned yet.</div>
                 <?php else: ?>
-                    <?php foreach ($roster as $r): ?>
-                        <div class="roster-row">
-                            <div class="roster-row__name"><?= esc($r['username']) ?></div>
-                            <button type="button" class="icon-btn" title="Remove from section" onclick="unassignStudent(<?= (int) $r['id'] ?>)">
-                                <span class="material-symbols-outlined" style="font-size:18px;">close</span>
-                            </button>
-                        </div>
-                    <?php endforeach ?>
+                    <table class="roster-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th style="text-align:right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($roster as $idx => $r): ?>
+                                <tr>
+                                    <td>
+                                        <div class="roster-student">
+                                            <div class="roster-avatar" style="background:<?= $avatarColors[$idx % count($avatarColors)] ?>;"><?= esc(mb_strtoupper(mb_substr($r['username'], 0, 1))) ?></div>
+                                            <span><?= esc($r['username']) ?></span>
+                                        </div>
+                                    </td>
+                                    <td style="text-align:right;">
+                                        <button type="button" class="icon-btn" title="Remove from section" onclick="unassignStudent(<?= (int) $r['id'] ?>)">
+                                            <span class="material-symbols-outlined" style="font-size:18px;">close</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endforeach ?>
+                        </tbody>
+                    </table>
                 <?php endif ?>
             </div>
         <?php endforeach ?>
@@ -161,7 +287,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     function showFeedback(message, isError) {
         const el = document.getElementById('feedback');
         el.style.display = 'block';
-        el.style.color = isError ? '#a11414' : '#056945';
+        el.className = 'flash ' + (isError ? 'error' : 'success');
         el.textContent = message;
     }
 
