@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Libraries\CatalogEntry;
 use CodeIgniter\Model;
 
 class CurriculumModel extends Model
@@ -48,6 +49,39 @@ class CurriculumModel extends Model
             ->where('is_current', 1)
             ->orderBy('version_number', 'DESC')
             ->first();
+    }
+
+    /**
+     * The subjects one curriculum version offers in one term (year level +
+     * semester), catalog-shaped for the schedule-plotting UI — the same
+     * shape CurriculumPresetModel::subjectsForContext() returns, so the two
+     * are interchangeable. `is_lab` comes from the version's own
+     * classification on curriculum_subjects, falling back to the subject's
+     * global default when the curriculum doesn't specify one.
+     *
+     * @param int $semester 1 = 1st, 2 = 2nd, 3 = Summer
+     */
+    public function termSubjects(int $curriculumId, int $yearLevel, int $semester): array
+    {
+        $rows = $this->db->table('curriculum_subjects cs')
+            ->select('s.*, cs.is_laboratory AS assignment_is_laboratory')
+            ->join('subjects s', 's.subject_id = cs.subject_id')
+            ->where('cs.curriculum_id', $curriculumId)
+            ->where('cs.year_level', $yearLevel)
+            ->where('cs.semester', $semester)
+            ->where('cs.is_active', 1)
+            ->where('s.is_active', 1)
+            ->orderBy('s.subject_code')
+            ->get()
+            ->getResultArray();
+
+        return array_map(static function (array $row): array {
+            $isLab = $row['assignment_is_laboratory'] !== null
+                ? (bool) $row['assignment_is_laboratory']
+                : (bool) $row['is_laboratory'];
+
+            return CatalogEntry::fromRow($row, $isLab);
+        }, $rows);
     }
 
     /**

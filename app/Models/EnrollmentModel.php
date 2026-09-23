@@ -75,6 +75,15 @@ class EnrollmentModel extends Model
             return ['ok' => false, 'error' => "Prerequisite not met for {$subjectCode}: " . implode(', ', $missing) . ' must be passed first.'];
         }
 
+        $outsideCurriculum = $this->outsideCurriculum($userId, $subjectCode);
+
+        if ($outsideCurriculum !== null) {
+            $db->transRollback();
+            $db->resetTransStatus();
+
+            return ['ok' => false, 'error' => $outsideCurriculum];
+        }
+
         $conflict = $this->findConflict($userId, $section['academic_year'], $meetings, $subjectCode);
 
         if ($conflict !== null) {
@@ -234,6 +243,47 @@ class EnrollmentModel extends Model
             'start' => substr($r['start_time'], 0, 5),
             'end'   => substr($r['end_time'], 0, 5),
         ], $rows);
+    }
+
+    /**
+     * A student pinned to a curriculum version (students.curriculum_id) may
+     * only enroll in subjects that belong to that version — the handbook's
+     * "per-subject validation against the student's curriculum version".
+     * Any year level/semester counts (irregular students legitimately take
+     * subjects out of sequence); it is membership that is enforced.
+     *
+     * Skipped (returns null) when the user isn't a student, has no
+     * curriculum assigned yet, or the code isn't a catalog Subject row —
+     * those are data gaps, not the student's fault, and blocking on them
+     * would freeze enrollment before the backfill is done.
+     *
+     * @return string|null an error message, or null when enrollment may proceed
+     */
+    private function outsideCurriculum(int $userId, string $subjectCode): ?string
+    {
+        $student = $this->db->table('students')
+            ->select('curriculum_id')
+            ->where('user_id', $userId)
+            ->get()
+            ->getRowArray();
+
+        if ($student === null || $student['curriculum_id'] === null) {
+            return null;
+        }
+
+        $subject = $this->db->table('subjects')->select('subject_id')->where('subject_code', $subjectCode)->get()->getRowArray();
+
+        if ($subject === null) {
+            return null;
+        }
+
+        $inCurriculum = $this->db->table('curriculum_subjects')
+            ->where('curriculum_id', (int) $student['curriculum_id'])
+            ->where('subject_id', (int) $subject['subject_id'])
+            ->where('is_active', 1)
+            ->countAllResults() > 0;
+
+        return $inCurriculum ? null : "{$subjectCode} is not part of your assigned curriculum.";
     }
 
     /**

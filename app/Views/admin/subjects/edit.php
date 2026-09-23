@@ -92,4 +92,42 @@
     </form>
 </div>
 
+<div class="ac-card" style="max-width:640px; margin-top:16px;">
+    <h3 style="margin:0 0 4px; font-size:15px;">Prerequisites</h3>
+    <p style="font-size:12px; color:var(--color-text-secondary); margin:0 0 12px;">
+        A student must have a <b>locked, passing grade</b> in every prerequisite before they can enroll in
+        <b><?= esc($subject['subject_code']) ?></b>.
+    </p>
+
+    <?php if ($prerequisites === []): ?>
+        <p style="font-size:13px; color:var(--color-text-secondary); margin:0 0 12px;">No prerequisites — any student may enroll.</p>
+    <?php else: ?>
+        <ul style="list-style:none; padding:0; margin:0 0 12px;">
+            <?php foreach ($prerequisites as $p): ?>
+                <li style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--color-border, #e5e7eb);">
+                    <span><b><?= esc($p['subject_code']) ?></b> — <?= esc($p['subject_name']) ?></span>
+                    <form method="post" action="<?= site_url('admin/subjects/' . $subject['subject_id'] . '/prerequisites/' . $p['subject_id'] . '/remove') ?>" onsubmit="return confirm('Remove <?= esc($p['subject_code'], 'js') ?> as a prerequisite?');">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="ac-btn ac-btn-secondary">Remove</button>
+                    </form>
+                </li>
+            <?php endforeach ?>
+        </ul>
+    <?php endif ?>
+
+    <form method="post" action="<?= site_url('admin/subjects/' . $subject['subject_id'] . '/prerequisites') ?>" style="display:flex; gap:10px; align-items:flex-end;">
+        <?= csrf_field() ?>
+        <div class="ac-field" style="flex:1; margin:0;">
+            <label for="prerequisite_subject_id">Add prerequisite</label>
+            <select id="prerequisite_subject_id" name="prerequisite_subject_id" class="ac-input" required <?= $candidates === [] ? 'disabled' : '' ?>>
+                <option value=""><?= $candidates === [] ? 'No eligible subjects' : 'Choose a subject…' ?></option>
+                <?php foreach ($candidates as $c): ?>
+                    <option value="<?= esc($c['subject_id'], 'attr') ?>"><?= esc($c['subject_code']) ?> — <?= esc($c['subject_name']) ?></option>
+                <?php endforeach ?>
+            </select>
+        </div>
+        <button type="submit" class="ac-btn ac-btn-primary" <?= $candidates === [] ? 'disabled' : '' ?>>Add</button>
+    </form>
+</div>
+
 <?= $this->endSection() ?>

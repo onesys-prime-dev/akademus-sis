@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Libraries\CatalogEntry;
 use CodeIgniter\Model;
 
 class CurriculumPresetModel extends Model
@@ -17,9 +18,6 @@ class CurriculumPresetModel extends Model
     ];
 
     protected $useTimestamps = true;
-
-    /** Block accent colors, assigned per subject by a stable hash (mirrors ChairpersonController::COLORS). */
-    private const COLORS = ['blue', 'purple', 'cyan', 'red', 'green', 'yellow'];
 
     /**
      * The preset for one AY + program + year level, or null when the
@@ -117,25 +115,11 @@ class CurriculumPresetModel extends Model
             ->getResultArray();
 
         return array_map(static function (array $row): array {
-            $units    = (float) $row['units'];
-            $duration = (float) $row['contact_hours'];
-            $isLab    = $row['assignment_is_laboratory'] !== null
+            $isLab = $row['assignment_is_laboratory'] !== null
                 ? (bool) $row['assignment_is_laboratory']
                 : (bool) $row['is_laboratory'];
 
-            $fmt = static fn (float $n): string => $n == (int) $n ? (string) (int) $n : (string) $n;
-
-            return [
-                'subject_id'   => (int) $row['subject_id'],
-                'code'         => $row['subject_code'],
-                'title'        => $row['subject_name'],
-                'units'        => $fmt($units) . ' Units',
-                'hours'        => $fmt($duration) . ' hours',
-                'duration'     => $duration,
-                'weekly_hours' => (float) ($row['weekly_hours'] ?? 0),
-                'is_lab'       => $isLab,
-                'color'        => self::COLORS[array_sum(array_map('ord', str_split($row['subject_code']))) % count(self::COLORS)],
-            ];
+            return CatalogEntry::fromRow($row, $isLab);
         }, $rows);
     }
 }

@@ -33,6 +33,8 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     // $routes->post('subjects/delete/(:num)', 'Admin\SubjectController::delete/$1');
 
     $routes->post('subjects/toggle-status/(:num)', 'Admin\SubjectController::toggleStatus/$1');
+    $routes->post('subjects/(:num)/prerequisites', 'Admin\SubjectController::addPrerequisite/$1');
+    $routes->post('subjects/(:num)/prerequisites/(:num)/remove', 'Admin\SubjectController::removePrerequisite/$1/$2');
 
     $routes->get('curriculum'               , 'Admin\CurriculumController::index');
     $routes->get('curriculum/create'        , 'Admin\CurriculumController::create');

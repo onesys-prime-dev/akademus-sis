@@ -4,6 +4,7 @@ use App\Models\EnrollmentModel;
 use App\Models\SectionModel;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
+use Tests\Support\Traits\SeedsUsers;
 
 /**
  * @internal
@@ -11,9 +12,17 @@ use CodeIgniter\Test\DatabaseTestTrait;
 final class EnrollmentModelTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
+    use SeedsUsers;
 
     protected $refresh   = true;
     protected $namespace = ['CodeIgniter\Shield', 'App'];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seedUsers(1, 2, 10, 11, 20, 30, 40);
+    }
 
     private function makeSection(array $overrides = []): array
     {

@@ -5,6 +5,7 @@ use App\Models\EnrollmentModel;
 use App\Models\SectionModel;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
+use Tests\Support\Traits\SeedsUsers;
 
 /**
  * Section Merging — the scenario from the SIS development roadmap: two
@@ -16,9 +17,17 @@ use CodeIgniter\Test\DatabaseTestTrait;
 final class CourseOfferingModelTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
+    use SeedsUsers;
 
     protected $refresh   = true;
     protected $namespace = ['CodeIgniter\Shield', 'App'];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seedUsers(100, 101, 102, 200, 201, 202);
+    }
 
     private function makeSection(string $name, ?int $capacity = null): array
     {

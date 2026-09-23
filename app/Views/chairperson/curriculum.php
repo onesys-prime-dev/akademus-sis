@@ -226,7 +226,12 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             <?php endforeach ?>
         </div>
 
-        <?php if (! $is_active_year): ?>
+        <?php if (! empty($managed_curriculum)): ?>
+            <div class="readonly-banner">
+                <span class="dot"></span>
+                <span>These subjects come from published curriculum <b><?= esc($managed_curriculum['curriculum_code']) ?></b> (v<?= esc($managed_curriculum['version_number']) ?>) and are read-only here. To change them, publish a new curriculum version under Admin → Curriculum.</span>
+            </div>
+        <?php elseif (! $is_active_year): ?>
             <div class="readonly-banner">
                 <span class="dot"></span>
                 <span><b><?= esc($selected['academic_year']) ?></b> is not the active term — changes here are read-only.</span>

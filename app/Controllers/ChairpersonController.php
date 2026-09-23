@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use App\Libraries\ScheduleOverlap;
 use App\Models\AcademicYearModel;
+use App\Libraries\TermCurriculum;
 use App\Models\CurriculumPresetModel;
 use App\Models\DepartmentModel;
 use App\Models\FacultyAssignmentModel;
@@ -99,11 +100,56 @@ class ChairpersonController extends BaseController
      */
     private function contextSubjects(string $academicYear, string $program, string $yearLevel): array
     {
+        // A published curriculum version, when the program has one, is the
+        // source of truth for what a term offers. Programs not cut over yet
+        // fall through to the legacy per-term preset below.
+        $term = (new TermCurriculum())->forContext($academicYear, $program, $yearLevel);
+
+        if ($term !== null) {
+            return $term['subjects'];
+        }
+
         $preset = (new CurriculumPresetModel())->forContext($academicYear, $program, $yearLevel);
 
         return $preset === null
             ? []
             : (new CurriculumPresetModel())->subjectsForContext($academicYear, $program, $yearLevel);
+    }
+
+    /**
+     * Subject codes offered in one context, or null when nothing has been
+     * configured for it (legacy preset missing). A published curriculum
+     * answers authoritatively — an empty list means "offers nothing".
+     *
+     * @return list<string>|null
+     */
+    private function termSubjectCodes(array $context): ?array
+    {
+        $term = (new TermCurriculum())->forContext($context['academic_year'], $context['program'], $context['year_level']);
+
+        if ($term !== null) {
+            return array_column($term['subjects'], 'code');
+        }
+
+        $preset = (new CurriculumPresetModel())->forContext($context['academic_year'], $context['program'], $context['year_level']);
+
+        return $preset === null ? null : (json_decode($preset['subject_codes'], true) ?: []);
+    }
+
+    /**
+     * Non-null (a user-facing message) when this context's program is
+     * governed by a published curriculum, in which case the per-term
+     * preset endpoints must not be used to change what it offers.
+     */
+    private function curriculumManagedMessage(array $context): ?string
+    {
+        $curriculum = (new TermCurriculum())->curriculumFor($context['program']);
+
+        if ($curriculum === null) {
+            return null;
+        }
+
+        return "This program's subjects come from published curriculum {$curriculum['curriculum_code']} (v{$curriculum['version_number']}). To change them, publish a new curriculum version under Admin → Curriculum.";
     }
 
     /**
@@ -213,15 +259,10 @@ class ChairpersonController extends BaseController
             $profMap
         );
 
-        // Curriculum preset: which catalog subjects belong to this
-        // AY + program + year level (shared by all sections).
-        $preset = (new CurriculumPresetModel())->forContext(
-            $context['academic_year'],
-            $context['program'],
-            $context['year_level']
-        );
-
-        $presetCodes = $preset === null ? null : (json_decode($preset['subject_codes'], true) ?: []);
+        // Which catalog subjects belong to this AY + program + year level
+        // (shared by all sections) — from the published curriculum when the
+        // program has one, else the legacy preset.
+        $presetCodes = $this->termSubjectCodes($context);
 
         // Curriculum-specific subjects (is_lab reflects THIS curriculum's
         // assignment) — empty when this exact (academic_year, program,
@@ -939,6 +980,10 @@ class ChairpersonController extends BaseController
             $context[$key] = $payload['context'][$key];
         }
 
+        if (($managedMessage = $this->curriculumManagedMessage($context)) !== null) {
+            return $this->fail($managedMessage);
+        }
+
         $catalog = array_column($this->catalog($context['program']), null, 'code');
         $entries = [];
         $seen    = [];
@@ -1010,6 +1055,10 @@ class ChairpersonController extends BaseController
             $context[$key] = $payload['context'][$key];
         }
 
+        if (($managedMessage = $this->curriculumManagedMessage($context)) !== null) {
+            return $this->fail($managedMessage);
+        }
+
         $code = (string) $payload['code'];
 
         $presets = new CurriculumPresetModel();
@@ -1052,6 +1101,10 @@ class ChairpersonController extends BaseController
                 return $this->fail("Invalid or missing context: {$key}");
             }
             $context[$key] = $payload['context'][$key];
+        }
+
+        if (($managedMessage = $this->curriculumManagedMessage($context)) !== null) {
+            return $this->fail($managedMessage);
         }
 
         $sourceAcademicYear = (string) $payload['source_academic_year'];
@@ -1768,9 +1821,11 @@ class ChairpersonController extends BaseController
 
         $context = $this->contextFromRequest();
 
-        $presets     = new CurriculumPresetModel();
-        $preset      = $presets->forContext($context['academic_year'], $context['program'], $context['year_level']);
-        $presetCodes = $preset === null ? null : (json_decode($preset['subject_codes'], true) ?: []);
+        // When a published curriculum governs this program, the term's
+        // subject list is generated from it (read-only here); otherwise the
+        // legacy per-term preset is what the chairperson edits.
+        $managed     = (new TermCurriculum())->forContext($context['academic_year'], $context['program'], $context['year_level']);
+        $presetCodes = $this->termSubjectCodes($context);
 
         // Where each of this program's catalog subjects is currently
         // assigned — every (academic_year+semester, year_level) it's part
@@ -1804,7 +1859,9 @@ class ChairpersonController extends BaseController
             // the currently active one — unlike Schedule Plotting (which
             // touches live rooms/faculty), building a subject list here has
             // no scheduling side effects, so it's never read-only.
-            'is_active_year'    => true,
+            // ...except when a published curriculum governs the program:
+            // then this page is a read-only view of the generated term list.
+            'is_active_year'    => $managed === null,
             'catalog'           => $this->catalog($context['program']),
             'preset_codes'      => $presetCodes,
             // Curriculum-specific is_lab per assigned subject — this is
@@ -1817,8 +1874,12 @@ class ChairpersonController extends BaseController
             // subjects existed globally, including ones only ever assigned
             // under a different semester — the opposite of what semester
             // isolation is for).
-            'assigned_subjects' => $preset === null ? [] : $presets->subjectsForContext($context['academic_year'], $context['program'], $context['year_level']),
+            'assigned_subjects' => $this->contextSubjects($context['academic_year'], $context['program'], $context['year_level']),
             'usage_by_code'     => $usageByCode,
+            // The published curriculum version driving this term, or null
+            // for a legacy (preset-managed) program. Drives the read-only
+            // state of the page.
+            'managed_curriculum' => $managed['curriculum'] ?? null,
         ]);
     }
 
@@ -2143,11 +2204,9 @@ class ChairpersonController extends BaseController
                 ->whereIn('program', $programs)
                 ->countAllResults();
 
-            $presets = new CurriculumPresetModel();
-
             foreach ($programs as $program) {
                 foreach (self::FILTERS['year_level'] as $yearLevel) {
-                    if ($presets->forContext($activeYear, $program, $yearLevel) !== null) {
+                    if ($this->termSubjectCodes(['academic_year' => $activeYear, 'program' => $program, 'year_level' => $yearLevel]) !== null) {
                         $curriculumSet++;
                     }
                 }

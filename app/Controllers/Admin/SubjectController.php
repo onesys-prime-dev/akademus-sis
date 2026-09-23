@@ -5,6 +5,7 @@ namespace App\Controllers\Admin;
 use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Models\SubjectModel;
+use App\Models\SubjectPrerequisiteModel;
 
 class SubjectController extends BaseController
 {
@@ -77,9 +78,13 @@ class SubjectController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
+        $prerequisites = new SubjectPrerequisiteModel();
+
         return view('admin/subjects/edit', [
-            'subject'     => $subject,
-            'activeAdmin' => 'subjects',
+            'subject'       => $subject,
+            'prerequisites' => $prerequisites->forSubject((int) $id),
+            'candidates'    => $prerequisites->candidatesFor((int) $id),
+            'activeAdmin'   => 'subjects',
         ]);
     }
 
@@ -125,6 +130,30 @@ class SubjectController extends BaseController
         return redirect()
             ->to('/admin/subjects')
             ->with('message', 'Subjects updated successfully.');
+    }
+
+    public function addPrerequisite($id)
+    {
+        if (! $this->validate(['prerequisite_subject_id' => 'required|is_natural_no_zero'])) {
+            return redirect()->to('/admin/subjects/edit/' . $id)->with('errors', ['Choose a subject to add as a prerequisite.']);
+        }
+
+        $result = (new SubjectPrerequisiteModel())->addPrerequisite((int) $id, (int) $this->request->getPost('prerequisite_subject_id'));
+
+        if (! $result['ok']) {
+            return redirect()->to('/admin/subjects/edit/' . $id)->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to('/admin/subjects/edit/' . $id)->with('message', 'Prerequisite added.');
+    }
+
+    public function removePrerequisite($id, $prerequisiteId)
+    {
+        $removed = (new SubjectPrerequisiteModel())->removePrerequisite((int) $id, (int) $prerequisiteId);
+
+        return redirect()
+            ->to('/admin/subjects/edit/' . $id)
+            ->with($removed ? 'message' : 'errors', $removed ? 'Prerequisite removed.' : ['That prerequisite was not set.']);
     }
 
     // public function delete($id)
