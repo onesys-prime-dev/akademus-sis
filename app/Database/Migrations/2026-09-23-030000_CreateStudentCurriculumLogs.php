@@ -35,8 +35,9 @@ class CreateStudentCurriculumLogs extends Migration
                 'null' => true,
             ],
             'changed_by' => [
-                'type' => 'INT',
-                'null' => true,
+                'type'     => 'INT',
+                'unsigned' => true,
+                'null'     => true,
             ],
             'created_at' => [
                 'type' => 'DATETIME',

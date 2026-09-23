@@ -116,6 +116,11 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->get('grading-scales'               , 'Admin\GradingScaleController::index');
     $routes->post('grading-scales/store'        , 'Admin\GradingScaleController::store');
     $routes->post('grading-scales/set-active/(:num)', 'Admin\GradingScaleController::setActive/$1');
+
+    // notifications (shared controller, scoped by auth()->id())
+    $routes->get('notifications', 'NotificationController::index');
+    $routes->post('notifications/mark-read', 'NotificationController::markRead');
+    $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
 });
 
 $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) {
@@ -168,6 +173,11 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->post('enroll', 'StudentEnrollment::enroll');
     $routes->post('enroll/block', 'StudentEnrollment::enrollBlock');
     $routes->get('grades', 'StudentGrades::index');
+
+    // notifications (shared controller, scoped by auth()->id())
+    $routes->get('notifications', 'NotificationController::index');
+    $routes->post('notifications/mark-read', 'NotificationController::markRead');
+    $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
 });
 
 $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($routes) {

@@ -25,7 +25,7 @@
             <?php if ($department['chair']): ?>
                 Chairperson: <?= esc($department['chair']['username']) ?>
             <?php else: ?>
-                <span style="color:#d97706; font-weight:700;">No chairperson assigned</span>
+                <span style="color:var(--color-warning); font-weight:700;">No chairperson assigned</span>
             <?php endif ?>
             <span class="ac-status-dot <?= $department['is_active'] ? 'ac-status-dot--active' : 'ac-status-dot--inactive' ?>" style="margin-left:12px;">
                 <?= $department['is_active'] ? 'Active' : 'Inactive' ?>
@@ -79,11 +79,11 @@
 
         <div class="ac-metric-card">
             <div class="ac-metric-card__top">
-                <span class="material-symbols-outlined" style="color:#515f74;">account_balance</span>
-                <span style="font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#515f74;">College</span>
+                <span class="material-symbols-outlined" style="color:var(--color-text-secondary);">account_balance</span>
+                <span style="font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--color-text-secondary);">College</span>
             </div>
             <p class="ac-metric-card__text"><?= esc($college['name']) ?> (<?= esc($college['code']) ?>)</p>
-            <p class="ac-metric-card__note"><a href="<?= site_url('admin/departments/' . $college['dept_id']) ?>" style="color:#0037b0; text-decoration:none;">View college &rarr;</a></p>
+            <p class="ac-metric-card__note"><a href="<?= site_url('admin/departments/' . $college['dept_id']) ?>" style="color:var(--color-primary); text-decoration:none;">View college &rarr;</a></p>
         </div>
 
     </div>
@@ -93,7 +93,7 @@
         <!-- Faculty members -->
         <div class="ac-panel">
             <div class="ac-panel__head">
-                <h3><span class="material-symbols-outlined" style="vertical-align:-5px; color:#0037b0; margin-right:6px;">badge</span>Faculty Members</h3>
+                <h3><span class="material-symbols-outlined" style="vertical-align:-5px; color:var(--color-primary); margin-right:6px;">badge</span>Faculty Members</h3>
                 <button type="button" onclick="acOpenModal('modalAddFaculty')" class="ac-btn-outline">+ Add Faculty</button>
             </div>
             <div>
@@ -180,7 +180,7 @@
         <!-- Programs -->
         <div class="ac-panel">
             <div class="ac-panel__head">
-                <h3><span class="material-symbols-outlined" style="vertical-align:-5px; color:#0037b0; margin-right:6px;">local_library</span>Programs</h3>
+                <h3><span class="material-symbols-outlined" style="vertical-align:-5px; color:var(--color-primary); margin-right:6px;">local_library</span>Programs</h3>
                 <button type="button" onclick="acOpenModal('modalAddProgram')" class="ac-btn-outline">+ Add Program</button>
             </div>
             <div>
@@ -266,7 +266,7 @@
                     </select>
                 </div>
                 <div class="ac-notice">
-                    <span class="material-symbols-outlined" style="font-size:14px; color:#1d4ed8; margin-top:1px;">info</span>
+                    <span class="material-symbols-outlined" style="font-size:14px; color:var(--color-info); margin-top:1px;">info</span>
                     <span class="ac-notice__text">Currently under <?= esc($college['name']) ?>. Transferring moves this department (and its chairperson/faculty scheduling scope) to the selected college.</span>
                 </div>
             </div>
@@ -303,7 +303,7 @@
                     <input type="email" name="email" class="ac-input" placeholder="mreyes@spum.edu.ph" value="<?= esc($department['chair']['email'] ?? '') ?>" required>
                 </div>
                 <div class="ac-notice">
-                    <span class="material-symbols-outlined" style="font-size:14px; color:#1d4ed8; margin-top:1px;">info</span>
+                    <span class="material-symbols-outlined" style="font-size:14px; color:var(--color-info); margin-top:1px;">info</span>
                     <span class="ac-notice__text">This will set the account as <?= esc($department['name']) ?>'s chairperson, replacing the current one if any.</span>
                 </div>
             </div>

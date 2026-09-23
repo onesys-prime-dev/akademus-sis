@@ -1,188 +1,177 @@
-<!DOCTYPE html>
-<html lang="en">
+<?= $this->extend('layouts/admin_console') ?>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>My Schedule</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/tokens.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/tokens.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/base.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/base.css') ?>">
-    <style>
-        <?= $this->include('components/shell/style') ?>
-    </style>
-</head>
+<?php
+$activeAdmin   = 'schedule';
+$pageTitle     = 'My Schedule';
+$brandSub      = 'Student Portal';
+$userName      = auth()->user()->username;
+$userRoleLabel = 'Student';
+$navGroups     = [
+    '' => [
+        'dashboard' => ['label' => 'Dashboard',   'icon' => 'home',           'url' => 'student/dashboard'],
+        'schedule'  => ['label' => 'My Schedule', 'icon' => 'calendar_month', 'url' => 'student/schedule'],
+        'grades'    => ['label' => 'My Grades',   'icon' => 'grade',          'url' => 'student/grades'],
+        'profile'   => ['label' => 'Profile',     'icon' => 'person',         'url' => 'student/profile'],
+    ],
+];
+$this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
+?>
 
-<body>
+<?= $this->section('styles') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
+<?= $this->endSection() ?>
 
-    <?php
-    $activePage  = 'schedule';
-    $pageTitle   = 'My Schedule';
-    $userName    = auth()->user()->username;
-    $userRole    = 'Student';
-    $settingsUrl = site_url('student/profile');
-    $this->setData(compact('activePage', 'pageTitle', 'userName', 'userRole', 'settingsUrl'));
-    ?>
+<?= $this->section('content') ?>
 
-    <?= $this->include('components/shell/student_nav') ?>
+<?php
+$days  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+$byDay = array_fill(0, 6, []);
 
-    <div class="app-main">
+foreach ($meetings as $meeting) {
+    $byDay[(int) $meeting['day']][] = $meeting;
+}
 
-        <?= $this->include('components/shell/topbar') ?>
+foreach ($byDay as &$dayMeetings) {
+    usort($dayMeetings, static fn (array $a, array $b) => strcmp($a['start_time'], $b['start_time']));
+}
+unset($dayMeetings);
 
-        <div class="content">
+$colors = [
+    'blue'   => ['bg' => '#e0edff', 'border' => '#0040A6', 'text' => '#00296b'],
+    'purple' => ['bg' => '#f1e6ff', 'border' => '#7c3aed', 'text' => '#4c1d95'],
+    'cyan'   => ['bg' => '#dff8fb', 'border' => '#0891b2', 'text' => '#164e63'],
+    'red'    => ['bg' => '#fee2e2', 'border' => '#dc2626', 'text' => '#7f1d1d'],
+    'green'  => ['bg' => '#dcfce7', 'border' => '#16a34a', 'text' => '#14532d'],
+    'yellow' => ['bg' => '#fef9c3', 'border' => '#ca8a04', 'text' => '#713f12'],
+];
 
-            <?php
-            $days  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            $byDay = array_fill(0, 6, []);
+$gridStartMin = 7 * 60;
+$gridEndMin   = 19 * 60;
+$rowMinutes   = 30;
+$totalRows    = (int) (($gridEndMin - $gridStartMin) / $rowMinutes);
 
-            foreach ($meetings as $meeting) {
-                $byDay[(int) $meeting['day']][] = $meeting;
-            }
+$toMinutes = static function (string $hhmm) {
+    [$h, $m] = array_map('intval', explode(':', $hhmm));
+    return $h * 60 + $m;
+};
+?>
 
-            foreach ($byDay as &$dayMeetings) {
-                usort($dayMeetings, static fn (array $a, array $b) => strcmp($a['start_time'], $b['start_time']));
-            }
-            unset($dayMeetings);
+<div class="ac-page-header">
+    <div><h2 class="ac-page-header__title">My Schedule</h2></div>
+</div>
 
-            $colors = [
-                'blue'   => ['bg' => '#e0edff', 'border' => '#0040A6', 'text' => '#00296b'],
-                'purple' => ['bg' => '#f1e6ff', 'border' => '#7c3aed', 'text' => '#4c1d95'],
-                'cyan'   => ['bg' => '#dff8fb', 'border' => '#0891b2', 'text' => '#164e63'],
-                'red'    => ['bg' => '#fee2e2', 'border' => '#dc2626', 'text' => '#7f1d1d'],
-                'green'  => ['bg' => '#dcfce7', 'border' => '#16a34a', 'text' => '#14532d'],
-                'yellow' => ['bg' => '#fef9c3', 'border' => '#ca8a04', 'text' => '#713f12'],
-            ];
+<div class="panel">
+    <?php if ($meetings === []): ?>
+        <div class="empty-state">
+            <div class="material-symbols-outlined">event_busy</div>
+            <p>You're not enrolled in any classes yet.</p>
+        </div>
+    <?php else: ?>
 
-            $gridStartMin = 7 * 60;
-            $gridEndMin   = 19 * 60;
-            $rowMinutes   = 30;
-            $totalRows    = (int) (($gridEndMin - $gridStartMin) / $rowMinutes);
+        <div class="view-toggle">
+            <button type="button" class="active" data-view="list">
+                <span class="material-symbols-outlined">view_list</span> List
+            </button>
+            <button type="button" data-view="calendar">
+                <span class="material-symbols-outlined">calendar_month</span> Calendar
+            </button>
+        </div>
 
-            $toMinutes = static function (string $hhmm) {
-                [$h, $m] = array_map('intval', explode(':', $hhmm));
-                return $h * 60 + $m;
-            };
-            ?>
+        <div class="schedule-view active" data-view="list">
+            <?php foreach ($byDay as $dayIndex => $dayMeetings): ?>
+                <?php if ($dayMeetings === []) continue; ?>
+                <div class="day-heading"><?= esc($days[$dayIndex]) ?></div>
+                <table class="schedule-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Subject</th>
+                            <th>Room</th>
+                            <th>Faculty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($dayMeetings as $m): ?>
+                            <tr>
+                                <td><?= esc($m['time_label']) ?></td>
+                                <td><?= esc($m['subject_code']) ?> &mdash; <?= esc($m['subject_title']) ?></td>
+                                <td><?= esc($m['room']) ?></td>
+                                <td><?= esc($m['prof'] ?? '—') ?></td>
+                            </tr>
+                        <?php endforeach ?>
+                    </tbody>
+                </table>
+            <?php endforeach ?>
+        </div>
 
-            <div class="panel">
-                <?php if ($meetings === []): ?>
-                    <div class="empty-state">
-                        <div class="material-symbols-outlined">event_busy</div>
-                        <p>You're not enrolled in any classes yet.</p>
-                    </div>
-                <?php else: ?>
-
-                    <div class="view-toggle">
-                        <button type="button" class="active" data-view="list">
-                            <span class="material-symbols-outlined">view_list</span> List
-                        </button>
-                        <button type="button" data-view="calendar">
-                            <span class="material-symbols-outlined">calendar_month</span> Calendar
-                        </button>
-                    </div>
-
-                    <div class="schedule-view active" data-view="list">
-                        <?php foreach ($byDay as $dayIndex => $dayMeetings): ?>
-                            <?php if ($dayMeetings === []) continue; ?>
-                            <div class="day-heading"><?= esc($days[$dayIndex]) ?></div>
-                            <table class="schedule-table">
-                                <thead>
-                                    <tr>
-                                        <th>Time</th>
-                                        <th>Subject</th>
-                                        <th>Room</th>
-                                        <th>Faculty</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($dayMeetings as $m): ?>
-                                        <tr>
-                                            <td><?= esc($m['time_label']) ?></td>
-                                            <td><?= esc($m['subject_code']) ?> &mdash; <?= esc($m['subject_title']) ?></td>
-                                            <td><?= esc($m['room']) ?></td>
-                                            <td><?= esc($m['prof'] ?? '—') ?></td>
-                                        </tr>
-                                    <?php endforeach ?>
-                                </tbody>
-                            </table>
+        <div class="schedule-view" data-view="calendar">
+            <div class="grid-wrap">
+                <div class="grid">
+                    <div class="grid-head">
+                        <div class="grid-corner"></div>
+                        <?php foreach (['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as $label): ?>
+                            <div><?= esc($label) ?></div>
                         <?php endforeach ?>
                     </div>
 
-                    <div class="schedule-view" data-view="calendar">
-                        <div class="grid-wrap">
-                            <div class="grid">
-                                <div class="grid-head">
-                                    <div class="grid-corner"></div>
-                                    <?php foreach (['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as $label): ?>
-                                        <div><?= esc($label) ?></div>
-                                    <?php endforeach ?>
-                                </div>
-
-                                <div class="time-col">
-                                    <?php for ($m = $gridStartMin; $m < $gridEndMin; $m += 60): ?>
-                                        <div class="time-slot"><?php
-                                            $h12 = $m % 720 === 0 ? 12 : intdiv($m, 60) % 12;
-                                            echo $h12 . ($m < 720 ? ' AM' : ' PM');
-                                        ?></div>
-                                    <?php endfor ?>
-                                </div>
-
-                                <?php for ($day = 0; $day < 6; $day++): ?>
-                                    <div class="day-col" style="height:<?= $totalRows * 32 ?>px;">
-                                        <?php for ($r = 0; $r < $totalRows / 2; $r++): ?>
-                                            <div class="hour-line"></div>
-                                        <?php endfor ?>
-
-                                        <?php foreach ($blocks as $b): ?>
-                                            <?php if ($b['day'] !== $day) continue; ?>
-                                            <?php
-                                                $startMin = $toMinutes($b['start']);
-                                                $endMin   = $toMinutes($b['end']);
-                                                $top      = ($startMin - $gridStartMin) / $rowMinutes * 32;
-                                                $height   = max(32, ($endMin - $startMin) / $rowMinutes * 32);
-                                                $c        = $colors[$b['color']] ?? $colors['blue'];
-                                            ?>
-                                            <div class="block" style="top:<?= $top ?>px; height:<?= $height ?>px; background:<?= $c['bg'] ?>; border-color:<?= $c['border'] ?>; color:<?= $c['text'] ?>;">
-                                                <div class="b-code"><?= esc($b['code']) ?></div>
-                                                <?php if ($height > 46): ?>
-                                                    <div class="b-title"><?= esc($b['title']) ?></div>
-                                                <?php endif ?>
-                                                <div class="b-meta"><?= esc($b['time_label']) ?> &middot; <?= esc($b['room']) ?></div>
-                                            </div>
-                                        <?php endforeach ?>
-                                    </div>
-                                <?php endfor ?>
-                            </div>
-                        </div>
+                    <div class="time-col">
+                        <?php for ($m = $gridStartMin; $m < $gridEndMin; $m += 60): ?>
+                            <div class="time-slot"><?php
+                                $h12 = $m % 720 === 0 ? 12 : intdiv($m, 60) % 12;
+                                echo $h12 . ($m < 720 ? ' AM' : ' PM');
+                            ?></div>
+                        <?php endfor ?>
                     </div>
 
-                <?php endif ?>
-            </div>
+                    <?php for ($day = 0; $day < 6; $day++): ?>
+                        <div class="day-col" style="height:<?= $totalRows * 32 ?>px;">
+                            <?php for ($r = 0; $r < $totalRows / 2; $r++): ?>
+                                <div class="hour-line"></div>
+                            <?php endfor ?>
 
+                            <?php foreach ($blocks as $b): ?>
+                                <?php if ($b['day'] !== $day) continue; ?>
+                                <?php
+                                    $startMin = $toMinutes($b['start']);
+                                    $endMin   = $toMinutes($b['end']);
+                                    $top      = ($startMin - $gridStartMin) / $rowMinutes * 32;
+                                    $height   = max(32, ($endMin - $startMin) / $rowMinutes * 32);
+                                    $c        = $colors[$b['color']] ?? $colors['blue'];
+                                ?>
+                                <div class="block" style="top:<?= $top ?>px; height:<?= $height ?>px; background:<?= $c['bg'] ?>; border-color:<?= $c['border'] ?>; color:<?= $c['text'] ?>;">
+                                    <div class="b-code"><?= esc($b['code']) ?></div>
+                                    <?php if ($height > 46): ?>
+                                        <div class="b-title"><?= esc($b['title']) ?></div>
+                                    <?php endif ?>
+                                    <div class="b-meta"><?= esc($b['time_label']) ?> &middot; <?= esc($b['room']) ?></div>
+                                </div>
+                            <?php endforeach ?>
+                        </div>
+                    <?php endfor ?>
+                </div>
+            </div>
         </div>
 
-    </div>
+    <?php endif ?>
+</div>
 
-    <script>
-        (function () {
-            const toggle = document.querySelector('.view-toggle');
-            if (!toggle) return;
-            toggle.addEventListener('click', (e) => {
-                const btn = e.target.closest('button[data-view]');
-                if (!btn) return;
-                const view = btn.dataset.view;
+<?= $this->endSection() ?>
 
-                toggle.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
-                document.querySelectorAll('.schedule-view').forEach((el) => {
-                    el.classList.toggle('active', el.dataset.view === view);
-                });
+<?= $this->section('scripts') ?>
+<script>
+    (function () {
+        const toggle = document.querySelector('.view-toggle');
+        if (!toggle) return;
+        toggle.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-view]');
+            if (!btn) return;
+            const view = btn.dataset.view;
+
+            toggle.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
+            document.querySelectorAll('.schedule-view').forEach((el) => {
+                el.classList.toggle('active', el.dataset.view === view);
             });
-        })();
-    </script>
-
-</body>
-
-</html>
+        });
+    })();
+</script>
+<?= $this->endSection() ?>

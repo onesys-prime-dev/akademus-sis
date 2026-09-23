@@ -10,7 +10,7 @@
 </div>
 
 <?php if (session()->has('errors')): ?>
-    <div class="ac-alert" style="background:#fef2f2; border-color:#fecaca;">
+    <div class="ac-alert" style="background:var(--color-danger-soft); border-color:var(--color-danger-border);">
         <span class="material-symbols-outlined" style="color:var(--color-danger);" aria-hidden="true">error</span>
         <div class="ac-alert__text" style="color:var(--color-danger);">
             <?php foreach (session('errors') as $error): ?>

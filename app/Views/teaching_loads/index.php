@@ -1,482 +1,238 @@
+<?= $this->extend('layouts/admin_console') ?>
+
 <?php
 /**
  * Teaching Loads — Faculty view (Akademus SIS)
  * Loads are generated live from the chairpersons' plotted schedules and kept
  * current via long-polling. Assignment is chairperson-directed while
  * plotting — faculty view their official assignments here, read-only.
- * Pure CSS — no framework.
  */
-$initials = strtoupper(mb_substr($user['name'], 0, 2));
+$initials      = strtoupper(mb_substr($user['name'], 0, 2));
+$activeAdmin   = 'dashboard';
+$pageTitle     = 'Teaching Loads';
+$brandSub      = 'Faculty Portal';
+$userName      = $user['name'];
+$userRoleLabel = 'Faculty';
+$navGroups     = [
+    '' => [
+        'dashboard'    => ['label' => 'Dashboard',    'icon' => 'dashboard',        'url' => 'faculty/dashboard'],
+        'profile'      => ['label' => 'Profile',      'icon' => 'person',           'url' => 'faculty/profile'],
+        'schedule'     => ['label' => 'Schedule',     'icon' => 'calendar_month',   'url' => 'faculty/schedule'],
+        'availability' => ['label' => 'Availability', 'icon' => 'event_available',  'url' => 'faculty/availability'],
+        'grading'      => ['label' => 'Grading',      'icon' => 'grade',            'url' => 'faculty/grading'],
+    ],
+];
+$this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Available Teaching Loads · Akademus SIS</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+<?= $this->section('styles') ?>
 <style>
-:root{
-    --brand:#0040A6;
-    --brand-soft:rgba(0,64,166,.1);
-    --bg:#f5f5f7;
-    --border:rgba(0,0,0,.08);
-    --ink:#1d1d1f;
-    --muted:#86868b;
-    --green:#16a34a; --green-soft:#f0fdf4; --green-border:#bbf7d0;
-    --red:#ef4444; --red-soft:#fef2f2; --red-border:#fecaca;
-    --amber:#f59e0b;
-    --shadow-apple:0 4px 24px rgba(0,0,0,.04);
-    --shadow-hover:0 8px 32px rgba(0,0,0,.08);
-}
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%}
-body{
-    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-    background:var(--bg);color:var(--ink);
-    display:flex;padding:12px;gap:12px;overflow:hidden;
-    -webkit-font-smoothing:antialiased;
-}
-button{font-family:inherit;cursor:pointer;border:none;background:none}
-button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);outline-offset:2px}
-
-.material-symbols-outlined{
-    font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24;
-    vertical-align:middle;
-}
-.fill-icon{font-variation-settings:'FILL' 1}
-
-.glass{
-    background:rgba(255,255,255,.75);
-    backdrop-filter:blur(24px);
-    -webkit-backdrop-filter:blur(24px);
-    border:1px solid rgba(255,255,255,.4);
+:root {
+    /* Aliased onto the shared design-system tokens (public/assets/css/design-system/tokens.css). */
+    --brand: var(--color-primary);
+    --brand-soft: var(--color-primary-soft);
+    --bg: var(--color-background);
+    --border: var(--color-border);
+    --ink: var(--color-text-primary);
+    --muted: var(--color-text-secondary);
+    --green: var(--color-success); --green-soft: var(--color-success-soft); --green-border: #bbf7d0;
+    --red: var(--color-danger); --red-soft: var(--color-danger-soft); --red-border: var(--color-danger-border);
+    --amber: var(--color-warning);
+    --shadow-apple: var(--shadow-sm);
+    --shadow-hover: var(--shadow-md);
 }
 
-/* ===== Sidebar: icon rail that expands to show labels on hover, and
-   retracts the instant the pointer leaves (matches the chairperson side's
-   Schedule Plotting drawer). ===== */
-.side-drawer{
-    width:64px;flex:0 0 auto;
-    display:flex;flex-direction:column;align-items:center;
-    padding:20px 0;border-radius:20px;
-    box-shadow:0 4px 24px rgba(0,0,0,.04);
-    transition:width .16s ease;overflow:hidden;z-index:50;
-}
-.side-drawer:hover{width:200px;align-items:stretch}
+.icon-btn { color: var(--muted); padding: 8px; border-radius: 50%; display: grid; place-items: center; transition: color .15s, background .15s; }
+.icon-btn:hover { color: var(--ink); background: var(--color-surface-sunken); }
 
-.side-drawer .brand{
-    width:40px;height:40px;border-radius:10px;background:#fff;
-    box-shadow:0 1px 2px rgba(0,0,0,.08);color:var(--brand);
-    display:flex;align-items:center;justify-content:center;
-    margin:0 auto 24px;flex:0 0 auto;
-}
-.side-drawer:hover .brand{margin-left:12px;margin-right:auto}
-
-.side-drawer nav{display:flex;flex-direction:column;gap:8px;width:100%;align-items:center;flex:1}
-.side-drawer:hover nav{align-items:stretch;padding:0 8px}
-
-.drawer-link{
-    display:flex;align-items:center;gap:12px;
-    width:44px;height:44px;border-radius:12px;
-    color:var(--muted);text-decoration:none;flex:0 0 auto;
-    justify-content:center;transition:background .15s,color .15s;
-    white-space:nowrap;overflow:hidden;
-}
-.side-drawer:hover .drawer-link{width:100%;justify-content:flex-start;padding:0 12px}
-
-.drawer-link .drawer-label{font-size:.82rem;font-weight:600;display:none}
-.side-drawer:hover .drawer-label{display:inline}
-
-.drawer-link:hover{color:var(--ink);background:rgba(0,0,0,.05)}
-.drawer-link.active{color:var(--brand);background:var(--brand-soft)}
-.drawer-link.active .material-symbols-outlined{font-variation-settings:'FILL' 1}
-
-.drawer-link--logout{margin-top:auto}
-.drawer-link--logout:hover{color:var(--red);background:var(--red-soft)}
-
-/* ===== Content shell ===== */
-.content{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;height:100%;overflow:hidden}
-
-.topbar{
-    border-radius:20px;
-    display:flex;justify-content:space-between;align-items:center;
-    gap:24px;padding:16px 32px;box-shadow:0 4px 24px rgba(0,0,0,.04);
-}
-.topbar-title{font-size:1.15rem;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
-.topbar-right{display:flex;align-items:center;gap:16px;flex:1;justify-content:flex-end}
-
-.topbar-profile{display:flex;align-items:center;gap:10px;flex:0 0 auto}
-.topbar-avatar{
-    width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;
-    display:grid;place-items:center;font-size:.7rem;font-weight:700;flex:none;
-}
-.topbar-profile-name{font-size:.82rem;font-weight:600;line-height:1.2}
-.topbar-profile-role{font-size:.7rem;color:var(--muted);line-height:1.2}
-
-.search-box{position:relative;width:100%;max-width:420px}
-.search-box .material-symbols-outlined{
-    position:absolute;left:16px;top:50%;transform:translateY(-50%);
-    color:var(--muted);font-size:20px;transition:color .15s;pointer-events:none;
-}
-.search-box input{
-    width:100%;padding:10px 16px 10px 44px;
-    background:rgba(0,0,0,.05);border:1px solid transparent;border-radius:999px;
-    font-family:inherit;font-size:.84rem;color:var(--ink);
-    transition:background .15s,box-shadow .15s;
-}
-.search-box input::placeholder{color:var(--muted)}
-.search-box input:focus{outline:none;background:#fff;box-shadow:0 0 0 2px rgba(0,64,166,.3)}
-.search-box:focus-within .material-symbols-outlined{color:var(--brand)}
-
-.icon-btn{
-    color:var(--muted);padding:8px;border-radius:50%;
-    display:grid;place-items:center;transition:color .15s,background .15s;
-}
-.icon-btn:hover{color:var(--ink);background:rgba(0,0,0,.05)}
-
-.menu-btn{display:none;color:var(--ink);padding:8px;border-radius:50%}
-.menu-btn:hover{background:rgba(0,0,0,.05)}
-
-/* ===== Main area ===== */
-.scroll-area{flex:1;overflow-y:auto;padding:40px}
-.container{max-width:1200px;margin:0 auto}
-
-.page-head{margin-bottom:40px}
-.page-head h1{font-size:2.3rem;font-weight:700;letter-spacing:-.02em;margin-bottom:12px}
-.page-head p{color:var(--muted);font-size:.95rem;max-width:640px;line-height:1.6}
+/* ===== Page head ===== */
+.page-head { margin-bottom: 32px; }
+.page-head h1 { font-size: 28px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 8px; color: var(--ink); }
+.page-head p { color: var(--muted); font-size: 13.5px; max-width: 640px; line-height: 1.6; }
 
 /* ===== Stats card ===== */
-.stats-card{
-    background:#fff;border-radius:24px;padding:32px;
-    box-shadow:var(--shadow-apple);border:1px solid var(--border);
-    margin-bottom:40px;
+.stats-card {
+    background: var(--color-surface); border-radius: var(--radius-xl); padding: 28px;
+    box-shadow: var(--shadow-apple); border: 1px solid var(--border);
+    margin-bottom: 24px;
 }
-.spec-row{display:flex;align-items:center;gap:24px;margin-bottom:32px;flex-wrap:wrap}
-.spec-row .lbl{font-size:.86rem;font-weight:600;white-space:nowrap}
-.spec-chips{display:flex;flex-wrap:wrap;gap:8px}
-.spec-chip{
-    background:var(--brand-soft);color:var(--brand);
-    padding:6px 16px;border-radius:999px;
-    font-size:.74rem;font-weight:500;letter-spacing:.02em;
-}
-.load-meter{display:flex;flex-direction:column;gap:12px}
-.load-meter-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
-.load-meter-head .lbl{font-size:.86rem;font-weight:600}
-.load-meter-head .rem{font-size:.74rem;color:var(--muted);font-weight:500}
-.track{height:8px;width:100%;background:rgba(0,0,0,.05);border-radius:999px;overflow:hidden}
-.fill{height:100%;width:0;background:var(--brand);border-radius:999px;transition:width .5s ease-in-out,background .3s}
-.fill.warn{background:var(--amber)}
-.fill.full{background:var(--red)}
+.spec-row { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
+.spec-row .lbl { font-size: 13px; font-weight: 600; white-space: nowrap; color: var(--ink); }
+.spec-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.spec-chip { background: var(--brand-soft); color: var(--brand); padding: 6px 16px; border-radius: 999px; font-size: 11.5px; font-weight: 500; letter-spacing: .02em; }
+.load-meter { display: flex; flex-direction: column; gap: 10px; }
+.load-meter-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.load-meter-head .lbl { font-size: 13px; font-weight: 600; color: var(--ink); }
+.load-meter-head .rem { font-size: 11.5px; color: var(--muted); font-weight: 500; }
+.track { height: 8px; width: 100%; background: var(--color-surface-sunken); border-radius: 999px; overflow: hidden; }
+.fill { height: 100%; width: 0; background: var(--brand); border-radius: 999px; transition: width .5s ease-in-out, background .3s; }
+.fill.warn { background: var(--amber); }
+.fill.full { background: var(--red); }
 
 /* ===== Panel: tabs + board ===== */
-.panel{
-    background:#fff;border-radius:24px;overflow:hidden;
-    box-shadow:var(--shadow-apple);border:1px solid var(--border);
-    display:flex;flex-direction:column;height:640px;
+.panel {
+    background: var(--color-surface); border-radius: var(--radius-xl); overflow: hidden;
+    box-shadow: var(--shadow-apple); border: 1px solid var(--border);
+    display: flex; flex-direction: column; height: 640px;
 }
-.tab-row{display:flex;gap:8px;padding:24px 24px 0;flex-wrap:wrap;background:#fff}
-.tab{
-    display:inline-flex;align-items:center;gap:8px;
-    padding:10px 20px;border-radius:999px;
-    font-size:.86rem;font-weight:500;color:var(--muted);
-    transition:background .15s,color .15s;
-}
-.tab:hover:not(:disabled):not(.active){color:var(--ink);background:rgba(0,0,0,.05)}
-.tab.active{background:var(--brand);color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.1)}
-.tab:disabled{color:rgba(134,134,139,.5);cursor:not-allowed}
-.tab-cnt{
-    background:rgba(0,0,0,.05);color:var(--muted);
-    font-size:.7rem;border-radius:999px;padding:2px 8px;font-weight:600;
-}
-.tab.active .tab-cnt{background:rgba(255,255,255,.2);color:#fff}
-.tab:disabled .tab-cnt{color:rgba(134,134,139,.5)}
+.tab-row { display: flex; gap: 8px; padding: 20px 24px 0; flex-wrap: wrap; background: var(--color-surface); }
+.tab { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--muted); transition: background .15s, color .15s; }
+.tab:hover:not(:disabled):not(.active) { color: var(--ink); background: var(--color-surface-sunken); }
+.tab.active { background: var(--brand); color: #fff; box-shadow: var(--shadow-xs); }
+.tab:disabled { color: var(--color-text-tertiary); cursor: not-allowed; }
+.tab-cnt { background: var(--color-surface-sunken); color: var(--muted); font-size: 11px; border-radius: 999px; padding: 2px 8px; font-weight: 600; }
+.tab.active .tab-cnt { background: rgba(255,255,255,.2); color: #fff; }
+.tab:disabled .tab-cnt { color: var(--color-text-tertiary); }
 
-.filter-bar{
-    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
-    padding:20px 32px;border-bottom:1px solid var(--border);
-    background:rgba(255,255,255,.5);
-}
-.filter-bar .lbl{font-size:.84rem;font-weight:500;color:var(--muted)}
-.chip-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
-.chip-row::-webkit-scrollbar{display:none}
-.chip{
-    background:#fff;color:var(--ink);
-    border:1px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,.05);
-    padding:6px 16px;border-radius:999px;
-    font-size:.72rem;font-weight:500;white-space:nowrap;
-    transition:background .15s,color .15s;
-}
-.chip:hover:not(.active){background:rgba(0,0,0,.05)}
-.chip.active{background:var(--ink);border-color:var(--ink);color:#fff}
-.filter-bar .summary{margin-left:auto;font-size:.74rem;font-weight:500;color:var(--muted)}
-.filter-select{
-    background:#fff;color:var(--ink);
-    border:1px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,.05);
-    padding:6px 12px;border-radius:999px;
-    font-family:inherit;font-size:.72rem;font-weight:500;cursor:pointer;
-}
-.filter-select:focus{outline:none;box-shadow:0 0 0 2px rgba(0,64,166,.3)}
+.filter-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--color-surface-secondary); }
+.filter-bar .lbl { font-size: 13px; font-weight: 500; color: var(--muted); }
+.chip-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.chip-row::-webkit-scrollbar { display: none; }
+.chip { background: var(--color-surface); color: var(--ink); border: 1px solid var(--border); box-shadow: var(--shadow-xs); padding: 6px 16px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; transition: background .15s, color .15s; }
+.chip:hover:not(.active) { background: var(--color-surface-sunken); }
+.chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+.filter-bar .summary { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--muted); }
+.filter-select { background: var(--color-surface); color: var(--ink); border: 1px solid var(--border); box-shadow: var(--shadow-xs); padding: 6px 12px; border-radius: 999px; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
+.filter-select:focus { outline: none; box-shadow: var(--focus-ring); }
 
-.board-scroll{flex:1;overflow-y:auto;background:#fff}
-.tile-grid{
-    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:20px;padding:32px;
-}
+.board-scroll { flex: 1; overflow-y: auto; background: var(--color-surface); }
+.tile-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 18px; padding: 24px; }
 
 /* ===== Load tiles ===== */
-.tile{
-    background:#fff;border:1px solid var(--border);border-radius:16px;
-    padding:20px;display:flex;flex-direction:column;gap:12px;
-    box-shadow:0 1px 2px rgba(0,0,0,.05);
-    transition:box-shadow .15s,transform .15s;
-}
-.tile:hover{box-shadow:var(--shadow-hover);transform:translateY(-2px)}
-.tile-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
-.tile-code{font-size:1.1rem;font-weight:700;letter-spacing:-.01em}
-.tile-chip{
-    padding:4px 10px;border-radius:999px;
-    font-size:.62rem;font-weight:600;white-space:nowrap;flex:none;
-}
-.tile.acc-blue .tile-code{color:#2563eb}   .tile.acc-blue .tile-chip{background:#eff6ff;color:#1d4ed8}
-.tile.acc-purple .tile-code{color:#9333ea} .tile.acc-purple .tile-chip{background:#faf5ff;color:#7e22ce}
-.tile.acc-red .tile-code{color:#ef4444}    .tile.acc-red .tile-chip{background:#fef2f2;color:#b91c1c}
-.tile.acc-gold .tile-code{color:#f59e0b}   .tile.acc-gold .tile-chip{background:#fffbeb;color:#b45309}
-.tile.acc-green .tile-code{color:#16a34a}  .tile.acc-green .tile-chip{background:#f0fdf4;color:#15803d}
-.tile.acc-orange .tile-code{color:#f97316} .tile.acc-orange .tile-chip{background:#fff7ed;color:#c2410c}
+.tile { background: var(--color-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow-xs); transition: box-shadow .15s, transform .15s; }
+.tile:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.tile-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.tile-code { font-size: 16px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); }
+.tile-chip { padding: 4px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 600; white-space: nowrap; flex: none; }
+.tile.acc-blue .tile-code { color: #2563eb; }   .tile.acc-blue .tile-chip { background: var(--color-info-soft); color: var(--color-info); }
+.tile.acc-purple .tile-code { color: #9333ea; } .tile.acc-purple .tile-chip { background: #faf5ff; color: #7e22ce; }
+.tile.acc-red .tile-code { color: #ef4444; }    .tile.acc-red .tile-chip { background: var(--red-soft); color: #b91c1c; }
+.tile.acc-gold .tile-code { color: #f59e0b; }   .tile.acc-gold .tile-chip { background: var(--color-warning-soft); color: #b45309; }
+.tile.acc-green .tile-code { color: var(--green); } .tile.acc-green .tile-chip { background: var(--green-soft); color: #15803d; }
+.tile.acc-orange .tile-code { color: #f97316; } .tile.acc-orange .tile-chip { background: #fff7ed; color: #c2410c; }
 
-.tile-title{font-size:.86rem;font-weight:600;line-height:1.4;min-height:2.6em}
-.tile-meta{display:flex;align-items:center;gap:8px;font-size:.74rem;color:var(--muted)}
-.tile-meta .material-symbols-outlined{font-size:16px;color:rgba(134,134,139,.7)}
+.tile-title { font-size: 13px; font-weight: 600; line-height: 1.4; min-height: 2.6em; color: var(--ink); }
+.tile-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.tile-meta .material-symbols-outlined { font-size: 16px; color: var(--color-text-tertiary); }
 
-.tile-btn{
-    margin-top:8px;border-radius:999px;padding:10px;
-    font-size:.82rem;font-weight:500;text-align:center;
-    display:flex;align-items:center;justify-content:center;gap:6px;
-    transition:background .15s,transform .1s;
-}
-.tile-btn.claim{background:var(--brand);color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.1)}
-.tile-btn.claim:hover{background:#00368d}
-.tile-btn.claim:active{transform:scale(.96)}
-.tile-btn.conflict{background:var(--red-soft);color:var(--red);border:1px solid var(--red-border);cursor:not-allowed}
-.tile-btn.assigned{background:var(--green-soft);color:var(--green);border:1px solid var(--green-border);cursor:default}
-.tile-btn.swap{background:rgba(0,0,0,.05);color:var(--ink)}
-.tile-btn.swap:hover{background:rgba(0,0,0,.1)}
-.tile-btn.swap:disabled{color:var(--muted);cursor:not-allowed}
-.tile-btn.decline{background:var(--red-soft);color:var(--red);border:1px solid var(--red-border)}
-.tile-btn.decline:hover{background:#fee2e2}
-.tile-btn .material-symbols-outlined{font-size:17px}
+.tile-btn { margin-top: 8px; border-radius: 999px; padding: 10px; font-size: 12.5px; font-weight: 500; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background .15s, transform .1s; }
+.tile-btn.claim { background: var(--brand); color: #fff; box-shadow: var(--shadow-xs); }
+.tile-btn.claim:hover { background: var(--color-primary-hover); }
+.tile-btn.claim:active { transform: scale(.96); }
+.tile-btn.conflict { background: var(--red-soft); color: var(--red); border: 1px solid var(--red-border); cursor: not-allowed; }
+.tile-btn.assigned { background: var(--green-soft); color: var(--green); border: 1px solid var(--green-border); cursor: default; }
+.tile-btn.swap { background: var(--color-surface-sunken); color: var(--ink); }
+.tile-btn.swap:hover { background: var(--color-border); }
+.tile-btn.swap:disabled { color: var(--muted); cursor: not-allowed; }
+.tile-btn.decline { background: var(--red-soft); color: var(--red); border: 1px solid var(--red-border); }
+.tile-btn.decline:hover { background: #fee2e2; }
+.tile-btn .material-symbols-outlined { font-size: 17px; }
 
-.swap-status{
-    padding:4px 12px;border-radius:999px;font-size:.62rem;font-weight:600;white-space:nowrap;flex:none;
-}
-.swap-status.pending{background:#fffbeb;color:#b45309}
-.swap-status.accepted{background:var(--green-soft);color:var(--green)}
-.swap-status.declined{background:var(--red-soft);color:var(--red)}
-.swap-status.cancelled{background:rgba(0,0,0,.05);color:var(--muted)}
-.swap-who{font-size:.74rem;color:var(--ink);font-weight:600}
-.swap-status.awaiting{background:#eff6ff;color:#1d4ed8}
-.swap-status.approved{background:var(--green-soft);color:var(--green)}
-.swap-status.rejected{background:var(--red-soft);color:var(--red)}
+.swap-status { padding: 4px 12px; border-radius: 999px; font-size: 10.5px; font-weight: 600; white-space: nowrap; flex: none; }
+.swap-status.pending { background: var(--color-warning-soft); color: #b45309; }
+.swap-status.accepted { background: var(--green-soft); color: var(--green); }
+.swap-status.declined { background: var(--red-soft); color: var(--red); }
+.swap-status.cancelled { background: var(--color-surface-sunken); color: var(--muted); }
+.swap-who { font-size: 12px; color: var(--ink); font-weight: 600; }
+.swap-status.awaiting { background: var(--color-info-soft); color: var(--color-info); }
+.swap-status.approved { background: var(--green-soft); color: var(--green); }
+.swap-status.rejected { background: var(--red-soft); color: var(--red); }
 
-.tile.is-taken{opacity:.85;background:#fafafa}
-.taken-chip{
-    padding:4px 10px;border-radius:999px;font-size:.62rem;font-weight:600;white-space:nowrap;flex:none;
-    background:rgba(0,0,0,.06);color:var(--muted);
-}
+.tile.is-taken { opacity: .85; background: var(--color-surface-secondary); }
+.taken-chip { padding: 4px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 600; white-space: nowrap; flex: none; background: var(--color-surface-sunken); color: var(--muted); }
 
 /* ===== Empty state ===== */
-.empty-state{
-    height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;
-    padding:32px;text-align:center;
-}
-.empty-state.visible{display:flex}
-.empty-icon{
-    width:80px;height:80px;border-radius:50%;background:rgba(0,0,0,.05);
-    display:grid;place-items:center;color:var(--muted);
-    box-shadow:inset 0 2px 4px rgba(0,0,0,.05);margin-bottom:24px;
-}
-.empty-icon .material-symbols-outlined{font-size:38px}
-.empty-state h3{font-size:1.15rem;font-weight:600;letter-spacing:-.01em;margin-bottom:12px}
-.empty-state p{font-size:.84rem;color:var(--muted);max-width:380px;line-height:1.6}
+.empty-state { height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; }
+.empty-state.visible { display: flex; }
+.empty-icon { width: 72px; height: 72px; border-radius: 50%; background: var(--color-surface-sunken); display: grid; place-items: center; color: var(--muted); margin-bottom: 20px; }
+.empty-icon .material-symbols-outlined { font-size: 34px; }
+.empty-state h3 { font-size: 17px; font-weight: 600; letter-spacing: -.01em; margin-bottom: 10px; color: var(--ink); }
+.empty-state p { font-size: 13px; color: var(--muted); max-width: 380px; line-height: 1.6; }
 
-/* ===== Confirm modal ===== */
-.modal-backdrop{
-    position:fixed;inset:0;background:rgba(0,0,0,.3);
-    backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
-    display:none;align-items:center;justify-content:center;padding:16px;z-index:60;
-}
-.modal-backdrop.open{display:flex}
-.modal-card{
-    background:#fff;border-radius:24px;border:1px solid var(--border);
-    box-shadow:var(--shadow-hover);width:100%;max-width:440px;padding:32px;
-}
-.modal-card h3{font-size:1.15rem;font-weight:600;letter-spacing:-.01em;margin-bottom:12px}
-.modal-card p{font-size:.84rem;color:var(--muted);line-height:1.6;margin-bottom:32px}
-.modal-actions{display:flex;justify-content:flex-end;gap:12px}
-.modal-btn{
-    padding:10px 20px;border-radius:999px;font-size:.84rem;font-weight:500;
-    transition:background .15s;
-}
-.modal-btn.cancel{background:rgba(0,0,0,.05);color:var(--ink)}
-.modal-btn.cancel:hover{background:rgba(0,0,0,.1)}
-.modal-btn.ok{background:var(--brand);color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.1)}
-.modal-btn.ok:hover{background:#00368d}
+/* ===== Confirm / swap / change-request modals ===== */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, .5); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 70; }
+.modal-backdrop.open { display: flex; }
+.modal-card { background: var(--color-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); box-shadow: var(--shadow-hover); width: 100%; max-width: 440px; padding: 28px; }
+.modal-card h3 { font-size: 17px; font-weight: 600; letter-spacing: -.01em; margin-bottom: 10px; color: var(--ink); }
+.modal-card p { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.modal-btn { padding: 10px 20px; border-radius: 999px; font-size: 13px; font-weight: 500; transition: background .15s; }
+.modal-btn.cancel { background: var(--color-surface-sunken); color: var(--ink); }
+.modal-btn.cancel:hover { background: var(--color-border); }
+.modal-btn.ok { background: var(--brand); color: #fff; box-shadow: var(--shadow-xs); }
+.modal-btn.ok:hover { background: var(--color-primary-hover); }
 
 /* ===== Toast ===== */
-.toast{
-    position:fixed;bottom:24px;left:50%;
-    transform:translate(-50%,64px);opacity:0;
-    background:var(--ink);color:#fff;
-    font-size:.82rem;font-weight:500;border-radius:999px;padding:12px 24px;
-    box-shadow:var(--shadow-hover);
-    transition:transform .2s,opacity .2s;z-index:70;pointer-events:none;
-}
-.toast.show{transform:translate(-50%,0);opacity:1}
-.toast.success{background:var(--green)}
-.toast.error{background:#dc2626}
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translate(-50%,64px); opacity: 0; background: var(--ink); color: #fff; font-size: 13px; font-weight: 500; border-radius: 999px; padding: 12px 24px; box-shadow: var(--shadow-hover); transition: transform .2s, opacity .2s; z-index: 9000; pointer-events: none; }
+.toast.show { transform: translate(-50%,0); opacity: 1; }
+.toast.success { background: var(--green); }
+.toast.error { background: var(--red); }
 
-/* ===== Responsive ===== */
-@media (max-width:1200px){.tile-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:900px){.tile-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar-title{display:none}}
-@media (max-width:768px){
-    .sidenav{display:none}
-    .content{margin-left:0}
-    .menu-btn{display:grid}
-    .scroll-area{padding:24px 16px}
-    .search-box{max-width:none}
-}
-@media (max-width:560px){.tile-grid{grid-template-columns:1fr}}
+@media (max-width: 1200px) { .tile-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (max-width: 900px) { .tile-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 560px) { .tile-grid { grid-template-columns: 1fr; } }
 </style>
-</head>
-<body>
+<?= $this->endSection() ?>
 
-<!-- Sidebar -->
-<aside class="side-drawer glass">
-    <div class="brand"><span class="material-symbols-outlined fill-icon">school</span></div>
-    <nav>
-        <a class="drawer-link active" href="<?= site_url('faculty/dashboard') ?>" title="Dashboard">
-            <span class="material-symbols-outlined">dashboard</span>
-            <span class="drawer-label">Dashboard</span>
-        </a>
-        <a class="drawer-link" href="<?= site_url('faculty/profile') ?>" title="Profile">
-            <span class="material-symbols-outlined">person</span>
-            <span class="drawer-label">Profile</span>
-        </a>
-        <a class="drawer-link" href="<?= site_url('faculty/schedule') ?>" title="Schedule">
-            <span class="material-symbols-outlined">calendar_month</span>
-            <span class="drawer-label">Schedule</span>
-        </a>
-        <a class="drawer-link" href="<?= site_url('faculty/availability') ?>" title="Availability">
-            <span class="material-symbols-outlined">event_available</span>
-            <span class="drawer-label">Availability</span>
-        </a>
-    </nav>
-    <a class="drawer-link drawer-link--logout" href="<?= site_url('logout') ?>" title="Logout">
-        <span class="material-symbols-outlined">logout</span>
-        <span class="drawer-label">Logout</span>
-    </a>
-</aside>
+<?= $this->section('content') ?>
 
-<!-- Content -->
-<div class="content">
+<div class="page-head">
+    <h1>Teaching Loads</h1>
+    <p>Your chairperson assigns subjects while plotting the schedule. This board updates in real time.</p>
+</div>
 
-    <header class="topbar glass">
-        <div style="display:flex;align-items:center;gap:16px">
-            <div class="topbar-title">Teaching Load Management</div>
+<!-- Stats card -->
+<div class="stats-card">
+    <div class="spec-row">
+        <span class="lbl">Your specializations:</span>
+        <div class="spec-chips">
+            <?php foreach ($specializations as $sp): ?>
+            <span class="spec-chip"><?= esc($sp) ?></span>
+            <?php endforeach ?>
         </div>
-        <div class="topbar-right">
-            <div class="search-box">
-                <span class="material-symbols-outlined">search</span>
-                <input id="searchInput" placeholder="Search subject, room, section..." type="text"/>
-            </div>
-            <div class="notif-wrap" id="notifWrap" style="position:relative;">
-                <button class="icon-btn" type="button" id="notifBtn" title="Notifications">
-                    <span class="material-symbols-outlined">notifications</span>
-                </button>
-                <span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;background:var(--red,#ef4444);color:#fff;font-size:10px;font-weight:700;border-radius:999px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px;"></span>
-                <div id="notifPanel" style="display:none;position:absolute;right:0;top:calc(100% + 8px);width:320px;max-height:400px;overflow-y:auto;background:#fff;border-radius:16px;box-shadow:var(--shadow-hover);border:1px solid var(--border);z-index:60;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);">
-                        <strong style="font-size:.86rem;">Notifications</strong>
-                        <button type="button" id="notifMarkAll" style="font-size:.72rem;color:var(--brand);background:none;border:none;cursor:pointer;">Mark all read</button>
-                    </div>
-                    <div id="notifList"></div>
-                </div>
-            </div>
-            <div class="topbar-profile">
-                <div class="topbar-avatar"><?= esc($initials) ?></div>
-                <div>
-                    <div class="topbar-profile-name"><?= esc($user['name']) ?></div>
-                    <div class="topbar-profile-role">Faculty</div>
-                </div>
-            </div>
+    </div>
+    <div class="load-meter">
+        <div class="load-meter-head">
+            <span class="lbl" id="loadLabel">Teaching Load: 0 / <?= esc($max_units) ?> units</span>
+            <span class="rem" id="loadRemaining"><?= esc($max_units) ?> units remaining</span>
         </div>
-    </header>
+        <div class="track"><div class="fill" id="loadFill"></div></div>
+    </div>
+</div>
 
-    <main class="scroll-area">
-        <div class="container">
+<!-- Tabs + board -->
+<div class="panel">
+    <div class="tab-row">
+        <button type="button" class="tab active" data-tab="available">
+            Unassigned <span class="tab-cnt" id="cntAvailable">0</span>
+        </button>
+        <button type="button" class="tab" data-tab="mine">
+            My Assignments <span class="tab-cnt" id="cntMine">0</span>
+        </button>
+        <button type="button" class="tab" data-tab="swaps">
+            Swap Requests <span class="tab-cnt" id="cntSwaps">0</span>
+        </button>
+        <button type="button" class="tab" data-tab="changes">
+            Change Requests <span class="tab-cnt" id="cntChanges">0</span>
+        </button>
+    </div>
 
-            <div class="page-head">
-                <h1>Teaching Loads</h1>
-                <p>Your chairperson assigns subjects while plotting the schedule. This board updates in real time.</p>
-            </div>
+    <div class="filter-bar">
+        <span class="lbl">Days:</span>
+        <div class="chip-row" id="dayFilter"></div>
+        <select class="filter-select" id="yearFilter"><option value="">All year levels</option></select>
+        <select class="filter-select" id="sectionFilter"><option value="">All sections</option></select>
+        <span class="summary" id="boardSummary"></span>
+    </div>
 
-            <!-- Stats card -->
-            <div class="stats-card">
-                <div class="spec-row">
-                    <span class="lbl">Your specializations:</span>
-                    <div class="spec-chips">
-                        <?php foreach ($specializations as $sp): ?>
-                        <span class="spec-chip"><?= esc($sp) ?></span>
-                        <?php endforeach ?>
-                    </div>
-                </div>
-                <div class="load-meter">
-                    <div class="load-meter-head">
-                        <span class="lbl" id="loadLabel">Teaching Load: 0 / <?= esc($max_units) ?> units</span>
-                        <span class="rem" id="loadRemaining"><?= esc($max_units) ?> units remaining</span>
-                    </div>
-                    <div class="track"><div class="fill" id="loadFill"></div></div>
-                </div>
-            </div>
-
-            <!-- Tabs + board -->
-            <div class="panel">
-                <div class="tab-row">
-                    <button type="button" class="tab active" data-tab="available">
-                        Unassigned <span class="tab-cnt" id="cntAvailable">0</span>
-                    </button>
-                    <button type="button" class="tab" data-tab="mine">
-                        My Assignments <span class="tab-cnt" id="cntMine">0</span>
-                    </button>
-                    <button type="button" class="tab" data-tab="swaps">
-                        Swap Requests <span class="tab-cnt" id="cntSwaps">0</span>
-                    </button>
-                    <button type="button" class="tab" data-tab="changes">
-                        Change Requests <span class="tab-cnt" id="cntChanges">0</span>
-                    </button>
-                </div>
-
-                <div class="filter-bar">
-                    <span class="lbl">Days:</span>
-                    <div class="chip-row" id="dayFilter"></div>
-                    <select class="filter-select" id="yearFilter"><option value="">All year levels</option></select>
-                    <select class="filter-select" id="sectionFilter"><option value="">All sections</option></select>
-                    <span class="summary" id="boardSummary"></span>
-                </div>
-
-                <div class="board-scroll">
-                    <div class="tile-grid" id="boardGrid"></div>
-                    <div class="empty-state" id="boardEmpty">
-                        <div class="empty-icon"><span class="material-symbols-outlined">calendar_add_on</span></div>
-                        <h3 id="emptyTitle"></h3>
-                        <p id="emptySub"></p>
-                    </div>
-                </div>
-            </div>
+    <div class="board-scroll">
+        <div class="tile-grid" id="boardGrid"></div>
+        <div class="empty-state" id="boardEmpty">
+            <div class="empty-icon"><span class="material-symbols-outlined">calendar_add_on</span></div>
+            <h3 id="emptyTitle"></h3>
+            <p id="emptySub"></p>
         </div>
-    </main>
+    </div>
 </div>
 
 <!-- Swap request modal -->
@@ -484,7 +240,7 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
     <div class="modal-card">
         <h3 id="swapTitle"></h3>
         <p id="swapMessage"></p>
-        <select class="filter-select" id="swapTarget" style="width:100%;margin-bottom:32px;padding:10px 14px;border-radius:12px"></select>
+        <select class="filter-select" id="swapTarget" style="width:100%;margin-bottom:28px;padding:10px 14px;border-radius:var(--radius-md)"></select>
         <div class="modal-actions">
             <button type="button" class="modal-btn cancel" id="swapCancel">Cancel</button>
             <button type="button" class="modal-btn ok" id="swapSend">Send Request</button>
@@ -498,9 +254,9 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
         <h3 id="crTitle"></h3>
         <p id="crMessage"></p>
         <textarea id="crReason" rows="3" placeholder="Why can't you accept this assignment? (availability conflict, schedule conflict, etc.)"
-            style="width:100%;margin-bottom:12px;padding:10px 14px;border-radius:12px;border:1px solid var(--border);font-family:inherit;font-size:.86rem;resize:vertical;"></textarea>
+            style="width:100%;margin-bottom:12px;padding:10px 14px;border-radius:var(--radius-md);border:1px solid var(--color-border);font-family:inherit;font-size:13px;resize:vertical;"></textarea>
         <input type="text" id="crProposed" placeholder="Proposed alternative (optional)"
-            style="width:100%;margin-bottom:32px;padding:10px 14px;border-radius:12px;border:1px solid var(--border);font-family:inherit;font-size:.86rem;">
+            style="width:100%;margin-bottom:28px;padding:10px 14px;border-radius:var(--radius-md);border:1px solid var(--color-border);font-family:inherit;font-size:13px;">
         <div class="modal-actions">
             <button type="button" class="modal-btn cancel" id="crCancel">Cancel</button>
             <button type="button" class="modal-btn ok" id="crSend">Submit Request</button>
@@ -533,6 +289,9 @@ button:focus-visible,input:focus-visible{outline:2px solid rgba(0,64,166,.4);out
 
 <div class="toast" id="toast"></div>
 
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
 <script>
 const CONFIG = {
     stateUrl: <?= json_encode(site_url('faculty/loads/state')) ?>,
@@ -541,9 +300,6 @@ const CONFIG = {
     swapCancelUrl: <?= json_encode(site_url('faculty/loads/swap/cancel')) ?>,
     changeRequestStoreUrl: <?= json_encode(site_url('faculty/change-requests/store')) ?>,
     changeRequestCancelUrl: <?= json_encode(site_url('faculty/change-requests/cancel')) ?>,
-    notificationsUrl: <?= json_encode(site_url('faculty/notifications')) ?>,
-    notificationsMarkReadUrl: <?= json_encode(site_url('faculty/notifications/mark-read')) ?>,
-    notificationsMarkAllReadUrl: <?= json_encode(site_url('faculty/notifications/mark-all-read')) ?>,
     maxUnits: <?= (int) $max_units ?>,
     noDepartment: <?= json_encode($no_department) ?>,
 };
@@ -557,7 +313,6 @@ let UNITS = <?= json_encode($state['units']) ?>;
 let SWAPS = <?= json_encode($state['swaps'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 let FACULTY = <?= json_encode($state['faculty'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 let CHANGE_REQUESTS = <?= json_encode($state['change_requests'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
-let UNREAD = <?= json_encode($state['unread_notifications']) ?>;
 
 let activeTab = 'available';
 let dayFilter = null;   // null = all days
@@ -936,10 +691,16 @@ const dayFilterBox = document.getElementById('dayFilter');
     dayFilterBox.appendChild(chip);
 });
 
-document.getElementById('searchInput').addEventListener('input', e => {
-    query = e.target.value;
-    renderBoard();
-});
+// Board search reuses the standard topbar search field instead of a
+// page-specific one, so the topbar stays identical across every page.
+const acSearchInput = document.getElementById('acSearchInput');
+if (acSearchInput) {
+    acSearchInput.placeholder = 'Search subject, room, section...';
+    acSearchInput.addEventListener('input', e => {
+        query = e.target.value;
+        renderBoard();
+    });
+}
 
 // Year level / section dropdowns: options follow whatever contexts exist in
 // the live data, so new sections appear automatically.
@@ -1225,71 +986,9 @@ async function cancelChangeRequest(cr) {
     }
 }
 
-// ---------- notifications ----------
-function updateNotifBadge() {
-    const badge = document.getElementById('notifBadge');
-    if (UNREAD > 0) {
-        badge.textContent = UNREAD > 99 ? '99+' : UNREAD;
-        badge.style.display = 'block';
-    } else {
-        badge.style.display = 'none';
-    }
-}
-updateNotifBadge();
-
-async function loadNotifications() {
-    const list = document.getElementById('notifList');
-    list.innerHTML = '<p style="padding:16px;font-size:.8rem;color:var(--muted);">Loading…</p>';
-
-    try {
-        const response = await fetch(CONFIG.notificationsUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        const data = await response.json();
-
-        if (!data.notifications || data.notifications.length === 0) {
-            list.innerHTML = '<p style="padding:16px;font-size:.8rem;color:var(--muted);">No notifications yet.</p>';
-            return;
-        }
-
-        list.innerHTML = '';
-        data.notifications.forEach(n => {
-            const item = document.createElement('div');
-            item.style.cssText = 'padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;font-size:.8rem;'
-                + (n.is_read == 0 ? 'background:rgba(0,64,166,.04);font-weight:600;' : '');
-            item.textContent = n.message;
-            item.addEventListener('click', async () => {
-                await fetch(CONFIG.notificationsMarkReadUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ id: n.id }),
-                });
-                if (n.link) window.location.href = n.link;
-            });
-            list.appendChild(item);
-        });
-    } catch (err) {
-        list.innerHTML = '<p style="padding:16px;font-size:.8rem;color:var(--muted);">Could not load notifications.</p>';
-    }
-}
-
-const notifPanel = document.getElementById('notifPanel');
-document.getElementById('notifBtn').addEventListener('click', () => {
-    const open = notifPanel.style.display === 'block';
-    notifPanel.style.display = open ? 'none' : 'block';
-    if (!open) loadNotifications();
-});
-document.addEventListener('click', e => {
-    if (!document.getElementById('notifWrap').contains(e.target)) notifPanel.style.display = 'none';
-});
-document.getElementById('notifMarkAll').addEventListener('click', async (e) => {
-    e.stopPropagation();
-    await fetch(CONFIG.notificationsMarkAllReadUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-    });
-    UNREAD = 0;
-    updateNotifBadge();
-    loadNotifications();
-});
+// Notifications are handled by the shared topbar bell (see
+// layouts/admin_console.php) — it polls faculty/notifications on its own,
+// so this page only needs to toast in-board events below.
 
 // ---------- real-time (long-polling) ----------
 function applyState(data) {
@@ -1332,11 +1031,6 @@ function applyState(data) {
             }
         });
         CHANGE_REQUESTS = data.change_requests;
-    }
-
-    if (typeof data.unread_notifications === 'number') {
-        UNREAD = data.unread_notifications;
-        updateNotifBadge();
     }
 
     LOADS = data.loads || [];
@@ -1400,5 +1094,4 @@ if (CONFIG.noDepartment) {
     });
 }
 </script>
-</body>
-</html>
+<?= $this->endSection() ?>

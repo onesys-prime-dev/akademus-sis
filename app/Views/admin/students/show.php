@@ -6,7 +6,7 @@
 
 <div class="ac-page-header">
     <div>
-        <a href="<?= site_url('admin/students') ?>" style="font-size:12.5px; color:#515f74;">&larr; Back to Student Records</a>
+        <a href="<?= site_url('admin/students') ?>" style="font-size:12.5px; color:var(--color-text-secondary);">&larr; Back to Student Records</a>
         <h2 class="ac-page-header__title" style="margin-top:6px;"><?= esc(trim($s['first_name'] . ' ' . $s['middle_name'] . ' ' . $s['last_name'])) ?></h2>
         <p class="ac-page-header__sub"><?= esc($s['student_number']) ?> &middot; <?= esc($s['program_code'] ?? 'No program set') ?> &middot;
             <span class="ac-status-dot ac-status-dot--<?= $s['student_status'] === 'active' ? 'active' : ($s['student_status'] === 'dropped' ? 'pending' : 'inactive') ?>"><?= esc(ucfirst($s['student_status'])) ?></span>
@@ -35,7 +35,7 @@
         <div><label class="ac-muted" style="font-size:11px; text-transform:uppercase;">Email</label><p><?= esc($s['email'] ?: '—') ?></p></div>
         <div><label class="ac-muted" style="font-size:11px; text-transform:uppercase;">Contact Number</label><p><?= esc($s['contact_number'] ?: '—') ?></p></div>
     </div>
-    <p style="padding:0 24px 16px; font-size:11.5px; color:#515f74;">Editable by Admin/Registrar. Owned by SIS once promoted from Admissions — corrections here do not sync back to the Admissions Portal.</p>
+    <p style="padding:0 24px 16px; font-size:11.5px; color:var(--color-text-secondary);">Editable by Admin/Registrar. Owned by SIS once promoted from Admissions — corrections here do not sync back to the Admissions Portal.</p>
 </div>
 
 <!-- Admission Info -->
@@ -44,7 +44,7 @@
         <div><label class="ac-muted" style="font-size:11px; text-transform:uppercase;">Applicant ID</label><p><?= esc($s['applicant_id']) ?></p></div>
         <div><label class="ac-muted" style="font-size:11px; text-transform:uppercase;">Admission Date</label><p><?= esc($s['admission_date'] ? date('M j, Y g:i A', strtotime($s['admission_date'])) : '—') ?></p></div>
     </div>
-    <p style="padding:0 24px 16px; font-size:11.5px; color:#515f74;">Read-only — a historical fact owned by the Admissions Portal, recorded at the moment this student was promoted (<code>POST /api/students/promote</code>).</p>
+    <p style="padding:0 24px 16px; font-size:11.5px; color:var(--color-text-secondary);">Read-only — a historical fact owned by the Admissions Portal, recorded at the moment this student was promoted (<code>POST /api/students/promote</code>).</p>
 </div>
 
 <!-- Program & Curriculum -->
@@ -107,7 +107,7 @@
         <?php endforeach ?>
         </tbody>
     </table>
-    <p style="padding:12px 24px; font-size:11.5px; color:#515f74;">
+    <p style="padding:12px 24px; font-size:11.5px; color:var(--color-text-secondary);">
         This governs the <code>curriculum</code>/<code>curriculum_subjects</code> system only. The chairperson-facing
         <code>curriculum_presets</code> (used for schedule-plotting templates) is a separate, still-unreconciled concept —
         see the SIS development roadmap.
@@ -127,7 +127,7 @@
             <div class="ac-empty-panel">Not yet assigned to a section.</div>
         <?php endif ?>
     </div>
-    <p style="padding:0 24px 16px; font-size:11.5px; color:#515f74;">Read-only here by design — section assignment is owned by the Chairperson (<code>ChairpersonController::assignStudent</code>), scoped to their own sub-department. Reassign from Chairperson &rarr; Sections.</p>
+    <p style="padding:0 24px 16px; font-size:11.5px; color:var(--color-text-secondary);">Read-only here by design — section assignment is owned by the Chairperson (<code>ChairpersonController::assignStudent</code>), scoped to their own sub-department. Reassign from Chairperson &rarr; Sections.</p>
 </div>
 
 <!-- Enrollment History -->
@@ -150,7 +150,7 @@
         <?php endforeach ?>
         </tbody>
     </table>
-    <p style="padding:12px 24px; font-size:11.5px; color:#515f74;">Append-only — sourced directly from <code>enrollments</code>. This is the complete record; there is no separate archival table.</p>
+    <p style="padding:12px 24px; font-size:11.5px; color:var(--color-text-secondary);">Append-only — sourced directly from <code>enrollments</code>. This is the complete record; there is no separate archival table.</p>
 </div>
 
 <!-- Academic Status -->

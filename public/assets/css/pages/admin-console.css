@@ -24,7 +24,7 @@ html, .ac-page { height: 100%; }
 .ac-sidebar::-webkit-scrollbar,
 .ac-content::-webkit-scrollbar { width: 6px; height: 6px; }
 .ac-sidebar::-webkit-scrollbar-thumb,
-.ac-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: var(--radius-sm); }
+.ac-content::-webkit-scrollbar-thumb { background: var(--color-border-medium); border-radius: var(--radius-sm); }
 
 /* Sidebar: icon rail that expands to show labels on hover, retracting the
    instant the pointer leaves — no click, no persisted state. */
@@ -37,12 +37,10 @@ html, .ac-page { height: 100%; }
     flex-direction: column;
     gap: 8px;
     padding: 20px 0;
-    background: rgba(255, 255, 255, .7);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, .4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-xl);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, .03), 0 0 1px rgba(0, 0, 0, .1);
+    box-shadow: var(--shadow-sm);
     z-index: 50;
     overflow: hidden;
     transition: width .16s ease;
@@ -99,6 +97,21 @@ html, .ac-page { height: 100%; }
 
 .ac-sidebar:hover .ac-sidebar__nav { align-items: stretch; padding: 0 10px; }
 
+.ac-nav-group-label {
+    display: none;
+    padding: 12px 12px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+.ac-sidebar:hover .ac-nav-group-label { display: block; }
+.ac-nav-group-label:first-child { padding-top: 0; }
+
 .ac-nav-item {
     display: flex;
     align-items: center;
@@ -150,6 +163,67 @@ html, .ac-page { height: 100%; }
     background: var(--separator);
     border: 1px solid var(--color-border-strong);
     cursor: pointer;
+}
+
+.ac-notif {
+    position: relative;
+}
+
+.ac-notif__panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: -8px;
+    width: 320px;
+    max-height: 420px;
+    overflow-y: auto;
+    background: var(--color-surface);
+    border: 1px solid #e1e4ea;
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 28px rgba(11, 28, 48, .12);
+    display: none;
+    z-index: 60;
+}
+
+.ac-notif.is-open .ac-notif__panel { display: block; }
+
+.ac-notif__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.ac-notif__head strong { font-size: 13px; color: #0b1c30; }
+
+.ac-notif__head button {
+    border: none;
+    background: none;
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.ac-notif__list { padding: 4px; }
+
+.ac-notif__item {
+    padding: 10px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.ac-notif__item:hover { background: var(--color-surface-sunken); }
+.ac-notif__item.is-unread { background: var(--color-primary-soft); font-weight: 600; }
+
+.ac-notif__empty {
+    padding: 20px 14px;
+    font-size: 12.5px;
+    color: var(--color-text-secondary);
+    text-align: center;
 }
 
 .ac-user-menu {
@@ -224,12 +298,10 @@ html, .ac-page { height: 100%; }
     justify-content: space-between;
     align-items: center;
     padding: 16px 28px;
-    background: rgba(255, 255, 255, .7);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, .4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-xl);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, .03), 0 0 1px rgba(0, 0, 0, .1);
+    box-shadow: var(--shadow-sm);
 }
 
 .ac-topbar__actions {
@@ -378,10 +450,10 @@ html, .ac-page { height: 100%; }
 .ac-btn-secondary {
     background: #fff;
     color: #475569;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--color-border-control);
 }
 
-.ac-btn-secondary:hover { background: #f8fafc; }
+.ac-btn-secondary:hover { background: var(--color-surface-header); }
 
 .ac-btn-warning {
     background: var(--color-warning);
@@ -509,15 +581,15 @@ html, .ac-page { height: 100%; }
 .ac-chair-box--empty .ac-chair-box__label { color: #92400e; }
 
 .ac-chair-box__name { font-size: 13px; font-weight: 700; color: var(--color-text-primary); }
-.ac-chair-box__email { font-size: 11px; color: #64748b; }
+.ac-chair-box__email { font-size: 11px; color: var(--color-text-muted); }
 
 .ac-icon-btn {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--color-border-control);
     background: #fff;
     border-radius: var(--radius-sm);
     padding: 7px;
     cursor: pointer;
-    color: #64748b;
+    color: var(--color-text-muted);
 }
 
 /* Active badge (academic year) */
@@ -553,7 +625,7 @@ html, .ac-page { height: 100%; }
     font-size: 12.5px;
     font-weight: 600;
     cursor: pointer;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--color-border-control);
     background: #fff;
     color: #475569;
     text-decoration: none;
@@ -589,13 +661,13 @@ html, .ac-page { height: 100%; }
     border-collapse: collapse;
 }
 
-.ac-table thead tr { background: #f8fafc; }
+.ac-table thead tr { background: var(--color-surface-header); }
 
 .ac-table th {
     text-align: left;
     font-size: 11px;
     font-weight: 700;
-    color: #64748b;
+    color: var(--color-text-muted);
     padding: 12px 16px;
 }
 
@@ -678,7 +750,7 @@ html, .ac-page { height: 100%; }
 
 .ac-empty-block {
     background: #fff;
-    border: 1px dashed #cbd5e1;
+    border: 1px dashed var(--color-border-medium);
     border-radius: var(--radius-lg);
     padding: 32px;
     text-align: center;
@@ -726,7 +798,7 @@ html, .ac-page { height: 100%; }
     border-radius: var(--radius-sm);
     padding: 6px;
     cursor: pointer;
-    color: #64748b;
+    color: var(--color-text-muted);
 }
 
 .ac-modal__body {
@@ -747,7 +819,7 @@ html, .ac-page { height: 100%; }
 .ac-field label {
     font-size: 11px;
     font-weight: 700;
-    color: #64748b;
+    color: var(--color-text-muted);
     margin-bottom: 5px;
     display: block;
 }
@@ -756,7 +828,7 @@ html, .ac-page { height: 100%; }
     width: 100%;
     padding: 9px 11px;
     border-radius: 9px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--color-border-control);
     font-size: 13px;
     color: var(--color-text-primary);
     outline: none;
@@ -836,7 +908,7 @@ html, .ac-page { height: 100%; }
 .ac-cred-copy .material-symbols-outlined { font-size: 15px; }
 
 .ac-actions-cell .ac-icon-btn {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--color-border-control);
     background: #fff;
     border-radius: var(--radius-sm);
     width: 30px;
@@ -848,7 +920,7 @@ html, .ac-page { height: 100%; }
     color: var(--color-text-secondary);
 }
 
-.ac-actions-cell .ac-icon-btn:hover { background: var(--color-surface-sunken); border-color: #cbd5e1; }
+.ac-actions-cell .ac-icon-btn:hover { background: var(--color-surface-sunken); border-color: var(--color-border-medium); }
 .ac-actions-cell .ac-icon-btn .material-symbols-outlined { font-size: 17px; }
 .ac-actions-cell .ac-icon-btn--danger:hover { background: var(--color-danger-soft); border-color: #fecaca; color: #b91c1c; }
 
@@ -914,7 +986,7 @@ html, .ac-page { height: 100%; }
 }
 
 *::-webkit-scrollbar { height: 8px; width: 8px; }
-*::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: var(--radius-sm); }
+*::-webkit-scrollbar-thumb { background: var(--color-border-medium); border-radius: var(--radius-sm); }
 
 /* ==========================================================================
    Page header (shared)
@@ -1163,6 +1235,10 @@ html, .ac-page { height: 100%; }
 
 .ac-panel__head h3 { font-size: 15px; font-weight: 800; color: var(--color-text-primary); margin: 0; }
 
+.ac-panel--padded { padding: 24px; }
+.ac-panel__title { font-size: 15px; font-weight: 800; color: var(--color-text-primary); margin: 0 0 16px; }
+.ac-panel__note { font-size: 12.5px; color: var(--color-text-secondary); margin: 0 0 16px; }
+
 .ac-activity-row {
     display: flex;
     align-items: center;
@@ -1356,6 +1432,8 @@ html, .ac-page { height: 100%; }
 }
 
 .ac-btn-outline:hover { background: var(--color-surface-sunken); }
+
+.ac-btn-outline--ghost { color: var(--color-text-secondary); border-color: transparent; }
 
 .ac-icon-action {
     padding: 6px;

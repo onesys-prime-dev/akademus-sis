@@ -1,84 +1,74 @@
-<!DOCTYPE html>
-<html lang="en">
+<?= $this->extend('layouts/admin_console') ?>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dashboard</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/tokens.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/tokens.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/base.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/base.css') ?>">
-    <style>
-        <?= $this->include('components/shell/style') ?>
-    </style>
-</head>
+<?php
+$activeAdmin   = 'dashboard';
+$pageTitle     = 'Dashboard';
+$brandSub      = 'Student Portal';
+$userName      = $account->username;
+$userRoleLabel = $section !== null ? "{$section['program']} · {$section['year_level']}" : 'Student';
+$navGroups     = [
+    '' => [
+        'dashboard' => ['label' => 'Dashboard',   'icon' => 'home',           'url' => 'student/dashboard'],
+        'schedule'  => ['label' => 'My Schedule', 'icon' => 'calendar_month', 'url' => 'student/schedule'],
+        'grades'    => ['label' => 'My Grades',   'icon' => 'grade',          'url' => 'student/grades'],
+        'profile'   => ['label' => 'Profile',     'icon' => 'person',         'url' => 'student/profile'],
+    ],
+];
+$this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
+?>
 
-<body>
+<?= $this->section('styles') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
+<?= $this->endSection() ?>
 
-    <?php
-    $activePage  = 'dashboard';
-    $pageTitle   = 'Dashboard';
-    $userName    = $account->username;
-    $userRole    = $section !== null ? "{$section['program']} · {$section['year_level']}" : 'Student';
-    $settingsUrl = site_url('student/profile');
-    $this->setData(compact('activePage', 'pageTitle', 'userName', 'userRole', 'settingsUrl'));
-    ?>
+<?= $this->section('content') ?>
 
-    <?= $this->include('components/shell/student_nav') ?>
+<div class="ac-page-header">
+    <div>
+        <h2 class="ac-page-header__title">Dashboard</h2>
+        <p class="ac-page-header__sub">Welcome back, <?= esc($account->username) ?>.</p>
+    </div>
+</div>
 
-    <div class="app-main">
-
-        <?= $this->include('components/shell/topbar') ?>
-
-        <div class="content">
-
-            <?php if ($section === null): ?>
-                <div class="panel">
-                    <div class="empty-state">
-                        <div class="material-symbols-outlined">domain_disabled</div>
-                        <p>You're not assigned to a section yet. Contact an administrator.</p>
-                    </div>
-                </div>
-            <?php else: ?>
-
-                <div class="stat-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon"><span class="material-symbols-outlined">menu_book</span></div>
-                        <div class="stat-value"><?= esc($stats['enrolled_subjects']) ?></div>
-                        <div class="stat-label">Subjects enrolled</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon"><span class="material-symbols-outlined">event</span></div>
-                        <div class="stat-value"><?= esc($stats['weekly_meetings']) ?></div>
-                        <div class="stat-label">Weekly class meetings</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon"><span class="material-symbols-outlined">groups</span></div>
-                        <div class="stat-value"><?= esc($section['section']) ?></div>
-                        <div class="stat-label">Section</div>
-                    </div>
-                </div>
-
-                <div class="panel">
-                    <h2>Your Cohort</h2>
-                    <p style="color:var(--on-surface-variant); margin-bottom:10px;">
-                        <?= esc($section['program']) ?> &middot; <?= esc($section['year_level']) ?> &middot; Section <?= esc($section['section']) ?>
-                    </p>
-                    <p style="color:var(--on-surface-variant); font-size:13px;">Active term: <?= esc($section['academic_year']) ?></p>
-                    <a class="btn btn-primary" style="margin-top:16px;" href="<?= site_url('student/schedule') ?>">
-                        <span class="material-symbols-outlined" style="font-size:18px;">calendar_month</span>
-                        View My Schedule
-                    </a>
-                </div>
-
-            <?php endif ?>
-
+<?php if ($section === null): ?>
+    <div class="panel">
+        <div class="empty-state">
+            <div class="material-symbols-outlined">domain_disabled</div>
+            <p>You're not assigned to a section yet. Contact an administrator.</p>
         </div>
+    </div>
+<?php else: ?>
 
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-icon"><span class="material-symbols-outlined">menu_book</span></div>
+            <div class="stat-value"><?= esc($stats['enrolled_subjects']) ?></div>
+            <div class="stat-label">Subjects enrolled</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><span class="material-symbols-outlined">event</span></div>
+            <div class="stat-value"><?= esc($stats['weekly_meetings']) ?></div>
+            <div class="stat-label">Weekly class meetings</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><span class="material-symbols-outlined">groups</span></div>
+            <div class="stat-value"><?= esc($section['section']) ?></div>
+            <div class="stat-label">Section</div>
+        </div>
     </div>
 
-</body>
+    <div class="panel">
+        <h2>Your Cohort</h2>
+        <p style="color:var(--color-text-secondary); margin-bottom:10px;">
+            <?= esc($section['program']) ?> &middot; <?= esc($section['year_level']) ?> &middot; Section <?= esc($section['section']) ?>
+        </p>
+        <p style="color:var(--color-text-secondary); font-size:13px;">Active term: <?= esc($section['academic_year']) ?></p>
+        <a class="btn btn-primary" style="margin-top:16px;" href="<?= site_url('student/schedule') ?>">
+            <span class="material-symbols-outlined" style="font-size:18px;">calendar_month</span>
+            View My Schedule
+        </a>
+    </div>
 
-</html>
+<?php endif ?>
+
+<?= $this->endSection() ?>

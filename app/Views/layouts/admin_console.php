@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Akademus SIS | <?= esc($pageTitle ?? 'Admin Console') ?></title>
+    <title>Akademus SIS | <?= esc($pageTitle ?? $brandSub ?? 'Admin Console') ?></title>
 
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
@@ -17,24 +17,40 @@
 <body class="ac-page">
 
 <?php
-$navItems = [
-    'dashboard'            => ['label' => 'Overview',        'icon' => 'dashboard',      'url' => 'admin/dashboard'],
-    'departments'          => ['label' => 'Colleges',        'icon' => 'hub',            'url' => 'admin/departments'],
-    'programs'             => ['label' => 'Programs',        'icon' => 'workspace_premium', 'url' => 'admin/programs'],
-    'curriculum'           => ['label' => 'Curricula',       'icon' => 'auto_stories',   'url' => 'admin/curriculum'],
-    'curriculum-subjects'  => ['label' => 'Curriculum Subjects', 'icon' => 'library_books', 'url' => 'admin/curriculum-subjects'],
-    'subjects'             => ['label' => 'Subjects',        'icon' => 'menu_book',      'url' => 'admin/subjects'],
-    'students'             => ['label' => 'Student Records', 'icon' => 'school',         'url' => 'admin/students'],
-    'users'                => ['label' => 'User Accounts',   'icon' => 'group',          'url' => 'admin/users'],
-    'rooms'                => ['label' => 'Facilities',      'icon' => 'meeting_room',   'url' => 'admin/rooms'],
-    'academic-years'       => ['label' => 'Academic Years',  'icon' => 'event',          'url' => 'admin/academic-years'],
-    'grading-scales'       => ['label' => 'Grading Scales',  'icon' => 'grade',          'url' => 'admin/grading-scales'],
-    'academic-settings'    => ['label' => 'Scheduling Rules', 'icon' => 'tune',          'url' => 'admin/academic-settings'],
-    'roles'                => ['label' => 'Roles',           'icon' => 'admin_panel_settings', 'url' => 'admin/roles'],
+/**
+ * Shared application shell for every role (admin, chairperson, faculty,
+ * student). Admin pages rely on the defaults below unchanged; other roles
+ * pass $navGroups/$brandSub/$userName/$userRoleLabel to reuse the same
+ * sidebar/topbar chrome instead of duplicating it per page.
+ */
+$navGroups = $navGroups ?? [
+    '' => [
+        'dashboard'            => ['label' => 'Overview',        'icon' => 'dashboard',      'url' => 'admin/dashboard'],
+        'departments'          => ['label' => 'Colleges',        'icon' => 'hub',            'url' => 'admin/departments'],
+        'programs'             => ['label' => 'Programs',        'icon' => 'workspace_premium', 'url' => 'admin/programs'],
+        'curriculum'           => ['label' => 'Curricula',       'icon' => 'auto_stories',   'url' => 'admin/curriculum'],
+        'curriculum-subjects'  => ['label' => 'Curriculum Subjects', 'icon' => 'library_books', 'url' => 'admin/curriculum-subjects'],
+        'subjects'             => ['label' => 'Subjects',        'icon' => 'menu_book',      'url' => 'admin/subjects'],
+        'students'             => ['label' => 'Student Records', 'icon' => 'school',         'url' => 'admin/students'],
+        'users'                => ['label' => 'User Accounts',   'icon' => 'group',          'url' => 'admin/users'],
+        'rooms'                => ['label' => 'Facilities',      'icon' => 'meeting_room',   'url' => 'admin/rooms'],
+        'academic-years'       => ['label' => 'Academic Years',  'icon' => 'event',          'url' => 'admin/academic-years'],
+        'grading-scales'       => ['label' => 'Grading Scales',  'icon' => 'grade',          'url' => 'admin/grading-scales'],
+        'academic-settings'    => ['label' => 'Scheduling Rules', 'icon' => 'tune',          'url' => 'admin/academic-settings'],
+        'roles'                => ['label' => 'Roles',           'icon' => 'admin_panel_settings', 'url' => 'admin/roles'],
+    ],
 ];
-$active   = $activeAdmin ?? '';
-$username = auth()->user()->username ?? 'Administrator';
-$initial  = strtoupper(substr($username, 0, 1));
+$active        = $activeAdmin ?? '';
+$brandSub      = $brandSub ?? 'Admin Console';
+$username      = $userName ?? (auth()->user()->username ?? 'Administrator');
+$userRoleLabel = $userRoleLabel ?? 'Administrator';
+$logoutUrl     = $logoutUrl ?? '/logout';
+$initial       = strtoupper(substr($username, 0, 1));
+// Every role group (admin, student, faculty, chairperson) routes an
+// identically-shaped notifications/mark-read/mark-all-read trio off its own
+// prefix — so the bell can stay in this one shared layout instead of being
+// wired per page, by reading which role prefix the current URL is under.
+$notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
 ?>
 
 <aside class="ac-sidebar">
@@ -42,16 +58,21 @@ $initial  = strtoupper(substr($username, 0, 1));
         <img src="<?= base_url('assets/images/logos/akademus.png') ?>" alt="Akademus" class="ac-sidebar__brand-logo">
         <div class="ac-sidebar__brand-text">
             <h1 class="ac-sidebar__brand-name">Akademus</h1>
-            <p class="ac-sidebar__brand-sub">Admin Console</p>
+            <p class="ac-sidebar__brand-sub"><?= esc($brandSub) ?></p>
         </div>
     </div>
 
-    <nav class="ac-sidebar__nav" aria-label="Admin console">
-        <?php foreach ($navItems as $key => $item): ?>
-            <a href="<?= site_url($item['url']) ?>" class="ac-nav-item <?= $active === $key ? 'is-active' : '' ?>" title="<?= esc($item['label']) ?>" <?= $active === $key ? 'aria-current="page"' : '' ?>>
-                <span class="material-symbols-outlined <?= $active === $key ? 'icon-fill' : '' ?>" aria-hidden="true"><?= $item['icon'] ?></span>
-                <span class="ac-nav-label"><?= esc($item['label']) ?></span>
-            </a>
+    <nav class="ac-sidebar__nav" aria-label="<?= esc($brandSub) ?>">
+        <?php foreach ($navGroups as $groupLabel => $navItems): ?>
+            <?php if ($groupLabel !== ''): ?>
+                <div class="ac-nav-group-label"><?= esc($groupLabel) ?></div>
+            <?php endif ?>
+            <?php foreach ($navItems as $key => $item): ?>
+                <a href="<?= site_url($item['url']) ?>" class="ac-nav-item <?= $active === $key ? 'is-active' : '' ?>" title="<?= esc($item['label']) ?>" <?= $active === $key ? 'aria-current="page"' : '' ?>>
+                    <span class="material-symbols-outlined <?= $active === $key ? 'icon-fill' : '' ?>" aria-hidden="true"><?= $item['icon'] ?></span>
+                    <span class="ac-nav-label"><?= esc($item['label']) ?></span>
+                </a>
+            <?php endforeach ?>
         <?php endforeach ?>
     </nav>
 </aside>
@@ -59,8 +80,7 @@ $initial  = strtoupper(substr($username, 0, 1));
 <main class="ac-main">
     <header class="ac-topbar">
         <nav class="ac-topbar__links">
-            <a href="#">Directory</a>
-            <a href="#">Quick Actions</a>
+            <?= $this->renderSection('topbarLinks') ?: '<a href="#">Directory</a><a href="#">Quick Actions</a>' ?>
         </nav>
 
         <div class="ac-topbar__actions">
@@ -71,10 +91,21 @@ $initial  = strtoupper(substr($username, 0, 1));
             </div>
 
             <div class="ac-topbar__icons">
-                <button type="button" class="ac-topbar__iconbtn" title="Notifications" aria-label="Notifications">
-                    <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
-                    <span class="ac-topbar__dot"></span>
-                </button>
+                <div class="ac-notif" id="acNotif">
+                    <button type="button" class="ac-topbar__iconbtn" id="acNotifBtn" title="Notifications" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">
+                        <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
+                        <span class="ac-topbar__dot" id="acNotifDot" style="display:none;"></span>
+                    </button>
+                    <div class="ac-notif__panel" id="acNotifPanel" role="menu">
+                        <div class="ac-notif__head">
+                            <strong>Notifications</strong>
+                            <button type="button" id="acNotifMarkAll">Mark all read</button>
+                        </div>
+                        <div class="ac-notif__list" id="acNotifList">
+                            <p class="ac-notif__empty">Loading…</p>
+                        </div>
+                    </div>
+                </div>
                 <button type="button" class="ac-topbar__iconbtn" title="Settings" aria-label="Settings">
                     <span class="material-symbols-outlined" aria-hidden="true">settings</span>
                 </button>
@@ -92,10 +123,10 @@ $initial  = strtoupper(substr($username, 0, 1));
                 <div class="ac-user-menu__dropdown" role="menu">
                     <div class="ac-user-menu__who">
                         <p class="ac-user-menu__name"><?= esc($username) ?></p>
-                        <p class="ac-user-menu__role">Administrator</p>
+                        <p class="ac-user-menu__role"><?= esc($userRoleLabel) ?></p>
                     </div>
                     <hr>
-                    <a href="<?= site_url('/logout') ?>" class="ac-user-menu__item ac-user-menu__item--danger">
+                    <a href="<?= site_url($logoutUrl) ?>" class="ac-user-menu__item ac-user-menu__item--danger">
                         <span class="material-symbols-outlined">logout</span>
                         <span>Logout</span>
                     </a>
@@ -215,6 +246,101 @@ $initial  = strtoupper(substr($username, 0, 1));
                 btn.focus();
             }
         });
+    })();
+
+    // Notification bell — same wiring on every role (admin/student/faculty/
+    // chairperson all route an identically-shaped notifications trio off
+    // their own prefix; see $notifRole above).
+    (function () {
+        var wrap  = document.getElementById('acNotif');
+        var btn   = document.getElementById('acNotifBtn');
+        var panel = document.getElementById('acNotifPanel');
+        var dot   = document.getElementById('acNotifDot');
+        var list  = document.getElementById('acNotifList');
+        var markAllBtn = document.getElementById('acNotifMarkAll');
+        if (!wrap || !btn) return;
+
+        var indexUrl    = <?= json_encode(site_url($notifRole . '/notifications')) ?>;
+        var markReadUrl = <?= json_encode(site_url($notifRole . '/notifications/mark-read')) ?>;
+        var markAllUrl  = <?= json_encode(site_url($notifRole . '/notifications/mark-all-read')) ?>;
+
+        function renderList(notifications) {
+            list.innerHTML = '';
+            if (!notifications || notifications.length === 0) {
+                list.innerHTML = '<p class="ac-notif__empty">No notifications yet.</p>';
+                return;
+            }
+            notifications.forEach(function (n) {
+                var item = document.createElement('div');
+                item.className = 'ac-notif__item' + (Number(n.is_read) === 0 ? ' is-unread' : '');
+                item.textContent = n.message;
+                item.addEventListener('click', function () {
+                    fetch(markReadUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: JSON.stringify({ id: n.id }),
+                    }).finally(function () {
+                        if (n.link) window.location.href = n.link;
+                        else refreshUnread();
+                    });
+                });
+                list.appendChild(item);
+            });
+        }
+
+        function loadList() {
+            list.innerHTML = '<p class="ac-notif__empty">Loading…</p>';
+            fetch(indexUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    renderList(data.notifications);
+                    setDot(data.unread || 0);
+                })
+                .catch(function () {
+                    list.innerHTML = '<p class="ac-notif__empty">Could not load notifications.</p>';
+                });
+        }
+
+        function setDot(unread) {
+            dot.style.display = unread > 0 ? 'block' : 'none';
+        }
+
+        function refreshUnread() {
+            fetch(indexUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) { setDot(data.unread || 0); })
+                .catch(function () {});
+        }
+
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var open = wrap.classList.toggle('is-open');
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open) loadList();
+        });
+        document.addEventListener('click', function () {
+            wrap.classList.remove('is-open');
+            btn.setAttribute('aria-expanded', 'false');
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && wrap.classList.contains('is-open')) {
+                wrap.classList.remove('is-open');
+                btn.setAttribute('aria-expanded', 'false');
+                btn.focus();
+            }
+        });
+        if (markAllBtn) {
+            markAllBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                fetch(markAllUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                }).finally(loadList).finally(function () { setDot(0); });
+            });
+        }
+
+        refreshUnread();
+        setInterval(refreshUnread, 30000);
     })();
 </script>
 

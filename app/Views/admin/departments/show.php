@@ -23,7 +23,7 @@
             <?php if ($college['dean']): ?>
                 Dean: <?= esc($college['dean']['username']) ?>
             <?php else: ?>
-                <span style="color:#d97706; font-weight:700;">No dean assigned</span>
+                <span style="color:var(--color-warning); font-weight:700;">No dean assigned</span>
             <?php endif ?>
         </div>
     </div>
@@ -55,8 +55,8 @@
 
         <div class="ac-metric-card">
             <div class="ac-metric-card__top">
-                <span class="material-symbols-outlined" style="color:#515f74;">location_on</span>
-                <span style="font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#515f74;">Location</span>
+                <span class="material-symbols-outlined" style="color:var(--color-text-secondary);">location_on</span>
+                <span style="font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--color-text-secondary);">Location</span>
             </div>
             <p class="ac-metric-card__text"><?= esc($college['location'] ?: 'Not set') ?></p>
             <?php if ($college['established_year']): ?>
@@ -68,7 +68,7 @@
 
     <div class="ac-panel">
         <div class="ac-panel__head">
-            <h3><span class="material-symbols-outlined" style="vertical-align:-5px; color:#0037b0; margin-right:6px;">hub</span>Departments</h3>
+            <h3><span class="material-symbols-outlined" style="vertical-align:-5px; color:var(--color-primary); margin-right:6px;">hub</span>Departments</h3>
             <button type="button" onclick="acOpenModal('modalAddDept')" class="ac-btn-outline">+ Add Department</button>
         </div>
         <div>
@@ -90,7 +90,7 @@
                                 </p>
                             </div>
                         </div>
-                        <span class="material-symbols-outlined" style="color:#c4c5d7;">arrow_forward</span>
+                        <span class="material-symbols-outlined" style="color:var(--color-border-strong);">arrow_forward</span>
                     </a>
                 <?php endforeach ?>
             <?php endif ?>
@@ -162,7 +162,7 @@
                     <input type="email" name="email" class="ac-input" placeholder="sjenkins@spum.edu.ph" value="<?= esc($college['dean']['email'] ?? '') ?>" required>
                 </div>
                 <div class="ac-notice">
-                    <span class="material-symbols-outlined" style="font-size:14px; color:#1d4ed8; margin-top:1px;">info</span>
+                    <span class="material-symbols-outlined" style="font-size:14px; color:var(--color-info); margin-top:1px;">info</span>
                     <span class="ac-notice__text">This will set the account as <?= esc($college['name']) ?>'s dean, replacing the current one if any.</span>
                 </div>
             </div>

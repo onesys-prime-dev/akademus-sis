@@ -29,9 +29,18 @@
     --color-text-on-primary: #ffffff;
 
     /* ---- Borders / separators ---- */
-    --color-border:        #eef2f7;
-    --color-border-strong: #c4c5d7;
+    --color-border:         #eef2f7;
+    --color-border-control: #e2e8f0;
+    --color-border-medium:  #cbd5e1;
+    --color-border-strong:  #c4c5d7;
     --separator:            #eceef0;
+
+    /* ---- Neutral gray (slate) — used for muted labels/icons and light
+       surfaces that sit between --color-surface-sunken and --color-border
+       in weight; kept as its own scale rather than overloading the existing
+       tokens so a future audit can retire it cleanly if unified further. */
+    --color-text-muted:    #64748b;
+    --color-surface-header: #f8fafc;
 
     /* ---- Semantic ---- */
     --color-success:         #16a34a;
@@ -40,6 +49,7 @@
     --color-warning-soft:    #fff8eb;
     --color-danger:          #dc2626;
     --color-danger-soft:     #fef2f2;
+    --color-danger-border:   #fecaca;
     --color-info:            #1d4ed8;
     --color-info-soft:       #eff6ff;
 

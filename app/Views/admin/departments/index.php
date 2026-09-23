@@ -26,18 +26,18 @@
                 <button type="button"
                         onclick="openDeleteCollegeModal(<?= $dept['dept_id'] ?>, <?= esc(json_encode($dept['code'] . ' · ' . $dept['name']), 'attr') ?>, <?= (int) $dept['dept_count'] ?>)"
                         title="Delete college"
-                        style="position:absolute; top:10px; right:10px; z-index:2; padding:5px; border:1px solid #f1d5d5; border-radius:6px; background:#fff; color:#dc2626; cursor:pointer; display:inline-flex;">
+                        style="position:absolute; top:10px; right:10px; z-index:2; padding:5px; border:1px solid #f1d5d5; border-radius:6px; background:#fff; color:var(--color-danger); cursor:pointer; display:inline-flex;">
                     <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
                 </button>
                 <a href="<?= site_url('admin/departments/' . $dept['dept_id']) ?>" style="text-decoration:none; color:inherit; display:flex; flex-direction:column; justify-content:space-between; height:100%;">
-                    <div class="ac-tile__icon" style="<?= $deaned ? '' : 'background:rgba(217,119,6,.15); color:#d97706;' ?>">
+                    <div class="ac-tile__icon" style="<?= $deaned ? '' : 'background:rgba(217,119,6,.15); color:var(--color-warning);' ?>">
                         <span class="material-symbols-outlined icon-fill">domain</span>
                     </div>
                     <div>
                         <h3 class="ac-tile__title"><?= esc($dept['code']) ?> &middot; <?= esc($dept['name']) ?></h3>
                         <p class="ac-tile__meta">
                             <?= esc($dept['dept_count']) ?> Dept<?= $dept['dept_count'] === 1 ? '' : 's' ?> &bull; <?= esc($dept['faculty_count']) ?> Faculty &bull;
-                            <span style="color: <?= $deaned ? '#16a34a' : '#d97706' ?>; font-weight:700;">
+                            <span style="color: <?= $deaned ? 'var(--color-success)' : 'var(--color-warning)' ?>; font-weight:700;">
                                 <?= $deaned ? 'Has Dean' : 'No Dean' ?>
                             </span>
                         </p>
@@ -97,7 +97,7 @@
         <div class="ac-modal__body">
             <p id="deleteCollegeMessage" style="font-size:14px; color:#434655; line-height:1.5;"></p>
             <div id="deleteCollegeBlocked" class="ac-notice" style="display:none; margin-top:12px;">
-                <span class="material-symbols-outlined" style="font-size:14px; color:#d97706; margin-top:1px;">warning</span>
+                <span class="material-symbols-outlined" style="font-size:14px; color:var(--color-warning); margin-top:1px;">warning</span>
                 <span class="ac-notice__text">This college still has departments under it. Remove those first before deleting the college.</span>
             </div>
         </div>

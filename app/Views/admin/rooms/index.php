@@ -237,7 +237,7 @@ $floorLabel = static fn (string $name): string => preg_match('/\bfloor$/i', trim
                         <?php endforeach ?>
                     </select>
                     <?php if (empty($floors)): ?>
-                        <p style="font-size:12.5px; color:#515f74; margin-top:4px;">No floors yet — add one first.</p>
+                        <p style="font-size:12.5px; color:var(--color-text-secondary); margin-top:4px;">No floors yet — add one first.</p>
                     <?php endif ?>
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">

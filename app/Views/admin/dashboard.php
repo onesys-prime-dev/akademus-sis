@@ -21,7 +21,7 @@
             </p>
             <div class="ac-alert-card__actions">
                 <a href="<?= site_url('admin/departments') ?>" class="ac-btn-outline">Review Assignments</a>
-                <button type="button" onclick="document.getElementById('deptAlert').remove()" class="ac-btn-outline" style="color:#515f74; border-color:transparent;">Dismiss</button>
+                <button type="button" onclick="document.getElementById('deptAlert').remove()" class="ac-btn-outline ac-btn-outline--ghost">Dismiss</button>
             </div>
         </div>
     </div>
@@ -99,12 +99,12 @@
 
     <div class="ac-side-stack">
 
-        <div class="ac-panel" style="padding: 24px;">
-            <h3 style="font-size:15px; font-weight:800; color:#191c1e; margin:0 0 16px;">System Setup</h3>
+        <div class="ac-panel ac-panel--padded">
+            <h3 class="ac-panel__title">System Setup</h3>
             <div class="ac-progress">
                 <div class="ac-progress__fill" style="width: <?= esc($setupPercent) ?>%"></div>
             </div>
-            <p style="font-size:12.5px; color:#515f74; margin: 0 0 16px;">
+            <p class="ac-panel__note">
                 <?= esc($setupPercent) ?>% complete.
                 <?= $setupPercent < 100
                     ? 'Finish assigning chairpersons to unlock full reporting.'

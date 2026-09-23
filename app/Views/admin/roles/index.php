@@ -2,7 +2,7 @@
 
 <?= $this->section('content') ?>
 
-<div style="font-size:13px; color:#64748b; margin-bottom:14px;">
+<div style="font-size:13px; color:var(--color-text-muted); margin-bottom:14px;">
     The permission model enforced across every screen. Assign these roles to accounts under <b>User Accounts</b>.
 </div>
 

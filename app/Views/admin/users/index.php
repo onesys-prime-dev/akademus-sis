@@ -164,7 +164,7 @@
                         <input type="text" name="password" id="acNewPassword" class="ac-input" placeholder="Leave blank to auto-generate" minlength="8" value="<?= old('password') ?>">
                         <button type="button" class="ac-btn-outline" style="white-space:nowrap;" onclick="acGeneratePassword()">Generate</button>
                     </div>
-                    <p style="font-size:11.5px; color:#515f74; margin-top:4px;">Minimum 8 characters. You'll see it again right after creating the account.</p>
+                    <p style="font-size:11.5px; color:var(--color-text-secondary); margin-top:4px;">Minimum 8 characters. You'll see it again right after creating the account.</p>
                 </div>
 
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
@@ -176,7 +176,7 @@
                             <option value="student" <?= old('role') === 'student' ? 'selected' : '' ?>>Student</option>
                             <option value="admin" <?= old('role') === 'admin' ? 'selected' : '' ?>>Admin</option>
                         </select>
-                        <p style="font-size:11.5px; color:#515f74; margin-top:4px;">Chairpersons are assigned from a department's own page.</p>
+                        <p style="font-size:11.5px; color:var(--color-text-secondary); margin-top:4px;">Chairpersons are assigned from a department's own page.</p>
                     </div>
                     <div class="ac-field" id="acDeptField">
                         <label>College</label>
@@ -221,10 +221,10 @@
                         </select>
                     </div>
                 </div>
-                <p id="acSectionHint" style="display:none; font-size:11.5px; color:#515f74; margin-top:-4px; margin-bottom:16px;">A section only appears here once its chairperson has plotted at least one class for it. Needed for block enrollment.</p>
+                <p id="acSectionHint" style="display:none; font-size:11.5px; color:var(--color-text-secondary); margin-top:-4px; margin-bottom:16px;">A section only appears here once its chairperson has plotted at least one class for it. Needed for block enrollment.</p>
 
                 <div class="ac-notice" id="acChairNotice" style="display:none;">
-                    <span class="material-symbols-outlined" style="font-size:16px; color:#1d4ed8; margin-top:1px;">info</span>
+                    <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-info); margin-top:1px;">info</span>
                     <span class="ac-notice__text">This will set the account as the selected college's dean, replacing the current one if any.</span>
                 </div>
             </div>
@@ -315,10 +315,10 @@
                         </select>
                     </div>
                 </div>
-                <p id="acEditSectionHint" style="display:none; font-size:11.5px; color:#515f74; margin-top:-4px; margin-bottom:16px;">A section only appears here once its chairperson has plotted at least one class for it.</p>
+                <p id="acEditSectionHint" style="display:none; font-size:11.5px; color:var(--color-text-secondary); margin-top:-4px; margin-bottom:16px;">A section only appears here once its chairperson has plotted at least one class for it.</p>
 
                 <div class="ac-notice" id="acEditChairNotice" style="display:none;">
-                    <span class="material-symbols-outlined" style="font-size:16px; color:#1d4ed8; margin-top:1px;">info</span>
+                    <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-info); margin-top:1px;">info</span>
                     <span class="ac-notice__text">This is the department's chairperson. Reassign chairpersons from the department's own page — only their name and email can be changed here.</span>
                 </div>
             </div>
@@ -347,7 +347,7 @@
         <form method="post" id="acResetForm">
             <?= csrf_field() ?>
             <div class="ac-notice" style="margin-top:16px;">
-                <span class="material-symbols-outlined" style="font-size:16px; color:#1d4ed8; margin-top:1px;">info</span>
+                <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-info); margin-top:1px;">info</span>
                 <span class="ac-notice__text">Their current password stops working immediately. Share the new one with them directly — it's only shown once.</span>
             </div>
             <div class="ac-modal__actions">
@@ -383,7 +383,7 @@
             </div>
 
             <div>
-                <label style="font-size:11px; font-weight:700; color:#64748b; margin-bottom:5px; display:block;">Temporary Password</label>
+                <label style="font-size:11px; font-weight:700; color:var(--color-text-muted); margin-bottom:5px; display:block;">Temporary Password</label>
                 <div class="ac-cred-pass">
                     <span class="ac-cred-pass__value" id="acCredPasswordValue"><?= esc($cred['password'] ?? '') ?></span>
                     <button type="button" class="ac-cred-copy" onclick="acCopyPassword()">

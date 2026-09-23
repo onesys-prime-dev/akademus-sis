@@ -1,16 +1,77 @@
-<!DOCTYPE html>
-<html lang="en">
+<?= $this->extend('layouts/admin_console') ?>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Schedule Plotting</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/tokens.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/tokens.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/base.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/base.css') ?>">
-    <style>
+<?php
+$activeAdmin   = 'schedule';
+$pageTitle     = 'Schedule Plotting';
+$brandSub      = 'Chairperson Portal';
+$userName      = $user['name'];
+$userRoleLabel = $user['role'];
+$navGroups     = [
+    '' => [
+        'overview'        => ['label' => 'Dashboard',        'icon' => 'home',           'url' => 'chairperson/overview'],
+        'profile'         => ['label' => 'Profile',           'icon' => 'person',          'url' => 'chairperson/profile'],
+        'schedule'        => ['label' => 'Schedule Plotting', 'icon' => 'calendar_month',  'url' => 'chairperson/dashboard'],
+        'sections'        => ['label' => 'Sections',          'icon' => 'groups',          'url' => 'chairperson/sections'],
+        'offerings'       => ['label' => 'Merged Classes',    'icon' => 'merge_type',      'url' => 'chairperson/offerings'],
+        'grade-approvals' => ['label' => 'Grade Approvals',   'icon' => 'grade',           'url' => 'chairperson/grade-approvals'],
+        'curriculum'      => ['label' => 'Curriculum',        'icon' => 'menu_book',       'url' => 'chairperson/curriculum'],
+    ],
+];
+$this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
+?>
+
+<?= $this->section('headerActions') ?>
+<div class="right">
+    <div class="sync-status" id="syncStatus">
+        <span class="sync-dot"></span>
+        <span id="syncText">All changes saved</span>
+    </div>
+    <button type="button" class="btn btn-ghost" id="approvalsBtn">
+        Swap Approvals <span class="approval-badge" id="approvalBadge">0</span>
+    </button>
+    <button type="button" class="btn btn-ghost" id="changeRequestsBtn">
+        Change Requests <span class="approval-badge" id="changeRequestBadge">0</span>
+    </button>
+    <button type="button" class="btn btn-ghost" id="roomOverviewBtn">Room Overview</button>
+    <button type="button" class="btn btn-ghost" id="facultyPanelBtn">Faculty</button>
+    <div class="user-menu" id="notifWrap" style="position:relative;">
+        <button type="button" class="user-trigger" id="notifBtn" title="Notifications" style="padding:8px;">
+            <span class="material-symbols-outlined">notifications</span>
+            <span class="approval-badge zero" id="notifBadge" style="margin-left:2px;">0</span>
+        </button>
+        <div class="user-dropdown" id="notifPanel" style="min-width:320px; max-height:400px; overflow-y:auto; padding:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--outline-variant);">
+                <strong style="font-size:13px;">Notifications</strong>
+                <button type="button" id="notifMarkAll" style="font-size:11.5px;color:var(--primary-container);background:none;border:none;cursor:pointer;font-weight:700;">Mark all read</button>
+            </div>
+            <div id="notifList"></div>
+        </div>
+    </div>
+    <div class="user-menu" id="userMenu">
+        <button type="button" class="user-trigger" id="userMenuBtn">
+            <div class="avatar-sm"><?= esc(mb_strtoupper(mb_substr($user['name'], 0, 1))) ?></div>
+            <div class="user-text">
+                <div class="name"><?= esc($user['name']) ?></div>
+                <div class="role"><?= esc($user['role']) ?></div>
+            </div>
+            <span class="material-symbols-outlined chevron">expand_more</span>
+        </button>
+        <div class="user-dropdown">
+            <a href="<?= site_url('chairperson/profile') ?>"><span class="material-symbols-outlined" style="font-size:18px;">settings</span> Settings</a>
+            <hr>
+            <a href="<?= site_url('logout') ?>" class="danger"><span class="material-symbols-outlined" style="font-size:18px;">logout</span> Logout</a>
+        </div>
+    </div>
+</div>
+<?= $this->endSection() ?>
+
+<?= $this->section('styles') ?>
+<style>
+        /* This page ships its own notification bell + avatar menu in
+           headerActions (id-coupled to its own JS below) — hide the shared
+           layout's generic ones here instead of duplicating both. */
+        .ac-notif, .ac-user-menu { display: none; }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
@@ -72,45 +133,23 @@
             vertical-align: middle;
         }
 
-        .glass {
-            background: rgba(255, 255, 255, .7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, .4);
-        }
-
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 8px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--outline); }
 
-        /* ===== Header ===== */
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--surface-container-lowest);
-            padding: 14px 24px;
-            border-bottom: 1px solid var(--outline-variant);
-            box-shadow: var(--shadow-sm);
-            position: relative;
-            z-index: 30;
-        }
+        /* ===== headerActions controls (sync status, approvals, notif bell,
+           legacy avatar menu) — relocated into the shared ac-topbar's
+           headerActions slot; the old .topbar/.side-drawer chrome that used
+           to hold them is gone. .right lays them out in a row the way
+           .topbar .right used to. .user-menu/.user-trigger/.user-dropdown/
+           .avatar-sm still style the page's own notification bell and its
+           legacy avatar dropdown (kept only because this page's script
+           below unconditionally references #userMenu — see notifBtn click
+           handler — so removing that markup would throw and break the
+           notification bell). ===== */
+        .right { display: flex; align-items: center; gap: 16px; }
 
-        .topbar h1 {
-            font-size: 20px;
-            font-weight: 800;
-            color: var(--primary);
-            letter-spacing: -0.01em;
-        }
-
-        .topbar .right { display: flex; align-items: center; gap: 16px; }
-
-        .topbar .user { text-align: right; }
-        .topbar .user .name { font-weight: 700; }
-        .topbar .user .role { font-size: 12px; color: var(--on-surface-variant); }
-
-        /* ===== User menu (avatar dropdown) ===== */
         .user-menu { position: relative; }
 
         .user-trigger {
@@ -1123,222 +1162,23 @@
         .toast.error { background: var(--error); }
         .toast.success { background: var(--success); }
 
-        /* ===== App shell: drawer sidebar + blue canvas ===== */
-        html, body { height: 100%; }
-
-        body {
-            display: flex;
-            padding: 12px;
-            gap: 12px;
-            overflow: hidden;
-        }
-
-        /* Sidebar: icon rail that expands to show labels on hover, and
-           retracts the instant the pointer leaves — no click, no persisted
-           state. */
-        .side-drawer {
-            width: 64px;
-            flex: 0 0 auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px 0;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            transition: width .16s ease;
-            overflow: hidden;
-            z-index: 40;
-        }
-
-        .side-drawer:hover { width: 200px; align-items: stretch; }
-
-        .side-drawer .brand {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            background: #fff;
-            box-shadow: var(--shadow-sm);
-            color: var(--primary-container);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 24px;
-            flex: 0 0 auto;
-        }
-
-        .side-drawer:hover .brand { margin-left: 12px; margin-right: auto; }
-
-        .side-drawer nav {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            width: 100%;
-            align-items: center;
-        }
-
-        .side-drawer:hover nav { align-items: stretch; padding: 0 8px; }
-
-        .drawer-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            color: var(--on-surface-variant);
-            text-decoration: none;
-            flex: 0 0 auto;
-            justify-content: center;
-            transition: background .15s, color .15s;
-            white-space: nowrap;
-            overflow: hidden;
-        }
-
-        .side-drawer:hover .drawer-link { width: 100%; justify-content: flex-start; padding: 0 12px; }
-
-        .drawer-link .drawer-label {
-            font-size: 13px;
-            font-weight: 600;
-            display: none;
-        }
-
-        .side-drawer:hover .drawer-label { display: inline; }
-
-        .drawer-link:hover { color: var(--on-surface); background: var(--surface-container-high); }
-        .drawer-link.active { color: var(--primary-container); background: rgba(0,64,166,.1); }
-        .drawer-link.active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
-
-        .drawer-link--logout { margin-top: auto; }
-        .drawer-link--logout:hover { color: var(--error); background: #fef2f2; }
-
-        .app-main {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .app-main .topbar {
-            border-radius: 0;
-            border: none;
-            border-bottom: 1px solid var(--outline-variant);
-            box-shadow: none;
-            flex: 0 0 auto;
-        }
-
-        .app-main .filters {
-            border-radius: 0;
-            border: none;
-            box-shadow: none;
-            flex: 0 0 auto;
-        }
-
-        .header-card {
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            flex: 0 0 auto;
-            overflow: hidden;
-        }
-
-        .app-main .readonly-banner { flex: 0 0 auto; border-radius: var(--radius-md); }
-
-        .app-main .layout { flex: 1; min-height: 0; overflow: hidden; }
-        .app-main .layout .panel { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+        /* ===== Filters bar & readonly banner: these used to sit inside a
+           .header-card/.app-main wrapper that paired with the old
+           side-drawer/topbar shell (both now removed — the shared layout's
+           .ac-sidebar/.ac-topbar/.ac-content replace them). The
+           border/radius/shadow they used to borrow from that wrapper are
+           added directly here so they still read as cards. ===== */
+        .filters { border: 1px solid var(--outline-variant); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); margin-bottom: 16px; }
+        .readonly-banner { border: 1px solid var(--outline-variant); border-radius: var(--radius-md); margin-bottom: 16px; }
 
         /* One scroll container per panel body, not one per child — a child
            per element made every subject card its own tiny scroll box,
            clipping wrapped two-line titles. */
-        .panel-scroll { flex: 1; min-height: 0; overflow-y: auto; }
         .panel-scroll > *:last-child { margin-bottom: 0; }
     </style>
-</head>
+<?= $this->endSection() ?>
 
-<body>
-
-    <aside class="side-drawer glass">
-        <div class="brand">
-            <span class="material-symbols-outlined">layers</span>
-        </div>
-        <nav>
-            <a class="drawer-link" href="<?= site_url('chairperson/overview') ?>" title="Dashboard">
-                <span class="material-symbols-outlined">home</span>
-                <span class="drawer-label">Dashboard</span>
-            </a>
-            <a class="drawer-link" href="<?= site_url('chairperson/profile') ?>" title="Profile">
-                <span class="material-symbols-outlined">person</span>
-                <span class="drawer-label">Profile</span>
-            </a>
-            <a class="drawer-link active" href="<?= site_url('chairperson/dashboard') ?>" title="Schedule Plotting">
-                <span class="material-symbols-outlined">calendar_month</span>
-                <span class="drawer-label">Schedule Plotting</span>
-            </a>
-            <a class="drawer-link" href="<?= site_url('chairperson/curriculum') ?>" title="Curriculum">
-                <span class="material-symbols-outlined">menu_book</span>
-                <span class="drawer-label">Curriculum</span>
-            </a>
-            <a class="drawer-link" href="<?= site_url('chairperson/grade-approvals') ?>" title="Grade Approvals">
-                <span class="material-symbols-outlined">grade</span>
-                <span class="drawer-label">Grade Approvals</span>
-            </a>
-        </nav>
-
-        <a class="drawer-link drawer-link--logout" href="<?= site_url('logout') ?>" title="Logout">
-            <span class="material-symbols-outlined">logout</span>
-            <span class="drawer-label">Logout</span>
-        </a>
-    </aside>
-
-    <div class="app-main">
-
-    <div class="header-card glass">
-    <header class="topbar">
-        <h1>Schedule Plotting</h1>
-        <div class="right">
-            <div class="sync-status" id="syncStatus">
-                <span class="sync-dot"></span>
-                <span id="syncText">All changes saved</span>
-            </div>
-            <button type="button" class="btn btn-ghost" id="approvalsBtn">
-                Swap Approvals <span class="approval-badge" id="approvalBadge">0</span>
-            </button>
-            <button type="button" class="btn btn-ghost" id="changeRequestsBtn">
-                Change Requests <span class="approval-badge" id="changeRequestBadge">0</span>
-            </button>
-            <button type="button" class="btn btn-ghost" id="roomOverviewBtn">Room Overview</button>
-            <button type="button" class="btn btn-ghost" id="facultyPanelBtn">Faculty</button>
-            <div class="user-menu" id="notifWrap" style="position:relative;">
-                <button type="button" class="user-trigger" id="notifBtn" title="Notifications" style="padding:8px;">
-                    <span class="material-symbols-outlined">notifications</span>
-                    <span class="approval-badge zero" id="notifBadge" style="margin-left:2px;">0</span>
-                </button>
-                <div class="user-dropdown" id="notifPanel" style="min-width:320px; max-height:400px; overflow-y:auto; padding:0;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--outline-variant);">
-                        <strong style="font-size:13px;">Notifications</strong>
-                        <button type="button" id="notifMarkAll" style="font-size:11.5px;color:var(--primary-container);background:none;border:none;cursor:pointer;font-weight:700;">Mark all read</button>
-                    </div>
-                    <div id="notifList"></div>
-                </div>
-            </div>
-            <div class="user-menu" id="userMenu">
-                <button type="button" class="user-trigger" id="userMenuBtn">
-                    <div class="avatar-sm"><?= esc(mb_strtoupper(mb_substr($user['name'], 0, 1))) ?></div>
-                    <div class="user-text">
-                        <div class="name"><?= esc($user['name']) ?></div>
-                        <div class="role"><?= esc($user['role']) ?></div>
-                    </div>
-                    <span class="material-symbols-outlined chevron">expand_more</span>
-                </button>
-                <div class="user-dropdown">
-                    <a href="<?= site_url('chairperson/profile') ?>"><span class="material-symbols-outlined" style="font-size:18px;">settings</span> Settings</a>
-                    <hr>
-                    <a href="<?= site_url('logout') ?>" class="danger"><span class="material-symbols-outlined" style="font-size:18px;">logout</span> Logout</a>
-                </div>
-            </div>
-        </div>
-    </header>
+<?= $this->section('content') ?>
 
     <form class="filters" method="get" action="<?= site_url('chairperson/dashboard') ?>" id="contextForm">
         <div>
@@ -1375,7 +1215,6 @@
             </div>
         <?php endforeach; ?>
     </form>
-    </div>
 
     <?php if (! $is_active_year): ?>
         <div class="readonly-banner">
@@ -1489,8 +1328,6 @@
         </aside>
 
     </main>
-
-    </div>
 
     <!-- Room assignment modal -->
     <div class="modal-backdrop" id="roomModal" role="dialog" aria-modal="true" aria-label="Assign a room">
@@ -1647,7 +1484,9 @@
         </div>
         <div id="debugList"></div>
     </div>
+<?= $this->endSection() ?>
 
+<?= $this->section('scripts') ?>
     <script>
         // ---------- user menu (avatar dropdown) ----------
         (function () {
@@ -3453,7 +3292,4 @@
         renderApprovals();
         renderChangeRequests();
     </script>
-
-</body>
-
-</html>
+<?= $this->endSection() ?>
