@@ -24,7 +24,7 @@ class AvailabilityController extends BaseController
 
     private const PREFERENCE_LEVELS = ['preferred', 'willing', 'qualified'];
 
-    /** The term to work with: the requested ay_id if it's real, else the "upcoming" one as a sensible default. */
+    /** The term to work with: the requested ay_id if it's real, else the currently active term (falling back to the upcoming one if none is active yet). */
     private function resolveTerm(?string $requestedAyId): ?array
     {
         $ayModel = new AcademicYearModel();
@@ -36,7 +36,7 @@ class AvailabilityController extends BaseController
             }
         }
 
-        return $ayModel->upcomingTerm();
+        return $ayModel->activeRow() ?? $ayModel->upcomingTerm();
     }
 
     public function edit()
@@ -71,6 +71,7 @@ class AvailabilityController extends BaseController
         }
 
         $dept = (new DepartmentModel())->codeOfUser($userId);
+        $upcomingTerm = (new AcademicYearModel())->upcomingTerm();
 
         return view('faculty/availability/edit', [
             'user' => [
@@ -80,11 +81,46 @@ class AvailabilityController extends BaseController
             'term'              => $term,
             'termLabel'         => $term ? AcademicYearModel::format($term['label'], $term['semester']) : null,
             'allTerms'          => $allTerms,
+            'upcomingAyId'      => $upcomingTerm ? (int) $upcomingTerm['ay_id'] : null,
             'dayLabels'         => self::DAY_LABELS,
             'availabilityByDay' => $availabilityByDay,
             'subjects'          => $subjects,
             'preferencesById'   => $preferencesById,
             'preferenceLevels'  => self::PREFERENCE_LEVELS,
+        ]);
+    }
+
+    /**
+     * This faculty member's own saved availability for another term, as
+     * JSON — powers "Copy from previous term" on the edit form so it can
+     * pull another term's answers into the current (unsaved) draft without
+     * losing what's already on screen via a full page navigation. Scoped to
+     * the logged-in user's own rows only; the ay_id is just which term to
+     * read, not whose data.
+     */
+    public function forTermJson(int $ayId)
+    {
+        $userId = (int) auth()->id();
+        $term   = (new AcademicYearModel())->find($ayId);
+
+        if ($term === null) {
+            return $this->response->setStatusCode(404)->setJSON(['ok' => false]);
+        }
+
+        $days = [];
+        foreach ((new FacultyAvailabilityModel())->forTerm($userId, $ayId) as $row) {
+            $days[(int) $row['day_of_week']] = [
+                'status' => $row['is_available'] ? 'available' : 'unavailable',
+                'start'  => $row['start_time'],
+                'end'    => $row['end_time'],
+                'notes'  => $row['notes'],
+            ];
+        }
+
+        return $this->response->setJSON([
+            'ok'        => true,
+            'term_label' => AcademicYearModel::format($term['label'], $term['semester']),
+            'days'      => $days,
         ]);
     }
 

@@ -53,6 +53,7 @@
     <link rel="stylesheet" href="<?= base_url('assets/css/design-system/base.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/base.css') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/pages/admin-console.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/admin-console.css') ?>">
     <?= $this->renderSection('styles') ?>
+    <script src="<?= base_url('assets/js/unsaved-changes.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/unsaved-changes.js') ?>"></script>
 </head>
 <body class="ac-page">
 
@@ -136,7 +137,7 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
             <div class="ac-topbar__icons">
                 <div class="ac-notif" id="acNotif">
                     <button type="button" class="ac-topbar__iconbtn" id="acNotifBtn" title="Notifications" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">
-                        <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
+                        <span class="material-symbols-outlined ac-bell" id="acBellSvg" aria-hidden="true">notifications</span>
                         <span class="ac-topbar__dot" id="acNotifDot" style="display:none;"></span>
                     </button>
                     <div class="ac-notif__panel" id="acNotifPanel" role="menu">
@@ -214,8 +215,19 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         function move(btn, animate) {
             if (!btn) return;
             if (!animate) indicator.style.transition = 'none';
+            // Match the button's real rendered box on BOTH axes, measured
+            // directly, instead of hand-tuned CSS top/bottom insets trying
+            // to guess it from the container's padding — those drifted out
+            // of sync with the button's actual height/position (and, in
+            // teaching_loads specifically, clipped against the parent
+            // .panel's own rounded corner + overflow:hidden). This is the
+            // one source of truth every consumer of acInitSegmented gets
+            // for free, no per-page CSS tuning required.
             indicator.style.width = btn.offsetWidth + 'px';
-            indicator.style.transform = 'translateX(' + btn.offsetLeft + 'px)';
+            indicator.style.height = btn.offsetHeight + 'px';
+            indicator.style.top = '0';
+            indicator.style.bottom = 'auto';
+            indicator.style.transform = 'translate(' + btn.offsetLeft + 'px, ' + btn.offsetTop + 'px)';
             if (!animate) {
                 // Force layout so the "no transition" jump is committed
                 // before transitions are re-enabled on the next frame —
@@ -225,8 +237,11 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
             }
         }
 
-        var initial = root.querySelector(buttonSelector + '.active') || root.querySelector(buttonSelector);
-        move(initial, false);
+        function moveToActive(animate) {
+            move(root.querySelector(buttonSelector + '.active') || root.querySelector(buttonSelector), animate);
+        }
+
+        moveToActive(false);
 
         root.querySelectorAll(buttonSelector).forEach(function (btn) {
             btn.addEventListener('click', function () { move(btn, true); });
@@ -235,9 +250,17 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         // The sidebar's hover-expand and other layout shifts can change
         // button positions without a click (e.g. the window resizing) —
         // keep the indicator honest without re-measuring on every frame.
-        window.addEventListener('resize', function () {
-            move(root.querySelector(buttonSelector + '.active') || root.querySelector(buttonSelector), false);
-        });
+        window.addEventListener('resize', function () { moveToActive(false); });
+
+        // This script runs as soon as the HTML is parsed, which can be
+        // before the Inter webfont has actually swapped in — the initial
+        // measurement above may capture the button at its (narrower)
+        // fallback-font width, leaving the indicator too small once Inter
+        // loads and the text reflows wider. Re-sync once fonts are
+        // confirmed ready (font-display swaps don't fire resize/load).
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(function () { moveToActive(false); });
+        }
 
         return { move: move };
     };
@@ -266,6 +289,25 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         });
     })();
 
+    // Scroll-lock while any modal is open (either the shared .ac-modal
+    // pattern here, or the page-local .modal-backdrop pattern used by
+    // teaching_loads/curriculum/schedule_plotting) — covers both without
+    // any page needing its own code. Without this, the page behind a
+    // modal can still scroll, and on Windows the native scrollbar renders
+    // as its own compositor overlay that ignores the dimmed backdrop
+    // entirely, leaving a bright sliver floating on top of it.
+    (function () {
+        function anyModalOpen() {
+            return !!document.querySelector('.ac-modal.is-open, .modal-backdrop.open');
+        }
+        function syncScrollLock() {
+            document.body.classList.toggle('ac-scroll-locked', anyModalOpen());
+        }
+        new MutationObserver(syncScrollLock).observe(document.body, {
+            attributes: true, attributeFilter: ['class'], subtree: true,
+        });
+    })();
+
     var acLastFocused = null;
 
     function acFocusablesIn(el) {
@@ -285,21 +327,38 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         if (focusables.length) focusables[0].focus();
     }
 
-    function acCloseModal(id) {
-        var modal = document.getElementById(id);
-        if (!modal) return;
+    // The actual DOM close, bypassing the unsaved-changes check — used once
+    // the user has confirmed (or there was nothing to confirm).
+    function acDoCloseModal(modal) {
         modal.classList.remove('is-open');
         if (acLastFocused && typeof acLastFocused.focus === 'function') acLastFocused.focus();
     }
 
+    function acCloseModal(id) {
+        var modal = document.getElementById(id);
+        if (!modal) return;
+        if (window.UnsavedChanges) {
+            window.UnsavedChanges.guard(function () { acDoCloseModal(modal); });
+        } else {
+            acDoCloseModal(modal);
+        }
+    }
+
     // Escape closes the topmost open modal; Tab is trapped inside it.
     document.addEventListener('keydown', function (e) {
+        // The unsaved-changes confirm dialog (if showing) owns Escape/Tab
+        // while it's up — its own listeners handle this keypress instead.
+        if (document.querySelector('.uc-modal.is-open')) return;
+
         var openModal = document.querySelector('.ac-modal.is-open');
         if (!openModal) return;
 
         if (e.key === 'Escape') {
-            openModal.classList.remove('is-open');
-            if (acLastFocused && typeof acLastFocused.focus === 'function') acLastFocused.focus();
+            if (window.UnsavedChanges) {
+                window.UnsavedChanges.guard(function () { acDoCloseModal(openModal); });
+            } else {
+                acDoCloseModal(openModal);
+            }
             return;
         }
 
@@ -321,9 +380,14 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
 
     // Clicking the dimmed backdrop (not the panel itself) closes the modal.
     document.addEventListener('click', function (e) {
+        if (document.querySelector('.uc-modal.is-open')) return;
         if (e.target.classList && e.target.classList.contains('ac-modal') && e.target.classList.contains('is-open')) {
-            e.target.classList.remove('is-open');
-            if (acLastFocused && typeof acLastFocused.focus === 'function') acLastFocused.focus();
+            var modal = e.target;
+            if (window.UnsavedChanges) {
+                window.UnsavedChanges.guard(function () { acDoCloseModal(modal); });
+            } else {
+                acDoCloseModal(modal);
+            }
         }
     });
 
@@ -358,6 +422,7 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         var panel = document.getElementById('acNotifPanel');
         var dot   = document.getElementById('acNotifDot');
         var list  = document.getElementById('acNotifList');
+        var bell  = document.getElementById('acBellSvg');
         var markAllBtn = document.getElementById('acNotifMarkAll');
         if (!wrap || !btn) return;
 
@@ -403,7 +468,9 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         }
 
         function setDot(unread) {
-            dot.style.display = unread > 0 ? 'block' : 'none';
+            dot.style.display = unread > 0 ? 'flex' : 'none';
+            dot.textContent = unread > 99 ? '99+' : (unread > 0 ? String(unread) : '');
+            if (bell) bell.classList.toggle('is-ringing', unread > 0);
         }
 
         function refreshUnread() {

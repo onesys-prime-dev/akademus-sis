@@ -136,6 +136,7 @@ $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {
 
     // pre-semester availability & subject preferences
     $routes->get('availability', 'Faculty\AvailabilityController::edit');
+    $routes->get('availability/for-term/(:num)', 'Faculty\AvailabilityController::forTermJson/$1');
     $routes->post('availability/update', 'Faculty\AvailabilityController::update');
     $routes->post('preferences/update', 'Faculty\AvailabilityController::updatePreferences');
 

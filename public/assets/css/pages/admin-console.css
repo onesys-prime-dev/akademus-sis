@@ -21,8 +21,12 @@ html, .ac-page { height: 100%; }
     -webkit-font-smoothing: antialiased;
 }
 
+.ac-sidebar,
+.ac-content { scrollbar-width: thin; scrollbar-color: var(--color-border-medium) transparent; }
 .ac-sidebar::-webkit-scrollbar,
 .ac-content::-webkit-scrollbar { width: 6px; height: 6px; }
+.ac-sidebar::-webkit-scrollbar-track,
+.ac-content::-webkit-scrollbar-track { background: transparent; }
 .ac-sidebar::-webkit-scrollbar-thumb,
 .ac-content::-webkit-scrollbar-thumb { background: var(--color-border-medium); border-radius: var(--radius-sm); }
 
@@ -398,13 +402,39 @@ html, .ac-page { height: 100%; }
 
 .ac-topbar__dot {
     position: absolute;
-    top: 6px;
-    right: 7px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
+    top: 1px;
+    right: 1px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    border-radius: 999px;
     background: var(--color-danger);
     border: 2px solid #f7f9fb;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Notification bell — the same material-symbols glyph used everywhere
+   else in the topbar, given a periodic "chime" wiggle for as long as
+   there's an unread notification (toggled in JS via setDot). Each cycle
+   is a quick wiggle followed by a long pause, not a constant shake, so
+   it stays noticeable without being annoying on a page used all day. */
+.ac-bell { transform-origin: 50% 15%; display: inline-block; }
+.ac-bell.is-ringing { animation: acBellChime 3.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite; }
+
+@keyframes acBellChime {
+    0%, 28%, 100% { transform: rotate(0deg); }
+    4% { transform: rotate(14deg); }
+    8% { transform: rotate(-12deg); }
+    12% { transform: rotate(9deg); }
+    16% { transform: rotate(-6deg); }
+    20% { transform: rotate(3deg); }
+    24% { transform: rotate(-1deg); }
 }
 
 .ac-search {
@@ -446,6 +476,13 @@ html, .ac-page { height: 100%; }
     min-height: 0;
     overflow-y: auto;
 }
+
+/* While any modal is open (toggled in layouts/admin_console.php), stop the
+   page behind it from scrolling — otherwise Windows' native overlay
+   scrollbar renders on its own compositor layer, ignoring the dimmed
+   backdrop entirely and floating on top of it as a bright, out-of-place
+   sliver. */
+body.ac-scroll-locked .ac-content { overflow: hidden; }
 
 .animate-enter {
     opacity: 0;
@@ -880,6 +917,32 @@ html, .ac-page { height: 100%; }
 
 .ac-modal__actions .ac-btn { flex: 1; }
 
+/* Global "unsaved changes" confirm modal (public/assets/js/unsaved-changes.js).
+   Visually matches .ac-modal but is intentionally its own element/handlers
+   so it never fights with the generic modal open/close listeners above. */
+.uc-modal {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(15, 23, 42, .55);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity var(--motion-normal) var(--ease-standard), visibility 0s linear var(--motion-normal);
+}
+.uc-modal.is-open {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition: opacity var(--motion-normal) var(--ease-standard), visibility 0s linear 0s;
+}
+.uc-modal__panel {
+    background: #fff; border-radius: 18px; width: 100%; max-width: 420px;
+    padding: 24px; box-shadow: 0 30px 60px rgba(0, 0, 0, .35);
+    transform: scale(.97) translateY(8px); opacity: 0;
+    transition: transform var(--motion-normal) var(--ease-enter), opacity var(--motion-normal) var(--ease-enter);
+}
+.uc-modal.is-open .uc-modal__panel { transform: scale(1) translateY(0); opacity: 1; }
+.uc-modal__title { font-size: 17px; font-weight: 800; color: var(--color-text-primary); }
+.uc-modal__body { margin-top: 10px; font-size: 13.5px; line-height: 1.55; color: var(--color-text-secondary); }
+.uc-modal__actions { display: flex; gap: 10px; margin-top: 20px; }
+.uc-modal__actions .ac-btn { flex: 1; }
+
 .ac-field label {
     font-size: 11px;
     font-weight: 700;
@@ -1026,7 +1089,7 @@ html, .ac-page { height: 100%; }
     left: 0;
     z-index: 0;
     pointer-events: none;
-    transition: transform var(--motion-normal) var(--ease-spring), width var(--motion-normal) var(--ease-spring);
+    transition: transform var(--motion-normal) var(--ease-spring), width var(--motion-normal) var(--ease-spring), height var(--motion-normal) var(--ease-spring);
 }
 
 /* Toasts */
@@ -1063,7 +1126,9 @@ html, .ac-page { height: 100%; }
     to { opacity: 1; transform: none; }
 }
 
+* { scrollbar-width: thin; scrollbar-color: var(--color-border-medium) transparent; }
 *::-webkit-scrollbar { height: 8px; width: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb { background: var(--color-border-medium); border-radius: var(--radius-sm); }
 
 /* ==========================================================================

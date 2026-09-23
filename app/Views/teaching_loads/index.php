@@ -46,9 +46,16 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 .icon-btn:hover { color: var(--ink); background: var(--color-surface-sunken); }
 
 /* ===== Page head ===== */
-.page-head { margin-bottom: 32px; }
+.page-head { margin-bottom: 32px; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.page-head__title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .page-head h1 { font-size: 28px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 8px; color: var(--ink); }
 .page-head p { color: var(--muted); font-size: 13.5px; max-width: 640px; line-height: 1.6; }
+.live-sync-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700; padding: 4px 11px; border-radius: 999px;
+    background: var(--green-soft); color: #166534; border: 1px solid var(--green-border);
+}
+.live-sync-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
 
 /* ===== Stats card ===== */
 .stats-card {
@@ -56,28 +63,102 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     box-shadow: var(--shadow-apple); border: 1px solid var(--border);
     margin-bottom: 24px;
 }
-.spec-row { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
+.spec-row { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .spec-row .lbl { font-size: 13px; font-weight: 600; white-space: nowrap; color: var(--ink); }
 .spec-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.spec-chip { background: var(--brand-soft); color: var(--brand); padding: 6px 16px; border-radius: 999px; font-size: 11.5px; font-weight: 500; letter-spacing: .02em; }
-.load-meter { display: flex; flex-direction: column; gap: 10px; }
+.spec-chip { background: var(--brand-soft); color: var(--brand); padding: 6px 14px; border-radius: 999px; font-size: 11.5px; font-weight: 700; letter-spacing: .02em; border: 1px solid var(--color-info-soft); }
+.load-meter { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
 .load-meter-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .load-meter-head .lbl { font-size: 13px; font-weight: 600; color: var(--ink); }
+.load-meter-head .lbl b { font-size: 22px; font-weight: 800; color: var(--brand); margin: 0 2px; }
 .load-meter-head .rem { font-size: 11.5px; color: var(--muted); font-weight: 500; }
-.track { height: 8px; width: 100%; background: var(--color-surface-sunken); border-radius: 999px; overflow: hidden; }
-.fill { height: 100%; width: 0; background: var(--brand); border-radius: 999px; transition: width .5s ease-in-out, background .3s; }
+.track { height: 10px; width: 100%; background: var(--color-surface-sunken); border-radius: 999px; overflow: hidden; padding: 2px; box-sizing: border-box; }
+.fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--brand), #3b82f6); border-radius: 999px; transition: width .5s ease-in-out, background .3s; }
 .fill.warn { background: var(--amber); }
 .fill.full { background: var(--red); }
+
+.workload-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.workload-stat {
+    background: var(--color-surface-secondary); border: 1px solid var(--border); border-radius: var(--radius-md);
+    padding: 12px 14px; display: flex; align-items: center; gap: 10px;
+}
+.workload-stat__icon {
+    width: 32px; height: 32px; border-radius: var(--radius-sm); flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--brand-soft); color: var(--brand);
+}
+.workload-stat__icon .material-symbols-outlined { font-size: 18px; }
+.workload-stat__label { font-size: 11px; color: var(--muted); }
+.workload-stat__value { font-size: 15px; font-weight: 800; color: var(--ink); }
+
+/* ===== Weekly timetable preview ===== */
+.timetable-panel {
+    background: var(--color-surface); border-radius: var(--radius-xl); padding: 24px;
+    box-shadow: var(--shadow-apple); border: 1px solid var(--border);
+    margin-bottom: 24px;
+}
+.timetable-panel__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.timetable-panel__head h2 { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+.timetable-panel__head p { font-size: 12px; color: var(--muted); }
+.timetable-panel__link {
+    font-size: 12px; font-weight: 600; color: var(--brand); text-decoration: none;
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+}
+.timetable-panel__link:hover { text-decoration: underline; }
+.tt-grid-wrap { overflow-x: auto; }
+.tt-grid { display: grid; grid-template-columns: 56px repeat(6, minmax(96px, 1fr)); min-width: 720px; }
+.tt-corner { grid-row: 1; grid-column: 1; }
+.tt-day-head {
+    grid-row: 1; text-align: center; font-size: 11px; font-weight: 700; color: var(--muted);
+    padding: 0 0 10px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: .04em;
+}
+.tt-time { font-size: 10.5px; color: var(--muted); text-align: right; padding-right: 8px; transform: translateY(-6px); }
+.tt-time-col { grid-row: 2; grid-column: 1; display: grid; }
+.tt-day-col {
+    grid-row: 2; position: relative; border-left: 1px solid var(--border);
+    background-image: repeating-linear-gradient(to bottom, var(--color-surface-sunken) 0, var(--color-surface-sunken) 1px, transparent 1px, transparent 60px);
+}
+.tt-block {
+    position: absolute; left: 3px; right: 3px; border-radius: var(--radius-sm);
+    border-left: 3px solid; padding: 5px 7px; overflow: hidden;
+    font-size: 10.5px; line-height: 1.3; box-shadow: var(--shadow-xs);
+}
+.tt-block__code { font-weight: 700; }
+.tt-block__meta { opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tt-block.acc-blue   { background: var(--color-info-soft);    border-left-color: #2563eb; color: #1e3a8a; }
+.tt-block.acc-purple { background: #f1e6ff;                   border-left-color: #9333ea; color: #4c1d95; }
+.tt-block.acc-red    { background: var(--red-soft);           border-left-color: #ef4444; color: #7f1d1d; }
+.tt-block.acc-gold   { background: var(--color-warning-soft); border-left-color: #f59e0b; color: #78350f; }
+.tt-block.acc-green  { background: var(--green-soft);         border-left-color: #16a34a; color: #14532d; }
+.tt-block.acc-orange { background: #fff7ed;                   border-left-color: #f97316; color: #7c2d12; }
+.timetable-panel__empty { padding: 32px 8px; text-align: center; font-size: 12.5px; color: var(--muted); }
 
 /* ===== Panel: tabs + board ===== */
 .panel {
     background: var(--color-surface); border-radius: var(--radius-xl); overflow: hidden;
     box-shadow: var(--shadow-apple); border: 1px solid var(--border);
-    display: flex; flex-direction: column; height: 640px;
+    display: flex; flex-direction: column; height: 820px;
+    margin-bottom: 24px;
 }
 .tab-row { position: relative; display: flex; gap: 8px; padding: 20px 24px 0; flex-wrap: wrap; background: var(--color-surface); }
-.tab-row .ac-segmented__indicator { top: 20px; bottom: 8px; background: var(--brand); border-radius: 999px; box-shadow: var(--shadow-xs); }
-.tab { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--muted); transition: color .15s; }
+/* top/height are now set directly by acInitSegmented (measured from the
+   real button box), not hand-tuned insets here — those drifted out of
+   sync with .panel's own rounded-corner clipping and cut the pill off. */
+.tab-row .ac-segmented__indicator { background: var(--brand); border-radius: 999px; box-shadow: var(--shadow-xs); }
+.tab {
+    position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--muted);
+    transition: color .15s;
+    /* Buttons carry a native, opaque background/border in every browser
+       by default — never overridden here before because the old
+       .tab.active rule set its own explicit background, which happened to
+       paint over it. Once that moved to the sliding indicator (which sits
+       BEHIND the button at z-index:0), the native chrome was left
+       covering it almost entirely. */
+    appearance: none; -webkit-appearance: none;
+    border: none; background: none;
+    font-family: inherit; cursor: pointer;
+}
 .tab:hover:not(:disabled):not(.active) { color: var(--ink); background: var(--color-surface-sunken); }
 .tab.active { color: #fff; }
 .tab:disabled { color: var(--color-text-tertiary); cursor: not-allowed; }
@@ -191,8 +272,13 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <?= $this->section('content') ?>
 
 <div class="page-head">
-    <h1>Teaching Loads</h1>
-    <p>Your chairperson assigns subjects while plotting the schedule. This board updates in real time.</p>
+    <div>
+        <div class="page-head__title-row">
+            <h1>Teaching Loads</h1>
+        </div>
+        <p>Your chairperson assigns subjects while plotting the schedule. This board updates in real time.</p>
+    </div>
+    <span class="live-sync-badge"><span class="dot"></span> Live Sync Enabled</span>
 </div>
 
 <!-- Stats card -->
@@ -207,10 +293,33 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     </div>
     <div class="load-meter">
         <div class="load-meter-head">
-            <span class="lbl" id="loadLabel">Teaching Load: 0 / <?= esc($max_units) ?> units</span>
+            <span class="lbl">Teaching Load: <b id="loadUnits">0</b> / <?= esc($max_units) ?> units</span>
             <span class="rem" id="loadRemaining"><?= esc($max_units) ?> units remaining</span>
         </div>
         <div class="track"><div class="fill" id="loadFill"></div></div>
+    </div>
+    <div class="workload-stats">
+        <div class="workload-stat">
+            <div class="workload-stat__icon"><span class="material-symbols-outlined">menu_book</span></div>
+            <div>
+                <div class="workload-stat__label">Assigned courses</div>
+                <div class="workload-stat__value" id="statAssignedCourses">0</div>
+            </div>
+        </div>
+        <div class="workload-stat">
+            <div class="workload-stat__icon"><span class="material-symbols-outlined">calendar_month</span></div>
+            <div>
+                <div class="workload-stat__label">Weekly meetings</div>
+                <div class="workload-stat__value" id="statWeeklyMeetings">0</div>
+            </div>
+        </div>
+        <div class="workload-stat">
+            <div class="workload-stat__icon"><span class="material-symbols-outlined">swap_horiz</span></div>
+            <div>
+                <div class="workload-stat__label">Open swap requests</div>
+                <div class="workload-stat__value" id="statOpenSwaps">0</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -247,6 +356,23 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             <p id="emptySub"></p>
         </div>
     </div>
+</div>
+
+<!-- Weekly timetable preview -->
+<div class="timetable-panel">
+    <div class="timetable-panel__head">
+        <div>
+            <h2>Weekly Timetable</h2>
+            <p>Your assigned meetings for the active term, plotted by day and time.</p>
+        </div>
+        <a class="timetable-panel__link" href="<?= site_url('faculty/schedule') ?>">
+            Full schedule <span class="material-symbols-outlined" style="font-size:14px;">arrow_forward</span>
+        </a>
+    </div>
+    <div class="tt-grid-wrap">
+        <div class="tt-grid" id="ttGrid"></div>
+    </div>
+    <div class="timetable-panel__empty" id="ttEmpty" style="display:none;">No meetings plotted yet — assigned subjects will appear here once your chairperson finishes plotting the schedule.</div>
 </div>
 
 <!-- Swap request modal -->
@@ -678,8 +804,97 @@ function updateLoadBar() {
     const fill = document.getElementById('loadFill');
     fill.style.width = pct + '%';
     fill.className = 'fill' + (pct >= 100 ? ' full' : pct >= 75 ? ' warn' : '');
-    document.getElementById('loadLabel').textContent = `Teaching Load: ${UNITS} / ${CONFIG.maxUnits} units`;
+    document.getElementById('loadUnits').textContent = UNITS;
     document.getElementById('loadRemaining').textContent = `${Math.max(0, CONFIG.maxUnits - UNITS)} units remaining`;
+
+    document.getElementById('statAssignedCourses').textContent = MINE.length;
+    document.getElementById('statWeeklyMeetings').textContent =
+        MINE.reduce((sum, l) => sum + (Array.isArray(l.day_list) ? l.day_list.length : 0), 0);
+    document.getElementById('statOpenSwaps').textContent =
+        SWAPS.filter(s => s.status === 'pending' || s.status === 'accepted').length;
+
+    renderTimetable();
+}
+
+// ---------- weekly timetable preview ----------
+const TT_START_MIN = 7 * 60;
+const TT_END_MIN = 19 * 60;
+const TT_PX_PER_HOUR = 60;
+
+function ttMinutes(hhmm) {
+    const [h, m] = hhmm.split(':').map(Number);
+    return h * 60 + m;
+}
+
+function renderTimetable() {
+    const grid = document.getElementById('ttGrid');
+    const emptyEl = document.getElementById('ttEmpty');
+    grid.innerHTML = '';
+
+    const totalHours = (TT_END_MIN - TT_START_MIN) / 60;
+
+    const corner = document.createElement('div');
+    corner.className = 'tt-corner';
+    grid.appendChild(corner);
+
+    DAY_LABELS.forEach((label, i) => {
+        const head = document.createElement('div');
+        head.className = 'tt-day-head';
+        head.style.gridColumn = String(i + 2);
+        head.textContent = label;
+        grid.appendChild(head);
+    });
+
+    const timeCol = document.createElement('div');
+    timeCol.className = 'tt-time-col';
+    timeCol.style.gridTemplateRows = `repeat(${totalHours}, ${TT_PX_PER_HOUR}px)`;
+    for (let h = 0; h < totalHours; h++) {
+        const hour24 = TT_START_MIN / 60 + h;
+        const h12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+        const t = document.createElement('div');
+        t.className = 'tt-time';
+        t.textContent = h12 + (hour24 < 12 ? ' AM' : ' PM');
+        timeCol.appendChild(t);
+    }
+    grid.appendChild(timeCol);
+
+    let hasAny = false;
+    for (let day = 0; day < 6; day++) {
+        const col = document.createElement('div');
+        col.className = 'tt-day-col';
+        col.style.gridColumn = String(day + 2);
+        col.style.height = (totalHours * TT_PX_PER_HOUR) + 'px';
+
+        MINE.forEach(l => {
+            (l.meetings || []).forEach(mt => {
+                if (mt.day !== day) return;
+                const startMin = ttMinutes(mt.start);
+                const endMin = ttMinutes(mt.end);
+                if (endMin <= TT_START_MIN || startMin >= TT_END_MIN) return;
+                hasAny = true;
+
+                const block = document.createElement('div');
+                block.className = 'tt-block acc-' + (l.accent || 'blue');
+                block.style.top = Math.max(0, startMin - TT_START_MIN) + 'px';
+                block.style.height = Math.max(20, endMin - startMin) + 'px';
+
+                const code = document.createElement('div');
+                code.className = 'tt-block__code';
+                code.textContent = l.code;
+                const meta = document.createElement('div');
+                meta.className = 'tt-block__meta';
+                meta.textContent = l.room || '';
+                block.append(code, meta);
+
+                col.appendChild(block);
+            });
+        });
+
+        grid.appendChild(col);
+    }
+
+    grid.style.display = hasAny ? '' : 'none';
+    emptyEl.style.display = hasAny ? 'none' : '';
 }
 
 // ---------- tabs / filters ----------
@@ -927,6 +1142,12 @@ async function cancelSwap(s) {
 const changeRequestModal = document.getElementById('changeRequestModal');
 let pendingChangeLoad = null;
 
+// The reason/proposed-alternative fields are free text entered in a modal
+// with no <form> tag (it's sent via fetch(), not a submit) — the global
+// unsaved-changes tracker only auto-watches <form> elements, so this modal
+// opts in explicitly instead of duplicating its own dirty-tracking.
+if (window.UnsavedChanges) window.UnsavedChanges.trackContainer(changeRequestModal);
+
 function openChangeRequestModal(l) {
     pendingChangeLoad = l;
     document.getElementById('crTitle').textContent = 'Request Change: ' + l.code;
@@ -937,9 +1158,21 @@ function openChangeRequestModal(l) {
     changeRequestModal.classList.add('open');
 }
 
-function closeChangeRequestModal() {
+// The unconditional close — used once the user has actually sent the
+// request, or confirmed they want to discard it. Never call this directly
+// from a Cancel/backdrop-click path; use closeChangeRequestModal() so an
+// in-progress reason doesn't get silently discarded.
+function closeChangeRequestModalRaw() {
     pendingChangeLoad = null;
     changeRequestModal.classList.remove('open');
+}
+
+function closeChangeRequestModal() {
+    if (window.UnsavedChanges) {
+        window.UnsavedChanges.guard(closeChangeRequestModalRaw);
+    } else {
+        closeChangeRequestModalRaw();
+    }
 }
 
 document.getElementById('crCancel').addEventListener('click', closeChangeRequestModal);
@@ -956,7 +1189,8 @@ document.getElementById('crSend').addEventListener('click', async () => {
         return;
     }
 
-    closeChangeRequestModal();
+    if (window.UnsavedChanges) window.UnsavedChanges.markClean();
+    closeChangeRequestModalRaw();
 
     try {
         const response = await fetch(CONFIG.changeRequestStoreUrl, {
