@@ -4,7 +4,7 @@
 <?= $this->section('pageStyles') ?>
 
 <link rel="stylesheet"
-      href="<?= base_url('assets/css/pages/auth.css') ?>">
+      href="<?= base_url('assets/css/pages/auth.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/auth.css') ?>">
 
 <?= $this->endSection() ?>
 

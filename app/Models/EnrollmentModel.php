@@ -29,6 +29,18 @@ class EnrollmentModel extends Model
      * duplicate slipping through a race; the section-row lock is what makes
      * the *capacity* check race-safe (a unique key alone can't cap a count).
      *
+     * Every rejection path calls resetTransStatus() right after
+     * transRollback(). Without it, an *expected*, handled rejection here
+     * (already enrolled, section full, etc.) leaves the connection's
+     * transStatus flag poisoned to false for the rest of the request/process
+     * — CI4 only auto-clears that flag when transStrict is off (it isn't,
+     * here). Any *later* transStart()/transComplete() pair on the same
+     * connection would then silently report failure and roll back even
+     * though its own queries succeeded. Caught the hard way: a block-enroll
+     * loop that hit one duplicate enrollment, followed later in the same
+     * process by CourseOfferingModel::createMerge(), made the merge appear
+     * to fail with no underlying SQL error at all.
+     *
      * @return array{ok: bool, error?: string, enrollment_id?: int}
      */
     public function enrollOne(int $userId, int $sectionId, string $subjectCode, string $method = 'manual'): array
@@ -40,6 +52,7 @@ class EnrollmentModel extends Model
 
         if ($section === null) {
             $db->transRollback();
+            $db->resetTransStatus();
 
             return ['ok' => false, 'error' => 'That section no longer exists.'];
         }
@@ -48,6 +61,7 @@ class EnrollmentModel extends Model
 
         if ($meetings === []) {
             $db->transRollback();
+            $db->resetTransStatus();
 
             return ['ok' => false, 'error' => "{$subjectCode} is not scheduled for this section."];
         }
@@ -56,6 +70,7 @@ class EnrollmentModel extends Model
 
         if ($missing !== []) {
             $db->transRollback();
+            $db->resetTransStatus();
 
             return ['ok' => false, 'error' => "Prerequisite not met for {$subjectCode}: " . implode(', ', $missing) . ' must be passed first.'];
         }
@@ -64,6 +79,7 @@ class EnrollmentModel extends Model
 
         if ($conflict !== null) {
             $db->transRollback();
+            $db->resetTransStatus();
 
             return ['ok' => false, 'error' => "Schedule conflict: {$subjectCode} overlaps {$conflict}, which you're already enrolled in."];
         }
@@ -90,6 +106,7 @@ class EnrollmentModel extends Model
 
             if (! $alreadyMember && $rosterCount >= (int) $capacity) {
                 $db->transRollback();
+                $db->resetTransStatus();
 
                 return ['ok' => false, 'error' => $offeringId !== null ? 'This merged class is full.' : 'This section is full.'];
             }
@@ -113,6 +130,7 @@ class EnrollmentModel extends Model
         // above) or a falsy return from insert() — handle both.
         if ($inserted === false) {
             $db->transRollback();
+            $db->resetTransStatus();
 
             return ['ok' => false, 'error' => "Already enrolled in {$subjectCode}."];
         }

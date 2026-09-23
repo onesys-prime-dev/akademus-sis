@@ -3,7 +3,10 @@
 namespace App\Database\Seeds;
 
 use App\Models\AcademicYearModel;
+use App\Models\CourseOfferingModel;
 use App\Models\EnrollmentModel;
+use App\Models\FacultyAssignmentModel;
+use App\Models\GradeModel;
 use App\Models\PlottedScheduleModel;
 use App\Models\SectionModel;
 use App\Models\StudentModel;
@@ -54,6 +57,8 @@ class SISDevelopmentSeeder extends Seeder
         $sections = $this->ensureSections($academicYear);
         $this->ensurePlotting($academicYear, $sections);
         $this->seedStudents($sections);
+        $this->mergeSharedOffering($academicYear, $sections);
+        $this->seedGrading($academicYear, $sections);
 
         echo "\nDone. See docs/sis-development-roadmap/index.html -> Test Scenarios for what to verify next.\n";
     }
@@ -241,5 +246,187 @@ class SISDevelopmentSeeder extends Seeder
                 }
             }
         }
+    }
+
+    /**
+     * The Section Merging feature (course_offerings/offering_sections) has
+     * shipped code but zero real rows — plottingPlan() deliberately put
+     * ITE 110 on both ait1_1y and ait2_1y for exactly this: merge those two
+     * sections' ITE 110 offerings into one class, via the same
+     * CourseOfferingModel::createMerge() the chairperson UI calls, so the
+     * feature finally has a real merged roster to test against.
+     */
+    private function mergeSharedOffering(string $academicYear, array $sections): void
+    {
+        $offeringModel = new CourseOfferingModel();
+        $subjectCode   = 'ITE 110';
+        $sectionIds    = [(int) $sections['ait1_1y']['section_id'], (int) $sections['ait2_1y']['section_id']];
+
+        if ($offeringModel->offeringForSection($sectionIds[0], $subjectCode) !== null) {
+            echo "ITE 110 offering already merged — reusing.\n";
+
+            return;
+        }
+
+        $result = $offeringModel->createMerge($academicYear, $subjectCode, $sectionIds, null);
+
+        if ($result['ok']) {
+            echo "Merged ITE 110 across AIT1/AIT2 (1st Year) into offering #{$result['offering_id']} — roster count {$result['roster_count']}.\n";
+        } else {
+            echo "FAILED to merge ITE 110: {$result['error']}\n";
+        }
+    }
+
+    /**
+     * Grading has shipped code (draft -> submitted -> locked -> change
+     * request) but zero real rows — this drives the exact same model
+     * methods the Faculty/Chairperson grading controllers call, on two
+     * real classes: an ordinary single-section class (ITE 102) taken all
+     * the way to locked plus one change request, and the merged ITE 110
+     * offering (left at "submitted") so both plain and merge-aware
+     * rostering are exercised.
+     */
+    private function seedGrading(string $academicYear, array $sections): void
+    {
+        $db = db_connect();
+
+        // Same IT sub-department this whole seeder is scoped to (see class
+        // docblock) — resolved by code rather than hardcoding an id, so
+        // this still works if the dev DB's ids differ.
+        $subDept = $db->table('sub_departments')->where('code', 'IT')->get()->getRowArray();
+
+        $faculty = $subDept === null ? null : $db->table('users u')
+            ->select('u.id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'faculty')
+            ->where('u.sub_department_id', $subDept['sub_dept_id'])
+            ->orderBy('u.id', 'ASC')
+            ->get()
+            ->getRowArray();
+
+        $chairperson = $subDept === null ? null : $db->table('users u')
+            ->select('u.id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'chairperson')
+            ->where('u.sub_department_id', $subDept['sub_dept_id'])
+            ->orderBy('u.id', 'ASC')
+            ->get()
+            ->getRowArray();
+
+        if ($faculty === null || $chairperson === null) {
+            echo "SKIPPED grading: no IT-department-scoped faculty/chairperson account found to grade as.\n";
+
+            return;
+        }
+
+        $facultyId     = (int) $faculty['id'];
+        $chairpersonId = (int) $chairperson['id'];
+
+        $assignmentModel = new FacultyAssignmentModel();
+        $gradeModel      = new GradeModel();
+
+        // ITE 102 — an ordinary, unmerged class. Taken all the way to
+        // locked, plus one change request, so grade_change_requests also
+        // finally has a real row.
+        $this->gradeClass($academicYear, $sections['ait1_1y'], 'ITE 102', $facultyId, $chairpersonId, $assignmentModel, $gradeModel, lock: true, withChangeRequest: true);
+
+        // The merged ITE 110 offering — left at "submitted" so a locked,
+        // a submitted, and (implicitly, everything else in the DB still
+        // ungraded) draft/no-grade state are all represented for real.
+        $this->gradeClass($academicYear, $sections['ait1_1y'], 'ITE 110', $facultyId, $chairpersonId, $assignmentModel, $gradeModel, lock: false, withChangeRequest: false);
+    }
+
+    private function gradeClass(string $academicYear, array $section, string $subjectCode, int $facultyId, int $chairpersonId, FacultyAssignmentModel $assignmentModel, GradeModel $gradeModel, bool $lock, bool $withChangeRequest): void
+    {
+        $assignmentModel->upsertAssignment($academicYear, self::PROGRAM_LABEL, $section['year_level'], $section['section'], $subjectCode, $facultyId);
+
+        $result = $gradeModel->rosterWithGrades($academicYear, self::PROGRAM_LABEL, $section['year_level'], $section['section'], $subjectCode);
+        $roster = $result['roster'];
+
+        if ($roster === []) {
+            echo "No roster for {$subjectCode}/{$section['section']} — nothing to grade.\n";
+
+            return;
+        }
+
+        // A spread of realistic values on the seeded 1.00-5.00 GWA scale
+        // (lower is better, passing at 3.00) rather than every student
+        // getting the same grade.
+        $values = ['1.50', '1.75', '2.00', '2.25', '2.50', '3.00', '5.00'];
+        $enrollmentIds = [];
+        $i = 0;
+
+        foreach ($roster as $row) {
+            if ($row['grade'] !== null && $row['grade']['status'] !== 'draft') {
+                // Already submitted/locked from a previous run — idempotent, leave it.
+                $enrollmentIds[] = (int) $row['enrollment_id'];
+                continue;
+            }
+
+            $context = [
+                'user_id'       => $row['user_id'],
+                'subject_code'  => $subjectCode,
+                'section_id'    => (int) $section['section_id'],
+                'offering_id'   => $result['offering']['offering_id'] ?? null,
+                'academic_year' => $academicYear,
+            ];
+
+            $value = $values[$i % count($values)];
+            $i++;
+
+            $save = $gradeModel->saveOne($context, (int) $row['enrollment_id'], $value, null, $facultyId);
+
+            if ($save['ok']) {
+                $enrollmentIds[] = (int) $row['enrollment_id'];
+                echo "  graded {$row['username']} ({$subjectCode}): {$value}\n";
+            } else {
+                echo "  FAILED to grade {$row['username']} ({$subjectCode}): {$save['error']}\n";
+            }
+        }
+
+        if ($enrollmentIds === []) {
+            return;
+        }
+
+        $submit = $gradeModel->submitClass($enrollmentIds, $facultyId);
+
+        if (! $submit['ok']) {
+            echo "  submitClass failed for {$subjectCode}: {$submit['error']}\n";
+
+            return;
+        }
+
+        echo "  submitted {$subjectCode} class (" . count($enrollmentIds) . " grades).\n";
+
+        if (! $lock) {
+            return;
+        }
+
+        $doLock = $gradeModel->lockClass($enrollmentIds, $chairpersonId);
+
+        if (! $doLock['ok']) {
+            echo "  lockClass failed for {$subjectCode}: {$doLock['error']}\n";
+
+            return;
+        }
+
+        echo "  locked {$subjectCode} class.\n";
+
+        if (! $withChangeRequest) {
+            return;
+        }
+
+        $firstGrade = $gradeModel->where('enrollment_id', $enrollmentIds[0])->first();
+
+        if ($firstGrade === null || $firstGrade['status'] !== 'locked') {
+            return;
+        }
+
+        $newValue = $firstGrade['grade_value'] === '1.50' ? '1.25' : '1.50';
+        $change   = $gradeModel->requestChange((int) $firstGrade['grade_id'], $newValue, 'DEV SEED: correcting a recording error.', $facultyId);
+
+        echo $change['ok']
+            ? "  filed a change request on grade #{$firstGrade['grade_id']} ({$firstGrade['grade_value']} -> {$newValue}).\n"
+            : "  change request failed: {$change['error']}\n";
     }
 }

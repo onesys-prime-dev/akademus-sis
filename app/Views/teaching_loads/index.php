@@ -251,7 +251,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 .modal-card h3 { font-size: 17px; font-weight: 600; letter-spacing: -.01em; margin-bottom: 10px; color: var(--ink); }
 .modal-card p { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
-.modal-btn { padding: 10px 20px; border-radius: 999px; font-size: 13px; font-weight: 500; transition: background .15s; }
+.modal-btn { padding: 10px 20px; border-radius: var(--radius-md); font-size: 13px; font-weight: 700; transition: background .15s; }
 .modal-btn.cancel { background: var(--color-surface-sunken); color: var(--ink); }
 .modal-btn.cancel:hover { background: var(--color-border); }
 .modal-btn.ok { background: var(--brand); color: #fff; box-shadow: var(--shadow-xs); }

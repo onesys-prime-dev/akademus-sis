@@ -4,8 +4,13 @@
 <?= $this->section('pageStyles') ?>
 
 <link rel="stylesheet"
-      href="<?= base_url('assets/css/pages/auth.css') ?>">
+      href="<?= base_url('assets/css/pages/auth.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/auth.css') ?>">
 
+<?= $this->endSection() ?>
+
+
+<?= $this->section('pageScripts') ?>
+<script src="<?= base_url('assets/js/auth-hero.js') ?>"></script>
 <?= $this->endSection() ?>
 
 
@@ -13,6 +18,11 @@
 
 <?= lang('Auth.login') ?> 
 
+<?= $this->endSection() ?>
+
+
+<?= $this->section('pageScripts') ?>
+<script src="<?= base_url('assets/js/auth-hero.js') ?>"></script>
 <?= $this->endSection() ?>
 
 
@@ -85,8 +95,8 @@
 
             <div class="auth__right">
 
-                <div class="auth__right--hero">
-                    <img class="auth__right--hero--img" src="<?= base_url('assets/images/background/auth-image.png') ?>" alt="">
+                <div class="auth__right--hero" data-hero="forgot">
+                    <img class="auth__right--hero--img" src="<?= base_url('assets/images/background/forgot-pass-hero.png') ?>" alt="">
                 </div>
 
             </div>
@@ -94,4 +104,9 @@
         </div>
     </div>
 
+<?= $this->endSection() ?>
+
+
+<?= $this->section('pageScripts') ?>
+<script src="<?= base_url('assets/js/auth-hero.js') ?>"></script>
 <?= $this->endSection() ?>

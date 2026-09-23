@@ -117,6 +117,7 @@ class CourseOfferingModel extends Model
 
             if ($existing !== null) {
                 $db->transRollback();
+                $db->resetTransStatus();
 
                 return ['ok' => false, 'error' => "Section #{$sectionId} is already merged into another offering for {$subjectCode}."];
             }

@@ -4,7 +4,7 @@
 <?= $this->section('pageStyles') ?>
 
 <link rel="stylesheet"
-      href="<?= base_url('assets/css/pages/auth.css') ?>">
+      href="<?= base_url('assets/css/pages/auth.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/auth.css') ?>">
 
 <?= $this->endSection() ?>
 
@@ -116,7 +116,11 @@
             <div class="auth__right">
 
                 <div class="auth__right--hero">
-                    <img class="auth__right--hero--img" src="<?= base_url('assets/images/background/auth-image.png') ?>" alt="">
+                    <img class="auth__right--hero--img" src="<?= base_url('assets/images/background/auth-image-clean.png') ?>" alt="">
+
+                    <div class="hero-copy">
+                        <h2>Your campus,<span>in one place.</span></h2>
+                    </div>
                 </div>
 
             </div>
@@ -177,6 +181,8 @@
 
 
 <?= $this->section('pageScripts') ?>
+
+<script src="<?= base_url('assets/js/auth-hero.js') ?>"></script>
 
 <script>
     document.getElementById('loginForm').addEventListener('submit', function () {

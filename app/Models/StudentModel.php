@@ -28,6 +28,13 @@ class StudentModel extends Model
      * already been promoted — the webhook that calls this can be retried
      * safely by Admissions without risk of a duplicate account.
      *
+     * Each rejection path pairs transRollback() with resetTransStatus() —
+     * see EnrollmentModel::enrollOne()'s docblock for why: without it, an
+     * expected rejection here (unknown program code, duplicate email)
+     * leaves the connection's transStatus flag poisoned for the rest of the
+     * request/process, silently failing any later, unrelated transaction on
+     * the same connection even though its own queries succeeded.
+     *
      * @return array{ok: bool, error?: string, student?: array}
      */
     public function promoteFromApplicant(array $data): array
@@ -53,6 +60,7 @@ class StudentModel extends Model
 
             if ($program === null) {
                 $db->transRollback();
+                $db->resetTransStatus();
 
                 return ['ok' => false, 'error' => "Unknown program code: {$data['program_code']}"];
             }
@@ -80,6 +88,7 @@ class StudentModel extends Model
         // to surface, not paper over.
         if ($users->findByCredentials(['email' => $data['email']]) !== null) {
             $db->transRollback();
+            $db->resetTransStatus();
 
             return ['ok' => false, 'error' => 'A user with this email already exists.'];
         }
