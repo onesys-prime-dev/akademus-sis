@@ -85,8 +85,47 @@ final class BrandedEmailTest extends CIUnitTestCase
      */
     public function testTheInlineHeaderIsARealImageTheHtmlPointsTo(): void
     {
+        $info = $this->attachedHeaderImage($this->content());
+
+        $this->assertSame('image/jpeg', $info['mime']);
+        $this->assertSame(1200, $info[0]);
+    }
+
+    public function testAnEmailCanUseItsOwnHeaderImage(): void
+    {
+        $default = $this->attachedHeaderImage($this->content());
+        $reset   = $this->attachedHeaderImage($this->content(['header' => 'forgot-password-header.jpg']));
+
+        $this->assertSame(1200, $reset[0]);
+        $this->assertNotSame($default['hash'], $reset['hash'], 'the reset email must carry a different image');
+    }
+
+    public function testAHeaderRequestCannotEscapeTheEmailFolder(): void
+    {
+        // Falls back to the default image rather than reading anything else.
+        $default = $this->attachedHeaderImage($this->content());
+        $sneaky  = $this->attachedHeaderImage($this->content(['header' => '../../../../.env']));
+
+        $this->assertSame($default['hash'], $sneaky['hash']);
+    }
+
+    public function testTitleIsOptionalWhenTheHeaderCarriesTheHeadline(): void
+    {
+        $c    = $this->content(['title' => '']);
+        $html = (new BrandedEmail())->render($c, 'cid:hdr');
+
+        $this->assertStringNotContainsString('<h1', $html);
+        $this->assertStringNotContainsString("
+
+
+", (new BrandedEmail())->renderText($c));
+    }
+
+    /** Assemble the real message, decode the inline image part, return getimagesizefromstring() + a hash of the bytes. */
+    private function attachedHeaderImage(array $content): array
+    {
         $mailer = new \CodeIgniter\Email\Email(new \Config\Email());
-        (new BrandedEmail())->prepare($mailer, 'to@example.com', 'Subject', $this->content());
+        (new BrandedEmail())->prepare($mailer, 'to@example.com', 'Subject', $content);
         $mailer->setFrom('from@example.com', 'Akademus'); // send() applies the configured sender; we bypass send()
 
         foreach (['buildHeaders', 'buildMessage'] as $method) {
@@ -112,7 +151,7 @@ final class BrandedEmailTest extends CIUnitTestCase
         $this->assertNotFalse($bytes);
         $info = getimagesizefromstring($bytes);
         $this->assertNotFalse($info, 'the attachment is not an image');
-        $this->assertSame('image/jpeg', $info['mime']);
-        $this->assertSame(1200, $info[0]);
+
+        return $info + ['hash' => md5($bytes)];
     }
 }

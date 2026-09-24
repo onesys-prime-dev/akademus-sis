@@ -47,9 +47,10 @@ class ForgotPasswordController extends BaseController
         $link = site_url('reset-password/' . $token);
 
         $sent = (new \App\Libraries\BrandedEmail())->send($email, 'Reset your Akademus password', [
+            // This header already says "Forgot your password?", so no headline of our own.
+            'header'     => 'forgot-password-header.jpg',
             'preheader'  => 'Use this link to choose a new password. It expires in 1 hour.',
             'eyebrow'    => 'Password reset',
-            'title'      => 'Reset your password',
             'paragraphs' => [
                 'We received a request to reset the password for your Akademus account. Choose a new one with the button below.',
             ],

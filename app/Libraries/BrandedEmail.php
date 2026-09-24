@@ -16,9 +16,10 @@ use Throwable;
  * localhost; the same message therefore looks right in dev and production.
  *
  * Content array (all values are plain text — everything is escaped here):
+ *   header     string   optional image under public/assets/images/email/ (default: the Akademus header)
  *   preheader  string   inbox preview line
  *   eyebrow    string   small label above the title
- *   title      string
+ *   title      string   optional when the header image already carries the headline
  *   paragraphs string[]
  *   details    array<string,string>  label => value, shown in a highlighted box
  *   button     array{label:string,url:string}
@@ -45,6 +46,10 @@ class BrandedEmail
         $preheader = $e($c['preheader'] ?? '');
         $eyebrow   = isset($c['eyebrow']) ? $e($c['eyebrow']) : '';
         $title     = $e($c['title'] ?? '');
+        $docTitle  = $title !== '' ? $title : ($eyebrow !== '' ? $eyebrow : 'Akademus');
+        $titleHtml = $title !== ''
+            ? '<h1 class="h1" style="margin:0 0 18px;font-size:26px;line-height:1.25;font-weight:700;color:' . self::NAVY . ';">' . $title . '</h1>'
+            : '';
 
         $paragraphs = '';
         foreach ($c['paragraphs'] ?? [] as $p) {
@@ -98,7 +103,7 @@ class BrandedEmail
           <meta name="viewport" content="width=device-width,initial-scale=1">
           <meta name="color-scheme" content="light">
           <meta name="supported-color-schemes" content="light">
-          <title>{$title}</title>
+          <title>{$docTitle}</title>
           <style>
             @media only screen and (max-width:480px) {
               .px { padding-left:22px !important; padding-right:22px !important; }
@@ -117,7 +122,7 @@ class BrandedEmail
                 </td></tr>
                 <tr><td class="px" style="padding:36px 40px 12px;font-family:{$font};">
                   {$eyebrowHtml}
-                  <h1 class="h1" style="margin:0 0 18px;font-size:26px;line-height:1.25;font-weight:700;color:{$this->navy()};">{$title}</h1>
+                  {$titleHtml}
                   {$paragraphs}
                   {$details}
                   {$button}
@@ -146,8 +151,10 @@ class BrandedEmail
         if (! empty($c['eyebrow'])) {
             $lines[] = strtoupper($c['eyebrow']);
         }
-        $lines[] = $c['title'] ?? '';
-        $lines[] = '';
+        if (! empty($c['title'])) {
+            $lines[] = $c['title'];
+            $lines[] = '';
+        }
         foreach ($c['paragraphs'] ?? [] as $p) {
             $lines[] = $p;
             $lines[] = '';
@@ -202,7 +209,7 @@ class BrandedEmail
     {
         $mailer->clear(true);
 
-        $header = FCPATH . self::HEADER_IMAGE;
+        $header = FCPATH . $this->headerPath($content['header'] ?? null);
         $src    = '';
 
         if (is_file($header)) {
@@ -218,6 +225,23 @@ class BrandedEmail
         $mailer->setSubject($subject);
         $mailer->setMessage($this->render($content, $src));
         $mailer->setAltMessage($this->renderText($content));
+    }
+
+    /**
+     * Only images inside the email folder may be used as a header — the value
+     * is reduced to a bare filename, so it can never point elsewhere on disk.
+     */
+    private function headerPath(?string $requested): string
+    {
+        if ($requested !== null) {
+            $candidate = 'assets/images/email/' . basename($requested);
+
+            if (is_file(FCPATH . $candidate)) {
+                return $candidate;
+            }
+        }
+
+        return self::HEADER_IMAGE;
     }
 
     // Heredoc can't call constants directly.
