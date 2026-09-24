@@ -643,6 +643,42 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .suggestion .ai-apply { background: linear-gradient(135deg, #4f46e5, #7c3aed); border-radius: 8px; padding: 6px 14px; box-shadow: 0 6px 14px -6px rgba(79, 70, 229, .6); }
         .ai-fill { border-radius: 8px; font-weight: 700; }
         .ai-fill[hidden] { display: none; }
+
+        .ai-tools { display: flex; gap: 8px; margin: 10px 0 0; }
+        .ai-icon-btn {
+            display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;
+            border: 1px solid var(--outline-variant); background: var(--surface-container-lowest); color: var(--on-surface); cursor: pointer;
+            transition: background .15s, border-color .15s, opacity .15s;
+        }
+        .ai-icon-btn .material-symbols-outlined { font-size: 16px; }
+        .ai-icon-btn:hover:not(:disabled) { background: var(--surface-container-low); border-color: var(--primary-container); }
+        .ai-icon-btn:disabled { opacity: .45; cursor: default; }
+        .ai-icon-btn[aria-expanded="true"] { background: rgba(99, 102, 241, .1); border-color: #6366f1; color: #4f46e5; }
+
+        .ai-rules { margin: 10px 0 0; padding: 12px; border-radius: 12px; border: 1px solid var(--outline-variant); background: var(--surface-container-lowest); box-shadow: var(--shadow-sm); }
+        .ai-rules[hidden] { display: none; }
+        .ai-rules-title { font-size: 12.5px; font-weight: 800; margin-bottom: 8px; }
+        .ai-rules-title span { font-weight: 500; color: var(--on-surface-variant); }
+        .ai-rules .ai-row { display: flex; gap: 8px; margin: 6px 0; }
+        .ai-rules .ai-row label { flex: 1; font-size: 11px; color: var(--on-surface-variant); display: flex; flex-direction: column; gap: 3px; }
+        .ai-rules select { padding: 5px 6px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 12px; background: var(--surface-container-lowest); }
+        .ai-rules .ai-check { display: flex; align-items: center; gap: 8px; font-size: 12px; margin: 6px 0; cursor: pointer; }
+        .ai-rules-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+        /* Hover preview on the grid */
+        .ai-preview {
+            position: absolute; left: 3px; right: 3px; z-index: 6; pointer-events: none; border-radius: 10px;
+            display: flex; align-items: flex-start; padding: 5px 8px; font-size: 10.5px; font-weight: 800; letter-spacing: .04em;
+            animation: aiPreviewIn .14s ease-out;
+        }
+        .ai-preview.to {
+            border: 2px dashed #6366f1; color: #4338ca;
+            background: repeating-linear-gradient(135deg, rgba(99, 102, 241, .16) 0 8px, rgba(99, 102, 241, .08) 8px 16px);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, .14), 0 10px 24px -10px rgba(79, 70, 229, .55);
+        }
+        .ai-preview.from { border: 2px dashed #d97706; color: #b45309; background: rgba(245, 158, 11, .1); }
+        @keyframes aiPreviewIn { from { opacity: 0; transform: scale(.98); } to { opacity: 1; transform: scale(1); } }
+        @media (prefers-reduced-motion: reduce) { .ai-preview { animation: none; } }
         .ai-section {
             display: flex; align-items: center; justify-content: space-between; margin: 14px 2px 8px;
             font-size: 10.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--on-surface-variant);
@@ -1681,6 +1717,60 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     are unavailable during those times.
                 </div>
 
+                <div class="ai-tools">
+                    <button type="button" class="ai-icon-btn" id="aiUndo" title="Nothing to undo" aria-label="Undo last assistant change" disabled>
+                        <span class="material-symbols-outlined" aria-hidden="true">undo</span> Undo
+                    </button>
+                    <button type="button" class="ai-icon-btn" id="aiRulesBtn" aria-expanded="false" aria-controls="aiRules" title="Assistant rules for your department">
+                        <span class="material-symbols-outlined" aria-hidden="true">tune</span> Rules
+                    </button>
+                </div>
+
+                <form class="ai-rules" id="aiRules" hidden>
+                    <div class="ai-rules-title">Scheduling rules <span>for your department</span></div>
+
+                    <label class="ai-check"><input type="checkbox" name="lunch_enabled"> Keep a lunch break free</label>
+                    <div class="ai-row">
+                        <label>Lunch from <select name="lunch_start"></select></label>
+                        <label>to <select name="lunch_end"></select></label>
+                    </div>
+
+                    <div class="ai-row">
+                        <label>Earliest class <select name="earliest_start"></select></label>
+                        <label>Latest end <select name="latest_end"></select></label>
+                    </div>
+
+                    <div class="ai-row">
+                        <label>Max class hours per day <select name="max_hours_day"></select></label>
+                    </div>
+
+                    <label class="ai-check"><input type="checkbox" name="allow_saturday"> Allow Saturday classes</label>
+
+                    <div class="ai-row">
+                        <label>Meeting days
+                            <select name="day_pattern">
+                                <option value="spaced">Spaced (Mon/Wed, Tue/Thu)</option>
+                                <option value="any">Any days</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="ai-row">
+                        <label>Avoid busy periods
+                            <select name="spread">
+                                <option value="off">Off</option>
+                                <option value="balanced">Balanced</option>
+                                <option value="strong">Strong</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="ai-rules-actions">
+                        <button type="button" class="btn btn-ghost" id="aiRulesReset">Reset</button>
+                        <button type="submit" class="btn btn-primary" id="aiRulesSave">Save rules</button>
+                    </div>
+                </form>
+
                 <div class="ai-head">
                     <span class="ai-status" id="aiStatus">Analyzing the schedule…</span>
                     <button type="button" class="btn btn-ghost ai-fill" id="aiFillAll" hidden>Plot everything</button>
@@ -2061,6 +2151,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             syncUrl: <?= json_encode(site_url('chairperson/schedule/sync')) ?>,
             stateUrl: <?= json_encode(site_url('chairperson/schedule/state')) ?>,
             suggestUrl: <?= json_encode(site_url('chairperson/schedule/suggest')) ?>,
+            rulesUrl: <?= json_encode(site_url('chairperson/schedule/assistant-rules')) ?>,
             facultyPanelUrl: <?= json_encode(site_url('chairperson/faculty-panel')) ?>,
             facultyOverrideUrl: <?= json_encode(site_url('chairperson/schedule/faculty-override')) ?>,
         };
@@ -2422,6 +2513,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 if (!response.ok || !data.ok) throw new Error('bad response');
 
                 aiPlan = data;
+                if (rulesForm.hidden) fillRulesForm(data.rules);
                 renderSuggestions();
             } catch (err) {
                 status.textContent = 'The assistant could not analyze this schedule right now.';
@@ -2436,6 +2528,160 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             if (text !== undefined) el.textContent = text;
             return el;
         }
+
+        // ----- hover preview -----
+        // Hovering a suggestion ghosts it onto the grid: indigo where it
+        // would go, amber where the class is now (for a move).
+        function clearPreview() {
+            document.querySelectorAll('.ai-preview').forEach(el => el.remove());
+        }
+
+        function showPreview(items) {
+            clearPreview();
+            let first = null;
+
+            items.forEach(p => {
+                const col = DAY_COLS.get(Number(p.day));
+                if (!col) return;
+
+                const startRow = (toMinutes(p.start) - CONFIG.gridStartMin) / 30;
+                const endRow = (toMinutes(p.end) - CONFIG.gridStartMin) / 30;
+                const el = document.createElement('div');
+
+                el.className = 'ai-preview ' + (p.kind || 'to');
+                el.style.top = (startRow * CONFIG.rowHeight) + 'px';
+                el.style.height = ((endRow - startRow) * CONFIG.rowHeight - 4) + 'px';
+                el.textContent = p.label || '';
+                col.appendChild(el);
+
+                if (!first && (p.kind || 'to') === 'to') first = el;
+            });
+
+            if (first && first.scrollIntoView) first.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+
+        function hoverPreview(el, getItems) {
+            el.addEventListener('mouseenter', () => showPreview(getItems()));
+            el.addEventListener('mouseleave', clearPreview);
+            el.addEventListener('focusin', () => showPreview(getItems()));
+            el.addEventListener('focusout', clearPreview);
+        }
+
+        const slotPreview = (code, slot, kind = 'to') => ({ day: slot.day, start: slot.start, end: slot.end, kind, label: kind === 'to' ? `${code} · suggested` : `${code} · now` });
+
+        // ----- undo -----
+        const undoStack = [];
+
+        function updateUndoButton() {
+            const btn = document.getElementById('aiUndo');
+            const last = undoStack[undoStack.length - 1];
+            btn.disabled = !last;
+            btn.title = last ? `Undo: ${last.label}` : 'Nothing to undo';
+        }
+
+        function pushUndo(label) {
+            undoStack.push({ label, snapshot: JSON.stringify(blocks) });
+            if (undoStack.length > 20) undoStack.shift();
+            updateUndoButton();
+        }
+
+        function undoLast() {
+            const last = undoStack.pop();
+            if (!last) return;
+
+            blocks = JSON.parse(last.snapshot);
+            clearPreview();
+            renderBlocks();
+            scheduleSave();
+            updateUndoButton();
+            showToast(`Undid: ${last.label}`, '');
+        }
+
+        document.getElementById('aiUndo').addEventListener('click', undoLast);
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && undoStack.length
+                && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ''))) {
+                e.preventDefault();
+                undoLast();
+            }
+        });
+
+        // ----- department rules -----
+        const rulesForm = document.getElementById('aiRules');
+        const rulesBtn = document.getElementById('aiRulesBtn');
+
+        function timeOptions(select, fromMin, toMin) {
+            for (let m = fromMin; m <= toMin; m += 30) {
+                const opt = document.createElement('option');
+                opt.value = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+                opt.textContent = minutesTo12h(m);
+                select.appendChild(opt);
+            }
+        }
+
+        timeOptions(rulesForm.lunch_start, 600, 840);
+        timeOptions(rulesForm.lunch_end, 630, 900);
+        timeOptions(rulesForm.earliest_start, 420, 720);
+        timeOptions(rulesForm.latest_end, 720, 1050);
+
+        for (let h = 3; h <= 12; h++) {
+            const opt = document.createElement('option');
+            opt.value = String(h);
+            opt.textContent = h + ' hours';
+            rulesForm.max_hours_day.appendChild(opt);
+        }
+
+        function fillRulesForm(rules) {
+            if (!rules) return;
+            rulesForm.lunch_enabled.checked = !!rules.lunch_enabled;
+            rulesForm.allow_saturday.checked = !!rules.allow_saturday;
+            ['lunch_start', 'lunch_end', 'earliest_start', 'latest_end', 'day_pattern', 'spread'].forEach(k => { rulesForm[k].value = rules[k]; });
+            rulesForm.max_hours_day.value = String(Math.round(rules.max_hours_day));
+        }
+
+        function readRulesForm() {
+            return {
+                lunch_enabled: rulesForm.lunch_enabled.checked,
+                lunch_start: rulesForm.lunch_start.value,
+                lunch_end: rulesForm.lunch_end.value,
+                earliest_start: rulesForm.earliest_start.value,
+                latest_end: rulesForm.latest_end.value,
+                allow_saturday: rulesForm.allow_saturday.checked,
+                max_hours_day: Number(rulesForm.max_hours_day.value),
+                day_pattern: rulesForm.day_pattern.value,
+                spread: rulesForm.spread.value,
+            };
+        }
+
+        rulesBtn.addEventListener('click', () => {
+            rulesForm.hidden = !rulesForm.hidden;
+            rulesBtn.setAttribute('aria-expanded', String(!rulesForm.hidden));
+        });
+
+        async function saveRules(payload, doneMessage) {
+            try {
+                const response = await fetch(CONFIG.rulesUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok) throw new Error(data.error || 'failed');
+
+                fillRulesForm(data.rules);
+                showToast(doneMessage, 'success');
+                loadSuggestions();
+            } catch (err) {
+                showToast('Could not save the rules.', 'error');
+            }
+        }
+
+        rulesForm.addEventListener('submit', e => {
+            e.preventDefault();
+            saveRules(readRulesForm(), 'Rules saved. Re-checking the schedule…');
+        });
+
+        document.getElementById('aiRulesReset').addEventListener('click', () => saveRules({ reset: true }, 'Rules reset to defaults.'));
 
         const IMPACT_LABEL = { high: 'High impact', medium: 'Medium impact', low: 'Small gain' };
 
@@ -2480,8 +2726,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         }
 
         /** Buttons + collapsible alternatives shared by every card type. */
-        function aiActions(card, applyLabel, onApply, alternatives, describe, onUse) {
+        function aiActions(card, applyLabel, onApply, alternatives, describe, onUse, previewCard, previewAlt) {
             const actions = aiEl('div', 'ai-actions');
+
+            if (previewCard) hoverPreview(card, previewCard);
 
             if (onApply) {
                 const apply = aiEl('button', 'ai-apply', applyLabel);
@@ -2506,6 +2754,12 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 use.type = 'button';
                 use.addEventListener('click', () => onUse(a));
                 row.appendChild(use);
+
+                if (previewAlt && previewCard) {
+                    row.addEventListener('mouseenter', () => showPreview(previewAlt(a)));
+                    row.addEventListener('mouseleave', () => showPreview(previewCard()));
+                }
+
                 alts.appendChild(row);
             });
 
@@ -2527,8 +2781,11 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 card.appendChild(aiEl('div', 'title', item.summary));
                 card.appendChild(aiFacultyChip(item.faculty));
                 card.appendChild(aiReasons(item.faculty.reasons));
+                const assignPreview = () => blocks.filter(x => x.code === item.code)
+                    .map(x => ({ day: x.day, start: x.start, end: x.end, kind: 'to', label: `${item.code} · ${item.faculty.name}` }));
+
                 aiActions(card, 'Assign', () => applyAssignFaculty(item, item.faculty),
-                    item.alternatives, f => `${f.name}${f.level ? ' · ' + f.level : ''}`, f => applyAssignFaculty(item, f));
+                    item.alternatives, f => `${f.name}${f.level ? ' · ' + f.level : ''}`, f => applyAssignFaculty(item, f), assignPreview);
                 return card;
             }
 
@@ -2539,8 +2796,11 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 card.appendChild(aiEl('div', 'ai-now', 'Now: ' + item.block.label));
                 card.appendChild(aiFitRow(item.best.score));
                 card.appendChild(aiReasons(item.best.reasons));
+                const movePreview = slot => [slotPreview(item.code, item.block, 'from'), slotPreview(item.code, slot, 'to')];
+
                 aiActions(card, 'Move it', () => applyMove(item, item.best),
-                    item.alternatives, a => `${a.day_name} ${a.time_label} · ${a.room}`, a => applyMove(item, a));
+                    item.alternatives, a => `${a.day_name} ${a.time_label} · ${a.room}`, a => applyMove(item, a),
+                    () => movePreview(item.best), movePreview);
             } else {
                 card.appendChild(aiEl('div', 'title', item.title));
                 card.appendChild(aiEl('div', 'body', item.summary));
@@ -2601,7 +2861,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             card.appendChild(aiFitRow(s.best.score));
             card.appendChild(aiReasons(s.best.reasons.concat(s.faculty ? s.faculty.reasons.slice(0, 2) : [])));
             aiActions(card, 'Plot this', () => applySuggestion(s, s.best),
-                s.alternatives, a => `${a.day_name} ${a.time_label} · ${a.room}`, a => applySuggestion(s, a));
+                s.alternatives, a => `${a.day_name} ${a.time_label} · ${a.room}`, a => applySuggestion(s, a),
+                () => [slotPreview(s.code, s.best)], a => [slotPreview(s.code, a)]);
 
             return card;
         }
@@ -2611,6 +2872,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             const status = document.getElementById('aiStatus');
             const fillAll = document.getElementById('aiFillAll');
             box.replaceChildren();
+            clearPreview();
 
             const plan = aiPlan.suggestions || [];
             const stuck = aiPlan.unplaceable || [];
@@ -2677,6 +2939,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         }
 
         function applySuggestion(s, slot) {
+            pushUndo(`plotted ${s.code}`);
+            clearPreview();
             blocks.push(suggestionBlock(s, slot));
             renderBlocks();
             scheduleSave();
@@ -2696,6 +2960,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 return;
             }
 
+            pushUndo(`moved ${item.code}`);
+            clearPreview();
             b.day = slot.day;
             b.start = slot.start;
             b.end = slot.end;
@@ -2715,6 +2981,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 return;
             }
 
+            pushUndo(`assigned ${faculty.name} to ${item.code}`);
+            clearPreview();
             targets.forEach(x => {
                 x.prof = faculty.name;
                 x.faculty_id = faculty.id;
@@ -2724,6 +2992,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             scheduleSave();
             showToast(`${faculty.name} assigned to ${item.code}.`, 'success');
         }
+
+        hoverPreview(document.getElementById('aiFillAll'), () => (aiPlan.suggestions || []).map(s => slotPreview(s.code, s.best)));
 
         document.getElementById('aiFillAll').addEventListener('click', async () => {
             const plan = aiPlan.suggestions || [];
@@ -2738,6 +3008,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
             if (!ok) return;
 
+            pushUndo(`plotted ${plan.length} meeting${plan.length === 1 ? '' : 's'}`);
+            clearPreview();
             plan.forEach(s => blocks.push(suggestionBlock(s, s.best)));
             renderBlocks();
             scheduleSave();

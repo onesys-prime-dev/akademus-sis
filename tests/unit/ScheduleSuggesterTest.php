@@ -411,6 +411,140 @@ final class ScheduleSuggesterTest extends CIUnitTestCase
         $this->assertSame(1, $move['best']['day']);
     }
 
+    // ---- rules & load spreading ----
+
+    private function withRules(array $rules, array $subjects, array $blocks = [], array $others = []): array
+    {
+        return $this->s->suggest($subjects, $blocks, $others, $this->rooms, [
+            'headcount' => 30, 'headcount_known' => true, 'grid_start' => 420, 'grid_end' => 1050, 'rules' => $rules,
+        ]);
+    }
+
+    /** Two of three rooms busy Mon-Sat 8:00-10:30, as if the school piled into the morning. */
+    private function busyMornings(): array
+    {
+        $others = [];
+
+        foreach (range(0, 5) as $d) {
+            foreach (['Room 101', 'Room 102'] as $room) {
+                $others[] = ['day' => $d, 'code' => 'X', 'start' => '08:00', 'end' => '10:30', 'room' => $room, 'prof' => null];
+            }
+        }
+
+        return $others;
+    }
+
+    public function testSpreadingAvoidsThePeakPeriod(): void
+    {
+        $subject = [$this->subject('ITE 101', 1.5, 1.5)];
+
+        $spread = $this->withRules(['spread' => 'balanced'], $subject, [], $this->busyMornings());
+        $best   = $spread['suggestions'][0]['best'];
+
+        $this->assertGreaterThanOrEqual('10:30', $best['start']);
+        $this->assertStringContainsString('quiet period', implode(' ', $best['reasons']));
+
+        // with spreading switched off it happily takes the crowded morning start
+        $off = $this->withRules(['spread' => 'off'], $subject, [], $this->busyMornings());
+        $this->assertNotSame($best['start'], $off['suggestions'][0]['best']['start']);
+    }
+
+    public function testSaturdayCanBeSwitchedOff(): void
+    {
+        $others = [];
+        foreach (range(0, 4) as $d) {
+            foreach (['Room 101', 'Room 102', 'Lab A'] as $room) {
+                $others[] = ['day' => $d, 'code' => 'X', 'start' => '07:00', 'end' => '17:30', 'room' => $room, 'prof' => null];
+            }
+        }
+        $subject = [$this->subject('ITE 101', 1.5, 1.5)];
+
+        $this->assertSame(5, $this->withRules(['allow_saturday' => true], $subject, [], $others)['suggestions'][0]['best']['day']);
+
+        $none = $this->withRules(['allow_saturday' => false], $subject, [], $others);
+        $this->assertSame([], $none['suggestions']);
+        $this->assertFalse($none['complete']);
+    }
+
+    public function testMaxHoursPerDayIsHonoured(): void
+    {
+        $subjects = [$this->subject('A', 1.5, 1.5), $this->subject('B', 1.5, 1.5), $this->subject('C', 1.5, 1.5), $this->subject('D', 1.5, 1.5)];
+        $r        = $this->withRules(['max_hours_day' => 3, 'spread' => 'off'], $subjects);
+
+        $hours = [];
+        foreach ($r['suggestions'] as $s) {
+            $hours[$s['best']['day']] = ($hours[$s['best']['day']] ?? 0) + 1.5;
+        }
+
+        $this->assertNotEmpty($hours);
+        $this->assertLessThanOrEqual(3.0, max($hours));
+    }
+
+    public function testEarliestStartRule(): void
+    {
+        $r = $this->withRules(['earliest_start' => '09:00', 'spread' => 'off'], [$this->subject('A', 1.5, 3)]);
+
+        foreach ($r['suggestions'] as $s) {
+            $this->assertGreaterThanOrEqual('09:00', $s['best']['start']);
+        }
+    }
+
+    public function testLunchRuleCanBeDisabled(): void
+    {
+        // Everything is taken except 12:00-13:30 in every room, every day.
+        $others = [];
+        foreach (range(0, 5) as $d) {
+            foreach (['Room 101', 'Room 102', 'Lab A'] as $room) {
+                $others[] = ['day' => $d, 'code' => 'X', 'start' => '07:00', 'end' => '12:00', 'room' => $room, 'prof' => null];
+                $others[] = ['day' => $d, 'code' => 'X', 'start' => '13:30', 'end' => '17:30', 'room' => $room, 'prof' => null];
+            }
+        }
+        $subject = [$this->subject('A', 1.5, 1.5)];
+
+        $on  = $this->withRules(['lunch_enabled' => true, 'spread' => 'off'], $subject, [], $others)['suggestions'][0]['best'];
+        $off = $this->withRules(['lunch_enabled' => false, 'spread' => 'off'], $subject, [], $others)['suggestions'][0]['best'];
+
+        $this->assertStringContainsString('overlaps lunch', implode(' ', $on['reasons']));
+        $this->assertStringNotContainsString('overlaps lunch', implode(' ', $off['reasons']));
+        $this->assertGreaterThan($on['score'], $off['score']);
+    }
+
+    public function testSpacedDayPatternPrefersMonWedOverMonTue(): void
+    {
+        $blocks = [['day' => 0, 'code' => 'A', 'start' => '08:00', 'end' => '09:30', 'room' => 'Room 101', 'prof' => null]];
+
+        $spaced = $this->withRules(['day_pattern' => 'spaced', 'spread' => 'off'], [$this->subject('A', 1.5, 3)], $blocks);
+        $this->assertSame(2, $spaced['suggestions'][0]['best']['day']);
+    }
+
+    public function testInvalidRulesFallBackToDefaults(): void
+    {
+        $rules = $this->s->normalizeRules([
+            'lunch_start' => 'noon', 'lunch_end' => '11:00', 'earliest_start' => '18:00', 'latest_end' => '07:00',
+            'max_hours_day' => 99, 'day_pattern' => 'weird', 'spread' => 'max', 'allow_saturday' => 0,
+        ]);
+
+        $this->assertSame('12:00', $rules['lunch_start']);
+        $this->assertSame('13:00', $rules['lunch_end']);
+        $this->assertSame('07:00', $rules['earliest_start']);
+        $this->assertSame('17:30', $rules['latest_end']);
+        $this->assertSame(12.0, $rules['max_hours_day']);
+        $this->assertSame('spaced', $rules['day_pattern']);
+        $this->assertSame('balanced', $rules['spread']);
+        $this->assertFalse($rules['allow_saturday']);
+    }
+
+    public function testImproveFlagsClassesThatBreakTheCurrentRules(): void
+    {
+        $blocks = [['day' => 5, 'code' => 'A', 'start' => '08:00', 'end' => '09:30', 'room' => 'Room 101', 'prof' => null]];
+
+        $items = $this->s->improve([$this->subject('A', 1.5, 1.5)], $blocks, [], $this->rooms, $this->improveOpts(['rules' => ['allow_saturday' => false]]));
+        $move  = array_values(array_filter($items, static fn ($i) => $i['type'] === 'move'))[0];
+
+        $this->assertSame('high', $move['impact']);
+        $this->assertNotSame(5, $move['best']['day']);
+    }
+
     public function testMeetingsNeededRespectsWeeklyCap(): void
     {
         $this->assertSame(3, $this->s->meetingsNeeded($this->subject('A', 1, 9), []));

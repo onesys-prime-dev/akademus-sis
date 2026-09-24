@@ -428,6 +428,7 @@ class ChairpersonController extends BaseController
             'grid_end'        => $this->toMinutes('17:30'),
             'faculty'         => $this->facultyForSuggestions($context),
             'max_units'       => (float) (setting('Academic.maxFacultyUnits') ?? 24),
+            'rules'           => $this->assistantRules(),
         ];
 
         $engine = new ScheduleSuggester();
@@ -437,8 +438,62 @@ class ChairpersonController extends BaseController
             'ok'              => true,
             'headcount'       => $headcount,
             'headcount_known' => $known,
+            'rules'           => $engine->normalizeRules($opts['rules']),
+            'defaults'        => ScheduleSuggester::DEFAULT_RULES,
             'improvements'    => $engine->improve($subjects, $blocks, $others, $rooms, $opts),
         ] + $engine->suggest($subjects, $blocks, $others, $rooms, $opts));
+    }
+
+    /**
+     * The scheduling rules for this chairperson's department (stored per
+     * department in the settings table, so every chairperson of the
+     * department sees the same assistant). Falls back to the defaults.
+     */
+    private function assistantRules(): array
+    {
+        $engine  = new ScheduleSuggester();
+        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+
+        if ($subDept === null) {
+            return $engine->normalizeRules([]);
+        }
+
+        try {
+            $raw   = service('settings')->get('Scheduling.assistantRules', 'dept:' . (int) $subDept['sub_dept_id']);
+            $saved = is_string($raw) ? json_decode($raw, true) : null;
+        } catch (\Throwable $e) {
+            $saved = null;
+        }
+
+        return $engine->normalizeRules(is_array($saved) ? $saved : []);
+    }
+
+    /**
+     * Save the department's assistant rules. Anything invalid is clamped to
+     * a safe value by the engine, never stored as-is. Audited.
+     */
+    public function saveAssistantRules()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload)) {
+            return $this->fail('Invalid payload.');
+        }
+
+        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+
+        if ($subDept === null) {
+            return $this->fail('You are not assigned to a department.');
+        }
+
+        $before = $this->assistantRules();
+        $rules  = (new ScheduleSuggester())->normalizeRules(! empty($payload['reset']) ? [] : $payload);
+
+        service('settings')->set('Scheduling.assistantRules', json_encode($rules), 'dept:' . (int) $subDept['sub_dept_id']);
+
+        $this->audit('scheduling.assistant_rules', 'sub_department', $subDept['sub_dept_id'], $before, $rules);
+
+        return $this->response->setJSON(['ok' => true, 'rules' => $rules]);
     }
 
     /**

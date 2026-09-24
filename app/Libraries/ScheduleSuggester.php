@@ -42,9 +42,27 @@ class ScheduleSuggester
     /** A move must beat the current slot by this much to be worth proposing. */
     private const IMPROVE_THRESHOLD = 15.0;
 
-    private const LUNCH_START = 720;   // 12:00
-    private const LUNCH_END   = 780;   // 13:00
-    private const DAY_NAMES   = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    /**
+     * The department's scheduling rules (edited on the plotting page). Times
+     * are 'HH:MM'. `spread`: how strongly to steer away from periods when
+     * the rest of the school is already busy (off | balanced | strong).
+     * `day_pattern`: 'spaced' prefers meeting days like Mon/Wed or Tue/Thu.
+     */
+    public const DEFAULT_RULES = [
+        'lunch_enabled'   => true,
+        'lunch_start'     => '12:00',
+        'lunch_end'       => '13:00',
+        'earliest_start'  => '07:00',
+        'latest_end'      => '17:30',
+        'allow_saturday'  => true,
+        'max_hours_day'   => 8.0,
+        'day_pattern'     => 'spaced',
+        'spread'          => 'balanced',
+    ];
+
+    private const SPREAD_WEIGHT = ['off' => 0.0, 'balanced' => 1.0, 'strong' => 2.0];
+
+    private const DAY_NAMES  = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     private const PREF_WEIGHT = ['preferred' => 30, 'willing' => 15, 'qualified' => 8];
 
     /**
@@ -59,6 +77,7 @@ class ScheduleSuggester
     public function suggest(array $subjects, array $blocks, array $others, array $rooms, array $opts): array
     {
         $ctx  = $this->context($opts);
+        $ctx['room_count'] = max(1, count($rooms));
         $mine = array_map(fn ($b) => $this->norm($b), $blocks);
         $all  = array_map(fn ($b) => $this->norm($b), $others);
 
@@ -160,8 +179,10 @@ class ScheduleSuggester
     public function improve(array $subjects, array $blocks, array $others, array $rooms, array $opts): array
     {
         $ctx   = $this->context($opts);
+        $ctx['room_count'] = max(1, count($rooms));
         $mine  = array_map(fn ($b) => $this->norm($b), $blocks);
         $all   = array_map(fn ($b) => $this->norm($b), $others);
+        $ctx['_others'] = $all;
         $byCode = array_column($subjects, null, 'code');
         $items = [];
 
@@ -238,7 +259,7 @@ class ScheduleSuggester
             $impact = $hard ? 'high' : ($gain >= 30 ? 'medium' : 'low');
 
             if ($problems === []) {
-                $reasons = $this->explainGain($b, $best);
+                $reasons = $this->explainGain($b, $best, $ctx);
             }
 
             $items[] = $this->improvementCard('move', $impact, $s, $b, implode(' ', $reasons), array_merge(['Result: ' . implode(', ', $best['reasons'])], []), $this->present($best), array_map(fn ($c) => $this->present($c), array_slice($cands, 1, 2)));
@@ -318,13 +339,59 @@ class ScheduleSuggester
     // Planning
     // ------------------------------------------------------------------
 
+    /**
+     * Fill defaults, clamp and validate the department rules. Anything
+     * malformed falls back to its default, so bad stored data can never
+     * break the assistant.
+     *
+     * @return array{lunch_enabled: bool, lunch_start: string, lunch_end: string, earliest_start: string,
+     *               latest_end: string, allow_saturday: bool, max_hours_day: float, day_pattern: string, spread: string}
+     */
+    public function normalizeRules(array $rules): array
+    {
+        $d    = self::DEFAULT_RULES;
+        $time = static fn ($v, $fallback) => is_string($v) && preg_match('/^([01]\d|2[0-3]):(00|30)$/', $v) ? $v : $fallback;
+
+        $out = [
+            'lunch_enabled'  => array_key_exists('lunch_enabled', $rules) ? (bool) $rules['lunch_enabled'] : $d['lunch_enabled'],
+            'lunch_start'    => $time($rules['lunch_start'] ?? null, $d['lunch_start']),
+            'lunch_end'      => $time($rules['lunch_end'] ?? null, $d['lunch_end']),
+            'earliest_start' => $time($rules['earliest_start'] ?? null, $d['earliest_start']),
+            'latest_end'     => $time($rules['latest_end'] ?? null, $d['latest_end']),
+            'allow_saturday' => array_key_exists('allow_saturday', $rules) ? (bool) $rules['allow_saturday'] : $d['allow_saturday'],
+            'max_hours_day'  => isset($rules['max_hours_day']) && is_numeric($rules['max_hours_day'])
+                ? max(1.0, min(12.0, (float) $rules['max_hours_day'])) : $d['max_hours_day'],
+            'day_pattern'    => in_array($rules['day_pattern'] ?? null, ['any', 'spaced'], true) ? $rules['day_pattern'] : $d['day_pattern'],
+            'spread'         => in_array($rules['spread'] ?? null, array_keys(self::SPREAD_WEIGHT), true) ? $rules['spread'] : $d['spread'],
+        ];
+
+        if ($this->minutes($out['lunch_end']) <= $this->minutes($out['lunch_start'])) {
+            $out['lunch_start'] = $d['lunch_start'];
+            $out['lunch_end']   = $d['lunch_end'];
+        }
+
+        if ($this->minutes($out['latest_end']) - $this->minutes($out['earliest_start']) < 60) {
+            $out['earliest_start'] = $d['earliest_start'];
+            $out['latest_end']     = $d['latest_end'];
+        }
+
+        return $out;
+    }
+
     private function context(array $opts): array
     {
+        $rules = $this->normalizeRules($opts['rules'] ?? []);
+
         return [
+            'rules'           => $rules,
+            'lunch_start'     => $this->minutes($rules['lunch_start']),
+            'lunch_end'       => $this->minutes($rules['lunch_end']),
+            'spread_weight'   => self::SPREAD_WEIGHT[$rules['spread']],
             'headcount'       => (int) ($opts['headcount'] ?? 0),
             'headcount_known' => ! empty($opts['headcount_known']),
-            'grid_start'      => $opts['grid_start'],
-            'grid_end'        => $opts['grid_end'],
+            'room_count'      => max(1, (int) ($opts['room_count'] ?? 1)),
+            'grid_start'      => max($opts['grid_start'], $this->minutes($rules['earliest_start'])),
+            'grid_end'        => min($opts['grid_end'], $this->minutes($rules['latest_end'])),
             'alternatives'    => $opts['alternatives'] ?? 3,
             'faculty'         => $this->normalizeFaculty($opts['faculty'] ?? []),
             'max_units'       => (float) ($opts['max_units'] ?? 24),
@@ -512,9 +579,33 @@ class ScheduleSuggester
 
         $out = [];
 
-        for ($day = 0; $day <= 5; $day++) {
+        $rules   = $ctx['rules'];
+        $maxDay  = (int) round($rules['max_hours_day'] * 60);
+        $lastDay = $rules['allow_saturday'] ? 5 : 4;
+
+        for ($day = 0; $day <= $lastDay; $day++) {
             if (isset($sameSubjectDays[$day])) {
                 continue;
+            }
+
+            // Hard: the section's total teaching hours for the day.
+            if ($dayLoad[$day] + $len > $maxDay) {
+                continue;
+            }
+
+            // Soft: days like Mon/Wed or Tue/Thu read as a normal weekly rhythm.
+            $dayBonus   = 0.0;
+            $dayReasons = [];
+
+            if ($rules['day_pattern'] === 'spaced' && $sameSubjectDays !== []) {
+                $distances = array_map(static fn ($d) => abs($d - $day), array_keys($sameSubjectDays));
+
+                if (in_array(2, $distances, true)) {
+                    $dayBonus    = 8.0;
+                    $dayReasons[] = 'spaced from its other meeting (' . self::DAY_NAMES[$day] . ' pairs well)';
+                } elseif (in_array(1, $distances, true)) {
+                    $dayBonus = -6.0;
+                }
             }
 
             for ($start = $ctx['grid_start']; $start + $len <= $ctx['grid_end']; $start += 30) {
@@ -524,8 +615,23 @@ class ScheduleSuggester
                     continue;
                 }
 
-                $reasonsBase = [];
-                $score       = 100.0;
+                $reasonsBase = $dayReasons;
+                $score       = 100.0 + $dayBonus;
+
+                // Steer away from periods when the rest of the school is
+                // already busy, so every section doesn't pile into 8-10:30.
+                if ($ctx['spread_weight'] > 0) {
+                    $concurrent = $this->concurrent($others, $day, $start, $end);
+                    $ratio      = $concurrent / $ctx['room_count'];
+
+                    $score -= min(30.0, $ratio * 24 * $ctx['spread_weight']);
+
+                    if ($ratio >= 0.6) {
+                        $reasonsBase[] = "busy period ({$concurrent} other classes then)";
+                    } elseif ($ratio <= 0.2) {
+                        $reasonsBase[] = $concurrent === 0 ? 'quiet period, no other classes then' : "quiet period ({$concurrent} other classes)";
+                    }
+                }
 
                 if ($fac !== null) {
                     if ($this->profBusy($everything, $fac['name'], $day, $start, $end)) {
@@ -547,11 +653,13 @@ class ScheduleSuggester
                     }
                 }
 
-                $lunchOverlap = max(0, min($end, self::LUNCH_END) - max($start, self::LUNCH_START));
+                if ($rules['lunch_enabled']) {
+                    $lunchOverlap = max(0, min($end, $ctx['lunch_end']) - max($start, $ctx['lunch_start']));
 
-                if ($lunchOverlap > 0) {
-                    $score -= 25 * ($lunchOverlap / 60);
-                    $reasonsBase[] = 'overlaps lunch';
+                    if ($lunchOverlap > 0) {
+                        $score -= 25 * ($lunchOverlap / 60);
+                        $reasonsBase[] = 'overlaps lunch';
+                    }
                 }
 
                 if ($start < 480) {
@@ -653,14 +761,20 @@ class ScheduleSuggester
         return 'No conflict-free slot remains in the week (rooms, section time or professor are all taken).';
     }
 
-    private function explainGain(array $current, array $best): array
+    private function explainGain(array $current, array $best, array $ctx): array
     {
         $why = [];
 
-        $lunch = max(0, min($current['end'], self::LUNCH_END) - max($current['start'], self::LUNCH_START));
+        $lunch = $ctx['rules']['lunch_enabled']
+            ? max(0, min($current['end'], $ctx['lunch_end']) - max($current['start'], $ctx['lunch_start']))
+            : 0;
 
         if ($lunch > 0) {
             $why[] = 'It currently runs through the lunch hour.';
+        }
+
+        if ($ctx['spread_weight'] > 0 && $this->concurrent($ctx['_others'] ?? [], $current['day'], $current['start'], $current['end']) / $ctx['room_count'] >= 0.6) {
+            $why[] = 'It sits in one of the busiest periods of the week.';
         }
 
         if ($current['start'] < 480 || $current['end'] > 1020) {
@@ -848,6 +962,20 @@ class ScheduleSuggester
             'prof'       => $b['prof'] ?? null,
             'faculty_id' => $b['faculty_id'] ?? null,
         ];
+    }
+
+    /** How many classes (in other sections) overlap this slot. */
+    private function concurrent(array $others, int $day, int $start, int $end): int
+    {
+        $n = 0;
+
+        foreach ($others as $b) {
+            if ($b['day'] === $day && $start < $b['end'] && $b['start'] < $end) {
+                $n++;
+            }
+        }
+
+        return $n;
     }
 
     private function overlapsAny(iterable $blocks, int $day, int $start, int $end): bool
