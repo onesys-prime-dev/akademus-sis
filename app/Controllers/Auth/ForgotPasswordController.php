@@ -46,26 +46,22 @@ class ForgotPasswordController extends BaseController
 
         $link = site_url('reset-password/' . $token);
 
-        $emailService = service('email');
+        $sent = (new \App\Libraries\BrandedEmail())->send($email, 'Reset your Akademus password', [
+            'preheader'  => 'Use this link to choose a new password. It expires in 1 hour.',
+            'eyebrow'    => 'Password reset',
+            'title'      => 'Reset your password',
+            'paragraphs' => [
+                'We received a request to reset the password for your Akademus account. Choose a new one with the button below.',
+            ],
+            'button'     => ['label' => 'Reset my password', 'url' => $link],
+            'footnote'   => [
+                'This link expires in 1 hour and can be used once.',
+                "Didn't ask for this? You can safely ignore this email — your password won't change.",
+            ],
+        ]);
 
-        $emailService->setTo($email);
-        $emailService->setSubject('Reset Your Password');
-
-        $emailService->setMessage("
-            <h2>Password Reset</h2>
-            <p>Click the link below to reset your password:</p>
-            <p>
-                <a href='{$link}'>
-                    Reset Password
-                </a>
-            </p>
-            <p>This link expires in 1 hour.</p>
-        ");
-
-        if (! $emailService->send(false)) {
-            // Log the SMTP detail server-side; never show it to the visitor.
-            log_message('error', '[Password reset] email to user ' . $user->id . ' failed: ' . strip_tags($emailService->printDebugger(['headers'])));
-
+        if (! $sent) {
+            // SMTP detail is logged inside BrandedEmail; never show it to the visitor.
             return redirect()
                 ->back()
                 ->with('error', 'We could not send the email right now. Please try again in a few minutes.');
