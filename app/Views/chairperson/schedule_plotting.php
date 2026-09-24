@@ -20,41 +20,13 @@ $navGroups     = [
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
 ?>
 
-<?= $this->section('headerActions') ?>
-<div class="right">
-    <div class="sync-status" id="syncStatus">
-        <span class="sync-dot"></span>
-        <span id="syncText">All changes saved</span>
-    </div>
-    <button type="button" class="btn btn-ghost" id="approvalsBtn">
-        Swap Approvals <span class="approval-badge" id="approvalBadge">0</span>
-    </button>
-    <button type="button" class="btn btn-ghost" id="changeRequestsBtn">
-        Change Requests <span class="approval-badge" id="changeRequestBadge">0</span>
-    </button>
-    <button type="button" class="btn btn-ghost" id="roomOverviewBtn">Room Overview</button>
-    <button type="button" class="btn btn-ghost" id="facultyPanelBtn">Faculty</button>
-</div>
-<?= $this->endSection() ?>
-
 <?= $this->section('styles') ?>
 <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* Scoped to .ac-main (not :root!) — this used to be a bare :root
-           block, which silently overwrote the shared --radius-sm/md/lg
-           tokens for the ENTIRE document, including the sidebar from
-           layouts/admin_console.php. .ac-main is the shared layout's
-           wrapper around BOTH .ac-topbar (this page's headerActions —
-           the sync pill, Swap Approvals, Change Requests, Room Overview,
-           Faculty buttons all live there) and .ac-content (filters, the
-           plotting grid, every modal, the toast, the debug panel) while
-           still excluding .ac-sidebar. Scoping to .ac-content alone (an
-           earlier version of this fix) broke the headerActions buttons —
-           .btn-ghost/.sync-status/.approval-badge all reference these same
-           local aliases, and outside .ac-content those custom properties
-           were undefined, so their background/border/color silently
-           dropped out, leaving plain unstyled text. */
+        /* Scoped to .ac-main so this page can use scheduling-specific color
+           aliases without changing the shared sidebar, topbar, or other
+           portal pages. */
         .ac-main {
             /* Apple-glass inspired palette — core surfaces/text/primary aliased
                onto the shared design-system tokens (public/assets/css/design-system/tokens.css);
@@ -119,13 +91,14 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         ::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 8px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--outline); }
 
-        /* ===== headerActions controls (sync status, approvals) — relocated
-           into the shared ac-topbar's headerActions slot; the old
-           .topbar/.side-drawer chrome that used to hold them is gone. The
-           notification bell and avatar/logout menu now come from the
-           shared layout (.ac-notif/.ac-user-menu) like every other page,
-           instead of this page's own duplicate copies. ===== */
-        .right { display: flex; align-items: center; gap: 16px; }
+        /* Page-specific plotting controls live with the page title. Keeping
+           them out of the shared topbar makes navigation consistent with
+           every other Chairperson Portal screen. */
+        .plotting-page-head { align-items: center; }
+        .plotting-page-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+        .plotting-page-actions__buttons { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+        .plotting-page-actions .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 8px 11px; font-size: 11.5px; }
+        .plotting-page-actions .btn .material-symbols-outlined { font-size: 17px; }
 
         .btn {
             border: none;
@@ -194,7 +167,13 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             display: flex;
             align-items: center;
             gap: 7px;
-            font-size: 12px;
+            min-height: 34px;
+            padding: 6px 10px;
+            border: 1px solid #d9e4dd;
+            border-radius: 999px;
+            background: #f2fbf5;
+            font-size: 11px;
+            font-weight: 600;
             color: var(--on-surface-variant);
         }
 
@@ -205,9 +184,21 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             background: var(--success);
         }
 
+        .sync-status.saving { border-color: #f2ddb4; background: #fff9ed; }
         .sync-status.saving .sync-dot { background: var(--warning); }
+        .sync-status.error { border-color: #f2c9c5; background: #fff5f4; color: var(--error); }
         .sync-status.error .sync-dot { background: var(--error); }
-        .sync-status.error { color: var(--error); }
+
+        @media (max-width: 1280px) {
+            .plotting-page-head { align-items: flex-start; }
+            .plotting-page-actions { width: 100%; justify-content: space-between; }
+        }
+        @media (max-width: 680px) {
+            .plotting-page-actions { align-items: stretch; flex-direction: column; }
+            .plotting-page-actions__buttons { display: grid; grid-template-columns: 1fr 1fr; }
+            .plotting-page-actions .btn { justify-content: center; min-height: 42px; }
+            .sync-status { align-self: flex-start; }
+        }
 
         /* ===== Filters ===== */
         .filters {
@@ -558,6 +549,124 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .block.red    { background: #fee2e2; border-left-color: #ef4444; }
         .block.cyan   { background: #cffafe; border-left-color: #06b6d4; }
 
+        /* ===== Premium finish ===== */
+        .grid .head {
+            font-size: 10.5px;
+            letter-spacing: .09em;
+            padding: 12px 4px;
+            background: linear-gradient(180deg, var(--surface-container-lowest), var(--surface-container-low));
+        }
+        .grid .time { font-size: 10.5px; font-weight: 500; letter-spacing: .02em; color: var(--outline); }
+        .day-col { border-right: 1px solid rgba(15, 23, 42, .05); }
+        .slot { border-bottom: 1px solid rgba(15, 23, 42, .07); }
+        .slot:nth-child(odd) { border-bottom-style: dotted; border-bottom-color: rgba(15, 23, 42, .045); }
+
+        .block {
+            --bg: #eef2ff; --accent: #6366f1;
+            border-radius: 10px;
+            border: 1px solid rgba(15, 23, 42, .06);
+            border-left: 3px solid var(--accent);
+            background: linear-gradient(155deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 55%, #fff) 100%);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, .06), 0 4px 10px -6px rgba(15, 23, 42, .18);
+            padding: 6px 20px 5px 8px;
+            transition: transform .16s ease, box-shadow .16s ease;
+        }
+        .block:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(15, 23, 42, .08), 0 10px 20px -8px rgba(15, 23, 42, .28); z-index: 4; }
+        .block.blue   { --bg: #dbeafe; --accent: #3b82f6; }
+        .block.green  { --bg: #dcfce7; --accent: #16a34a; }
+        .block.purple { --bg: #ede9fe; --accent: #7c3aed; }
+        .block.yellow { --bg: #fef3c7; --accent: #d97706; }
+        .block.red    { --bg: #ffe4e6; --accent: #e11d48; }
+        .block.cyan   { --bg: #cffafe; --accent: #0891b2; }
+
+        .block .code  { font-size: 10px; font-weight: 800; letter-spacing: .06em; color: color-mix(in srgb, var(--accent) 80%, #000); }
+        .block .title {
+            font-size: 11.5px; font-weight: 650; line-height: 1.25; color: #0f172a;
+            white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+        .block .meta { font-size: 10.5px; color: #475569; }
+        .block .meta.prof { color: #0f172a; }
+        .block.short .title { -webkit-line-clamp: 1; }
+        .block.short .meta:not(.prof):nth-of-type(n+4) { display: none; }
+
+        .block .remove {
+            opacity: 0; width: 18px; height: 18px; top: 4px; right: 4px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 13px;
+            background: rgba(255, 255, 255, .85); transition: opacity .15s, background .15s, color .15s;
+        }
+        .block:hover .remove, .block .remove:focus-visible { opacity: 1; }
+        .block .remove:hover { background: #fee2e2; color: #dc2626; }
+
+        /* Other sections: a quiet hatched backdrop, details on hover */
+        .block.ghost {
+            background: repeating-linear-gradient(135deg, #f4f5f8 0 6px, #eceef3 6px 12px);
+            border: 1px solid rgba(15, 23, 42, .07);
+            border-left: 3px solid #b6bcc9;
+            box-shadow: none;
+            opacity: .92;
+            padding: 5px 6px;
+        }
+        .block.ghost:hover { opacity: 1; }
+        .block.ghost .code { color: #64748b; }
+        .block.ghost.compact .meta, .block.ghost.compact .section-tag { display: none; }
+        .block.ghost.compact .code { font-size: 9.5px; }
+
+        /* ===== AI assistant ===== */
+        .ai-title { display: flex; align-items: center; gap: 8px; }
+        .ai-spark {
+            width: 24px; height: 24px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; font-size: 12px;
+            box-shadow: 0 4px 10px -3px rgba(99, 102, 241, .55);
+        }
+        .ai-head { padding: 8px 10px; border-radius: 10px; background: var(--surface-container-low); }
+        .ai-status { font-weight: 600; }
+        .suggestion {
+            border: 1px solid rgba(15, 23, 42, .07);
+            border-left: 1px solid rgba(15, 23, 42, .07);
+            border-radius: 14px;
+            padding: 12px 14px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 8px 18px -12px rgba(15, 23, 42, .3);
+            transition: transform .16s ease, box-shadow .16s ease;
+        }
+        .suggestion:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(15, 23, 42, .06), 0 14px 24px -14px rgba(15, 23, 42, .38); }
+        .suggestion .impact { background: rgba(99, 102, 241, .1); color: #4f46e5; letter-spacing: .02em; padding: 3px 10px; }
+        .suggestion .impact.good { background: rgba(99, 102, 241, .1); color: #4f46e5; }
+        .suggestion .impact.warn { background: #fee2e2; color: #b91c1c; }
+        .suggestion .title { font-size: 13px; }
+        .suggestion .body { font-size: 12px; margin-bottom: 8px; }
+        .ai-fit { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 11px; color: var(--on-surface-variant); }
+        .ai-fit .bar { flex: 1; height: 4px; border-radius: 999px; background: var(--surface-container-high); overflow: hidden; }
+        .ai-fit .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #6366f1, #22c55e); }
+        .suggestion .ai-reasons { list-style: none; padding: 0; }
+        .suggestion .ai-reasons li { position: relative; padding-left: 14px; margin-bottom: 2px; }
+        .suggestion .ai-reasons li::before { content: "✓"; position: absolute; left: 0; color: #16a34a; font-weight: 700; }
+        .suggestion .ai-apply { background: linear-gradient(135deg, #4f46e5, #7c3aed); border-radius: 8px; padding: 6px 14px; box-shadow: 0 6px 14px -6px rgba(79, 70, 229, .6); }
+        .ai-fill { border-radius: 8px; font-weight: 700; }
+        .ai-fill[hidden] { display: none; }
+        .ai-section {
+            display: flex; align-items: center; justify-content: space-between; margin: 14px 2px 8px;
+            font-size: 10.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--on-surface-variant);
+        }
+        .ai-section .count {
+            min-width: 18px; text-align: center; padding: 1px 6px; border-radius: 999px;
+            background: rgba(99, 102, 241, .12); color: #4f46e5; letter-spacing: 0;
+        }
+        .ai-prof { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #0f172a; }
+        .ai-prof .avatar {
+            width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff; font-size: 11px; font-weight: 700;
+        }
+        .ai-prof .level { font-size: 10px; font-weight: 700; padding: 1px 8px; border-radius: 999px; text-transform: capitalize; background: #e2e8f0; color: #475569; }
+        .ai-prof .level.preferred { background: #dcfce7; color: #166534; }
+        .ai-prof .level.willing { background: #fef9c3; color: #854d0e; }
+        .ai-prof .level.qualified { background: #dbeafe; color: #1e40af; }
+        .ai-prof .level.pending { background: #fee2e2; color: #991b1b; text-transform: none; }
+        .ai-prof-select { width: 100%; margin: 0 0 8px; padding: 6px 8px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 12px; background: var(--surface-container-lowest); }
+        .ai-note { margin: 0 0 8px; padding: 6px 10px; border-radius: 8px; background: #fef3c7; color: #92400e; font-size: 11.5px; }
+        .ai-now { margin: 0 0 8px; font-size: 11.5px; color: var(--on-surface-variant); }
+        .ai-done { text-align: center; padding: 22px 12px; color: var(--on-surface-variant); font-size: 12.5px; }
+        .ai-done .material-symbols-outlined { display: block; margin: 0 auto 6px; font-size: 34px; color: #16a34a; }
+
         /* Drop preview ghost */
         .drop-preview {
             position: absolute;
@@ -674,6 +783,21 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .suggestion .title { font-weight: 700; margin-bottom: 4px; }
         .suggestion .body { font-size: 12px; color: var(--on-surface-variant); margin-bottom: 6px; }
         .suggestion a { font-size: 12px; color: var(--primary-container); font-weight: 600; }
+
+        .ai-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 8px; }
+        .ai-status { font-size: 12px; color: var(--on-surface-variant); }
+        .ai-fill { font-size: 12px; padding: 4px 10px; }
+        .suggestion { margin-bottom: 10px; }
+        .suggestion .impact.good { background: var(--success, #16a34a); }
+        .suggestion .impact.warn { background: var(--error, #dc2626); }
+        .suggestion .ai-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .suggestion .ai-apply { background: var(--primary-container); color: #fff; border: 0; border-radius: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .suggestion .ai-apply:hover { filter: brightness(1.1); }
+        .suggestion .ai-alt-toggle { background: none; border: 0; padding: 0; font-size: 12px; color: var(--primary-container); font-weight: 600; cursor: pointer; text-decoration: underline; }
+        .suggestion .ai-reasons { margin: 0 0 8px; padding-left: 16px; font-size: 11.5px; color: var(--on-surface-variant); }
+        .suggestion .ai-alts { margin-top: 8px; border-top: 1px dashed var(--outline-variant); padding-top: 6px; }
+        .suggestion .ai-alt { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; padding: 3px 0; }
+        .suggestion .ai-alt button { background: none; border: 1px solid var(--outline-variant); border-radius: 6px; font-size: 11px; padding: 2px 8px; cursor: pointer; }
 
         /* ===== Room assignment modal ===== */
         .modal-backdrop {
@@ -884,71 +1008,124 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .room-card:disabled .room-status { color: var(--outline); }
         .room-card:disabled .room-dot { background: var(--outline); }
 
-        /* Faculty assignment modal */
-        .fc-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-        @media (max-width: 640px) {
-            .fc-grid { grid-template-columns: 1fr; }
-        }
-        .faculty-card {
-            width: 100%;
-            text-align: left;
-            border: 1px solid var(--outline-variant);
-            border-radius: 10px;
+        /* Faculty assignment modal: one comparison list with fixed context and actions. */
+        .faculty-picker {
+            width: min(900px, calc(100vw - 32px));
+            height: min(760px, calc(100dvh - 32px));
+            max-height: calc(100dvh - 32px);
+            padding: 0;
             overflow: hidden;
-            background: var(--surface);
             display: flex;
             flex-direction: column;
+            border-radius: 10px;
+            border: 1px solid rgba(15, 62, 153, .12);
+            box-shadow: 0 24px 70px rgba(15, 23, 42, .22), 0 2px 8px rgba(15, 62, 153, .08);
         }
-        .faculty-card:hover:not(.fc-disabled) { box-shadow: 0 2px 8px rgba(0,0,0,.12); }
-        .faculty-card.fc-disabled { opacity: .6; }
-        .faculty-card .fc-band {
-            padding: 12px 14px;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            border-bottom: 1px solid var(--outline-variant);
+        .faculty-picker__head { flex: 0 0 auto; padding: 22px 24px 18px; border-bottom: 1px solid #dbe5f5; background: linear-gradient(135deg, #ffffff 0%, #f4f7ff 100%); }
+        .faculty-picker__title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+        .faculty-picker__head h3 { margin: 0; font-size: 19px; font-weight: 700; }
+        .faculty-picker__close { width: 36px; height: 36px; border: 0; border-radius: 6px; background: transparent; color: var(--on-surface-variant); cursor: pointer; }
+        .faculty-picker__close:hover { background: var(--surface-container-high); color: var(--on-surface); }
+        .faculty-picker__close:focus-visible, .faculty-filter:focus-visible, .faculty-card .fc-btn:focus-visible { outline: 2px solid var(--primary-container); outline-offset: 2px; }
+        .faculty-picker__context { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin-top: 14px; }
+        .faculty-picker__code { grid-row: 1 / 3; align-self: center; padding: 6px 9px; border-radius: 6px; background: #e8efff; color: #0b46b5; font-size: 12px; font-weight: 750; letter-spacing: .015em; }
+        .faculty-picker__subject { font-size: 14px; font-weight: 600; color: var(--on-surface); overflow-wrap: anywhere; }
+        .faculty-picker__meeting { font-size: 12px; color: var(--on-surface-variant); }
+        .faculty-picker__toolbar { flex: 0 0 auto; padding: 14px 24px 0; background: #fff; }
+        .faculty-picker__search-wrap { position: relative; }
+        .faculty-picker__search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--outline); font-size: 18px; pointer-events: none; }
+        .faculty-picker__search { width: 100%; min-height: 40px; padding: 9px 12px 9px 38px; border: 1px solid #ccd8ec; border-radius: 7px; font: inherit; font-size: 13px; background: #f8faff; transition: border-color .15s, box-shadow .15s, background .15s; }
+        .faculty-picker__search:focus { outline: none; border-color: var(--primary-container); background: #fff; box-shadow: 0 0 0 3px rgba(0, 63, 163, .12); }
+        .faculty-picker__filters { display: flex; gap: 18px; margin-top: 10px; border-bottom: 1px solid var(--outline-variant); overflow-x: auto; }
+        .faculty-filter { min-height: 38px; padding: 8px 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--on-surface-variant); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+        .faculty-filter:hover { color: var(--on-surface); }
+        .faculty-filter.active { color: #073f9c; border-bottom-color: #0b57d0; font-weight: 700; }
+        .faculty-picker__results { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 0 24px 10px; scrollbar-gutter: stable; background: linear-gradient(#fff, #fbfcff); }
+        .faculty-picker__summary { position: sticky; top: 0; z-index: 2; margin: 0; padding: 10px 0 8px; background: var(--surface-container-lowest); color: var(--on-surface-variant); font-size: 11.5px; }
+        .fc-grid { display: flex; flex-direction: column; gap: 6px; }
+        .faculty-card {
+            display: grid; grid-template-columns: minmax(220px, 1.1fr) minmax(300px, 1.5fr) auto;
+            align-items: center; gap: 20px; padding: 15px 12px; border: 1px solid transparent; border-radius: 8px;
+            background: #fff; transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
         }
-        .faculty-card .fc-band.preferred { background: #f0fdf4; }
-        .faculty-card .fc-band.mismatch { background: #fefce8; }
-        .faculty-card .fc-band.unavailable,
-        .faculty-card .fc-band.conflict { background: #fef2f2; }
-        .faculty-card .fc-avatar {
-            width: 38px; height: 38px; border-radius: 50%;
-            background: var(--primary-container); color: #fff;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 800; font-size: 14px; flex: 0 0 auto;
-        }
+        .faculty-card:hover { background: #fff; border-color: #d5dfef; box-shadow: 0 5px 18px rgba(30, 64, 125, .08); }
+        .faculty-card.fc-recommended-row { background: linear-gradient(100deg, #f3f7ff 0%, #ffffff 76%); border-color: #cbdcff; box-shadow: inset 3px 0 0 #0b57d0; }
+        .faculty-card.fc-tone-unavailable { background: #fffafa; border-color: #f8dddd; }
+        .faculty-card.fc-tone-conflict { background: #fafbfc; border-color: #e3e7ed; }
+        .faculty-card.fc-disabled { color: var(--on-surface-variant); }
+        .fc-identity { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+        .faculty-card .fc-avatar { width: 36px; height: 36px; border-radius: 50%; background: #e6edff; color: #1246a3; border: 1px solid #d3dfff; display: flex; align-items: center; justify-content: center; font-weight: 750; font-size: 12px; flex: 0 0 auto; }
+        .faculty-card.fc-tone-preferred .fc-avatar, .faculty-card.fc-tone-qualified .fc-avatar { background: #e7f7ef; color: #087443; border-color: #c9ead9; }
+        .faculty-card.fc-tone-willing .fc-avatar { background: #fff4dc; color: #915400; border-color: #f5deb0; }
+        .faculty-card.fc-tone-unavailable .fc-avatar { background: #feecec; color: #b42318; border-color: #f5d0d0; }
+        .faculty-card.fc-tone-conflict .fc-avatar { background: #edf0f4; color: #586474; border-color: #dce1e8; }
         .faculty-card .fc-head-text { min-width: 0; }
-        .faculty-card .fc-name { font-weight: 700; font-size: 13px; }
-        .faculty-card .fc-name .fc-emp { font-weight: 400; color: var(--on-surface-variant); }
-        .faculty-card .fc-body { padding: 10px 14px 12px; display: flex; flex-direction: column; flex: 1; }
-        .faculty-card .fc-meta { font-size: 11px; color: var(--on-surface-variant); margin-top: 4px; }
-        .faculty-card .fc-actions { display: flex; gap: 8px; margin-top: 10px; }
-        .faculty-card .fc-btn {
-            flex: 1; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
-            cursor: pointer; text-align: center; border: 1px solid var(--outline-variant); background: var(--surface);
-        }
-        .faculty-card .fc-btn:hover { background: var(--surface-container-high); }
-        .faculty-card .fc-btn.fc-btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-        .faculty-card .fc-btn.fc-btn-primary:hover { filter: brightness(1.08); }
-        .faculty-card .fc-btn:disabled { cursor: not-allowed; opacity: .5; }
-        .faculty-card .fc-tag {
-            display: inline-flex; align-items: center; gap: 4px;
-            font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; margin-top: 4px;
-        }
-        .faculty-card .fc-tag.preferred { background: #dcfce7; color: #166534; }
-        .faculty-card .fc-tag.willing { background: #fef9c3; color: #854d0e; }
-        .faculty-card .fc-tag.qualified { background: #e0e7ff; color: #3730a3; }
-        .faculty-card .fc-tag.conflict { background: #fee2e2; color: #991b1b; }
-        .faculty-card .fc-tag.unavailable { background: #fee2e2; color: #991b1b; }
-        .faculty-card .fc-tag.mismatch { background: #fef9c3; color: #854d0e; }
-        .fc-avail-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .fc-avail-table th, .fc-avail-table td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--outline-variant); }
+        .faculty-card .fc-name { font-weight: 650; font-size: 13px; overflow-wrap: anywhere; }
+        .faculty-card .fc-emp { display: block; margin-top: 2px; font-size: 11.5px; color: var(--on-surface-variant); }
+        .fc-status { display: flex; align-items: flex-start; gap: 7px; margin-top: 7px; font-size: 11.5px; line-height: 1.35; }
+        .fc-status::before { content: ''; width: 7px; height: 7px; margin-top: 4px; border-radius: 50%; background: var(--outline); flex: none; }
+        .fc-status.preferred::before, .fc-status.qualified::before { background: var(--success); }
+        .fc-status.willing::before, .fc-status.mismatch::before { background: var(--warning); }
+        .fc-status.unavailable::before, .fc-status.conflict::before { background: var(--error); }
+        .fc-status strong { display: block; color: var(--on-surface); font-weight: 650; }
+        .fc-status.preferred strong, .fc-status.qualified strong { color: #087443; }
+        .fc-status.willing strong, .fc-status.mismatch strong { color: #915400; }
+        .fc-status.unavailable strong, .fc-status.conflict strong { color: #b42318; }
+        .fc-status span { display: block; color: var(--on-surface-variant); }
+        .fc-recommended { display: inline-block; margin-left: 7px; padding: 2px 6px; border-radius: 999px; background: #dfe9ff; color: #0947ad; font-size: 9px; font-weight: 750; text-transform: uppercase; letter-spacing: .045em; vertical-align: 1px; }
+        .fc-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; min-width: 0; }
+        .fc-fact dt { margin: 0 0 3px; color: var(--on-surface-variant); font-size: 10.5px; font-weight: 500; }
+        .fc-fact dd { margin: 0; color: var(--on-surface); font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
+        .fc-fact dd.is-conflict { color: var(--error); }
+        .fc-load-track { height: 3px; margin-top: 6px; background: var(--surface-container-high); overflow: hidden; }
+        .fc-load-fill { height: 100%; background: linear-gradient(90deg, #0b57d0, #4f7fe5); }
+        .fc-load-fill.is-over { background: var(--error); }
+        .faculty-card .fc-actions { display: flex; flex-direction: column; gap: 7px; width: 118px; }
+        .faculty-card .fc-btn { min-height: 34px; padding: 7px 10px; border-radius: 5px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; text-align: center; border: 1px solid var(--outline-variant); background: var(--surface); color: var(--on-surface); }
+        .faculty-card .fc-btn:hover:not(:disabled) { border-color: var(--primary-container); color: var(--primary-container); }
+        .faculty-card .fc-btn.fc-btn-primary { background: linear-gradient(135deg, #0b57d0, #073f9c); color: #fff; border-color: #0b4db8; box-shadow: 0 3px 8px rgba(11, 87, 208, .18); }
+        .faculty-card .fc-btn.fc-btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, #1464e2, #0b46ae); color: #fff; box-shadow: 0 5px 12px rgba(11, 87, 208, .24); }
+        .faculty-card .fc-btn.fc-btn-warning { background: #fff6f5; color: #b42318; border-color: #f2c9c5; }
+        .faculty-card .fc-btn:disabled { cursor: not-allowed; color: var(--outline); background: var(--surface-container-low); }
+        .fc-avail-panel { grid-column: 1 / -1; padding: 12px 0 0 48px; }
+        .fc-avail-table { width: min(100%, 520px); border-collapse: collapse; font-size: 11.5px; }
+        .fc-avail-table th, .fc-avail-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--outline-variant); }
         .fc-avail-table th { color: var(--on-surface-variant); font-weight: 600; }
+        .faculty-picker__state { display: grid; place-items: center; min-height: 220px; padding: 32px; text-align: center; color: var(--on-surface-variant); }
+        .faculty-picker__state strong { display: block; color: var(--on-surface); font-size: 14px; margin-bottom: 5px; }
+        .faculty-picker__retry { margin-top: 14px; }
+        .fc-skeleton { display: grid; grid-template-columns: 1fr 1.5fr 118px; gap: 20px; padding: 20px 0; border-bottom: 1px solid var(--outline-variant); }
+        .fc-skeleton span { display: block; height: 12px; border-radius: 3px; background: var(--surface-container-high); animation: fcPulse 1s ease-in-out infinite alternate; }
+        @keyframes fcPulse { to { opacity: .45; } }
+        .faculty-picker__legend { flex: 0 0 auto; margin: 0; padding: 10px 24px; border-top: 1px solid #e5eaf2; color: #66531b; background: #fffaf0; font-size: 11px; line-height: 1.4; }
+        .faculty-picker__footer { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 24px; border-top: 1px solid #dfe6f0; background: #f8faff; }
+        .faculty-picker__footer .actions { margin: 0; }
+        .confirm-reason { margin-top: 14px; }
+        .confirm-reason label { display: block; margin-bottom: 6px; color: var(--on-surface); font-size: 12px; font-weight: 600; }
+        .confirm-reason textarea { width: 100%; min-height: 72px; resize: vertical; padding: 9px 10px; border: 1px solid var(--outline-variant); border-radius: 6px; font: inherit; font-size: 12px; }
+        @media (max-width: 760px), (min-resolution: 1.2dppx) and (max-width: 1100px) {
+            .faculty-picker { width: min(720px, calc(100vw - 24px)); height: min(820px, calc(100dvh - 24px)); }
+            .faculty-card { grid-template-columns: 1fr auto; gap: 14px; }
+            .fc-facts { grid-column: 1 / -1; grid-row: 2; }
+            .faculty-card .fc-actions { grid-column: 2; grid-row: 1; }
+            .fc-avail-panel { grid-row: 3; padding-left: 48px; }
+        }
+        @media (max-width: 560px) {
+            .faculty-picker { width: 100vw; height: 100dvh; max-width: none; max-height: none; border-radius: 0; }
+            .faculty-picker__head, .faculty-picker__toolbar, .faculty-picker__results, .faculty-picker__legend, .faculty-picker__footer { padding-left: 16px; padding-right: 16px; }
+            .faculty-picker__context { grid-template-columns: 1fr; }
+            .faculty-picker__code { grid-row: auto; }
+            .faculty-card { grid-template-columns: 1fr; gap: 12px; padding: 18px 0; }
+            .fc-facts { grid-column: 1; grid-row: auto; grid-template-columns: 1fr 1fr; }
+            .fc-fact:last-child { grid-column: 1 / -1; }
+            .faculty-card .fc-actions { grid-column: 1; grid-row: auto; width: 100%; flex-direction: row; }
+            .faculty-card .fc-btn { flex: 1; min-height: 44px; }
+            .fc-avail-panel { grid-row: auto; padding-left: 0; }
+            .faculty-picker__footer { align-items: stretch; flex-direction: column-reverse; }
+            .faculty-picker__footer .actions { display: flex; }
+            .faculty-picker__footer .btn { min-height: 44px; }
+        }
+        @media (prefers-reduced-motion: reduce) { .fc-skeleton span { animation: none; } }
 
         /* Soft warnings shown inside the modal (non-blocking) */
         .modal-warning {
@@ -977,7 +1154,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         }
 
         /* ===== Room overview modal ===== */
-        .overview-modal { width: 920px; max-width: calc(100vw - 32px); max-height: 88vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+        .overview-modal { width: min(1120px, calc(100vw - 32px)); height: min(820px, calc(100dvh - 32px)); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; padding: 0; overflow: hidden; border: 1px solid rgba(15, 62, 153, .12); box-shadow: 0 24px 70px rgba(15, 23, 42, .22), 0 2px 8px rgba(15, 62, 153, .08); }
 
         .ov-head {
             display: flex;
@@ -986,7 +1163,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             gap: 12px;
             padding: 22px 24px;
             border-bottom: 1px solid var(--outline-variant);
-            background: var(--surface-container-low);
+            background: linear-gradient(135deg, #fff 0%, #f4f7ff 100%);
             flex: 0 0 auto;
         }
 
@@ -1009,7 +1186,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
         .ov-head .sub { margin: 6px 0 0; font-size: 12.5px; }
 
-        .ov-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px; }
+        .ov-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 18px 24px 0; background: #fbfcff; }
 
         .ov-label {
             font-size: 11px;
@@ -1020,11 +1197,12 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             letter-spacing: .04em;
         }
 
+        .ov-day-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 14px; }
         .day-chips {
             display: flex;
             gap: 6px;
             flex-wrap: wrap;
-            margin-bottom: 18px;
+            margin-bottom: 0;
         }
 
         .day-chip {
@@ -1043,23 +1221,47 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .day-chip:hover { border-color: #93c5fd; }
 
         .day-chip.active {
-            background: var(--primary-container);
-            border-color: var(--primary-container);
+            background: linear-gradient(135deg, #0b57d0, #073f9c);
+            border-color: #0b4db8;
             color: #fff;
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 3px 8px rgba(11, 87, 208, .2);
         }
 
-        .ov-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--on-surface-variant); margin-bottom: 12px; }
+        .day-chip:focus-visible, .ov-filter:focus-visible, .ov-search:focus-visible, .overview-rooms .room-card:focus-visible { outline: 2px solid #0b57d0; outline-offset: 2px; }
+
+        .ov-metrics { display: grid; grid-template-columns: repeat(3, minmax(90px, 1fr)); gap: 8px; min-width: 360px; }
+        .ov-metric { padding: 8px 11px; border: 1px solid #dce4f0; border-radius: 8px; background: #fff; }
+        .ov-metric__value { display: block; font-size: 16px; line-height: 1.1; font-weight: 750; color: var(--on-surface); }
+        .ov-metric__label { display: block; margin-top: 3px; color: var(--on-surface-variant); font-size: 10.5px; }
+        .ov-metric.free .ov-metric__value { color: #087443; }
+        .ov-metric.busy .ov-metric__value { color: #b42318; }
+
+        .ov-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(310px, .8fr); gap: 16px; }
+        .ov-room-browser, .ov-schedule-pane { min-height: 0; border: 1px solid #dce4f0; border-radius: 10px 10px 0 0; background: #fff; overflow: hidden; }
+        .ov-room-browser { display: flex; flex-direction: column; }
+        .ov-room-toolbar { flex: 0 0 auto; padding: 14px 16px 12px; border-bottom: 1px solid #e4eaf3; background: #fff; }
+        .ov-room-toolbar__top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .ov-search-wrap { position: relative; width: min(280px, 100%); }
+        .ov-search-wrap .material-symbols-outlined { position: absolute; top: 50%; left: 10px; transform: translateY(-50%); color: #778397; font-size: 17px; pointer-events: none; }
+        .ov-search { width: 100%; min-height: 36px; padding: 8px 10px 8px 34px; border: 1px solid #ccd8ec; border-radius: 7px; background: #f8faff; font: inherit; font-size: 12px; }
+        .ov-filters { display: flex; gap: 5px; margin-top: 10px; overflow-x: auto; }
+        .ov-filter { min-height: 30px; padding: 5px 10px; border: 1px solid #d7dfeb; border-radius: 999px; background: #fff; color: var(--on-surface-variant); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+        .ov-filter.active { border-color: #bfd1f4; background: #eaf1ff; color: #0b46a3; }
+        .ov-room-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px 20px; }
+        .ov-schedule-pane { display: flex; flex-direction: column; }
+        .ov-schedule-head { flex: 0 0 auto; padding: 15px 16px 13px; border-bottom: 1px solid #e4eaf3; background: linear-gradient(135deg, #f6f9ff, #fff); }
+        .ov-schedule-head .ov-label { margin-bottom: 4px; }
+        .ov-schedule-title { font-size: 15px; font-weight: 750; color: var(--on-surface); }
+        .ov-schedule-meta { margin-top: 3px; font-size: 11px; color: var(--on-surface-variant); }
+
+        .ov-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 10.5px; color: var(--on-surface-variant); }
         .ov-legend span { display: inline-flex; align-items: center; gap: 5px; }
         .ov-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
         .ov-legend .lg-green { background: var(--success); }
         .ov-legend .lg-yellow { background: var(--warning); }
         .ov-legend .lg-red { background: var(--error); }
 
-        .overview-rooms {
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            margin-bottom: 22px;
-        }
+        .overview-rooms { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); margin-bottom: 18px; }
 
         .ov-floor-group { margin-bottom: 18px; }
         .ov-floor-group:last-child { margin-bottom: 0; }
@@ -1075,8 +1277,9 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .floor-heading.ov-floor-heading .count { font-weight: 500; color: var(--outline); text-transform: none; letter-spacing: 0; }
 
         .room-card.selected {
-            outline: 2px solid var(--primary-container);
-            outline-offset: 1px;
+            outline: none;
+            border-color: #6e99e8;
+            box-shadow: inset 3px 0 0 #0b57d0, 0 4px 12px rgba(11, 87, 208, .12);
         }
 
         /* Overview-only room card additions (type/capacity badges + timeline
@@ -1087,7 +1290,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             align-items: stretch;
             text-align: left;
             padding: 12px;
+            border-radius: 8px;
+            transition: transform .15s, box-shadow .15s, border-color .15s;
         }
+        .overview-rooms .room-card:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(30, 64, 125, .1); }
 
         .ov-card-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 2px; }
 
@@ -1111,17 +1317,13 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .ov-timeline-seg { position: absolute; top: 0; bottom: 0; background: var(--warning); }
         .ov-timeline-seg.is-red { background: var(--error); }
 
-        .overview-list {
-            max-height: 320px;
-            overflow-y: auto;
-            border: 1px solid var(--outline-variant);
-            border-radius: var(--radius-md);
-        }
+        .overview-list { flex: 1; min-height: 0; overflow-y: auto; }
 
         .overview-row {
-            display: flex;
+            display: grid;
+            grid-template-columns: 96px minmax(0, 1fr);
             gap: 12px;
-            padding: 10px 14px;
+            padding: 12px 16px;
             border-bottom: 1px solid var(--surface-dim);
             align-items: flex-start;
         }
@@ -1129,8 +1331,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .overview-row:last-child { border-bottom: none; }
 
         .overview-row .ov-time {
-            flex: 0 0 132px;
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 700;
             color: var(--on-surface);
         }
@@ -1140,8 +1341,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .overview-row .ov-details .meta { color: var(--on-surface-variant); }
 
         .overview-row .ov-section {
-            margin-left: auto;
-            flex: 0 0 auto;
+            grid-column: 2;
+            justify-self: start;
             background: #eff6ff;
             color: var(--primary-container);
             font-size: 10px;
@@ -1159,11 +1360,120 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .overview-row.free .ov-details { color: var(--success); font-weight: 600; }
 
         .overview-empty {
-            padding: 24px 12px;
+            display: grid;
+            place-items: center;
+            min-height: 180px;
+            padding: 24px 18px;
             text-align: center;
             font-size: 12.5px;
             color: var(--on-surface-variant);
         }
+        .overview-empty strong { display: block; margin-bottom: 4px; color: var(--on-surface); font-size: 13px; }
+        .ov-no-results { padding: 42px 16px; text-align: center; color: var(--on-surface-variant); font-size: 12px; }
+        .ov-footer { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 24px; border-top: 1px solid #dfe6f0; background: #f8faff; }
+        .ov-footer__note { color: var(--on-surface-variant); font-size: 11px; }
+
+        @media (max-width: 850px) {
+            .overview-modal { width: min(760px, calc(100vw - 24px)); height: min(900px, calc(100dvh - 24px)); }
+            .ov-day-row { align-items: stretch; flex-direction: column; }
+            .ov-metrics { min-width: 0; }
+            .ov-workspace { display: flex; flex-direction: column; overflow-y: auto; }
+            .ov-room-browser { flex: 0 0 auto; overflow: visible; }
+            .ov-room-scroll { overflow: visible; max-height: 460px; }
+            .ov-schedule-pane { flex: 0 0 360px; }
+        }
+        @media (max-width: 560px) {
+            .overview-modal { width: 100vw; height: 100dvh; max-height: none; max-width: none; border-radius: 0; }
+            .ov-head, .ov-body, .ov-footer { padding-left: 16px; padding-right: 16px; }
+            .ov-head__title-row { align-items: flex-start; }
+            .ov-summary-badge { width: 100%; }
+            .ov-metrics { grid-template-columns: repeat(3, 1fr); }
+            .ov-room-toolbar__top { align-items: flex-start; flex-direction: column; }
+            .ov-search-wrap { width: 100%; }
+            .overview-rooms { grid-template-columns: 1fr; }
+            .ov-footer__note { display: none; }
+            .ov-footer .btn { width: 100%; min-height: 44px; }
+        }
+
+        /* ===== Department faculty directory ===== */
+        .faculty-directory { width: min(900px, calc(100vw - 32px)); height: min(760px, calc(100dvh - 32px)); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; padding: 0; overflow: hidden; border: 1px solid rgba(15, 62, 153, .12); box-shadow: 0 24px 70px rgba(15, 23, 42, .22), 0 2px 8px rgba(15, 62, 153, .08); }
+        .fd-head { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 22px 24px 18px; border-bottom: 1px solid #dbe5f5; background: linear-gradient(135deg, #fff 0%, #f4f7ff 100%); }
+        .fd-title-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+        .fd-head h3 { margin: 0; font-size: 19px; font-weight: 750; }
+        .fd-count { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; background: #e8efff; color: #0b46a3; font-size: 10.5px; font-weight: 700; }
+        .fd-head .sub { margin: 6px 0 0; }
+        .fd-close { width: 36px; height: 36px; border: 0; border-radius: 6px; background: transparent; color: var(--on-surface-variant); cursor: pointer; }
+        .fd-close:hover { background: #e9eef7; color: var(--on-surface); }
+        .fd-close:focus-visible, .fd-filter:focus-visible, .fd-search:focus-visible, .fd-details-btn:focus-visible { outline: 2px solid #0b57d0; outline-offset: 2px; }
+        .fd-toolbar { flex: 0 0 auto; padding: 14px 24px 0; background: #fff; }
+        .fd-search-wrap { position: relative; }
+        .fd-search-wrap .material-symbols-outlined { position: absolute; top: 50%; left: 11px; transform: translateY(-50%); color: #778397; font-size: 18px; pointer-events: none; }
+        .fd-search { width: 100%; min-height: 40px; padding: 9px 12px 9px 38px; border: 1px solid #ccd8ec; border-radius: 7px; background: #f8faff; font: inherit; font-size: 13px; }
+        .fd-search:focus { outline: none; border-color: #0b57d0; background: #fff; box-shadow: 0 0 0 3px rgba(0, 63, 163, .12); }
+        .fd-filters { display: flex; gap: 18px; margin-top: 9px; border-bottom: 1px solid #e1e7f0; overflow-x: auto; }
+        .fd-filter { min-height: 38px; padding: 8px 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--on-surface-variant); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+        .fd-filter.active { color: #073f9c; border-bottom-color: #0b57d0; font-weight: 700; }
+        .fd-metrics { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 24px; background: #fbfcff; }
+        .fd-metric { padding: 9px 11px; border: 1px solid #dce4f0; border-radius: 8px; background: #fff; }
+        .fd-metric strong { display: block; color: var(--on-surface); font-size: 16px; line-height: 1.1; }
+        .fd-metric span { display: block; margin-top: 3px; color: var(--on-surface-variant); font-size: 10.5px; }
+        .fd-metric.is-ready strong { color: #087443; }
+        .fd-list-wrap { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 0 24px 14px; background: linear-gradient(#fbfcff, #fff); scrollbar-gutter: stable; }
+        .fd-summary { position: sticky; top: 0; z-index: 2; margin: 0; padding: 8px 0; background: #fbfcff; color: var(--on-surface-variant); font-size: 11.5px; }
+        .fd-list { display: flex; flex-direction: column; gap: 8px; }
+        .fd-card { padding: 15px 16px; border: 1px solid #dce4f0; border-radius: 9px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+        .fd-card:hover { border-color: #c6d4e8; box-shadow: 0 5px 16px rgba(30, 64, 125, .07); }
+        .fd-card.is-ready { box-shadow: inset 3px 0 0 #16a269; }
+        .fd-card.needs-setup { box-shadow: inset 3px 0 0 #d18a12; }
+        .fd-card-main { display: grid; grid-template-columns: minmax(210px, 1.1fr) repeat(3, minmax(125px, .8fr)) auto; gap: 18px; align-items: center; }
+        .fd-person { display: flex; align-items: center; gap: 11px; min-width: 0; }
+        .fd-avatar { width: 38px; height: 38px; flex: none; display: grid; place-items: center; border: 1px solid #d3dfff; border-radius: 50%; background: #e8efff; color: #1246a3; font-size: 12px; font-weight: 750; }
+        .fd-name { font-size: 13px; font-weight: 700; color: var(--on-surface); overflow-wrap: anywhere; }
+        .fd-employment { display: inline-block; margin-top: 4px; padding: 2px 6px; border-radius: 999px; background: #f0f3f8; color: var(--on-surface-variant); font-size: 9.5px; font-weight: 650; }
+        .fd-fact-label { display: block; margin-bottom: 3px; color: var(--on-surface-variant); font-size: 10.5px; }
+        .fd-fact-value { display: block; color: var(--on-surface); font-size: 11.5px; line-height: 1.35; }
+        .fd-fact-value.is-ready { color: #087443; font-weight: 650; }
+        .fd-fact-value.needs-setup { color: #9a5c00; font-weight: 650; }
+        .fd-load-track { height: 3px; margin-top: 6px; background: #e9edf3; overflow: hidden; }
+        .fd-load-fill { height: 100%; background: linear-gradient(90deg, #0b57d0, #4f7fe5); }
+        .fd-load-fill.is-full { background: linear-gradient(90deg, #d18a12, #e8aa36); }
+        .fd-details-btn { min-height: 32px; padding: 6px 9px; border: 1px solid #d3dce9; border-radius: 6px; background: #fff; color: #0b46a3; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+        .fd-details-btn:hover { border-color: #9eb9e8; background: #f6f9ff; }
+        .fd-details { margin-top: 14px; padding: 13px 0 0 49px; border-top: 1px solid #e7ebf1; }
+        .fd-detail-group + .fd-detail-group { margin-top: 11px; }
+        .fd-detail-title { margin-bottom: 6px; color: var(--on-surface-variant); font-size: 10.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .035em; }
+        .fd-day-list, .fd-pref-list { display: flex; gap: 5px; flex-wrap: wrap; }
+        .fd-day, .fd-pref { display: inline-flex; align-items: center; padding: 4px 7px; border-radius: 5px; font-size: 10.5px; }
+        .fd-day { border: 1px solid #d7e9df; background: #f1fbf5; color: #087443; }
+        .fd-day.is-unavailable { border-color: #e2e5ea; background: #f5f6f8; color: #667085; }
+        .fd-pref.preferred { background: #e7f7ef; color: #087443; }
+        .fd-pref.willing { background: #fff4dc; color: #915400; }
+        .fd-pref.qualified { background: #e9edff; color: #4338ca; }
+        .fd-state { display: grid; place-items: center; min-height: 220px; padding: 30px; text-align: center; color: var(--on-surface-variant); font-size: 12px; }
+        .fd-state strong { display: block; margin-bottom: 5px; color: var(--on-surface); font-size: 14px; }
+        .fd-skeleton { height: 86px; border: 1px solid #e2e7ef; border-radius: 9px; background: linear-gradient(90deg, #f3f5f8 25%, #fafbfc 50%, #f3f5f8 75%); background-size: 200% 100%; animation: fdPulse 1.2s infinite linear; }
+        @keyframes fdPulse { to { background-position: -200% 0; } }
+        .fd-footer { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 24px; border-top: 1px solid #dfe6f0; background: #f8faff; }
+        .fd-footer span { color: var(--on-surface-variant); font-size: 11px; }
+
+        @media (max-width: 820px) {
+            .faculty-directory { width: min(720px, calc(100vw - 24px)); }
+            .fd-card-main { grid-template-columns: minmax(210px, 1fr) repeat(2, minmax(120px, .7fr)) auto; }
+            .fd-card-main .fd-fact:nth-of-type(3) { grid-column: 2; }
+        }
+        @media (max-width: 600px) {
+            .faculty-directory { width: 100vw; height: 100dvh; max-width: none; max-height: none; border-radius: 0; }
+            .fd-head, .fd-toolbar, .fd-metrics, .fd-list-wrap, .fd-footer { padding-left: 16px; padding-right: 16px; }
+            .fd-metrics { grid-template-columns: repeat(3, 1fr); }
+            .fd-card-main { grid-template-columns: 1fr 1fr; gap: 13px; }
+            .fd-person { grid-column: 1 / -1; }
+            .fd-card-main .fd-fact:nth-of-type(3) { grid-column: auto; }
+            .fd-details-btn { grid-column: 1 / -1; min-height: 42px; }
+            .fd-details { padding-left: 0; }
+            .fd-footer span { display: none; }
+            .fd-footer .btn { width: 100%; min-height: 44px; }
+        }
+        @media (prefers-reduced-motion: reduce) { .fd-skeleton { animation: none; } }
 
         /* ===== Toast ===== */
         .toast {
@@ -1204,10 +1514,32 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
 <?= $this->section('content') ?>
 
-    <div class="ac-page-header">
+    <div class="ac-page-header plotting-page-head">
         <div>
             <h2 class="ac-page-header__title">Schedule Plotting</h2>
             <p class="ac-page-header__sub">Drag subjects onto the weekly grid to plot rooms, faculty, and meeting times.</p>
+        </div>
+        <div class="plotting-page-actions" aria-label="Schedule plotting tools">
+            <div class="sync-status" id="syncStatus" role="status" aria-live="polite">
+                <span class="sync-dot" aria-hidden="true"></span>
+                <span id="syncText">All changes saved</span>
+            </div>
+            <div class="plotting-page-actions__buttons">
+                <button type="button" class="btn btn-ghost" id="approvalsBtn">
+                    <span class="material-symbols-outlined" aria-hidden="true">swap_horiz</span>
+                    <span>Swap Approvals</span><span class="approval-badge" id="approvalBadge">0</span>
+                </button>
+                <button type="button" class="btn btn-ghost" id="changeRequestsBtn">
+                    <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
+                    <span>Change Requests</span><span class="approval-badge" id="changeRequestBadge">0</span>
+                </button>
+                <button type="button" class="btn btn-ghost" id="roomOverviewBtn">
+                    <span class="material-symbols-outlined" aria-hidden="true">meeting_room</span><span>Room Overview</span>
+                </button>
+                <button type="button" class="btn btn-ghost" id="facultyPanelBtn">
+                    <span class="material-symbols-outlined" aria-hidden="true">groups</span><span>Faculty</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1333,7 +1665,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
         <!-- Right rail: AI scheduling assistant -->
         <aside class="panel">
-            <h2>AI Scheduling Assistant</h2>
+            <h2 class="ai-title"><span class="ai-spark" aria-hidden="true">✦</span> AI Scheduling Assistant</h2>
 
             <div class="panel-scroll">
                 <div class="context-card">
@@ -1349,12 +1681,11 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     are unavailable during those times.
                 </div>
 
-                <div class="suggestion">
-                    <span class="impact"><?= esc($suggestion['impact']) ?></span>
-                    <div class="title"><?= esc($suggestion['title']) ?></div>
-                    <div class="body"><?= esc($suggestion['body']) ?></div>
-                    <a href="#"><?= esc($suggestion['alt']) ?></a>
+                <div class="ai-head">
+                    <span class="ai-status" id="aiStatus">Analyzing the schedule…</span>
+                    <button type="button" class="btn btn-ghost ai-fill" id="aiFillAll" hidden>Plot everything</button>
                 </div>
+                <div id="aiSuggestions"></div>
             </div>
         </aside>
 
@@ -1385,28 +1716,48 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     </div>
 
     <!-- Faculty assignment modal -->
-    <div class="modal-backdrop" id="facultyModal" role="dialog" aria-modal="true" aria-label="Assign faculty">
-        <div class="modal room-modal" style="width:800px; max-width:94vw;">
-            <div class="modal-head">
-                <h3>Assign faculty</h3>
-            </div>
-            <div class="sub" id="facultyModalSub"></div>
+    <div class="modal-backdrop" id="facultyModal" role="dialog" aria-modal="true" aria-labelledby="facultyModalTitle" aria-describedby="facultyModalMeeting">
+        <div class="modal faculty-picker">
+            <header class="faculty-picker__head">
+                <div class="faculty-picker__title-row">
+                    <h3 id="facultyModalTitle">Assign faculty</h3>
+                    <button type="button" class="faculty-picker__close" id="facultyModalClose" aria-label="Close faculty assignment">
+                        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                    </button>
+                </div>
+                <div class="faculty-picker__context">
+                    <span class="faculty-picker__code" id="facultyModalCode"></span>
+                    <span class="faculty-picker__subject" id="facultyModalSubject"></span>
+                    <span class="faculty-picker__meeting" id="facultyModalMeeting"></span>
+                </div>
+            </header>
             <div id="facultyModalWarnings"></div>
 
-            <div style="position:relative; margin:10px 0 12px;">
-                <input type="text" id="facultyModalSearch" placeholder="Search faculty by name…"
-                    style="width:100%; padding:9px 12px; border:1px solid var(--outline-variant); border-radius:8px; font-size:13px; background:var(--surface);">
+            <div class="faculty-picker__toolbar">
+                <label class="sr-only" for="facultyModalSearch">Search faculty by name</label>
+                <div class="faculty-picker__search-wrap">
+                    <span class="material-symbols-outlined faculty-picker__search-icon" aria-hidden="true">search</span>
+                    <input class="faculty-picker__search" type="search" id="facultyModalSearch" placeholder="Search faculty by name…" autocomplete="off">
+                </div>
+                <div class="faculty-picker__filters" id="facultyModalFilters" role="group" aria-label="Filter faculty candidates">
+                    <button type="button" class="faculty-filter active" data-filter="all" aria-pressed="true">All</button>
+                    <button type="button" class="faculty-filter" data-filter="available" aria-pressed="false">Available</button>
+                    <button type="button" class="faculty-filter" data-filter="preferred" aria-pressed="false">Preferred</button>
+                    <button type="button" class="faculty-filter" data-filter="qualified" aria-pressed="false">Qualified</button>
+                    <button type="button" class="faculty-filter" data-filter="conflicts" aria-pressed="false">Conflicts</button>
+                </div>
             </div>
-
-            <div class="room-scroll" style="max-height:52vh;">
-                <div id="facultyModalList" class="fc-grid"></div>
+            <div class="faculty-picker__results" id="facultyModalResults">
+                <p class="faculty-picker__summary" id="facultyModalSummary" aria-live="polite"></p>
+                <div id="facultyModalList" class="fc-grid" role="list"></div>
             </div>
-
-            <div class="note"><span style="color:#166534; font-weight:700;">Preferred</span> &middot; <span style="color:#854d0e; font-weight:700;">Available but not preferred</span> &middot; <span style="color:#991b1b; font-weight:700;">Unavailable</span> (overridable, with confirmation) or already teaching another class at this time (not overridable). You can also plot the subject without assigning faculty yet.</div>
-            <div class="actions">
-                <button type="button" class="btn btn-ghost" id="facultyModalSkip">Skip — Assign Later</button>
-                <button type="button" class="btn btn-ghost" id="facultyModalCancel">Cancel</button>
-            </div>
+            <p class="faculty-picker__legend">Availability conflicts may be overridden with confirmation. Schedule conflicts cannot be overridden.</p>
+            <footer class="faculty-picker__footer">
+                <button type="button" class="btn btn-ghost" id="facultyModalSkip">Assign later</button>
+                <div class="actions">
+                    <button type="button" class="btn btn-ghost" id="facultyModalCancel">Cancel</button>
+                </div>
+            </footer>
         </div>
     </div>
 
@@ -1438,51 +1789,119 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
 
     <!-- Room overview modal -->
-    <div class="modal-backdrop" id="overviewModal" role="dialog" aria-modal="true" aria-label="Room Overview">
+    <div class="modal-backdrop" id="overviewModal" role="dialog" aria-modal="true" aria-labelledby="overviewTitle" aria-describedby="overviewDescription">
         <div class="modal overview-modal">
             <div class="ov-head">
                 <div>
                     <div class="ov-head__title-row">
-                        <h3>Room Overview</h3>
+                        <h3 id="overviewTitle">Room Overview</h3>
                         <span class="ov-summary-badge" id="overviewSummary"><span class="dot"></span></span>
                     </div>
-                    <div class="sub">Every class plotted in a room for a day — all programs, year levels
+                    <div class="sub" id="overviewDescription">Every class plotted in a room for a day — all programs, year levels
                         and sections in <?= esc($selected['academic_year']) ?>, live.</div>
                 </div>
-                <button type="button" class="expand-btn" id="overviewClose" title="Close">&#x2715;</button>
+                <button type="button" class="expand-btn" id="overviewClose" aria-label="Close room overview">&#x2715;</button>
             </div>
 
             <div class="ov-body">
-                <div class="ov-label">Day</div>
-                <div class="day-chips" id="overviewDays"></div>
-
-                <div class="ov-label">Room</div>
-                <div class="ov-legend">
-                    <span><i class="lg-green"></i> Free all day</span>
-                    <span><i class="lg-yellow"></i> 1&ndash;2 classes plotted</span>
-                    <span><i class="lg-red"></i> 3+ classes (busy)</span>
+                <div class="ov-day-row">
+                    <div>
+                        <div class="ov-label">View day</div>
+                        <div class="day-chips" id="overviewDays" role="group" aria-label="Select day"></div>
+                    </div>
+                    <div class="ov-metrics" aria-live="polite">
+                        <div class="ov-metric free"><span class="ov-metric__value" id="overviewMetricFree">0</span><span class="ov-metric__label">Free rooms</span></div>
+                        <div class="ov-metric"><span class="ov-metric__value" id="overviewMetricUse">0</span><span class="ov-metric__label">In use</span></div>
+                        <div class="ov-metric busy"><span class="ov-metric__value" id="overviewMetricBusy">0</span><span class="ov-metric__label">Busy rooms</span></div>
+                    </div>
                 </div>
-                <div id="overviewRoomsWrap"></div>
 
-                <div class="ov-label" id="overviewListLabel">Schedule</div>
-                <div class="overview-list" id="overviewList"></div>
+                <div class="ov-workspace">
+                    <section class="ov-room-browser" aria-labelledby="overviewRoomsLabel">
+                        <div class="ov-room-toolbar">
+                            <div class="ov-room-toolbar__top">
+                                <div>
+                                    <div class="ov-label" id="overviewRoomsLabel">Rooms</div>
+                                    <div class="ov-legend">
+                                        <span><i class="lg-green"></i> Free</span>
+                                        <span><i class="lg-yellow"></i> In use</span>
+                                        <span><i class="lg-red"></i> Busy</span>
+                                    </div>
+                                </div>
+                                <label class="ov-search-wrap">
+                                    <span class="sr-only">Search rooms</span>
+                                    <span class="material-symbols-outlined" aria-hidden="true">search</span>
+                                    <input class="ov-search" type="search" id="overviewRoomSearch" placeholder="Search rooms…" autocomplete="off">
+                                </label>
+                            </div>
+                            <div class="ov-filters" id="overviewRoomFilters" role="group" aria-label="Filter rooms">
+                                <button type="button" class="ov-filter active" data-filter="all" aria-pressed="true">All rooms</button>
+                                <button type="button" class="ov-filter" data-filter="free" aria-pressed="false">Free</button>
+                                <button type="button" class="ov-filter" data-filter="in-use" aria-pressed="false">In use</button>
+                                <button type="button" class="ov-filter" data-filter="labs" aria-pressed="false">Laboratories</button>
+                            </div>
+                        </div>
+                        <div class="ov-room-scroll" id="overviewRoomsWrap"></div>
+                    </section>
+
+                    <aside class="ov-schedule-pane" aria-labelledby="overviewListLabel">
+                        <div class="ov-schedule-head">
+                            <div class="ov-label">Selected room</div>
+                            <div class="ov-schedule-title" id="overviewListLabel">Schedule</div>
+                            <div class="ov-schedule-meta" id="overviewListMeta"></div>
+                        </div>
+                        <div class="overview-list" id="overviewList"></div>
+                    </aside>
+                </div>
             </div>
 
-            <div class="actions" style="padding:16px 24px; border-top:1px solid var(--outline-variant);">
+            <div class="ov-footer">
+                <span class="ov-footer__note">Updates automatically from the plotting grid.</span>
                 <button type="button" class="btn btn-ghost" id="overviewCloseBottom">Close</button>
             </div>
         </div>
     </div>
 
     <!-- Faculty context panel modal -->
-    <div class="modal-backdrop" id="facultyPanelModal" role="dialog" aria-modal="true" aria-label="Department Faculty">
-        <div class="modal overview-modal" style="width:560px;">
-            <h3>Department Faculty</h3>
-            <div class="sub" id="facultyPanelSub">Availability &amp; preferences for the upcoming term, current load for the active term.</div>
-            <div id="facultyPanelList" style="max-height:60vh; overflow-y:auto;"></div>
-            <div class="actions">
-                <button type="button" class="btn btn-ghost" id="facultyPanelClose">Close</button>
+    <div class="modal-backdrop" id="facultyPanelModal" role="dialog" aria-modal="true" aria-labelledby="facultyPanelTitle" aria-describedby="facultyPanelSub">
+        <div class="modal faculty-directory">
+            <header class="fd-head">
+                <div>
+                    <div class="fd-title-row">
+                        <h3 id="facultyPanelTitle">Department Faculty</h3>
+                        <span class="fd-count" id="facultyPanelCount">Loading…</span>
+                    </div>
+                    <div class="sub" id="facultyPanelSub">Availability, subject preferences, and current teaching load.</div>
+                </div>
+                <button type="button" class="fd-close" id="facultyPanelClose" aria-label="Close department faculty">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </header>
+            <div class="fd-toolbar">
+                <label class="sr-only" for="facultyPanelSearch">Search faculty by name</label>
+                <div class="fd-search-wrap">
+                    <span class="material-symbols-outlined" aria-hidden="true">search</span>
+                    <input class="fd-search" type="search" id="facultyPanelSearch" placeholder="Search faculty by name…" autocomplete="off">
+                </div>
+                <div class="fd-filters" id="facultyPanelFilters" role="group" aria-label="Filter faculty setup status">
+                    <button type="button" class="fd-filter active" data-filter="all" aria-pressed="true">All faculty</button>
+                    <button type="button" class="fd-filter" data-filter="ready" aria-pressed="false">Setup complete</button>
+                    <button type="button" class="fd-filter" data-filter="needs-setup" aria-pressed="false">Needs setup</button>
+                </div>
             </div>
+            <div class="fd-metrics" aria-live="polite">
+                <div class="fd-metric"><strong id="facultyMetricTotal">—</strong><span>Total faculty</span></div>
+                <div class="fd-metric is-ready"><strong id="facultyMetricAvailable">—</strong><span>Availability set</span></div>
+                <div class="fd-metric"><strong id="facultyMetricPreferences">—</strong><span>Preferences set</span></div>
+            </div>
+            <div class="fd-list-wrap" id="facultyPanelResults" aria-busy="true">
+                <p class="fd-summary" id="facultyPanelSummary" aria-live="polite">Loading faculty…</p>
+                <div class="fd-list" id="facultyPanelList" role="list"></div>
+            </div>
+            <footer class="fd-footer">
+                <span>Availability and preferences reflect the upcoming term.</span>
+                <button type="button" class="btn btn-ghost" id="facultyPanelCloseBottom">Close</button>
+            </footer>
         </div>
     </div>
 
@@ -1507,6 +1926,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         <div class="modal confirm-modal">
             <h3 id="confirmTitle"></h3>
             <div class="sub" id="confirmMessage"></div>
+            <div class="confirm-reason" id="confirmReasonWrap" hidden>
+                <label for="confirmReason">Reason for override <span class="sub">(optional)</span></label>
+                <textarea id="confirmReason" maxlength="250" placeholder="Add context for the audit record"></textarea>
+            </div>
             <div class="actions">
                 <button type="button" class="btn btn-ghost" id="confirmCancel">Cancel</button>
                 <button type="button" class="btn btn-primary" id="confirmOk">Confirm</button>
@@ -1637,6 +2060,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             gridEndMin: toMinutes(<?= json_encode($grid_end) ?>),
             syncUrl: <?= json_encode(site_url('chairperson/schedule/sync')) ?>,
             stateUrl: <?= json_encode(site_url('chairperson/schedule/state')) ?>,
+            suggestUrl: <?= json_encode(site_url('chairperson/schedule/suggest')) ?>,
             facultyPanelUrl: <?= json_encode(site_url('chairperson/faculty-panel')) ?>,
             facultyOverrideUrl: <?= json_encode(site_url('chairperson/schedule/faculty-override')) ?>,
         };
@@ -1704,16 +2128,23 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         // ---------- confirmation dialog ----------
         const confirmModal = document.getElementById('confirmModal');
         let confirmResolve = null;
+        let confirmLastFocus = null;
 
-        function confirmDialog({ title, message, confirmLabel = 'Confirm', danger = false }) {
+        function confirmDialog({ title, message, confirmLabel = 'Confirm', danger = false, reason = false }) {
             document.getElementById('confirmTitle').textContent = title;
             document.getElementById('confirmMessage').textContent = message;
+            const reasonWrap = document.getElementById('confirmReasonWrap');
+            const reasonInput = document.getElementById('confirmReason');
+            reasonWrap.hidden = !reason;
+            reasonInput.value = '';
 
             const okBtn = document.getElementById('confirmOk');
             okBtn.textContent = confirmLabel;
             okBtn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
 
+            confirmLastFocus = document.activeElement;
             confirmModal.classList.add('open');
+            requestAnimationFrame(() => (reason ? reasonInput : document.getElementById('confirmCancel')).focus());
             return new Promise(resolve => { confirmResolve = resolve; });
         }
 
@@ -1722,7 +2153,11 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             confirmModal.classList.remove('open');
             const resolve = confirmResolve;
             confirmResolve = null;
-            resolve(result);
+            if (confirmLastFocus && confirmLastFocus.isConnected) confirmLastFocus.focus();
+            confirmLastFocus = null;
+            resolve(result && !document.getElementById('confirmReasonWrap').hidden
+                ? { confirmed: true, reason: document.getElementById('confirmReason').value.trim() }
+                : result);
         }
 
         document.getElementById('confirmOk').addEventListener('click', () => settleConfirm(true));
@@ -1762,12 +2197,53 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             });
         }
 
+        // Lay out one day column. Your own classes are laned only against
+        // each other; other sections' classes (ghosts) are laned separately
+        // and squeezed into a slim strip beside them, so a busy timetable
+        // elsewhere never crushes what you are actually plotting. Where a
+        // time cluster holds only one kind, it uses the full column width.
+        function layoutColumn(items) {
+            const sorted = items.slice().sort((a, b) => a.startRow - b.startRow || a.endRow - b.endRow);
+            const clusters = [];
+            let cluster = [];
+            let clusterEnd = -1;
+
+            sorted.forEach(item => {
+                if (cluster.length && item.startRow >= clusterEnd) {
+                    clusters.push(cluster);
+                    cluster = [];
+                    clusterEnd = -1;
+                }
+                cluster.push(item);
+                clusterEnd = Math.max(clusterEnd, item.endRow);
+            });
+            if (cluster.length) clusters.push(cluster);
+
+            clusters.forEach(group => {
+                const own = group.filter(i => i.own);
+                const ghosts = group.filter(i => !i.own);
+                const split = own.length > 0 && ghosts.length > 0;
+
+                assignLanes(own);
+                assignLanes(ghosts);
+
+                own.forEach(i => { i.zone = split ? { x: 0, w: 0.66 } : { x: 0, w: 1 }; });
+                ghosts.forEach(i => { i.zone = split ? { x: 0.66, w: 0.34 } : { x: 0, w: 1 }; });
+            });
+        }
+
         function positionBlock(el, item) {
+            const zone = item.zone || { x: 0, w: 1 };
+            const laneW = zone.w / item.lanes;
+
             el.style.top = (item.startRow * CONFIG.rowHeight) + 'px';
             el.style.height = ((item.endRow - item.startRow) * CONFIG.rowHeight - 4) + 'px';
-            el.style.left = `calc(${(item.lane / item.lanes) * 100}% + 3px)`;
-            el.style.width = `calc(${100 / item.lanes}% - 6px)`;
+            el.style.left = `calc(${(zone.x + item.lane * laneW) * 100}% + 3px)`;
+            el.style.width = `calc(${laneW * 100}% - 6px)`;
             el.style.right = 'auto';
+
+            if (!item.own && (zone.w < 1 || item.lanes > 1)) el.classList.add('compact');
+            if ((item.endRow - item.startRow) <= 2) el.classList.add('short');
         }
 
         function shortYear(yearLevel) {
@@ -1883,15 +2359,15 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
                     blocks.forEach((b, i) => {
                         if (Number(b.day) !== day) return;
-                        items.push({ startRow: blockStartRow(b), endRow: blockEndRow(b), el: ownEl(b, i) });
+                        items.push({ own: true, startRow: blockStartRow(b), endRow: blockEndRow(b), el: ownEl(b, i) });
                     });
 
                     OTHERS.forEach(b => {
                         if (Number(b.day) !== day) return;
-                        items.push({ startRow: blockStartRow(b), endRow: blockEndRow(b), el: ghostEl(b) });
+                        items.push({ own: false, startRow: blockStartRow(b), endRow: blockEndRow(b), el: ghostEl(b) });
                     });
 
-                    assignLanes(items);
+                    layoutColumn(items);
 
                     items.forEach(item => {
                         positionBlock(item.el, item);
@@ -1910,7 +2386,363 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
             updateRail();
             renderRoomOverview(); // keep the overview live with every change
+            queueSuggestions();
         }
+
+        // ---------- AI scheduling assistant ----------
+        // The server ranks conflict-free placements for whatever is still
+        // unplotted; applying one just adds a block and autosaves, so the
+        // normal sync validation still has the last word.
+        let aiTimer = null;
+        let aiPlan = { suggestions: [], unplaceable: [] };
+        let aiRequest = 0;
+
+        function queueSuggestions() {
+            clearTimeout(aiTimer);
+            aiTimer = setTimeout(loadSuggestions, 700);
+        }
+
+        async function loadSuggestions() {
+            // Wait for any pending save so the server sees the current grid.
+            if (saving || saveQueued || document.getElementById('syncStatus').classList.contains('saving')) {
+                queueSuggestions();
+                return;
+            }
+
+            const ticket = ++aiRequest;
+            const status = document.getElementById('aiStatus');
+
+            try {
+                const response = await fetch(`${CONFIG.suggestUrl}?${new URLSearchParams(CONTEXT).toString()}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await response.json();
+
+                if (ticket !== aiRequest) return; // a newer request superseded this one
+                if (!response.ok || !data.ok) throw new Error('bad response');
+
+                aiPlan = data;
+                renderSuggestions();
+            } catch (err) {
+                status.textContent = 'The assistant could not analyze this schedule right now.';
+                document.getElementById('aiFillAll').hidden = true;
+                document.getElementById('aiSuggestions').replaceChildren();
+            }
+        }
+
+        function aiEl(tag, className, text) {
+            const el = document.createElement(tag);
+            if (className) el.className = className;
+            if (text !== undefined) el.textContent = text;
+            return el;
+        }
+
+        const IMPACT_LABEL = { high: 'High impact', medium: 'Medium impact', low: 'Small gain' };
+
+        function aiSection(box, label, count) {
+            const head = aiEl('div', 'ai-section');
+            head.append(aiEl('span', '', label), aiEl('span', 'count', String(count)));
+            box.appendChild(head);
+        }
+
+        function aiFitRow(score) {
+            const fit = Math.max(20, Math.min(99, Math.round((score - 40) / 80 * 100)));
+            const row = aiEl('div', 'ai-fit');
+            const bar = aiEl('span', 'bar');
+            const fill = document.createElement('i');
+            fill.style.width = fit + '%';
+            bar.appendChild(fill);
+            row.append(aiEl('span', '', 'Fit'), bar, aiEl('span', '', fit + '%'));
+            return row;
+        }
+
+        function aiReasons(list) {
+            const ul = aiEl('ul', 'ai-reasons');
+            list.forEach(r => ul.appendChild(aiEl('li', '', r)));
+            return ul;
+        }
+
+        function aiFacultyChip(f) {
+            const chip = aiEl('div', 'ai-prof');
+            chip.appendChild(aiEl('span', 'avatar', (f.name || '?').charAt(0).toUpperCase()));
+            const text = aiEl('span', 'text', f.name);
+            chip.appendChild(text);
+
+            if (f.level) chip.appendChild(aiEl('span', 'level ' + f.level, f.level));
+
+            if (f.setup_pending) {
+                const pending = aiEl('span', 'level pending', 'Setup pending');
+                pending.title = 'This professor has not finished setting their availability and/or subjects yet.';
+                chip.appendChild(pending);
+            }
+
+            return chip;
+        }
+
+        /** Buttons + collapsible alternatives shared by every card type. */
+        function aiActions(card, applyLabel, onApply, alternatives, describe, onUse) {
+            const actions = aiEl('div', 'ai-actions');
+
+            if (onApply) {
+                const apply = aiEl('button', 'ai-apply', applyLabel);
+                apply.type = 'button';
+                apply.addEventListener('click', onApply);
+                actions.appendChild(apply);
+            }
+
+            card.appendChild(actions);
+
+            if (!alternatives || alternatives.length === 0) return;
+
+            const toggle = aiEl('button', 'ai-alt-toggle', `View alternative options (${alternatives.length})`);
+            toggle.type = 'button';
+            const alts = aiEl('div', 'ai-alts');
+            alts.hidden = true;
+
+            alternatives.forEach(a => {
+                const row = aiEl('div', 'ai-alt');
+                row.appendChild(aiEl('span', '', describe(a)));
+                const use = aiEl('button', '', 'Use');
+                use.type = 'button';
+                use.addEventListener('click', () => onUse(a));
+                row.appendChild(use);
+                alts.appendChild(row);
+            });
+
+            toggle.addEventListener('click', () => { alts.hidden = !alts.hidden; });
+            actions.appendChild(toggle);
+            card.appendChild(alts);
+        }
+
+        function improvementCard(item) {
+            const card = aiEl('div', 'suggestion');
+            card.appendChild(aiEl('span', 'impact ' + (item.impact === 'high' ? 'warn' : 'good'), `${IMPACT_LABEL[item.impact] || 'Improvement'} · ${item.code}`));
+
+            if (item.type === 'assign_faculty') {
+                if (!item.faculty) {
+                    card.appendChild(aiEl('div', 'body', item.summary));
+                    return card;
+                }
+
+                card.appendChild(aiEl('div', 'title', item.summary));
+                card.appendChild(aiFacultyChip(item.faculty));
+                card.appendChild(aiReasons(item.faculty.reasons));
+                aiActions(card, 'Assign', () => applyAssignFaculty(item, item.faculty),
+                    item.alternatives, f => `${f.name}${f.level ? ' · ' + f.level : ''}`, f => applyAssignFaculty(item, f));
+                return card;
+            }
+
+            // move
+            if (item.best) {
+                card.appendChild(aiEl('div', 'title', `Move ${item.title} to ${item.best.day_name} ${item.best.time_label}`));
+                card.appendChild(aiEl('div', 'body', item.summary));
+                card.appendChild(aiEl('div', 'ai-now', 'Now: ' + item.block.label));
+                card.appendChild(aiFitRow(item.best.score));
+                card.appendChild(aiReasons(item.best.reasons));
+                aiActions(card, 'Move it', () => applyMove(item, item.best),
+                    item.alternatives, a => `${a.day_name} ${a.time_label} · ${a.room}`, a => applyMove(item, a));
+            } else {
+                card.appendChild(aiEl('div', 'title', item.title));
+                card.appendChild(aiEl('div', 'body', item.summary));
+                card.appendChild(aiEl('div', 'ai-now', 'Now: ' + item.block.label));
+            }
+
+            return card;
+        }
+
+        function placementCard(s) {
+            const card = aiEl('div', 'suggestion');
+            card.appendChild(aiEl('span', 'impact good', `${s.code} · meeting ${s.meeting} of ${s.of}`));
+            card.appendChild(aiEl('div', 'title', `${s.title}: ${s.best.day_name} ${s.best.time_label}`));
+            card.appendChild(aiEl('div', 'body', s.best.room));
+
+            if (s.faculty) {
+                const chipHolder = aiEl('div', 'ai-prof-holder');
+                chipHolder.appendChild(aiFacultyChip(s.faculty));
+                card.appendChild(chipHolder);
+
+                // Any professor who could teach this plan, including those
+                // who have not set their availability/subjects yet.
+                const options = s.faculty_options || [];
+
+                if (options.length > 1) {
+                    const select = document.createElement('select');
+                    select.className = 'ai-prof-select';
+                    select.title = 'Choose a different professor for this subject';
+
+                    options.forEach(o => {
+                        const opt = document.createElement('option');
+                        opt.value = String(o.id);
+                        opt.textContent = o.name + (o.level ? ` · ${o.level}` : '') + (o.setup_pending ? ' · setup pending' : '');
+                        if (o.id === s.faculty_id) opt.selected = true;
+                        select.appendChild(opt);
+                    });
+
+                    select.addEventListener('change', () => {
+                        const chosen = options.find(o => String(o.id) === select.value);
+                        if (!chosen) return;
+
+                        // Every meeting of this subject shares one professor.
+                        (aiPlan.suggestions || []).filter(x => x.code === s.code).forEach(x => {
+                            x.prof = chosen.name;
+                            x.faculty_id = chosen.id;
+                            x.faculty = chosen;
+                        });
+
+                        chipHolder.replaceChildren(aiFacultyChip(chosen));
+                    });
+
+                    card.appendChild(select);
+                }
+            } else if (s.faculty_note) {
+                card.appendChild(aiEl('div', 'ai-note', s.faculty_note));
+            }
+
+            card.appendChild(aiFitRow(s.best.score));
+            card.appendChild(aiReasons(s.best.reasons.concat(s.faculty ? s.faculty.reasons.slice(0, 2) : [])));
+            aiActions(card, 'Plot this', () => applySuggestion(s, s.best),
+                s.alternatives, a => `${a.day_name} ${a.time_label} · ${a.room}`, a => applySuggestion(s, a));
+
+            return card;
+        }
+
+        function renderSuggestions() {
+            const box = document.getElementById('aiSuggestions');
+            const status = document.getElementById('aiStatus');
+            const fillAll = document.getElementById('aiFillAll');
+            box.replaceChildren();
+
+            const plan = aiPlan.suggestions || [];
+            const stuck = aiPlan.unplaceable || [];
+            const fixes = aiPlan.improvements || [];
+
+            if (SUBJECTS.length === 0) {
+                status.textContent = 'No curriculum subjects for this term yet.';
+                fillAll.hidden = true;
+                return;
+            }
+
+            fillAll.hidden = plan.length === 0;
+
+            if (plan.length === 0 && stuck.length === 0 && fixes.length === 0) {
+                status.textContent = 'Schedule complete';
+
+                const done = aiEl('div', 'ai-done');
+                done.append(aiEl('span', 'material-symbols-outlined', 'task_alt'),
+                    aiEl('div', '', 'Every subject is plotted, well placed and conflict-free. Drag a class to fine-tune, or switch sections to keep going.'));
+                box.appendChild(done);
+                return;
+            }
+
+            const parts = [];
+            if (fixes.length) parts.push(`${fixes.length} improvement${fixes.length === 1 ? '' : 's'}`);
+            if (plan.length) parts.push(`${plan.length} placement${plan.length === 1 ? '' : 's'}`);
+            const size = aiPlan.headcount > 0 ? ` · ${aiPlan.headcount}${aiPlan.headcount_known ? '' : ' (est.)'} students` : '';
+            status.textContent = (parts.join(' · ') || 'Needs attention') + size;
+
+            if (fixes.length) {
+                aiSection(box, 'Improve what is plotted', fixes.length);
+                fixes.forEach(item => box.appendChild(improvementCard(item)));
+            }
+
+            if (plan.length || stuck.length) {
+                aiSection(box, 'Still to plot', plan.length + stuck.length);
+            }
+
+            plan.forEach(s => box.appendChild(placementCard(s)));
+
+            stuck.forEach(u => {
+                const card = aiEl('div', 'suggestion');
+                card.appendChild(aiEl('span', 'impact warn', `${u.code} · cannot place`));
+                card.appendChild(aiEl('div', 'body', u.reason));
+                box.appendChild(card);
+            });
+        }
+
+        function suggestionBlock(s, slot) {
+            const subject = SUBJECTS.find(x => x.code === s.code);
+
+            return {
+                day: slot.day,
+                code: s.code,
+                title: s.title,
+                prof: s.prof || undefined,
+                faculty_id: s.faculty_id || null,
+                time_label: slot.time_label,
+                room: slot.room,
+                theme: subject ? subject.color : s.theme,
+                start: slot.start,
+                end: slot.end,
+            };
+        }
+
+        function applySuggestion(s, slot) {
+            blocks.push(suggestionBlock(s, slot));
+            renderBlocks();
+            scheduleSave();
+            showToast(`${s.code} plotted on ${slot.day_name}, ${slot.time_label} (${slot.room}).`, 'success');
+        }
+
+        // Move one existing meeting. The block is found by what it looked
+        // like when the suggestion was made; if the grid has changed since,
+        // nothing is touched and the suggestions are recomputed.
+        function applyMove(item, slot) {
+            const b = blocks.find(x => x.code === item.code && Number(x.day) === item.block.day
+                && x.start === item.block.start && x.room === item.block.room);
+
+            if (!b) {
+                showToast('The schedule changed — refreshing suggestions.', 'error');
+                loadSuggestions();
+                return;
+            }
+
+            b.day = slot.day;
+            b.start = slot.start;
+            b.end = slot.end;
+            b.time_label = slot.time_label;
+            b.room = slot.room;
+
+            renderBlocks();
+            scheduleSave();
+            showToast(`${item.code} moved to ${slot.day_name}, ${slot.time_label} (${slot.room}).`, 'success');
+        }
+
+        function applyAssignFaculty(item, faculty) {
+            const targets = blocks.filter(x => x.code === item.code);
+
+            if (targets.length === 0) {
+                loadSuggestions();
+                return;
+            }
+
+            targets.forEach(x => {
+                x.prof = faculty.name;
+                x.faculty_id = faculty.id;
+            });
+
+            renderBlocks();
+            scheduleSave();
+            showToast(`${faculty.name} assigned to ${item.code}.`, 'success');
+        }
+
+        document.getElementById('aiFillAll').addEventListener('click', async () => {
+            const plan = aiPlan.suggestions || [];
+
+            if (plan.length === 0) return;
+
+            const ok = await confirmDialog({
+                title: 'Plot everything?',
+                message: `Add ${plan.length} suggested class meeting${plan.length === 1 ? '' : 's'} to this section's grid. You can still move or remove any of them afterwards.`,
+                confirmLabel: 'Plot everything',
+            });
+
+            if (!ok) return;
+
+            plan.forEach(s => blocks.push(suggestionBlock(s, s.best)));
+            renderBlocks();
+            scheduleSave();
+            showToast(`${plan.length} class meeting${plan.length === 1 ? '' : 's'} plotted.`, 'success');
+        });
 
         /** A subject can meet at most this many times a week (matches the server-side cap). */
         const MAX_MEETINGS = 3;
@@ -2294,7 +3126,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
         // ---------- room overview modal ----------
         const overviewModal = document.getElementById('overviewModal');
-        const overviewState = { day: 0, room: ROOMS[0].name };
+        const overviewState = { day: 0, room: ROOMS[0]?.name || '', query: '', filter: 'all' };
+        let overviewLastFocus = null;
 
         function overviewRoomLoad(room, day) {
             return blocks.concat(OTHERS).filter(b => b.room === room && b.day === day).length;
@@ -2304,6 +3137,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             return blocks.concat(OTHERS)
                 .filter(b => b.room === room && b.day === day)
                 .sort((a, b) => blockStartRow(a) - blockStartRow(b));
+        }
+
+        function overviewRoomHours(room, day) {
+            return overviewRoomBlocks(room, day).reduce((total, block) => total + ((blockEndRow(block) - blockStartRow(block)) / 2), 0);
         }
 
         function overviewTimeline(room, day, state) {
@@ -2325,13 +3162,18 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         function renderOverviewSummary() {
             const day = overviewState.day;
             const free = ROOMS.filter(r => overviewRoomLoad(r.name, day) === 0).length;
+            const inUse = ROOMS.filter(r => overviewRoomLoad(r.name, day) > 0).length;
+            const busy = ROOMS.filter(r => overviewRoomLoad(r.name, day) >= 3).length;
             const pct = ROOMS.length ? Math.round((free / ROOMS.length) * 100) : 0;
             const badge = document.getElementById('overviewSummary');
             badge.innerHTML = '';
             const dot = document.createElement('span');
             dot.className = 'dot';
             badge.appendChild(dot);
-            badge.appendChild(document.createTextNode(`${ROOMS.length} Active Spaces · ${pct}% Free ${WEEK[day].day}`));
+            badge.appendChild(document.createTextNode(`${pct}% free on ${WEEK[day].day}`));
+            document.getElementById('overviewMetricFree').textContent = free;
+            document.getElementById('overviewMetricUse').textContent = inUse;
+            document.getElementById('overviewMetricBusy').textContent = busy;
         }
 
         function renderOverviewControls() {
@@ -2342,6 +3184,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 chip.type = 'button';
                 chip.className = 'day-chip' + (i === overviewState.day ? ' active' : '');
                 chip.textContent = d.day;
+                chip.setAttribute('aria-pressed', String(i === overviewState.day));
                 chip.addEventListener('click', () => {
                     overviewState.day = i;
                     renderRoomOverview();
@@ -2354,8 +3197,23 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             const roomsBox = document.getElementById('overviewRoomsWrap');
             roomsBox.innerHTML = '';
 
+            const query = overviewState.query.trim().toLowerCase();
+            const visibleRooms = ROOMS.filter(room => {
+                const load = overviewRoomLoad(room.name, overviewState.day);
+                const matchesQuery = !query || room.name.toLowerCase().includes(query) || String(room.type || '').toLowerCase().includes(query);
+                const matchesFilter = overviewState.filter === 'all'
+                    || (overviewState.filter === 'free' && load === 0)
+                    || (overviewState.filter === 'in-use' && load > 0)
+                    || (overviewState.filter === 'labs' && room.is_laboratory);
+                return matchesQuery && matchesFilter;
+            });
+
+            if (!visibleRooms.length) {
+                roomsBox.innerHTML = '<div class="ov-no-results"><strong>No matching rooms</strong><br>Try another search or filter.</div>';
+            }
+
             FLOORS.forEach(floor => {
-                const floorRooms = ROOMS.filter(r => r.floor === floor);
+                const floorRooms = visibleRooms.filter(r => r.floor === floor);
                 if (floorRooms.length === 0) return;
 
                 const group = document.createElement('div');
@@ -2371,11 +3229,14 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
                 floorRooms.forEach(room => {
                     const load = overviewRoomLoad(room.name, overviewState.day);
-                    const state = load >= 3 ? 'red' : load >= 2 ? 'yellow' : 'green';
+                    const state = load >= 3 ? 'red' : load >= 1 ? 'yellow' : 'green';
+                    const occupiedHours = overviewRoomHours(room.name, overviewState.day);
 
                     const card = document.createElement('button');
                     card.type = 'button';
                     card.className = 'room-card ' + state + (room.name === overviewState.room ? ' selected' : '');
+                    card.setAttribute('aria-pressed', String(room.name === overviewState.room));
+                    card.setAttribute('aria-label', `${room.name}, ${load === 0 ? 'free all day' : `${load} classes, ${occupiedHours} hours occupied`}`);
 
                     const top = document.createElement('div');
                     top.className = 'ov-card-top';
@@ -2398,7 +3259,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
                     const status = document.createElement('div');
                     status.className = 'room-status';
-                    status.textContent = load === 0 ? 'Free all day' : `${load} ${load === 1 ? 'class' : 'classes'} plotted`;
+                    status.textContent = load === 0 ? 'Free all day' : `${load} ${load === 1 ? 'class' : 'classes'} · ${occupiedHours}h occupied`;
 
                     const timelineWrap = document.createElement('div');
                     timelineWrap.className = 'ov-timeline';
@@ -2408,6 +3269,12 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     card.addEventListener('click', () => {
                         overviewState.room = room.name;
                         renderRoomOverview();
+                        if (window.matchMedia('(max-width: 850px)').matches) {
+                            requestAnimationFrame(() => document.querySelector('.ov-schedule-pane').scrollIntoView({
+                                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                                block: 'start',
+                            }));
+                        }
                     });
                     grid.appendChild(card);
                 });
@@ -2416,7 +3283,11 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 roomsBox.appendChild(group);
             });
 
-            document.getElementById('overviewListLabel').textContent = `Schedule — ${overviewState.room}`;
+            const selectedRoom = ROOMS.find(room => room.name === overviewState.room);
+            document.getElementById('overviewListLabel').textContent = overviewState.room || 'No room selected';
+            document.getElementById('overviewListMeta').textContent = selectedRoom
+                ? `${WEEK[overviewState.day].day} · ${selectedRoom.is_laboratory ? 'Laboratory' : (selectedRoom.type || 'Room')}${selectedRoom.capacity > 0 ? ` · Capacity ${selectedRoom.capacity}` : ''}`
+                : WEEK[overviewState.day].day;
         }
 
         function overviewSectionLabel(b) {
@@ -2488,7 +3359,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             if (items.length === 0) {
                 const empty = document.createElement('div');
                 empty.className = 'overview-empty';
-                empty.textContent = `${room} is free all day on ${WEEK[day].day} — no classes plotted.`;
+                empty.innerHTML = `<div><strong>Free all day</strong><span>${escapeHtml(room)} has no classes plotted on ${escapeHtml(WEEK[day].day)}.</span></div>`;
                 list.appendChild(empty);
                 return;
             }
@@ -2505,90 +3376,220 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             if (cursor < CONFIG.totalRows) list.appendChild(overviewFreeRow(cursor, CONFIG.totalRows));
         }
 
-        document.getElementById('roomOverviewBtn').addEventListener('click', () => {
-            overviewModal.classList.add('open');
-            renderRoomOverview();
+        document.getElementById('overviewRoomSearch').addEventListener('input', event => {
+            overviewState.query = event.target.value;
+            renderOverviewControls();
         });
 
-        document.getElementById('overviewClose').addEventListener('click', () => overviewModal.classList.remove('open'));
-        document.getElementById('overviewCloseBottom').addEventListener('click', () => overviewModal.classList.remove('open'));
-        overviewModal.addEventListener('click', e => { if (e.target === overviewModal) overviewModal.classList.remove('open'); });
+        document.querySelectorAll('#overviewRoomFilters .ov-filter').forEach(button => {
+            button.addEventListener('click', () => {
+                overviewState.filter = button.dataset.filter;
+                document.querySelectorAll('#overviewRoomFilters .ov-filter').forEach(filter => {
+                    const active = filter === button;
+                    filter.classList.toggle('active', active);
+                    filter.setAttribute('aria-pressed', String(active));
+                });
+                renderOverviewControls();
+            });
+        });
+
+        document.getElementById('roomOverviewBtn').addEventListener('click', () => {
+            overviewLastFocus = document.activeElement;
+            overviewModal.classList.add('open');
+            renderRoomOverview();
+            requestAnimationFrame(() => document.getElementById('overviewRoomSearch').focus());
+        });
+
+        function closeRoomOverview() {
+            if (!overviewModal.classList.contains('open')) return;
+            overviewModal.classList.remove('open');
+            if (overviewLastFocus && overviewLastFocus.isConnected) overviewLastFocus.focus();
+        }
+
+        document.getElementById('overviewClose').addEventListener('click', closeRoomOverview);
+        document.getElementById('overviewCloseBottom').addEventListener('click', closeRoomOverview);
+        overviewModal.addEventListener('click', e => { if (e.target === overviewModal) closeRoomOverview(); });
 
         // ===== Faculty context panel =====
         const facultyPanelModal = document.getElementById('facultyPanelModal');
+        const facultyPanelState = { faculty: [], maxUnits: 0, query: '', filter: 'all' };
+        let facultyPanelLastFocus = null;
 
-        function facultyStatusChip(status) {
-            if (!status) return '';
-            const label = status === 'full_time' ? 'Full-Time' : 'Part-Time';
-            return `<span style="font-size:11px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#4338ca; margin-left:6px;">${label}</span>`;
+        function facultySetupState(faculty) {
+            const availabilitySet = Boolean(faculty.has_submitted_availability || (faculty.availability || []).length);
+            const preferencesSet = Boolean((faculty.preferences || []).length);
+            return { availabilitySet, preferencesSet, complete: availabilitySet && preferencesSet };
         }
 
-        function facultyAvailabilitySummary(rows) {
-            if (!rows || !rows.length) return '<span style="color:var(--outline);">No availability submitted yet</span>';
+        function facultyAvailabilityDetails(faculty) {
             const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            return rows.map(r => {
-                if (!r.is_available || r.is_available == 0) {
-                    return `${days[r.day_of_week]}: Not available`;
-                }
-                return `${days[r.day_of_week]}: ${(r.start_time || '').slice(0, 5)}–${(r.end_time || '').slice(0, 5)}`;
-            }).join(' &middot; ');
+            if (!(faculty.availability || []).length) return '<span class="fd-day is-unavailable">No availability submitted</span>';
+            return days.map((day, index) => {
+                const row = faculty.availability.find(item => Number(item.day_of_week) === index);
+                if (!row || !row.is_available || row.is_available == 0) return `<span class="fd-day is-unavailable">${day} · Unavailable</span>`;
+                const start = minutesTo12h(toMinutes((row.start_time || '00:00').slice(0, 5)));
+                const end = minutesTo12h(toMinutes((row.end_time || '00:00').slice(0, 5)));
+                return `<span class="fd-day">${day} · ${start}–${end}</span>`;
+            }).join('');
         }
 
-        function facultyPreferenceChips(prefs) {
-            if (!prefs || !prefs.length) return '<span style="color:var(--outline);">No preferences submitted</span>';
-            const colors = { preferred: '#dcfce7', willing: '#fef9c3', qualified: '#e0e7ff' };
-            const textColors = { preferred: '#166534', willing: '#854d0e', qualified: '#3730a3' };
-            return prefs.map(p =>
-                `<span title="${escapeHtml(p.title)}" style="font-size:11px; padding:2px 8px; border-radius:999px; background:${colors[p.level] || '#eee'}; color:${textColors[p.level] || '#333'}; margin-right:4px;">${escapeHtml(p.code)} &middot; ${escapeHtml(p.level)}</span>`
+        function facultyPreferenceDetails(faculty) {
+            if (!(faculty.preferences || []).length) return '<span class="fd-day is-unavailable">No preferences submitted</span>';
+            return faculty.preferences.map(preference =>
+                `<span class="fd-pref ${escapeHtml(preference.level)}" title="${escapeHtml(preference.title || preference.code)}">${escapeHtml(preference.code)} · ${escapeHtml(preference.level)}</span>`
             ).join('');
+        }
+
+        function renderFacultyPanel() {
+            const list = document.getElementById('facultyPanelList');
+            const summary = document.getElementById('facultyPanelSummary');
+            const needle = facultyPanelState.query.trim().toLowerCase();
+            const visible = facultyPanelState.faculty.filter(faculty => {
+                const setup = facultySetupState(faculty);
+                const matchesName = !needle || faculty.name.toLowerCase().includes(needle);
+                const matchesFilter = facultyPanelState.filter === 'all'
+                    || (facultyPanelState.filter === 'ready' && setup.complete)
+                    || (facultyPanelState.filter === 'needs-setup' && !setup.complete);
+                return matchesName && matchesFilter;
+            });
+
+            summary.textContent = `${visible.length} of ${facultyPanelState.faculty.length} faculty shown`;
+            list.innerHTML = '';
+            if (!visible.length) {
+                list.innerHTML = '<div class="fd-state"><div><strong>No matching faculty</strong><span>Try another name or setup filter.</span></div></div>';
+                return;
+            }
+
+            visible.forEach(faculty => {
+                const setup = facultySetupState(faculty);
+                const availableDays = (faculty.availability || []).filter(row => row.is_available && row.is_available != 0).length;
+                const preferenceCount = (faculty.preferences || []).length;
+                const units = Number(faculty.units || 0);
+                const maxUnits = Number(facultyPanelState.maxUnits || 0);
+                const loadPercent = maxUnits ? Math.min(100, (units / maxUnits) * 100) : 0;
+                const initials = faculty.name.split(/\s+/).map(word => word[0]).slice(0, 2).join('').toUpperCase();
+                const employment = faculty.employment_status === 'full_time' ? 'Full-time' : faculty.employment_status === 'part_time' ? 'Part-time' : 'Employment type not set';
+                const card = document.createElement('article');
+                card.className = `fd-card ${setup.complete ? 'is-ready' : 'needs-setup'}`;
+                card.setAttribute('role', 'listitem');
+                card.innerHTML = `
+                    <div class="fd-card-main">
+                        <div class="fd-person">
+                            <div class="fd-avatar">${escapeHtml(initials)}</div>
+                            <div><div class="fd-name">${escapeHtml(faculty.name)}</div><span class="fd-employment">${employment}</span></div>
+                        </div>
+                        <div class="fd-fact">
+                            <span class="fd-fact-label">Current load</span>
+                            <span class="fd-fact-value">${units}${maxUnits ? ` of ${maxUnits}` : ''} units · ${Number(faculty.weekly_hours || 0)} hrs/week</span>
+                            ${maxUnits ? `<div class="fd-load-track" aria-hidden="true"><div class="fd-load-fill ${units >= maxUnits ? 'is-full' : ''}" style="width:${loadPercent}%"></div></div>` : ''}
+                        </div>
+                        <div class="fd-fact">
+                            <span class="fd-fact-label">Availability</span>
+                            <span class="fd-fact-value ${setup.availabilitySet ? 'is-ready' : 'needs-setup'}">${setup.availabilitySet ? `${availableDays} of 6 days available` : 'Not submitted'}</span>
+                        </div>
+                        <div class="fd-fact">
+                            <span class="fd-fact-label">Preferences</span>
+                            <span class="fd-fact-value ${setup.preferencesSet ? 'is-ready' : 'needs-setup'}">${setup.preferencesSet ? `${preferenceCount} subjects set` : 'Not submitted'}</span>
+                        </div>
+                        <button type="button" class="fd-details-btn" aria-expanded="false">View details</button>
+                    </div>
+                    <div class="fd-details" hidden>
+                        <div class="fd-detail-group"><div class="fd-detail-title">Weekly availability</div><div class="fd-day-list">${facultyAvailabilityDetails(faculty)}</div></div>
+                        <div class="fd-detail-group"><div class="fd-detail-title">Subject preferences</div><div class="fd-pref-list">${facultyPreferenceDetails(faculty)}</div></div>
+                    </div>`;
+                const button = card.querySelector('.fd-details-btn');
+                const details = card.querySelector('.fd-details');
+                button.addEventListener('click', () => {
+                    const expanded = button.getAttribute('aria-expanded') === 'true';
+                    button.setAttribute('aria-expanded', String(!expanded));
+                    button.textContent = expanded ? 'View details' : 'Hide details';
+                    details.hidden = expanded;
+                });
+                list.appendChild(card);
+            });
         }
 
         async function loadFacultyPanel() {
             const list = document.getElementById('facultyPanelList');
-            list.innerHTML = '<p class="sub">Loading&hellip;</p>';
+            const results = document.getElementById('facultyPanelResults');
+            results.setAttribute('aria-busy', 'true');
+            document.getElementById('facultyPanelSummary').textContent = 'Loading faculty…';
+            document.getElementById('facultyPanelCount').textContent = 'Loading…';
+            list.innerHTML = Array.from({ length: 4 }, () => '<div class="fd-skeleton" aria-hidden="true"></div>').join('');
 
             try {
                 const response = await fetch(CONFIG.facultyPanelUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' });
+                if (!response.ok) throw new Error('Faculty request failed');
                 const data = await response.json();
+
+                facultyPanelState.faculty = (data.faculty || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+                facultyPanelState.maxUnits = data.max_units || 0;
+                const availabilityCount = facultyPanelState.faculty.filter(faculty => facultySetupState(faculty).availabilitySet).length;
+                const preferenceCount = facultyPanelState.faculty.filter(faculty => facultySetupState(faculty).preferencesSet).length;
 
                 document.getElementById('facultyPanelSub').textContent = data.upcoming_term
                     ? `Availability & preferences for ${data.upcoming_term}. Current load for ${data.active_year || 'the active term'}.`
                     : 'No upcoming term configured yet — faculty cannot submit availability until an admin adds one.';
+                document.getElementById('facultyPanelCount').textContent = `${facultyPanelState.faculty.length} faculty`;
+                document.getElementById('facultyMetricTotal').textContent = facultyPanelState.faculty.length;
+                document.getElementById('facultyMetricAvailable').textContent = availabilityCount;
+                document.getElementById('facultyMetricPreferences').textContent = preferenceCount;
+                results.setAttribute('aria-busy', 'false');
 
-                if (!data.faculty.length) {
-                    list.innerHTML = '<p class="sub">No faculty members in your department yet.</p>';
+                if (!facultyPanelState.faculty.length) {
+                    document.getElementById('facultyPanelSummary').textContent = '0 faculty';
+                    list.innerHTML = '<div class="fd-state"><div><strong>No faculty found</strong><span>No faculty members are assigned to this department yet.</span></div></div>';
                     return;
                 }
-
-                list.innerHTML = data.faculty.map(f => `
-                    <div style="border:1px solid var(--outline-variant); border-radius:10px; padding:12px 14px; margin-bottom:10px;">
-                        <div style="display:flex; align-items:center; justify-content:space-between;">
-                            <strong>${escapeHtml(f.name)}</strong>
-                            <span>${facultyStatusChip(f.employment_status)}</span>
-                        </div>
-                        <div style="font-size:12px; color:var(--on-surface-variant); margin-top:6px;">
-                            <strong>Load:</strong> ${f.units} units &middot; ${f.weekly_hours} hrs/week &middot; ${f.subjects.length} subject(s)
-                        </div>
-                        <div style="font-size:12px; margin-top:6px;">
-                            <strong>Availability:</strong> ${facultyAvailabilitySummary(f.availability)}
-                        </div>
-                        <div style="font-size:12px; margin-top:6px;">
-                            <strong>Preferences:</strong> ${facultyPreferenceChips(f.preferences)}
-                        </div>
-                    </div>
-                `).join('');
+                renderFacultyPanel();
             } catch (e) {
-                list.innerHTML = '<p class="sub">Could not load faculty data.</p>';
+                results.setAttribute('aria-busy', 'false');
+                document.getElementById('facultyPanelSummary').textContent = '';
+                document.getElementById('facultyPanelCount').textContent = 'Unavailable';
+                list.innerHTML = '<div class="fd-state"><div><strong>Faculty could not be loaded</strong><span>Check your connection, then close and reopen this panel.</span></div></div>';
             }
         }
 
         document.getElementById('facultyPanelBtn').addEventListener('click', () => {
+            facultyPanelLastFocus = document.activeElement;
+            facultyPanelState.query = '';
+            facultyPanelState.filter = 'all';
+            document.getElementById('facultyPanelSearch').value = '';
+            document.querySelectorAll('#facultyPanelFilters .fd-filter').forEach(button => {
+                const active = button.dataset.filter === 'all';
+                button.classList.toggle('active', active);
+                button.setAttribute('aria-pressed', String(active));
+            });
             facultyPanelModal.classList.add('open');
             loadFacultyPanel();
+            requestAnimationFrame(() => document.getElementById('facultyPanelSearch').focus());
         });
 
-        document.getElementById('facultyPanelClose').addEventListener('click', () => facultyPanelModal.classList.remove('open'));
-        facultyPanelModal.addEventListener('click', e => { if (e.target === facultyPanelModal) facultyPanelModal.classList.remove('open'); });
+        document.getElementById('facultyPanelSearch').addEventListener('input', event => {
+            facultyPanelState.query = event.target.value;
+            renderFacultyPanel();
+        });
+        document.querySelectorAll('#facultyPanelFilters .fd-filter').forEach(button => {
+            button.addEventListener('click', () => {
+                facultyPanelState.filter = button.dataset.filter;
+                document.querySelectorAll('#facultyPanelFilters .fd-filter').forEach(filter => {
+                    const active = filter === button;
+                    filter.classList.toggle('active', active);
+                    filter.setAttribute('aria-pressed', String(active));
+                });
+                renderFacultyPanel();
+            });
+        });
+
+        function closeFacultyPanel() {
+            if (!facultyPanelModal.classList.contains('open')) return;
+            facultyPanelModal.classList.remove('open');
+            if (facultyPanelLastFocus && facultyPanelLastFocus.isConnected) facultyPanelLastFocus.focus();
+        }
+
+        document.getElementById('facultyPanelClose').addEventListener('click', closeFacultyPanel);
+        document.getElementById('facultyPanelCloseBottom').addEventListener('click', closeFacultyPanel);
+        facultyPanelModal.addEventListener('click', e => { if (e.target === facultyPanelModal) closeFacultyPanel(); });
 
         // ---------- conflict warning modal ----------
         const conflictModal = document.getElementById('conflictModal');
@@ -2851,15 +3852,17 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             }
             closeRoomModal();
             document.getElementById('conflictModal').classList.remove('open');
-            overviewModal.classList.remove('open');
+            closeRoomOverview();
             approvalsModal.classList.remove('open');
             changeRequestsModal.classList.remove('open');
+            closeFacultyPanel();
             closeFacultyModal();
         });
 
         // ---------- faculty assignment modal ----------
         const facultyModal = document.getElementById('facultyModal');
         let pendingPlot = null;
+        let facultyModalLastFocus = null;
 
         function timeOverlap(aStart, aEnd, bStart, bEnd) {
             return aStart < bEnd && bStart < aEnd;
@@ -2967,12 +3970,23 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 : { status: 'mismatch', pref };
         }
 
-        const SLOT_STATUS_META = {
-            conflict:    { label: 'Schedule conflict' },
-            unavailable: { label: 'Availability conflict' },
-            mismatch:    { label: 'Not a preferred subject' },
-            preferred:   { label: 'Preferred' },
-        };
+        function facultySubjectMatch(f, subject) {
+            return (f.preferences || []).find(preference => preference.code === subject.code)?.level || '';
+        }
+
+        function facultyStatusMeta(slot, match, day, startRow, endRow) {
+            if (slot.status === 'conflict') {
+                const meeting = slot.meeting;
+                return { tone: 'conflict', label: 'Schedule conflict', detail: `Teaching ${meeting.code || 'another class'} ${minutesTo12h(toMinutes(meeting.start))}–${minutesTo12h(toMinutes(meeting.end))}` };
+            }
+            if (slot.status === 'unavailable') {
+                return { tone: 'unavailable', label: 'Availability conflict', detail: `Not available for ${WEEK[day].day} ${rowTo12h(startRow)}–${rowTo12h(endRow)}` };
+            }
+            if (match === 'preferred') return { tone: 'preferred', label: 'Preferred and available', detail: 'Best subject match' };
+            if (match === 'qualified') return { tone: 'qualified', label: 'Qualified and available', detail: 'Qualified for this subject' };
+            if (match === 'willing') return { tone: 'willing', label: 'Willing and available', detail: 'Willing to teach this subject' };
+            return { tone: 'mismatch', label: 'Available', detail: 'No preference submitted for this subject' };
+        }
 
         function facultyAvailabilityTable(f) {
             const rows = WEEK.map((w, dayIdx) => {
@@ -3016,58 +4030,97 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
         async function openFacultyModal(subject, day, startRow, endRow, roomName, reassignIndex) {
             pendingPlot = { subject, day, startRow, endRow, roomName, reassignIndex: reassignIndex ?? null };
+            if (!facultyModal.classList.contains('open')) facultyModalLastFocus = document.activeElement;
 
-            document.getElementById('facultyModalSub').textContent =
-                `${subject.code} - ${subject.title} · ${WEEK[day].day}, ${rowTo12h(startRow)} - ${rowTo12h(endRow)} · ${roomName}`;
+            document.getElementById('facultyModalCode').textContent = subject.code;
+            document.getElementById('facultyModalSubject').textContent = subject.title;
+            document.getElementById('facultyModalMeeting').textContent =
+                `${WEEK[day].day} · ${rowTo12h(startRow)}–${rowTo12h(endRow)} · ${roomName}`;
             document.getElementById('facultyModalWarnings').innerHTML = '';
 
             const list = document.getElementById('facultyModalList');
-            list.innerHTML = '<p class="sub">Loading faculty…</p>';
+            const results = document.getElementById('facultyModalResults');
+            const summary = document.getElementById('facultyModalSummary');
+            results.setAttribute('aria-busy', 'true');
+            summary.textContent = 'Loading faculty…';
+            list.innerHTML = Array.from({ length: 4 }, () => '<div class="fc-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>').join('');
             facultyModal.classList.add('open');
+            requestAnimationFrame(() => document.getElementById('facultyModalSearch').focus());
 
             let data;
             try {
                 const url = CONFIG.facultyPanelUrl + '?for_academic_year=' + encodeURIComponent(CONTEXT.academic_year);
                 const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' });
+                if (!response.ok) throw new Error('Faculty request failed');
                 data = await response.json();
             } catch (e) {
-                list.innerHTML = '<p class="sub">Could not load faculty. You can still skip and assign later.</p>';
+                results.setAttribute('aria-busy', 'false');
+                summary.textContent = '';
+                list.innerHTML = '<div class="faculty-picker__state"><div><strong>Faculty could not be loaded</strong><span>Check your connection and try again, or assign this class later.</span><br><button type="button" class="btn btn-ghost faculty-picker__retry">Try again</button></div></div>';
+                list.querySelector('.faculty-picker__retry').addEventListener('click', () => openFacultyModal(subject, day, startRow, endRow, roomName, reassignIndex));
                 return;
             }
+            results.setAttribute('aria-busy', 'false');
 
             const start = rowToHHMM(startRow);
             const end = rowToHHMM(endRow);
-            const statusRank = { preferred: 0, mismatch: 1, unavailable: 2, conflict: 3 };
+            const matchRank = { preferred: 0, qualified: 1, willing: 2, '': 3 };
 
             const candidates = (data.faculty || []).map(f => {
                 const slot = classifyFacultySlot(f, subject, day, start, end, pendingPlot.reassignIndex != null);
-                const overCap = data.max_units && (f.units + (parseFloat(subject.units) || 0) > data.max_units);
-                return { f, slot, overCap };
+                const match = facultySubjectMatch(f, subject);
+                const overCap = data.max_units && (Number(f.units || 0) + (parseFloat(subject.units) || 0) > Number(data.max_units));
+                return { f, slot, match, overCap };
             }).sort((a, b) => {
-                const r = statusRank[a.slot.status] - statusRank[b.slot.status];
-                return r !== 0 ? r : a.f.name.localeCompare(b.f.name);
+                const availabilityRank = candidate => candidate.slot.status === 'conflict' ? 2 : candidate.slot.status === 'unavailable' ? 1 : 0;
+                return availabilityRank(a) - availabilityRank(b)
+                    || (matchRank[a.match] ?? 3) - (matchRank[b.match] ?? 3)
+                    || Number(a.overCap) - Number(b.overCap)
+                    || a.f.units - b.f.units
+                    || a.f.name.localeCompare(b.f.name);
             });
+            const recommendedCandidate = candidates.find(candidate =>
+                candidate.slot.status !== 'conflict'
+                && candidate.slot.status !== 'unavailable'
+                && !candidate.overCap
+                && (candidate.match === 'preferred' || candidate.match === 'qualified'));
+            if (recommendedCandidate) recommendedCandidate.recommended = true;
 
             if (!candidates.length) {
-                list.innerHTML = '<p class="sub">No faculty members in your department yet. You can still skip and assign later.</p>';
+                summary.textContent = '0 faculty';
+                list.innerHTML = '<div class="faculty-picker__state"><div><strong>No faculty found</strong><span>No faculty members are assigned to this department. You can assign this class later.</span></div></div>';
                 return;
             }
 
-            function renderCards(filterText) {
+            let activeFilter = 'all';
+            const filters = Array.from(document.querySelectorAll('#facultyModalFilters .faculty-filter'));
+
+            function renderCards(filterText = '') {
                 list.innerHTML = '';
                 const needle = (filterText || '').trim().toLowerCase();
 
-                candidates
-                    .filter(({ f }) => !needle || f.name.toLowerCase().includes(needle))
-                    .forEach(({ f, slot, overCap }) => {
-                        const meta = SLOT_STATUS_META[slot.status];
+                const visibleCandidates = candidates.filter(({ f, slot, match }) => {
+                    const matchesSearch = !needle || f.name.toLowerCase().includes(needle);
+                    const matchesFilter = activeFilter === 'all'
+                        || (activeFilter === 'available' && slot.status !== 'conflict' && slot.status !== 'unavailable')
+                        || (activeFilter === 'preferred' && match === 'preferred')
+                        || (activeFilter === 'qualified' && match === 'qualified')
+                        || (activeFilter === 'conflicts' && (slot.status === 'conflict' || slot.status === 'unavailable'));
+                    return matchesSearch && matchesFilter;
+                });
+
+                summary.textContent = `${visibleCandidates.length} of ${candidates.length} faculty shown`;
+                if (!visibleCandidates.length) {
+                    list.innerHTML = '<div class="faculty-picker__state"><div><strong>No matching faculty</strong><span>Try another name or filter.</span></div></div>';
+                    return;
+                }
+
+                visibleCandidates.forEach(({ f, slot, match, overCap, recommended }) => {
+                        const meta = facultyStatusMeta(slot, match, day, startRow, endRow);
                         const card = document.createElement('div');
-                        card.className = 'faculty-card' + (slot.status === 'conflict' ? ' fc-disabled' : '');
-
-                        let tags = `<span class="fc-tag ${slot.status}">${meta.label}</span>`;
-                        if (overCap) tags += ' <span class="fc-tag conflict">over unit cap</span>';
-
-                        const empLabel = f.employment_status === 'full_time' ? 'Full-Time' : f.employment_status === 'part_time' ? 'Part-Time' : '';
+                        card.className = `faculty-card fc-tone-${meta.tone}${slot.status === 'conflict' ? ' fc-disabled' : ''}${recommended ? ' fc-recommended-row' : ''}`;
+                        card.setAttribute('role', 'listitem');
+                        const empLabel = f.employment_status === 'full_time' ? 'Full-time' : f.employment_status === 'part_time' ? 'Part-time' : 'Employment type not set';
                         const initials = f.name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
                         const dayAvail = (f.availability || []).find(a => a.day_of_week === day);
@@ -3076,34 +4129,39 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                 ? `${minutesTo12h(toMinutes(dayAvail.start_time || '00:00'))} – ${minutesTo12h(toMinutes(dayAvail.end_time || '00:00'))}`
                                 : 'Not available')
                             : 'Not submitted';
+                        const loadPercent = data.max_units ? Math.min(100, (Number(f.units || 0) / Number(data.max_units)) * 100) : 0;
+                        const workload = data.max_units ? `${f.units} of ${data.max_units} units` : `${f.units} units assigned`;
+                        const matchLabel = match ? match.charAt(0).toUpperCase() + match.slice(1) : 'Not set';
+                        const assignLabel = slot.status === 'unavailable' ? 'Assign anyway' : 'Assign';
 
                         card.innerHTML = `
-                            <div class="fc-band ${slot.status}">
+                            <div class="fc-identity">
                                 <div class="fc-avatar">${escapeHtml(initials)}</div>
                                 <div class="fc-head-text">
-                                    <div class="fc-name">${escapeHtml(f.name)}${empLabel ? ` <span class="fc-emp">· ${empLabel}</span>` : ''}</div>
-                                    <div>${tags}</div>
+                                    <div class="fc-name">${escapeHtml(f.name)}${recommended ? '<span class="fc-recommended">Recommended</span>' : ''}</div>
+                                    <span class="fc-emp">${empLabel}</span>
+                                    <div class="fc-status ${meta.tone}"><div><strong>${meta.label}</strong><span>${escapeHtml(meta.detail)}</span></div></div>
                                 </div>
                             </div>
-                            <div class="fc-body">
-                                <div class="fc-meta">${f.units} units · ${f.weekly_hours} hrs/week · ${f.subjects.length} subject(s) currently</div>
-                                <div class="fc-meta"><strong>${WEEK[day].day} availability:</strong> ${todayWindow}</div>
-                                <div class="fc-meta" style="margin-top:2px;"><strong>Preferences:</strong> ${facultyPreferenceChips(f.preferences)}</div>
-                                ${slot.status === 'conflict' ? `<div class="fc-meta" style="color:#991b1b;">Already teaching ${escapeHtml(slot.meeting.code || 'another class')} ${WEEK[day].day} ${rowTo12h(Math.round(toMinutes(slot.meeting.start) / 30))}–${rowTo12h(Math.round(toMinutes(slot.meeting.end) / 30))}.</div>` : ''}
-                                <div class="fc-avail-panel" style="display:none; margin-top:6px;"></div>
-                                <div class="fc-actions">
-                                    <button type="button" class="fc-btn fc-schedule">View Schedule</button>
-                                    <button type="button" class="fc-btn fc-btn-primary fc-assign" ${slot.status === 'conflict' ? 'disabled' : ''}>Assign</button>
-                                </div>
+                            <dl class="fc-facts">
+                                <div class="fc-fact"><dt>Workload</dt><dd class="${overCap ? 'is-conflict' : ''}">${workload}${overCap ? ' · over cap if assigned' : ''}</dd>${data.max_units ? `<div class="fc-load-track" aria-hidden="true"><div class="fc-load-fill ${overCap ? 'is-over' : ''}" style="width:${loadPercent}%"></div></div>` : ''}</div>
+                                <div class="fc-fact"><dt>${WEEK[day].day} availability</dt><dd>${todayWindow}</dd></div>
+                                <div class="fc-fact"><dt>Subject match</dt><dd>${matchLabel}</dd></div>
+                            </dl>
+                            <div class="fc-actions">
+                                <button type="button" class="fc-btn fc-schedule" aria-expanded="false">View week</button>
+                                <button type="button" class="fc-btn ${slot.status === 'unavailable' ? 'fc-btn-warning' : 'fc-btn-primary'} fc-assign" ${slot.status === 'conflict' ? 'disabled title="Schedule conflicts cannot be overridden"' : ''}>${assignLabel}</button>
                             </div>
+                            <div class="fc-avail-panel" hidden></div>
                         `;
 
                         const scheduleBtn = card.querySelector('.fc-schedule');
                         const panel = card.querySelector('.fc-avail-panel');
                         scheduleBtn.addEventListener('click', () => {
-                            const open = panel.style.display !== 'none';
-                            panel.style.display = open ? 'none' : 'block';
-                            scheduleBtn.textContent = open ? 'View Schedule' : 'Hide Schedule';
+                            const open = !panel.hidden;
+                            panel.hidden = open;
+                            scheduleBtn.textContent = open ? 'View week' : 'Hide week';
+                            scheduleBtn.setAttribute('aria-expanded', String(!open));
                             if (!open && !panel.dataset.rendered) {
                                 panel.innerHTML = facultyAvailabilityTable(f);
                                 panel.dataset.rendered = '1';
@@ -3117,15 +4175,15 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                         } else if (slot.status === 'unavailable') {
                             assignBtn.addEventListener('click', async () => {
                                 const proceed = await confirmDialog({
-                                    title: 'Faculty Availability Conflict',
+                                    title: 'Override availability conflict?',
                                     message: `${f.name} is marked unavailable for ${WEEK[day].day} ${rowTo12h(startRow)}–${rowTo12h(endRow)}. `
-                                        + 'Choose "Cancel" to pick a different schedule or faculty member, or "Proceed Anyway" to assign them regardless (this will be recorded).',
-                                    confirmLabel: 'Proceed Anyway',
+                                        + 'This exception will be recorded. Add an optional reason below for the audit history.',
+                                    confirmLabel: 'Assign anyway',
                                     danger: true,
+                                    reason: true,
                                 });
                                 if (!proceed) return;
-                                const reason = window.prompt('Optional: reason for overriding this availability conflict', '') || '';
-                                await recordFacultyOverride(f.id, 'unavailable', reason);
+                                await recordFacultyOverride(f.id, 'unavailable', proceed.reason || '');
                                 finalizePlot(f.id, f.name);
                             });
                         } else {
@@ -3136,19 +4194,38 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     });
             }
 
-            renderCards('');
             const searchInput = document.getElementById('facultyModalSearch');
             searchInput.value = '';
             searchInput.oninput = () => renderCards(searchInput.value);
+            filters.forEach(filter => {
+                filter.onclick = () => {
+                    activeFilter = filter.dataset.filter;
+                    filters.forEach(button => {
+                        const selected = button === filter;
+                        button.classList.toggle('active', selected);
+                        button.setAttribute('aria-pressed', String(selected));
+                    });
+                    renderCards(searchInput.value);
+                };
+            });
+            filters.forEach(filter => {
+                const selected = filter.dataset.filter === 'all';
+                filter.classList.toggle('active', selected);
+                filter.setAttribute('aria-pressed', String(selected));
+            });
+            renderCards();
         }
 
         function closeFacultyModal() {
+            if (!facultyModal.classList.contains('open')) return;
             pendingPlot = null;
             facultyModal.classList.remove('open');
+            if (facultyModalLastFocus && facultyModalLastFocus.isConnected) facultyModalLastFocus.focus();
         }
 
         document.getElementById('facultyModalSkip').addEventListener('click', () => finalizePlot(null, null));
         document.getElementById('facultyModalCancel').addEventListener('click', closeFacultyModal);
+        document.getElementById('facultyModalClose').addEventListener('click', closeFacultyModal);
         facultyModal.addEventListener('click', e => { if (e.target === facultyModal) closeFacultyModal(); });
 
         // ---------- autosave (insta-plot) ----------

@@ -56,11 +56,15 @@ class CapacityPolicyModel extends Model
 
         $rows = [];
 
-        foreach ($chain as [$type, $id, $year]) {
-            $row = $this->where(['scope_type' => $type, 'scope_id' => $id, 'year_level' => $year])->first();
+        // Until the dynamic-sectioning migration has run there is no policy
+        // table; everything then simply falls back to the built-in defaults.
+        if ($this->db->tableExists($this->table)) {
+            foreach ($chain as [$type, $id, $year]) {
+                $row = $this->where(['scope_type' => $type, 'scope_id' => $id, 'year_level' => $year])->first();
 
-            if ($row !== null) {
-                $rows[] = $row;
+                if ($row !== null) {
+                    $rows[] = $row;
+                }
             }
         }
 

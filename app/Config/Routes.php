@@ -219,6 +219,7 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('schedule/sync', 'ChairpersonController::sync');
     $routes->post('schedule/faculty-override', 'ChairpersonController::recordFacultyOverride');
     $routes->get('schedule/state', 'ChairpersonController::state');
+    $routes->get('schedule/suggest', 'ChairpersonController::suggest');
     $routes->post('curriculum-preset', 'ChairpersonController::savePreset');
     $routes->post('curriculum-preset/subject-type', 'ChairpersonController::updateSubjectType');
     $routes->post('curriculum-preset/copy', 'ChairpersonController::copyCurriculum');

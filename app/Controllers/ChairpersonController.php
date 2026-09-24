@@ -16,8 +16,10 @@ use App\Models\FacultySubjectPreferenceModel;
 use App\Models\NotificationModel;
 use App\Models\PlottedScheduleModel;
 use App\Models\RoomModel;
+use App\Libraries\ScheduleSuggester;
 use App\Libraries\SectionBalancer;
 use App\Models\AuditLogModel;
+use App\Models\CapacityPolicyModel;
 use App\Models\SectionModel;
 use App\Models\SubjectModel;
 use App\Models\SwapRequestModel;
@@ -312,13 +314,6 @@ class ChairpersonController extends BaseController
             'swap_approvals'   => $this->swapApprovals(),
             'change_requests'  => $this->changeRequestApprovals(),
             'unread_notifications' => (new NotificationModel())->unreadCount((int) auth()->id()),
-
-            'suggestion' => [
-                'title'  => 'Move IT102 to Wed 1:00 PM - 2:30 PM',
-                'impact' => 'High impact',
-                'body'   => 'Room 302 is available and creates a better flow with no gaps before or after.',
-                'alt'    => 'View alternative options (2)',
-            ],
         ];
 
         return view('chairperson/schedule_plotting', $data);
@@ -378,6 +373,159 @@ class ChairpersonController extends BaseController
             'change_requests'  => $this->changeRequestApprovals(),
             'unread_notifications' => (new NotificationModel())->unreadCount((int) auth()->id()),
         ]);
+    }
+
+    /**
+     * The scheduling assistant: conflict-free placements for whatever this
+     * section still has left to plot, ranked and explained. Read-only —
+     * nothing is saved until the chairperson applies a suggestion, and every
+     * applied block still goes through sync()'s validation.
+     */
+    public function suggest()
+    {
+        $context = $this->contextFromRequest();
+
+        session_write_close();
+
+        $schedules = new PlottedScheduleModel();
+
+        [$profMap] = $this->assignmentsFor($context['academic_year']);
+
+        $blocks = $this->attachProfs(
+            array_map([$this, 'rowToBlock'], $schedules->forContext($context['academic_year'], $context['program'], $context['year_level'], $context['section'])),
+            $profMap
+        );
+
+        // School-wide, like sync(): rooms and professors are shared across departments.
+        $others = $this->attachProfs(
+            array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section'])),
+            $profMap
+        );
+
+        $section   = (new SectionModel())->forContext($context['academic_year'], $context['program'], $context['year_level'], $context['section']);
+        $headcount = $section === null ? 0 : (int) db_connect()->table('users u')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'student')->where('u.deleted_at', null)->where('u.section_id', $section['section_id'])
+            ->countAllResults();
+
+        // No students in the section yet: plan for a typical class rather than
+        // ignoring room size altogether.
+        $known = $headcount > 0;
+
+        if (! $known) {
+            $headcount = (new CapacityPolicyModel())->resolve(['program' => $context['program'], 'year_level' => $context['year_level']])['target'];
+        }
+
+        $subjects = array_map(static fn (array $s) => [
+            'code' => $s['code'], 'title' => $s['title'], 'units' => (float) $s['units'], 'duration' => (float) $s['duration'],
+            'weekly_hours' => (float) $s['weekly_hours'], 'is_lab' => (bool) $s['is_lab'], 'color' => $s['color'],
+        ], $this->contextSubjects($context['academic_year'], $context['program'], $context['year_level']));
+
+        $opts = [
+            'headcount'       => $headcount,
+            'headcount_known' => $known,
+            'grid_start'      => $this->toMinutes('07:00'),
+            'grid_end'        => $this->toMinutes('17:30'),
+            'faculty'         => $this->facultyForSuggestions($context),
+            'max_units'       => (float) (setting('Academic.maxFacultyUnits') ?? 24),
+        ];
+
+        $engine = new ScheduleSuggester();
+        $rooms  = $this->rooms();
+
+        return $this->response->setJSON([
+            'ok'              => true,
+            'headcount'       => $headcount,
+            'headcount_known' => $known,
+            'improvements'    => $engine->improve($subjects, $blocks, $others, $rooms, $opts),
+        ] + $engine->suggest($subjects, $blocks, $others, $rooms, $opts));
+    }
+
+    /**
+     * This department's faculty as the assistant needs them: availability
+     * and subject preferences for the term being plotted (falling back to the
+     * upcoming term), and current unit load in that term EXCLUDING the
+     * section being plotted — the same accounting sync() uses for the cap.
+     *
+     * @return list<array>
+     */
+    private function facultyForSuggestions(array $context): array
+    {
+        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+
+        if ($subDept === null) {
+            return [];
+        }
+
+        $db = db_connect();
+
+        $faculty = $db->table('users u')
+            ->select('u.id, u.username, u.employment_status')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'faculty')
+            ->where('u.sub_department_id', (int) $subDept['sub_dept_id'])
+            ->where('u.deleted_at', null)
+            ->orderBy('u.username')
+            ->get()->getResultArray();
+
+        if ($faculty === []) {
+            return [];
+        }
+
+        $ids  = array_map(static fn (array $f) => (int) $f['id'], $faculty);
+        $term = null;
+
+        foreach ((new AcademicYearModel())->findAll() as $row) {
+            if (AcademicYearModel::format($row['label'], $row['semester']) === $context['academic_year']) {
+                $term = $row;
+                break;
+            }
+        }
+
+        $term ??= (new AcademicYearModel())->upcomingTerm();
+
+        $availability = [];
+        $preferences  = [];
+
+        if ($term !== null) {
+            foreach ((new FacultyAvailabilityModel())->whereIn('user_id', $ids)->where('ay_id', (int) $term['ay_id'])->findAll() as $row) {
+                $availability[(int) $row['user_id']][] = $row;
+            }
+
+            $prefRows = $db->table('faculty_subject_preferences p')
+                ->select('p.user_id, p.preference_level, s.subject_code')
+                ->join('subjects s', 's.subject_id = p.subject_id')
+                ->whereIn('p.user_id', $ids)->where('p.ay_id', (int) $term['ay_id'])
+                ->get()->getResultArray();
+
+            foreach ($prefRows as $row) {
+                $preferences[(int) $row['user_id']][$row['subject_code']] = $row['preference_level'];
+            }
+        }
+
+        $unitRows = $db->table('faculty_assignments fa')
+            ->select('fa.user_id, COALESCE(SUM(s.units), 0) AS total')
+            ->join('subjects s', 's.subject_code = fa.subject_code')
+            ->whereIn('fa.user_id', $ids)
+            ->where('fa.academic_year', $context['academic_year'])
+            ->groupStart()
+                ->where('fa.program !=', $context['program'])
+                ->orWhere('fa.year_level !=', $context['year_level'])
+                ->orWhere('fa.section !=', $context['section'])
+            ->groupEnd()
+            ->groupBy('fa.user_id')
+            ->get()->getResultArray();
+
+        $units = array_column($unitRows, 'total', 'user_id');
+
+        return array_map(static fn (array $f) => [
+            'id'                => (int) $f['id'],
+            'name'              => $f['username'],
+            'employment_status' => $f['employment_status'],
+            'availability'      => $availability[(int) $f['id']] ?? [],
+            'preferences'       => $preferences[(int) $f['id']] ?? [],
+            'units'             => (float) ($units[$f['id']] ?? 0),
+        ], $faculty);
     }
 
     /**
