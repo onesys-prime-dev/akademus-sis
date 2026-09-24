@@ -16,6 +16,8 @@ use App\Models\FacultySubjectPreferenceModel;
 use App\Models\NotificationModel;
 use App\Models\PlottedScheduleModel;
 use App\Models\RoomModel;
+use App\Libraries\SectionBalancer;
+use App\Models\AuditLogModel;
 use App\Models\SectionModel;
 use App\Models\SubjectModel;
 use App\Models\SwapRequestModel;
@@ -1784,6 +1786,8 @@ class ChairpersonController extends BaseController
 
         $sections->update($section['section_id'], ['capacity' => $capacity]);
 
+        $this->audit('sections.capacity', 'section', $section['section_id'], ['capacity' => $section['capacity']], ['capacity' => $capacity], $payload['reason'] ?? null);
+
         return $this->response->setJSON(['ok' => true, 'capacity' => $capacity]);
     }
 
@@ -1983,7 +1987,10 @@ class ChairpersonController extends BaseController
             'year_level'    => $payload['year_level'],
             'section'       => $sectionName,
             'capacity'      => $capacity,
+            'origin'        => 'manual',
         ]);
+
+        $this->audit('sections.create', 'section', $sections->getInsertID(), null, $sections->find($sections->getInsertID()));
 
         return $this->response->setJSON(['ok' => true]);
     }
@@ -2015,6 +2022,8 @@ class ChairpersonController extends BaseController
         }
 
         (new SectionModel())->delete($section['section_id']);
+
+        $this->audit('sections.delete', 'section', $section['section_id'], $section, null);
 
         return $this->response->setJSON(['ok' => true]);
     }
@@ -2048,9 +2057,23 @@ class ChairpersonController extends BaseController
             return $this->fail('Student not found.');
         }
 
-        db_connect()->table('users')->where('id', $student['id'])->update(['section_id' => $section['section_id']]);
+        $result = (new SectionBalancer())->assignStudent(
+            (int) $student['id'],
+            (int) $section['section_id'],
+            (int) auth()->id(),
+            'chairperson',
+            isset($payload['override_reason']) && is_string($payload['override_reason']) ? $payload['override_reason'] : null
+        );
 
-        return $this->response->setJSON(['ok' => true]);
+        if (! $result['ok']) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'ok'            => false,
+                'error'         => $result['error'],
+                'over_capacity' => $result['over_capacity'] ?? false,
+            ]);
+        }
+
+        return $this->response->setJSON(['ok' => true, 'over_capacity' => $result['over_capacity'] ?? false]);
     }
 
     /**
@@ -2073,7 +2096,171 @@ class ChairpersonController extends BaseController
 
         db_connect()->table('users')->where('id', (int) $payload['user_id'])->update(['section_id' => null]);
 
+        $this->audit('sections.unassign', 'section', $current['section_id'], ['user_id' => (int) $payload['user_id'], 'section_id' => (int) $current['section_id']], ['section_id' => null]);
+
         return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * Read-only preview of what "Rebalance Sections" would do for one
+     * program + year level + term: current vs proposed distribution, how
+     * many students move, and the reason — nothing is written.
+     */
+    public function rebalancePreview()
+    {
+        $group = $this->ownGroup($this->request->getJSON(true));
+
+        if (is_string($group)) {
+            return $this->fail($group);
+        }
+
+        $analysis = (new SectionBalancer())->analyze(...$group);
+
+        return $this->response->setJSON(['ok' => true, 'preview' => $this->presentAnalysis($analysis)]);
+    }
+
+    /**
+     * Applies the rebalance. Requires a reason and an explicit confirmation
+     * flag, so it can never happen as a side effect of viewing the page.
+     */
+    public function rebalanceApply()
+    {
+        $payload = $this->request->getJSON(true);
+        $group   = $this->ownGroup($payload);
+
+        if (is_string($group)) {
+            return $this->fail($group);
+        }
+
+        if (empty($payload['confirm'])) {
+            return $this->fail('Confirm the rebalance first.');
+        }
+
+        if (! $this->isActiveYear($group[0])) {
+            return $this->fail('Only the active academic year can be rebalanced.');
+        }
+
+        $result = (new SectionBalancer())->apply($group[0], $group[1], $group[2], (int) auth()->id(), 'chairperson', (string) ($payload['reason'] ?? ''));
+
+        if (! $result['ok']) {
+            return $this->fail($result['error']);
+        }
+
+        return $this->response->setJSON([
+            'ok'      => true,
+            'moved'   => $result['moved'],
+            'created' => $result['created'],
+            'closed'  => $result['closed'],
+        ]);
+    }
+
+    /**
+     * Manual lifecycle control for one section: proposed / open / finalized /
+     * locked / closed, and the auto-balance switch. Audited with a reason.
+     */
+    public function setSectionState()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload) || empty($payload['section_id'])) {
+            return $this->fail('Missing section.');
+        }
+
+        $section = $this->ownSection((int) $payload['section_id']);
+
+        if ($section === null) {
+            return $this->fail('That section does not belong to your department.');
+        }
+
+        $reason = trim((string) ($payload['reason'] ?? ''));
+
+        if ($reason === '') {
+            return $this->fail('A reason is required.');
+        }
+
+        $update = [];
+
+        if (isset($payload['status'])) {
+            if (! in_array($payload['status'], ['proposed', 'open', 'finalized', 'locked', 'closed'], true)) {
+                return $this->fail('Invalid status.');
+            }
+
+            if ($payload['status'] === 'closed'
+                && db_connect()->table('users')->where('section_id', $section['section_id'])->countAllResults() > 0) {
+                return $this->fail("Move this section's students out before closing it.");
+            }
+
+            $update['status'] = $payload['status'];
+        }
+
+        if (array_key_exists('auto_balance', $payload)) {
+            $update['auto_balance'] = $payload['auto_balance'] ? 1 : 0;
+        }
+
+        if ($update === []) {
+            return $this->fail('Nothing to change.');
+        }
+
+        (new SectionModel())->update($section['section_id'], $update);
+
+        $this->audit('sections.state', 'section', $section['section_id'], array_intersect_key($section, $update), $update, $reason);
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * Validates {academic_year, program, year_level} against this
+     * chairperson's department. Returns the triple, or an error string.
+     *
+     * @return list<string>|string
+     */
+    private function ownGroup($payload)
+    {
+        if (! is_array($payload)) {
+            return 'Invalid payload.';
+        }
+
+        foreach (['academic_year', 'program', 'year_level'] as $key) {
+            if (empty($payload[$key]) || ! is_string($payload[$key])) {
+                return "Missing field: {$key}";
+            }
+        }
+
+        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+
+        if ($subDept === null || ! in_array($payload['program'], (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']), true)) {
+            return 'Invalid program.';
+        }
+
+        if (! in_array($payload['year_level'], self::FILTERS['year_level'], true)) {
+            return 'Invalid year level.';
+        }
+
+        return [$payload['academic_year'], $payload['program'], $payload['year_level']];
+    }
+
+    private function presentAnalysis(array $a): array
+    {
+        return [
+            'policy'            => $a['policy'],
+            'sections'          => array_map(static fn ($s) => [
+                'section_id' => (int) $s['section_id'], 'section' => $s['section'], 'status' => $s['status'],
+                'count' => $s['count'], 'can_rebalance' => $s['can_rebalance'], 'block_reason' => $s['block_reason'],
+            ], $a['sections']),
+            'free_sections'     => array_map(static fn ($s) => $s['section'], $a['free_sections']),
+            'current_sizes'     => $a['current_sizes'],
+            'proposed_sizes'    => $a['plan']['sizes'],
+            'students_affected' => $a['students_affected'],
+            'has_changes'       => $a['has_changes'],
+            'warnings'          => $a['plan']['warnings'],
+            'explanation'       => $a['explanation'],
+            'locked_count'      => $a['locked_count'],
+        ];
+    }
+
+    private function audit(string $action, string $entity, $entityId, ?array $before, ?array $after, ?string $reason = null): void
+    {
+        (new AuditLogModel())->record($action, $entity, $entityId, $before, $after, $reason, (int) auth()->id(), 'chairperson');
     }
 
     /**

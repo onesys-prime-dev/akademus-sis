@@ -1211,7 +1211,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         </div>
     </div>
 
-    <form class="filters" method="get" action="<?= site_url('chairperson/dashboard') ?>" id="contextForm">
+    <form class="filters" method="get" action="<?= site_url('chairperson/dashboard') ?>" id="contextForm" data-no-dirty-tracking>
         <div>
             <label>Academic Year</label>
             <select name="ay_label" class="context-select">

@@ -16,6 +16,9 @@ class SectionModel extends Model
         'section',
         'capacity',
         'status',
+        'origin',
+        'auto_balance',
+        'min_capacity',
     ];
 
     protected $useTimestamps = true;

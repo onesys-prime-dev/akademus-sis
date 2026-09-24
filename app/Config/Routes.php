@@ -242,6 +242,9 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('sections/delete', 'ChairpersonController::deleteSection');
     $routes->post('sections/assign-student', 'ChairpersonController::assignStudent');
     $routes->post('sections/unassign-student', 'ChairpersonController::unassignStudent');
+    $routes->post('sections/rebalance/preview', 'ChairpersonController::rebalancePreview');
+    $routes->post('sections/rebalance/apply', 'ChairpersonController::rebalanceApply');
+    $routes->post('sections/state', 'ChairpersonController::setSectionState');
     $routes->get('faculty-panel', 'ChairpersonController::facultyPanel');
 
     // section merging (course offerings)

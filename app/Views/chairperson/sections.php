@@ -186,7 +186,27 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
         <?php
             $avatarColors = ['#2563eb', '#7c3aed', '#d97706', '#0891b2', '#db2777', '#16a34a'];
+
+            $groups = [];
+            foreach ($sections as $g) {
+                $groups[$g['academic_year'] . '|' . $g['program'] . '|' . $g['year_level']] = $g;
+            }
         ?>
+
+        <div class="panel" style="margin-bottom:16px;">
+            <h3 style="margin:0 0 6px;">Rebalance Sections</h3>
+            <p style="margin:0 0 12px; color:var(--color-text-muted, #64748b); font-size:13px;">
+                Preview how students would be redistributed across a year level's sections. Sections that are locked,
+                finalized, or already have schedules, faculty, enrollments or grades are never moved.
+            </p>
+            <?php foreach ($groups as $g): ?>
+                <button type="button" class="btn btn-secondary" style="margin:0 8px 8px 0;"
+                        onclick='previewRebalance(<?= json_encode(['academic_year' => $g['academic_year'], 'program' => $g['program'], 'year_level' => $g['year_level']], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                    <?= esc($g['program']) ?> · <?= esc($g['year_level']) ?> · <?= esc($g['academic_year']) ?>
+                </button>
+            <?php endforeach ?>
+            <div id="rebalancePanel" style="display:none; margin-top:12px; border-top:1px solid #e2e8f0; padding-top:12px;"></div>
+        </div>
         <?php foreach ($sections as $sec): ?>
             <?php
                 $roster = $rosterBySection[(int) $sec['section_id']] ?? [];
@@ -214,6 +234,21 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                             <div class="section-card__title-row">
                                 <h3><?= esc($sec['program']) ?> · <?= esc($sec['year_level']) ?> · Section <?= esc($sec['section']) ?></h3>
                                 <span class="cap-badge <?= $badgeClass ?>"><?= $badgeLabel ?></span>
+                                <span class="cap-badge cap-badge--unlimited" title="Section status"><?= esc(ucfirst($sec['status'])) ?><?= ($sec['origin'] ?? 'manual') === 'auto' ? ' · auto' : '' ?></span>
+                                <?php $isLocked = $sec['status'] === 'locked'; ?>
+                                <button type="button" class="icon-btn" title="<?= $isLocked ? 'Unlock section' : 'Lock section (stops automatic balancing)' ?>"
+                                        onclick="setSectionState(<?= (int) $sec['section_id'] ?>, {status: '<?= $isLocked ? 'open' : 'locked' ?>'})">
+                                    <span class="material-symbols-outlined" style="font-size:18px;"><?= $isLocked ? 'lock' : 'lock_open' ?></span>
+                                </button>
+                                <?php if (! empty($sec['auto_balance'])): ?>
+                                    <button type="button" class="icon-btn" title="Automatic balancing on — click to turn off" onclick="setSectionState(<?= (int) $sec['section_id'] ?>, {auto_balance: false})">
+                                        <span class="material-symbols-outlined" style="font-size:18px;">balance</span>
+                                    </button>
+                                <?php else: ?>
+                                    <button type="button" class="icon-btn" title="Automatic balancing off — click to turn on" onclick="setSectionState(<?= (int) $sec['section_id'] ?>, {auto_balance: true})">
+                                        <span class="material-symbols-outlined" style="font-size:18px; opacity:.4;">block</span>
+                                    </button>
+                                <?php endif ?>
                             </div>
                             <div class="section-card__meta">
                                 <span><?= esc($sec['academic_year']) ?></span>
@@ -334,10 +369,19 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             return;
         }
 
-        const result = await postJSON('<?= site_url('chairperson/sections/assign-student') ?>', {
-            section_id: sectionId,
-            user_id: userId,
-        });
+        const body = { section_id: sectionId, user_id: userId };
+        let result = await postJSON('<?= site_url('chairperson/sections/assign-student') ?>', body);
+
+        if (!result.ok && result.over_capacity) {
+            const reason = prompt(result.error + '\n\nOverride reason (recorded in the audit log):');
+
+            if (!reason || !reason.trim()) {
+                return;
+            }
+
+            body.override_reason = reason.trim();
+            result = await postJSON('<?= site_url('chairperson/sections/assign-student') ?>', body);
+        }
 
         if (!result.ok) {
             showFeedback(result.error || 'Could not assign the student.', true);
@@ -371,6 +415,87 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         }
 
         reloadWithMessage('Student removed from the section.');
+    }
+
+    async function setSectionState(sectionId, change) {
+        const reason = prompt('Reason for this change (recorded in the audit log):');
+
+        if (!reason || !reason.trim()) {
+            return;
+        }
+
+        const result = await postJSON('<?= site_url('chairperson/sections/state') ?>', Object.assign({ section_id: sectionId, reason: reason.trim() }, change));
+
+        if (!result.ok) {
+            showFeedback(result.error || 'Could not update the section.', true);
+            return;
+        }
+
+        reloadWithMessage('Section updated.');
+    }
+
+    const escHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    async function previewRebalance(group) {
+        const panel  = document.getElementById('rebalancePanel');
+        const result = await postJSON('<?= site_url('chairperson/sections/rebalance/preview') ?>', group);
+
+        panel.style.display = 'block';
+
+        if (!result.ok) {
+            panel.innerHTML = '<p>' + escHtml(result.error || 'Could not build the preview.') + '</p>';
+            return;
+        }
+
+        const p = result.preview;
+        const rows = p.sections.map(s =>
+            '<tr><td>' + escHtml(s.section) + '</td><td>' + escHtml(s.status) + '</td><td>' + s.count + '</td><td>' +
+            (s.can_rebalance ? 'Yes' : 'No — ' + escHtml(s.block_reason || s.status)) + '</td></tr>').join('');
+
+        let html =
+            '<p><strong>' + escHtml(group.program) + ' · ' + escHtml(group.year_level) + '</strong> — policy: min ' + p.policy.min +
+            ', target ' + p.policy.target + ', max ' + p.policy.max + ', overflow ' + p.policy.overflow + '</p>' +
+            '<table class="roster-table"><thead><tr><th>Section</th><th>Status</th><th>Students</th><th>Can rebalance</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+            '<p style="margin-top:10px;"><strong>Current:</strong> ' + (p.current_sizes.join(' / ') || '—') +
+            ' &nbsp; <strong>Proposed:</strong> ' + (p.proposed_sizes.join(' / ') || '—') +
+            ' &nbsp; <strong>Students affected:</strong> ' + p.students_affected + '</p>' +
+            '<p>' + escHtml(p.explanation) + '</p>' +
+            p.warnings.map(w => '<p style="color:#b45309;">⚠ ' + escHtml(w) + '</p>').join('');
+
+        if (p.has_changes) {
+            html += '<input type="text" id="rebalanceReason" placeholder="Reason for rebalancing (required)" style="width:60%; margin-right:8px;">' +
+                    '<button type="button" class="btn btn-primary" id="rebalanceApply">Apply rebalance</button>';
+        } else {
+            html += '<p><em>No changes recommended.</em></p>';
+        }
+
+        panel.innerHTML = html;
+
+        const apply = document.getElementById('rebalanceApply');
+
+        if (apply) {
+            apply.onclick = async () => {
+                const reason = document.getElementById('rebalanceReason').value.trim();
+
+                if (!reason) {
+                    showFeedback('Enter a reason for the rebalance.', true);
+                    return;
+                }
+
+                if (!await acConfirm('Apply this rebalance? ' + p.students_affected + ' student(s) will be moved.')) {
+                    return;
+                }
+
+                const res = await postJSON('<?= site_url('chairperson/sections/rebalance/apply') ?>', Object.assign({}, group, { confirm: true, reason }));
+
+                if (!res.ok) {
+                    showFeedback(res.error || 'Rebalance failed.', true);
+                    return;
+                }
+
+                reloadWithMessage('Rebalanced: ' + res.moved + ' student(s) moved' + (res.created.length ? ', created ' + res.created.join(', ') : '') + '.');
+            };
+        }
     }
 
     function reloadWithMessage(message) {
