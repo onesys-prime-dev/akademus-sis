@@ -33,6 +33,12 @@ class ProfileController extends BaseController
             return redirect()->back()->with('profile_error', 'Name is required (max 100 characters).');
         }
 
+        // Names are rendered in other roles' pages; keep markup characters out
+        // at the source as well as escaping them on output.
+        if (preg_match('/[<>"`\\\\]/', $username) === 1) {
+            return redirect()->back()->with('profile_error', 'Name cannot contain < > " ` or \\ characters.');
+        }
+
         $users = auth()->getProvider();
         $user  = auth()->user();
         $user->username = $username;

@@ -423,10 +423,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
         const assignBtn = onAssign
             ? (isAssigned
-                ? `<span class="icon-btn" title="Already in ${CONTEXT.year_level}" style="cursor:default; color:#16a34a;">
+                ? `<span class="icon-btn" title="Already in ${escapeHtml(CONTEXT.year_level)}" style="cursor:default; color:#16a34a;">
                        <span class="material-symbols-outlined" style="font-size:18px;">check_circle</span>
                    </span>`
-                : `<button type="button" class="icon-btn" title="Assign to ${CONTEXT.year_level}" data-act="assign">
+                : `<button type="button" class="icon-btn" title="Assign to ${escapeHtml(CONTEXT.year_level)}" data-act="assign">
                        <span class="material-symbols-outlined" style="font-size:18px;">playlist_add</span>
                    </button>`)
             : '';
@@ -435,7 +435,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             ? `<button type="button" class="icon-btn edit" title="Edit (applies everywhere)" data-act="edit">
                    <span class="material-symbols-outlined" style="font-size:18px;">edit</span>
                </button>
-               <button type="button" class="icon-btn" title="Remove from ${CONTEXT.year_level}" data-act="remove">
+               <button type="button" class="icon-btn" title="Remove from ${escapeHtml(CONTEXT.year_level)}" data-act="remove">
                    <span class="material-symbols-outlined" style="font-size:18px;">close</span>
                </button>`
             : `${assignBtn}
@@ -448,12 +448,12 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
         const usage = USAGE_BY_CODE[s.code] || [];
         const usageCell = usage.length
-            ? usage.map(u => `<span class="usage-chip">${u}</span>`).join('')
+            ? usage.map(u => `<span class="usage-chip">${escapeHtml(u)}</span>`).join('')
             : '<span class="usage-chip usage-chip--none">Not plotted anywhere</span>';
 
         tr.innerHTML = `
-            <td class="subj-code">${s.code}</td>
-            <td class="subj-title">${s.title}</td>
+            <td class="subj-code">${escapeHtml(s.code)}</td>
+            <td class="subj-title">${escapeHtml(s.title)}</td>
             <td>${s.units}</td>
             <td>${s.hours}</td>
             <td>${typeChip(s)}</td>
@@ -476,8 +476,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         const isLab = ASSIGNED_LAB.get(s.code);
 
         tr.innerHTML = `
-            <td class="subj-code">${s.code}</td>
-            <td class="subj-title">${s.title}</td>
+            <td class="subj-code">${escapeHtml(s.code)}</td>
+            <td class="subj-title">${escapeHtml(s.title)}</td>
             <td>${s.units}</td>
             <td>${s.hours}</td>
             <td>
@@ -491,7 +491,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     <button type="button" class="icon-btn edit" title="Edit (applies everywhere)" data-act="edit">
                         <span class="material-symbols-outlined" style="font-size:18px;">edit</span>
                     </button>
-                    ${IS_ACTIVE_YEAR ? `<button type="button" class="icon-btn" title="Remove from ${CONTEXT.year_level}" data-act="remove">
+                    ${IS_ACTIVE_YEAR ? `<button type="button" class="icon-btn" title="Remove from ${escapeHtml(CONTEXT.year_level)}" data-act="remove">
                         <span class="material-symbols-outlined" style="font-size:18px;">close</span>
                     </button>` : ''}
                 </div>
@@ -516,7 +516,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
         if (assigned.length === 0) {
             body.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--color-text-secondary); padding:28px;">
-                No subjects assigned to ${CONTEXT.year_level} yet — add one below.
+                No subjects assigned to ${escapeHtml(CONTEXT.year_level)} yet — add one below.
             </td></tr>`;
         } else {
             assigned.forEach(s => body.appendChild(assignedSubjectRow(s)));

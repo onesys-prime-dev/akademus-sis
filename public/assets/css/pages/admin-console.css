@@ -424,7 +424,11 @@ html, .ac-page { height: 100%; }
    is a quick wiggle followed by a long pause, not a constant shake, so
    it stays noticeable without being annoying on a page used all day. */
 .ac-bell { transform-origin: 50% 15%; display: inline-block; }
-.ac-bell.is-ringing { animation: acBellChime 1s var(--ease-standard) 1; }
+.ac-bell.is-ringing { animation: acBellChime 4s var(--ease-standard) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ac-bell.is-ringing { animation: none; }
+}
 
 @keyframes acBellChime {
     0%, 28%, 100% { transform: rotate(0deg); }

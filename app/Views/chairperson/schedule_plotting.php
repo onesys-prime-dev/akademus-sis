@@ -2363,7 +2363,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
                 const heading = document.createElement('div');
                 heading.className = 'floor-heading ov-floor-heading';
-                heading.innerHTML = `<span>${floor}</span><span class="count">${floorRooms.length} ${floorRooms.length === 1 ? 'space' : 'spaces'}</span>`;
+                heading.innerHTML = `<span>${escapeHtml(floor)}</span><span class="count">${floorRooms.length} ${floorRooms.length === 1 ? 'space' : 'spaces'}</span>`;
                 group.appendChild(heading);
 
                 const grid = document.createElement('div');
@@ -2539,7 +2539,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             const colors = { preferred: '#dcfce7', willing: '#fef9c3', qualified: '#e0e7ff' };
             const textColors = { preferred: '#166534', willing: '#854d0e', qualified: '#3730a3' };
             return prefs.map(p =>
-                `<span title="${p.title}" style="font-size:11px; padding:2px 8px; border-radius:999px; background:${colors[p.level] || '#eee'}; color:${textColors[p.level] || '#333'}; margin-right:4px;">${p.code} &middot; ${p.level}</span>`
+                `<span title="${escapeHtml(p.title)}" style="font-size:11px; padding:2px 8px; border-radius:999px; background:${colors[p.level] || '#eee'}; color:${textColors[p.level] || '#333'}; margin-right:4px;">${escapeHtml(p.code)} &middot; ${escapeHtml(p.level)}</span>`
             ).join('');
         }
 
@@ -2563,7 +2563,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 list.innerHTML = data.faculty.map(f => `
                     <div style="border:1px solid var(--outline-variant); border-radius:10px; padding:12px 14px; margin-bottom:10px;">
                         <div style="display:flex; align-items:center; justify-content:space-between;">
-                            <strong>${f.name}</strong>
+                            <strong>${escapeHtml(f.name)}</strong>
                             <span>${facultyStatusChip(f.employment_status)}</span>
                         </div>
                         <div style="font-size:12px; color:var(--on-surface-variant); margin-top:6px;">
@@ -3079,9 +3079,9 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
                         card.innerHTML = `
                             <div class="fc-band ${slot.status}">
-                                <div class="fc-avatar">${initials}</div>
+                                <div class="fc-avatar">${escapeHtml(initials)}</div>
                                 <div class="fc-head-text">
-                                    <div class="fc-name">${f.name}${empLabel ? ` <span class="fc-emp">· ${empLabel}</span>` : ''}</div>
+                                    <div class="fc-name">${escapeHtml(f.name)}${empLabel ? ` <span class="fc-emp">· ${empLabel}</span>` : ''}</div>
                                     <div>${tags}</div>
                                 </div>
                             </div>
@@ -3089,7 +3089,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                 <div class="fc-meta">${f.units} units · ${f.weekly_hours} hrs/week · ${f.subjects.length} subject(s) currently</div>
                                 <div class="fc-meta"><strong>${WEEK[day].day} availability:</strong> ${todayWindow}</div>
                                 <div class="fc-meta" style="margin-top:2px;"><strong>Preferences:</strong> ${facultyPreferenceChips(f.preferences)}</div>
-                                ${slot.status === 'conflict' ? `<div class="fc-meta" style="color:#991b1b;">Already teaching ${slot.meeting.code || 'another class'} ${WEEK[day].day} ${rowTo12h(Math.round(toMinutes(slot.meeting.start) / 30))}–${rowTo12h(Math.round(toMinutes(slot.meeting.end) / 30))}.</div>` : ''}
+                                ${slot.status === 'conflict' ? `<div class="fc-meta" style="color:#991b1b;">Already teaching ${escapeHtml(slot.meeting.code || 'another class')} ${WEEK[day].day} ${rowTo12h(Math.round(toMinutes(slot.meeting.start) / 30))}–${rowTo12h(Math.round(toMinutes(slot.meeting.end) / 30))}.</div>` : ''}
                                 <div class="fc-avail-panel" style="display:none; margin-top:6px;"></div>
                                 <div class="fc-actions">
                                     <button type="button" class="fc-btn fc-schedule">View Schedule</button>

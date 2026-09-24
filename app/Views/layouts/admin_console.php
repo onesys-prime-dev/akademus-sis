@@ -8,6 +8,20 @@
     <title>Akademus SIS | <?= esc($pageTitle ?? $brandSub ?? 'Admin Console') ?></title>
 
     <script>
+        // Escapes a value for use inside an innerHTML template (text or a
+        // quoted attribute). Anything user-entered — names, subject titles,
+        // codes — must go through this before being interpolated into markup.
+        window.escapeHtml = function (value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
+    </script>
+
+    <script>
         // Every role's pages POST via fetch() repeatedly from a single page
         // load (schedule plotting, grading, sections, teaching-load claims,
         // swaps) rather than submitting a <form>. Re-enabling CSRF protection
