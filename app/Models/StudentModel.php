@@ -53,19 +53,21 @@ class StudentModel extends Model
             return ['ok' => true, 'student' => $this->hydrate($existing)];
         }
 
-        $programId = null;
+        $programId      = null;
+        $programCreated = null;
 
         if (! empty($data['program_code'])) {
-            $program = (new ProgramModel())->where('program_code', $data['program_code'])->first();
+            $resolved = $this->resolveProgram((string) $data['program_code'], (string) ($data['program_name'] ?? ''));
 
-            if ($program === null) {
+            if (! $resolved['ok']) {
                 $db->transRollback();
                 $db->resetTransStatus();
 
-                return ['ok' => false, 'error' => "Unknown program code: {$data['program_code']}"];
+                return ['ok' => false, 'error' => $resolved['error']];
             }
 
-            $programId = (int) $program['program_id'];
+            $programId      = $resolved['program_id'];
+            $programCreated = $resolved['created'] ? $resolved['program'] : null;
         }
 
         // Pin the student to whichever curriculum version is currently
@@ -142,7 +144,91 @@ class StudentModel extends Model
             return ['ok' => false, 'error' => 'Could not create the student record. Please retry.'];
         }
 
-        return ['ok' => true, 'student' => $this->hydrate($student)];
+        // Only after the commit: tell admins a program appeared that still
+        // needs a college and a published curriculum.
+        if ($programCreated !== null) {
+            $this->notifyAdminsOfNewProgram($programCreated);
+        }
+
+        return [
+            'ok'              => true,
+            'student'         => $this->hydrate($student),
+            'program_created' => $programCreated !== null,
+        ];
+    }
+
+    /**
+     * Admissions programs are dynamic (admins add them at will), so the SIS
+     * cannot ship a fixed list. An unknown code is created on the spot from
+     * the name Admissions sends — with no college and no curriculum, which an
+     * admin must attach before the program can be scheduled. Without a name
+     * we still refuse rather than invent one.
+     *
+     * @return array{ok: bool, error?: string, program_id?: int, created?: bool, program?: array}
+     */
+    private function resolveProgram(string $code, string $name): array
+    {
+        $programs = new ProgramModel();
+        $code     = strtoupper(trim($code));
+        $name     = trim($name);
+
+        $program = $programs->where('program_code', $code)->first();
+
+        if ($program !== null) {
+            return ['ok' => true, 'program_id' => (int) $program['program_id'], 'created' => false];
+        }
+
+        if ($name === '') {
+            return ['ok' => false, 'error' => "Unknown program code: {$code}"];
+        }
+
+        if (preg_match('/^[A-Z0-9][A-Z0-9 ._&-]{0,19}$/', $code) !== 1 || mb_strlen($name) > 225) {
+            return ['ok' => false, 'error' => "Invalid program code or name: {$code}"];
+        }
+
+        // program_code is unique: if a concurrent promote created it a moment
+        // ago, the insert is rejected and we simply use theirs.
+        $inserted = $this->db->table('programs')->ignore(true)->insert([
+            'program_code' => $code,
+            'program_name' => $name,
+            'is_active'    => 1,
+            'created_at'   => date('Y-m-d H:i:s'),
+            'updated_at'   => date('Y-m-d H:i:s'),
+        ]);
+
+        $program = $programs->where('program_code', $code)->first();
+
+        if ($program === null) {
+            return ['ok' => false, 'error' => "Could not create program {$code}."];
+        }
+
+        return [
+            'ok'         => true,
+            'program_id' => (int) $program['program_id'],
+            'created'    => $inserted !== false && $this->db->affectedRows() > 0,
+            'program'    => $program,
+        ];
+    }
+
+    private function notifyAdminsOfNewProgram(array $program): void
+    {
+        $adminIds = $this->db->table('auth_groups_users')
+            ->select('user_id')
+            ->whereIn('group', ['admin', 'superadmin'])
+            ->get()
+            ->getResultArray();
+
+        $notifications = new NotificationModel();
+
+        foreach (array_unique(array_column($adminIds, 'user_id')) as $adminId) {
+            $notifications->notify(
+                (int) $adminId,
+                'program.created',
+                "New program {$program['program_code']} ({$program['program_name']}) was added automatically from Admissions. "
+                . 'Assign it to a department and publish a curriculum before scheduling it.',
+                'admin/programs/edit/' . $program['program_id']
+            );
+        }
     }
 
     /**

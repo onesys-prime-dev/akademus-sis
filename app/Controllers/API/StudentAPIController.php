@@ -76,8 +76,9 @@ class StudentAPIController extends BaseController
         }
 
         return $this->respond([
-            'success' => true,
-            'student' => [
+            'success'         => true,
+            'program_created' => (bool) ($result['program_created'] ?? false),
+            'student'         => [
                 'student_id'     => $result['student']['student_id'],
                 'student_number' => $result['student']['student_number'],
                 'applicant_id'   => $result['student']['applicant_id'],
