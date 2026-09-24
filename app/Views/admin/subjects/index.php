@@ -59,7 +59,7 @@
                             <a href="<?= site_url('admin/subjects/edit/' . $subject['subject_id']) ?>" class="ac-btn-outline">Edit</a>
                             <form method="post" action="<?= site_url('admin/subjects/toggle-status/' . $subject['subject_id']) ?>">
                                 <?= csrf_field() ?>
-                                <button type="submit" class="ac-btn-outline" onclick="return confirm('Change subject status?')">
+                                <button type="submit" class="ac-btn-outline" data-confirm="Change subject status?">
                                     <?= $subject['is_active'] ? 'Deactivate' : 'Activate' ?>
                                 </button>
                             </form>

@@ -106,7 +106,7 @@
             <?php foreach ($prerequisites as $p): ?>
                 <li style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--color-border, #e5e7eb);">
                     <span><b><?= esc($p['subject_code']) ?></b> — <?= esc($p['subject_name']) ?></span>
-                    <form method="post" action="<?= site_url('admin/subjects/' . $subject['subject_id'] . '/prerequisites/' . $p['subject_id'] . '/remove') ?>" onsubmit="return confirm('Remove <?= esc($p['subject_code'], 'js') ?> as a prerequisite?');">
+                    <form method="post" action="<?= site_url('admin/subjects/' . $subject['subject_id'] . '/prerequisites/' . $p['subject_id'] . '/remove') ?>" data-confirm="Remove <?= esc($p['subject_code'], 'attr') ?> as a prerequisite?">
                         <?= csrf_field() ?>
                         <button type="submit" class="ac-btn ac-btn-secondary">Remove</button>
                     </form>

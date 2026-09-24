@@ -61,7 +61,7 @@
                                 <a href="<?= site_url('admin/curriculum-subjects/edit/' . $cs['curriculum_subject_id']) ?>" class="ac-btn-outline">Edit</a>
                                 <form method="post" action="<?= site_url('admin/curriculum-subjects/delete/' . $cs['curriculum_subject_id']) ?>" style="display:inline;">
                                     <?= csrf_field() ?>
-                                    <button type="submit" class="ac-btn-outline" onclick="return confirm('Remove this subject from the curriculum?')">Remove</button>
+                                    <button type="submit" class="ac-btn-outline" data-confirm="Remove this subject from the curriculum?">Remove</button>
                                 </form>
                             <?php else: ?>
                                 <span class="ac-muted" style="font-size:12px;">Locked (published)</span>

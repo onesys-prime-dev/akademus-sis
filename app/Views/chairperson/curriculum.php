@@ -71,7 +71,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     }
 
     /* ===== Subject table ===== */
-    .subject-table-wrap { border: 1px solid var(--color-border); border-radius: var(--radius-sm); overflow: hidden; }
+    .subject-table-wrap { border: 1px solid var(--color-border); border-radius: var(--radius-sm); overflow-x: auto; }
     table.subject-table { width: 100%; border-collapse: collapse; }
     table.subject-table th {
         text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
@@ -165,6 +165,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     #fullCatalog { display: none; margin-top: 14px; }
     #fullCatalog.open { display: block; }
     #fullCatalog .warn { font-size: 12px; color: #92400e; background: var(--color-warning-soft); border: 1px solid #fde68a; border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 12px; }
+@media (max-width: 640px) { .info-card, .modal-card .field-row { grid-template-columns: 1fr; } .subject-table { min-width: 560px; } }
 </style>
 <?= $this->endSection() ?>
 
@@ -566,7 +567,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
     async function unassignFromThisYear(code) {
         const s = subjectByCode(code);
-        if (!confirm(`Remove ${code}${s ? ' — ' + s.title : ''} from ${CONTEXT.year_level}? It stays untouched in every other year level.`)) {
+        if (!await acConfirm(`Remove ${code}${s ? ' — ' + s.title : ''} from ${CONTEXT.year_level}? It stays untouched in every other year level.`)) {
             return;
         }
 
@@ -643,7 +644,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         }
 
         const willReplace = ASSIGNED_CODES.length > 0;
-        if (!confirm(`Copy ${CONTEXT.year_level}'s subjects from ${source}?`
+        if (!await acConfirm(`Copy ${CONTEXT.year_level}'s subjects from ${source}?`
             + (willReplace ? ` This REPLACES the ${ASSIGNED_CODES.length} subject(s) currently assigned to ${CONTEXT.year_level} for ${CONTEXT.academic_year}.` : ''))) {
             return;
         }
@@ -777,7 +778,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
     async function deleteFromCatalog(code) {
         const s = subjectByCode(code);
-        if (!confirm(`Permanently delete ${code}${s ? ' — ' + s.title : ''} from the ENTIRE catalog? This removes it from every year level that currently uses it, not just ${CONTEXT.year_level}. Blocked while the subject is plotted on any schedule.`)) {
+        if (!await acConfirm(`Permanently delete ${code}${s ? ' — ' + s.title : ''} from the ENTIRE catalog? This removes it from every year level that currently uses it, not just ${CONTEXT.year_level}. Blocked while the subject is plotted on any schedule.`)) {
             return;
         }
 

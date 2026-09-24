@@ -99,7 +99,7 @@ $floorLabel = static fn (string $name): string => preg_match('/\bfloor$/i', trim
                     <div class="ac-actions-cell">
                         <form method="post" action="<?= site_url('admin/rooms/toggle-status/' . $room['room_id']) ?>">
                             <?= csrf_field() ?>
-                            <button type="submit" onclick="return confirm('Change room status?')" class="ac-btn-outline">
+                            <button type="submit" data-confirm="Change room status?" class="ac-btn-outline">
                                 <?= $room['is_active'] ? 'Deactivate' : 'Activate' ?>
                             </button>
                         </form>
@@ -108,7 +108,7 @@ $floorLabel = static fn (string $name): string => preg_match('/\bfloor$/i', trim
                         </button>
                         <form method="post" action="<?= site_url('admin/rooms/delete/' . $room['room_id']) ?>">
                             <?= csrf_field() ?>
-                            <button type="submit" onclick="return confirm('Delete <?= esc($room['name'], 'js') ?>? This cannot be undone.')" title="Delete" class="ac-icon-action ac-icon-action--danger">
+                            <button type="submit" data-confirm="Delete <?= esc($room['name'], 'attr') ?>? This cannot be undone." title="Delete" class="ac-icon-action ac-icon-action--danger">
                                 <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
                             </button>
                         </form>

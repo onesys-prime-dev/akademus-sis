@@ -70,12 +70,14 @@
 
                         <!-- Password -->
                         <div class="form-floating mb-3">
-                            <input type="password" class="form-control input" id="floatingPasswordInput" name="password" inputmode="text" autocomplete="current-password" placeholder="New Password" required>
+                            <label for="floatingPasswordInput">Password</label>
+                            <input type="password" class="form-control input" id="floatingPasswordInput" name="password" inputmode="text" autocomplete="new-password" placeholder="New Password" required>
                         </div>
 
                         <!-- Password -->
                         <div class="form-floating mb-3">
-                            <input type="password" class="form-control input" id="floatingPasswordInput" name="password_confirm" inputmode="text" autocomplete="current-password" placeholder="Retype Password" required>
+                            <label for="floatingPasswordConfirmInput">Confirm password</label>
+                            <input type="password" class="form-control input" id="floatingPasswordConfirmInput" name="password_confirm" inputmode="text" autocomplete="new-password" placeholder="Retype Password" required>
                         </div>
 
                         <div class="d-grid col-12 col-md-8 mx-auto m-3">

@@ -53,11 +53,13 @@
     <link rel="stylesheet" href="<?= base_url('assets/css/design-system/base.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/base.css') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/pages/admin-console.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/admin-console.css') ?>">
     <?= $this->renderSection('styles') ?>
+    <link rel="stylesheet" href="<?= base_url('assets/css/design-system/components.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/components.css') ?>">
+    <script defer src="<?= base_url('assets/js/interface.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/interface.js') ?>"></script>
     <script src="<?= base_url('assets/js/unsaved-changes.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/unsaved-changes.js') ?>"></script>
 </head>
 <body class="ac-page">
 
-<?= $this->include('components/loading-splash') ?>
+<a class="ac-skip-link" href="#mainContent">Skip to content</a>
 
 <?php
 /**
@@ -67,15 +69,21 @@
  * sidebar/topbar chrome instead of duplicating it per page.
  */
 $navGroups = $navGroups ?? [
-    '' => [
+    'Workspace' => [
         'dashboard'            => ['label' => 'Overview',        'icon' => 'dashboard',      'url' => 'admin/dashboard'],
+    ],
+    'Academics' => [
         'departments'          => ['label' => 'Colleges',        'icon' => 'hub',            'url' => 'admin/departments'],
         'programs'             => ['label' => 'Programs',        'icon' => 'workspace_premium', 'url' => 'admin/programs'],
         'curriculum'           => ['label' => 'Curricula',       'icon' => 'auto_stories',   'url' => 'admin/curriculum'],
         'curriculum-subjects'  => ['label' => 'Curriculum Subjects', 'icon' => 'library_books', 'url' => 'admin/curriculum-subjects'],
         'subjects'             => ['label' => 'Subjects',        'icon' => 'menu_book',      'url' => 'admin/subjects'],
+    ],
+    'People' => [
         'students'             => ['label' => 'Student Records', 'icon' => 'school',         'url' => 'admin/students'],
         'users'                => ['label' => 'User Accounts',   'icon' => 'group',          'url' => 'admin/users'],
+    ],
+    'Administration' => [
         'rooms'                => ['label' => 'Facilities',      'icon' => 'meeting_room',   'url' => 'admin/rooms'],
         'academic-years'       => ['label' => 'Academic Years',  'icon' => 'event',          'url' => 'admin/academic-years'],
         'grading-scales'       => ['label' => 'Grading Scales',  'icon' => 'grade',          'url' => 'admin/grading-scales'],
@@ -96,7 +104,9 @@ $initial       = strtoupper(substr($username, 0, 1));
 $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
 ?>
 
-<aside class="ac-sidebar">
+<button class="ac-nav-backdrop" type="button" aria-label="Close navigation" hidden></button>
+<aside class="ac-sidebar" id="acSidebar">
+    <button class="ac-nav-close ac-topbar__iconbtn" type="button" aria-label="Close navigation"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
     <div class="ac-sidebar__brand">
         <img src="<?= base_url('assets/images/logos/akademus.png') ?>" alt="Akademus" class="ac-sidebar__brand-logo">
         <div class="ac-sidebar__brand-text">
@@ -122,6 +132,7 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
 
 <main class="ac-main">
     <header class="ac-topbar">
+        <button class="ac-nav-toggle ac-topbar__iconbtn" type="button" aria-label="Open navigation" aria-controls="acSidebar" aria-expanded="false"><span class="material-symbols-outlined" aria-hidden="true">menu</span></button>
         <?php $topbarLinks = $this->renderSection('topbarLinks'); ?>
         <?php if ($topbarLinks !== ''): ?>
             <nav class="ac-topbar__links"><?= $topbarLinks ?></nav>
@@ -130,17 +141,17 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         <div class="ac-topbar__actions">
             <div class="ac-search" role="search">
                 <span class="material-symbols-outlined ac-search__icon" aria-hidden="true">search</span>
-                <label for="acSearchInput" class="sr-only">Search Akademus</label>
-                <input class="ac-search__input" id="acSearchInput" placeholder="Search Akademus..." type="text">
+                <label for="acSearchInput" class="sr-only">Find a page</label>
+                <input class="ac-search__input" id="acSearchInput" placeholder="Find a page..." type="search" autocomplete="off">
             </div>
 
             <div class="ac-topbar__icons">
                 <div class="ac-notif" id="acNotif">
-                    <button type="button" class="ac-topbar__iconbtn" id="acNotifBtn" title="Notifications" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">
+                    <button type="button" class="ac-topbar__iconbtn" id="acNotifBtn" title="Notifications" aria-label="Notifications" aria-controls="acNotifPanel" aria-expanded="false">
                         <span class="material-symbols-outlined ac-bell" id="acBellSvg" aria-hidden="true">notifications</span>
                         <span class="ac-topbar__dot" id="acNotifDot" style="display:none;"></span>
                     </button>
-                    <div class="ac-notif__panel" id="acNotifPanel" role="menu">
+                    <div class="ac-notif__panel" id="acNotifPanel" role="region" aria-label="Notifications">
                         <div class="ac-notif__head">
                             <strong>Notifications</strong>
                             <button type="button" id="acNotifMarkAll">Mark all read</button>
@@ -150,10 +161,10 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
                         </div>
                     </div>
                 </div>
-                <button type="button" class="ac-topbar__iconbtn" title="Settings" aria-label="Settings">
+                <a class="ac-topbar__iconbtn" href="<?= site_url($notifRole === 'admin' ? 'admin/academic-settings' : $notifRole . '/profile') ?>" title="<?= $notifRole === 'admin' ? 'Academic settings' : 'Your profile' ?>" aria-label="<?= $notifRole === 'admin' ? 'Academic settings' : 'Your profile' ?>">
                     <span class="material-symbols-outlined" aria-hidden="true">settings</span>
-                </button>
-                <button type="button" class="ac-topbar__iconbtn" title="Help" aria-label="Help">
+                </a>
+                <button type="button" class="ac-topbar__iconbtn" title="Help" aria-label="Help" id="acHelpBtn">
                     <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
                 </button>
             </div>
@@ -161,10 +172,10 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
             <?= $this->renderSection('headerActions') ?>
 
             <div class="ac-user-menu" id="acUserMenu">
-                <button type="button" class="ac-avatar ac-avatar--primary ac-user-menu__trigger" id="acUserMenuBtn" title="<?= esc($username) ?>" aria-haspopup="true" aria-expanded="false">
+                <button type="button" class="ac-avatar ac-avatar--primary ac-user-menu__trigger" id="acUserMenuBtn" aria-label="Account menu for <?= esc($username) ?>" title="<?= esc($username) ?>" aria-haspopup="true" aria-expanded="false">
                     <?= esc($initial) ?>
                 </button>
-                <div class="ac-user-menu__dropdown" role="menu">
+                <div class="ac-user-menu__dropdown">
                     <div class="ac-user-menu__who">
                         <p class="ac-user-menu__name"><?= esc($username) ?></p>
                         <p class="ac-user-menu__role"><?= esc($userRoleLabel) ?></p>
@@ -179,7 +190,7 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         </div>
     </header>
 
-    <div class="ac-content animate-enter">
+    <div class="ac-content" id="mainContent" tabindex="-1">
         <?= $this->renderSection('content') ?>
     </div>
 </main>
@@ -323,6 +334,8 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         modal.classList.add('is-open');
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
+        var title = modal.querySelector('.ac-modal__title');
+        if (title) { title.id = title.id || id + '-title'; modal.setAttribute('aria-labelledby', title.id); }
         var focusables = acFocusablesIn(modal);
         if (focusables.length) focusables[0].focus();
     }
@@ -425,6 +438,7 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         var bell  = document.getElementById('acBellSvg');
         var markAllBtn = document.getElementById('acNotifMarkAll');
         if (!wrap || !btn) return;
+        panel.addEventListener('click', function (e) { e.stopPropagation(); });
 
         var indexUrl    = <?= json_encode(site_url($notifRole . '/notifications')) ?>;
         var markReadUrl = <?= json_encode(site_url($notifRole . '/notifications/mark-read')) ?>;
@@ -433,11 +447,12 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         function renderList(notifications) {
             list.innerHTML = '';
             if (!notifications || notifications.length === 0) {
-                list.innerHTML = '<p class="ac-notif__empty">No notifications yet.</p>';
+                list.innerHTML = '<p class="ac-notif__empty">You’re all caught up.<br>New updates will appear here.</p>';
                 return;
             }
             notifications.forEach(function (n) {
-                var item = document.createElement('div');
+                var item = document.createElement('button');
+                item.type = 'button';
                 item.className = 'ac-notif__item' + (Number(n.is_read) === 0 ? ' is-unread' : '');
                 item.textContent = n.message;
                 item.addEventListener('click', function () {
@@ -455,7 +470,7 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         }
 
         function loadList() {
-            list.innerHTML = '<p class="ac-notif__empty">Loading…</p>';
+            list.innerHTML = '<div class="ac-notif__loading" role="status"><span class="sr-only">Loading notifications</span><span></span><span></span><span></span></div>';
             fetch(indexUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
@@ -463,7 +478,8 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
                     setDot(data.unread || 0);
                 })
                 .catch(function () {
-                    list.innerHTML = '<p class="ac-notif__empty">Could not load notifications.</p>';
+                    list.innerHTML = '<p class="ac-notif__empty">Notifications couldn’t load.</p>';
+                    var retry = document.createElement('button'); retry.type = 'button'; retry.className = 'ac-btn ac-btn-secondary'; retry.textContent = 'Try again'; retry.addEventListener('click', loadList); list.appendChild(retry);
                 });
         }
 

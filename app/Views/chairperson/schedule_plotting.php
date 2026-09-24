@@ -92,12 +92,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             --on-surface:         var(--color-text-primary);
             --on-surface-variant: var(--color-text-secondary);
             --outline:            var(--color-text-tertiary);
-            --outline-variant:    var(--color-border);
-
-            --radius-sm: var(--radius-md);
-            --radius-md: var(--radius-lg);
-            --radius-lg: var(--radius-xl);
-        }
+            --outline-variant:    var(--color-border);        }
 
         body {
             font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;

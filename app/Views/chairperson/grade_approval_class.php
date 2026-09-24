@@ -93,7 +93,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     }
 
     async function lockClass() {
-        if (!confirm('Lock these grades? Once locked, changes require a formal correction request.')) return;
+        if (!await acConfirm('Lock these grades? Once locked, changes require a formal correction request.')) return;
 
         const res = await fetch('<?= site_url('chairperson/grade-approvals/lock') ?>', {
             method: 'POST',

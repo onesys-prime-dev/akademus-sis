@@ -55,7 +55,7 @@
                             <a href="<?= site_url('admin/programs/edit/' . $program['program_id']) ?>" class="ac-btn-outline">Edit</a>
                             <form method="post" action="<?= site_url('admin/programs/toggle-status/' . $program['program_id']) ?>">
                                 <?= csrf_field() ?>
-                                <button type="submit" class="ac-btn-outline" onclick="return confirm('Change program status?')">
+                                <button type="submit" class="ac-btn-outline" data-confirm="Change program status?">
                                     <?= $program['is_active'] ? 'Deactivate' : 'Activate' ?>
                                 </button>
                             </form>

@@ -35,9 +35,8 @@
     </div>
 
     <?php if (empty($users)): ?>
-        <div class="ac-empty-panel">No accounts for this role.</div>
+        <div class="ac-empty-panel"><strong>No accounts in this view</strong><p>Choose another role, or use Create Account to add someone to Akademus.</p></div>
     <?php endif ?>
-
     <?php foreach ($users as $u): ?>
         <?php $initials = strtoupper(substr($u['username'], 0, 1) . (strpos($u['username'], ' ') !== false ? substr(strrchr($u['username'], ' '), 1, 1) : '')); ?>
         <div class="ac-dtable__row">

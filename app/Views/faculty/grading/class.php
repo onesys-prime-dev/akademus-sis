@@ -68,10 +68,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     <tr data-enrollment-id="<?= esc($row['enrollment_id']) ?>">
                         <td><?= esc($row['username']) ?></td>
                         <td>
-                            <input type="text" class="grade-input" value="<?= $g !== null ? esc($g['grade_value']) : '' ?>" <?= $locked ? 'disabled' : '' ?>>
+                            <input type="text" class="grade-input" aria-label="Grade for <?= esc($row['username']) ?>" value="<?= $g !== null ? esc($g['grade_value']) : '' ?>" <?= $locked ? 'disabled' : '' ?>>
                         </td>
                         <td>
-                            <input type="text" class="remarks-input" value="<?= $g !== null ? esc($g['remarks']) : '' ?>" <?= $locked ? 'disabled' : '' ?>>
+                            <input type="text" class="remarks-input" aria-label="Remarks for <?= esc($row['username']) ?>" value="<?= $g !== null ? esc($g['remarks']) : '' ?>" <?= $locked ? 'disabled' : '' ?>>
                         </td>
                         <td>
                             <?php if ($g !== null): ?>
@@ -135,7 +135,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     }
 
     async function submitClass() {
-        if (!confirm('Submit this class\'s grades for chairperson approval? You can still edit until it is locked.')) return;
+        if (!await acConfirm('Submit this class\'s grades for chairperson approval? You can still edit until it is locked.')) return;
 
         const saveResult = await postJSON('<?= site_url('faculty/grading/save') ?>', { ...CONTEXT, grades: collectGrades() });
         if (!saveResult.ok) {

@@ -77,7 +77,7 @@
         </div>
         <div>
             <?php if (empty($activity)): ?>
-                <div class="ac-empty-panel">Nothing recorded yet.</div>
+                <div class="ac-empty-panel"><strong>No recent changes</strong><p>Updates to colleges, programs, and accounts will appear here.</p></div>
             <?php else: ?>
                 <?php foreach ($activity as $item): ?>
                     <div class="ac-activity-row">

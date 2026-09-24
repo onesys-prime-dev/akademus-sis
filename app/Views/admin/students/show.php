@@ -148,7 +148,7 @@
                 <td><?= esc(date('M j, Y', strtotime($h['created_at']))) ?></td>
                 <td>
                     <?php if ($h['status'] === 'enrolled'): ?>
-                        <form method="post" action="<?= site_url('admin/students/' . $s['student_id'] . '/enrollments/' . $h['enrollment_id'] . '/drop') ?>" style="display:flex; gap:6px;" onsubmit="return confirm('Drop <?= esc($h['subject_code'], 'js') ?> for this student?');">
+                        <form method="post" action="<?= site_url('admin/students/' . $s['student_id'] . '/enrollments/' . $h['enrollment_id'] . '/drop') ?>" style="display:flex; gap:6px;" data-confirm="Drop <?= esc($h['subject_code'], 'attr') ?> for this student?">
                             <?= csrf_field() ?>
                             <input type="text" name="reason" class="ac-input" placeholder="Reason (required)" minlength="5" required style="min-width:150px;">
                             <button type="submit" class="ac-btn ac-btn-secondary">Drop</button>

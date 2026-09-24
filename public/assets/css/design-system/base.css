@@ -30,7 +30,7 @@
 /* Visible, consistent focus ring everywhere — never remove outline without
    replacing it. Mouse/touch users don't get the ring (:focus-visible),
    keyboard users always do. */
-:focus { outline: none; }
+:focus:not(:focus-visible) { outline: none; }
 
 :focus-visible {
     outline: 2px solid var(--color-primary);
@@ -63,3 +63,14 @@ button, a, input, select, textarea { font-family: inherit; }
         scroll-behavior: auto !important;
     }
 }
+
+/* Shared document and interaction defaults. */
+body { font-family: var(--font-family); line-height: 1.5; }
+input, select, textarea { accent-color: var(--color-primary); }
+:where(button, [role="button"]):disabled { cursor: not-allowed; }
+:where(input, select, textarea)[aria-invalid="true"] { border-color: var(--color-danger); }
+::selection { background: var(--color-primary-soft); color: var(--color-primary); }
+.ac-skip-link { position: fixed; top: 8px; left: 16px; z-index: 10000; padding: 10px 16px;
+    background: var(--color-surface); color: var(--color-primary); border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md); transform: translateY(-160%); }
+.ac-skip-link:focus { transform: none; }

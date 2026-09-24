@@ -43,14 +43,14 @@
         </button>
         <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/toggle-status') ?>">
             <?= csrf_field() ?>
-            <button type="submit" onclick="return confirm('<?= $department['is_active'] ? 'Deactivate' : 'Activate' ?> this department?')" class="ac-btn ac-btn-secondary">
+            <button type="submit" data-confirm="<?= $department['is_active'] ? 'Deactivate' : 'Activate' ?> this department?" class="ac-btn ac-btn-secondary">
                 <span class="material-symbols-outlined" style="font-size:18px;"><?= $department['is_active'] ? 'visibility_off' : 'visibility' ?></span>
                 <span><?= $department['is_active'] ? 'Deactivate' : 'Activate' ?></span>
             </button>
         </form>
         <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/delete') ?>">
             <?= csrf_field() ?>
-            <button type="submit" onclick="return confirm('Delete <?= esc($department['name'], 'js') ?>? Its chairperson/faculty will be unassigned and its programs unlinked. This cannot be undone.')" class="ac-icon-action ac-icon-action--danger" title="Delete Department" style="height:38px; width:38px;">
+            <button type="submit" data-confirm="Delete <?= esc($department['name'], 'attr') ?>? Its chairperson/faculty will be unassigned and its programs unlinked. This cannot be undone." class="ac-icon-action ac-icon-action--danger" title="Delete Department" style="height:38px; width:38px;">
                 <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
             </button>
         </form>
@@ -129,7 +129,7 @@
                                 </form>
                                 <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/faculty/' . $fm['id'] . '/delete') ?>">
                                     <?= csrf_field() ?>
-                                    <button type="submit" onclick="return confirm('Remove <?= esc($fm['username'], 'js') ?> from this department? This deletes their account.')" class="ac-icon-action ac-icon-action--danger" title="Delete">
+                                    <button type="submit" data-confirm="Remove <?= esc($fm['username'], 'attr') ?> from this department? This deletes their account." class="ac-icon-action ac-icon-action--danger" title="Delete">
                                         <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
                                     </button>
                                 </form>

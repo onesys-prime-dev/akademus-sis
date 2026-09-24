@@ -70,7 +70,7 @@
                             <?php if ($item['status'] === 'draft'): ?>
                                 <form method="post" action="<?= site_url('admin/curriculum/publish/' . $item['curriculum_id']) ?>" style="display:inline;">
                                     <?= csrf_field() ?>
-                                    <button type="submit" class="ac-btn-outline" onclick="return confirm('Publish this curriculum? It becomes immutable and the current version for its program.')">Publish</button>
+                                    <button type="submit" class="ac-btn-outline" data-confirm="Publish this curriculum? It becomes immutable and the current version for its program.">Publish</button>
                                 </form>
                             <?php else: ?>
                                 <form method="post" action="<?= site_url('admin/curriculum/new-version/' . $item['curriculum_id']) ?>" style="display:inline;">
@@ -80,7 +80,7 @@
                             <?php endif ?>
                             <form method="post" action="<?= site_url('admin/curriculum/toggle/' . $item['curriculum_id']) ?>" style="display:inline;">
                                 <?= csrf_field() ?>
-                                <button type="submit" class="ac-btn-outline" onclick="return confirm('Change curriculum visibility?')">
+                                <button type="submit" class="ac-btn-outline" data-confirm="Change curriculum visibility?">
                                     <?= $item['is_active'] ? 'Hide' : 'Show' ?>
                                 </button>
                             </form>

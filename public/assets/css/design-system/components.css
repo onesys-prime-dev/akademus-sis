@@ -1,0 +1,183 @@
+/**
+ * Shared component contract, loaded after role-specific layouts.
+ * Keep geometry for scheduling/grade entry in their own views.
+ */
+.material-symbols-outlined { font-size: 20px; line-height: 1; vertical-align: middle; }
+.ac-page { font-size: 14px; }
+.ac-sidebar { box-shadow: none; }
+.ac-sidebar__brand-name { font-weight: 650; }
+.ac-nav-item { font-weight: 500; border-radius: var(--radius-sm); }
+.ac-nav-item.is-active { font-weight: 600; }
+.ac-nav-item:active { transform: none; }
+.ac-sidebar .ac-nav-label { max-width: none; }
+.ac-topbar { padding: 12px 20px; box-shadow: var(--shadow-xs); border-radius: var(--radius-lg); }
+.ac-topbar__actions { min-width: 0; flex-wrap: wrap; gap: 12px; }
+.ac-topbar__iconbtn { width: 40px; height: 40px; border-radius: var(--radius-sm); text-decoration: none; }
+.ac-topbar__links { flex-wrap: wrap; }
+.ac-search { min-width: 0; }
+.ac-search__input { height: var(--control-height); border-radius: var(--radius-sm); border-color: var(--color-border-control); background: var(--color-surface-secondary); }
+.ac-notif__panel, .ac-user-menu__dropdown { visibility: hidden; box-shadow: var(--shadow-md); border-color: var(--color-border-control); }
+.ac-notif.is-open .ac-notif__panel, .ac-user-menu.is-open .ac-user-menu__dropdown { visibility: visible; }
+.ac-notif__item { display: block; width: 100%; border: 0; background: transparent; text-align: left; font: var(--text-body-sm); }
+.ac-notif__head strong { color: var(--color-text-primary); }
+.ac-notif__list { min-height: 100px; }
+.ac-notif__loading { display: grid; gap: 12px; padding: 20px 12px; }
+.ac-notif__loading > span:not(.sr-only) { height: 12px; background: var(--color-surface-sunken); border-radius: 4px; animation: acSkeleton 1.2s ease-in-out infinite alternate; }
+.ac-notif__loading > span:last-child { width: 65%; }
+@keyframes acSkeleton { to { opacity: .45; } }
+
+.ac-page-header { gap: var(--space-5); flex-wrap: wrap; margin-bottom: var(--space-6); }
+.ac-page-header__title, .ac-detail-header__title, .page-head h1 { font: var(--text-display); letter-spacing: -.035em; margin-top: 0; }
+.ac-page-header__sub { font: var(--text-body); color: var(--color-text-secondary); max-width: 70ch; }
+.ac-content :is(h2, h3) { line-height: 1.35; }
+.ac-content :is(.ac-stat-card__value, .ac-bento-card__value, .stat-value, .kpi-value) { font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+
+:is(.ac-btn, .ac-btn-outline, .ac-page .btn, .auth-page .btn) {
+    min-height: var(--control-height); padding: 8px 16px; gap: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-sm); font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.4;
+    text-decoration: none; transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.ac-btn-secondary, .ac-page .btn-secondary, .auth-page .btn-secondary { background: var(--color-surface); border: 1px solid var(--color-border-control); color: var(--color-text-primary); }
+.ac-btn-secondary:hover, .ac-page .btn-secondary:hover { background: var(--color-surface-secondary); border-color: var(--color-border-medium); }
+.ac-btn-ghost, .ac-btn-tertiary { background: transparent; color: var(--color-text-secondary); }
+.ac-btn-ghost:hover, .ac-btn-tertiary:hover { background: var(--color-surface-sunken); color: var(--color-text-primary); }
+:is(.ac-btn, .ac-btn-outline, .ac-page .btn, .auth-page .btn):disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+:is(.ac-btn, .ac-page .btn):active:not(:disabled) { transform: translateY(1px); }
+.ac-btn-sm, .ac-btn-outline { min-height: var(--control-height-sm); padding: 6px 12px; font-size: 12px; }
+.ac-icon-action, .ac-icon-btn, .ac-modal__close { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; min-height: 36px; border-radius: var(--radius-sm); }
+:is(.ac-btn, .ac-icon-action, .ac-icon-btn):focus-visible,
+:is(.ac-input, .field input, .field select, .field textarea, .form-control, .input):focus-visible {
+    outline: 2px solid var(--color-primary); outline-offset: 2px;
+}
+.ac-input, .ac-page .field :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea), .auth-page .form-control {
+    min-height: var(--control-height); width: 100%; max-width: 100%; padding: 9px 12px;
+    border: 1px solid var(--color-border-control); border-radius: var(--radius-sm);
+    background: var(--color-surface); color: var(--color-text-primary); font: var(--text-body);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+:is(.ac-input, .field input, .field select, .field textarea, .auth-page .form-control):focus { border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+:is(.ac-input, .auth-page .form-control):disabled { background: var(--color-surface-sunken); color: var(--color-text-secondary); cursor: not-allowed; }
+textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
+.ac-field label, .ac-page .field label, .auth-page .form-floating label { font: var(--text-label); text-transform: none; letter-spacing: 0; color: var(--color-text-secondary); display: block; margin-bottom: 8px; }
+.ac-modal__body { gap: var(--space-4); }
+.ac-page input:is([type="checkbox"], [type="radio"]), .auth-page input:is([type="checkbox"], [type="radio"]) { width: 16px; height: 16px; }
+.ac-page .field-row > *, .ac-page-header > *, .ac-toolbar > * { min-width: 0; }
+.ac-field :is(small, .hint), .field .hint { font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); }
+.ac-card, .ac-stat-card, .stat-card, .panel { padding: var(--space-6); box-shadow: none; }
+.ac-card, .ac-panel, .panel, .stat-card, .ac-bento-card { border-color: var(--color-border); }
+.spring-hover:hover { transform: none; box-shadow: var(--shadow-sm); }
+.ac-table-card, .ac-dtable { overflow-x: auto; overscroll-behavior-x: contain; }
+.ac-dtable__head, .ac-dtable__row { min-width: 880px; }
+.ac-rtable .ac-dtable__head, .ac-rtable .ac-dtable__row { min-width: 720px; }
+.ac-table th, table.grade-table th, table.schedule-table th { font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; padding: 12px 16px; background: var(--color-surface-secondary); }
+.ac-table td, table.grade-table td, table.schedule-table td { padding: 14px 16px; line-height: 1.5; border-color: var(--color-border); }
+.ac-table tbody tr:hover, table.grade-table tbody tr:hover, table.schedule-table tbody tr:hover { background: var(--color-surface-secondary); }
+.ac-dtable__head { font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.ac-badge, .ac-pill, .ac-role-badge { font-size: 12px; font-weight: 600; letter-spacing: 0; }
+.ac-pagination { flex-wrap: wrap; }
+.ac-pagination__pages { flex-wrap: wrap; }
+.ac-pagination__link { min-width: 36px; height: 36px; }
+.ac-empty-block, .ac-empty-panel, .empty-state { color: var(--color-text-secondary); padding: 40px 24px; line-height: 1.6; }
+.ac-empty-panel strong { display: block; color: var(--color-text-primary); font-size: 15px; font-weight: 600; }
+.ac-empty-panel p { margin: 8px auto 0; max-width: 48ch; }
+.ac-modal__panel, .uc-modal__panel { box-shadow: var(--shadow-lg); border-radius: var(--radius-lg); max-height: calc(100dvh - 32px); overflow-y: auto; }
+.ac-modal__title, .uc-modal__title { font: var(--text-title); margin: 0; }
+.ac-modal__subtitle { font: var(--text-body-sm); }
+.ac-modal__actions { padding-top: 16px; border-top: 1px solid var(--color-border); justify-content: flex-end; flex-wrap: wrap; }
+.ac-modal__actions .ac-btn { flex: 0 1 auto; }
+.ac-toast-container { max-width: calc(100vw - 32px); }
+.ac-toast { overflow-wrap: anywhere; }
+.ac-nav-toggle, .ac-nav-close, .ac-nav-backdrop { display: none; }
+
+/* Native confirmation dialogs preserve form validation and submitter values. */
+.ac-confirm { width: min(440px, calc(100vw - 32px)); padding: 24px; border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg); color: var(--color-text-primary); background: var(--color-surface);
+    box-shadow: var(--shadow-lg); max-height: calc(100dvh - 32px); overflow-y: auto; }
+.ac-confirm::backdrop { background: var(--color-backdrop); }
+.ac-confirm h2 { font: var(--text-title); margin: 0 0 12px; }
+.ac-confirm p { font: var(--text-body); color: var(--color-text-secondary); white-space: pre-line; }
+.ac-confirm__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; flex-wrap: wrap; }
+.ac-search-results { position: absolute; top: calc(100% + 8px); left: 0; width: max(100%, 260px); max-height: 320px; overflow-y: auto;
+    border: 1px solid var(--color-border-control); border-radius: var(--radius-md); background: var(--color-surface); padding: 6px; box-shadow: var(--shadow-md); z-index: var(--z-dropdown); }
+.ac-search-results a { display: block; padding: 10px 12px; color: var(--color-text-primary); font-size: 13px; text-decoration: none; border-radius: var(--radius-sm); }
+.ac-search-results a:hover, .ac-search-results a:focus { background: var(--color-primary-soft); color: var(--color-primary); }
+.ac-search-results p { padding: 8px 12px; font-size: 13px; color: var(--color-text-secondary); }
+
+/* Authentication shares the product's surfaces and controls. */
+.auth-page { background: var(--color-background); }
+.auth-page .auth { background: var(--color-background); padding: 32px; min-height: 100dvh; }
+.auth-page .auth::before, .auth-page .auth::after, .auth-page .auth__bubble { display: none; }
+.auth-page .auth-card { box-shadow: var(--shadow-md); border: 1px solid var(--color-border); border-radius: var(--radius-xl); }
+.auth-page .auth-card .card-title__group { align-items: flex-start; text-align: left; }
+.auth-page .auth-card .card-title { color: var(--color-text-primary); font: var(--text-display); }
+.auth-page .auth-card .card-subtitle { font-weight: 400; color: var(--color-text-secondary); }
+.auth-page .auth-card .form-control { min-height: 44px; padding: 10px 12px; border-radius: var(--radius-sm); }
+.auth-page .auth-card .auth-btn { min-height: 44px; border-radius: var(--radius-sm); font-weight: 600; }
+.auth-page .alert-danger { background: var(--color-danger-soft); color: var(--color-danger); }
+.auth-page .alert-success { background: var(--color-success-soft); color: var(--color-success); }
+.auth-page main > .container { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.auth-page main > .container > .card { width: min(100%, 480px); padding: 32px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+.auth-page .form-floating { display: flex; flex-direction: column; margin-bottom: 16px; }
+.auth-page .form-floating label { order: -1; }
+.auth-page .auth-actions { flex-wrap: wrap; gap: 12px; align-items: center; }
+.auth-page .auth-actions p { margin: 0; }
+
+@media (max-width: 1100px) {
+    .ac-sidebar { position: fixed; left: 12px; top: 12px; bottom: 12px; height: auto; width: 250px;
+        transform: translateX(calc(-100% - 24px)); visibility: hidden; transition: transform var(--transition-normal), visibility var(--transition-normal); z-index: 80; }
+    .ac-page.ac-nav-open .ac-sidebar { transform: none; visibility: visible; box-shadow: var(--shadow-lg); }
+    .ac-sidebar .ac-sidebar__brand { padding-left: 14px; padding-right: 30px; }
+    .ac-nav-toggle, .ac-nav-close { display: inline-flex; flex-shrink: 0; }
+    .ac-nav-close { position: absolute; right: 4px; top: 4px; }
+    .ac-nav-backdrop:not([hidden]) { display: block; position: fixed; inset: 0; border: 0; background: var(--color-backdrop); z-index: 75; }
+    .ac-topbar { flex-wrap: wrap; gap: 12px; }
+    .ac-topbar__actions { flex: 1; justify-content: flex-end; }
+    .ac-content { padding: 16px 20px 32px; }
+}
+@media (max-width: 640px) {
+    .ac-page { padding: 8px; gap: 8px; }
+    .ac-content { padding: 16px 8px 32px; }
+    .ac-topbar { padding: 8px; }
+    .ac-topbar__actions { gap: 8px; }
+    .ac-topbar__icons { padding-left: 0; margin-left: 0; border-left: 0; }
+    .ac-topbar__actions > .ac-btn { order: 3; white-space: normal; }
+    .ac-sidebar { width: min(280px, calc(100vw - 32px)); }
+    .ac-notif__panel { position: fixed; top: 76px; left: 16px; right: 16px; width: auto; max-height: calc(100dvh - 100px); }
+    .ac-page-header__title, .page-head h1 { font-size: 24px; }
+    .ac-card, .ac-stat-card, .stat-card, .panel { padding: 20px; }
+    .ac-dtable__row { min-width: 0 !important; }
+    .ac-cell-muted { white-space: normal; overflow-wrap: anywhere; }
+    .ac-modal { padding: 12px; align-items: center; }
+    .ac-modal__panel { border-radius: var(--radius-lg); padding: 20px; }
+    .ac-modal__actions .ac-btn { flex: 1 1 auto; }
+    .ac-page .field-row { grid-template-columns: 1fr; }
+    .ac-btn, .ac-btn-outline, .ac-page .btn, .ac-pagination__link, .ac-icon-action, .ac-icon-btn, .ac-topbar__iconbtn { min-height: 44px; }
+    .ac-icon-action, .ac-icon-btn, .ac-pagination__link, .ac-topbar__iconbtn { min-width: 44px; }
+    .ac-input, .ac-page .field :is(input, select, textarea), .auth-page .form-control { font-size: 16px; }
+    .auth-page .auth { padding: 16px; }
+    .auth-page .auth__left { padding: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ac-notif__loading > span { animation: none; }
+}
+
+/* Consistency review: preserve action space and readable mobile row labels. */
+.ac-utable .ac-dtable__head, .ac-utable .ac-dtable__row {
+    grid-template-columns: minmax(180px, 2fr) minmax(200px, 2fr) 110px 140px 100px 148px;
+    min-width: 990px;
+}
+.ac-dash-grid { align-items: start; }
+.ac-alert-card { background: var(--color-warning-soft); }
+.ac-segmented a { min-height: 36px; display: inline-flex; align-items: center; }
+@media (max-width: 640px) {
+    .ac-user-cell[data-label]::before, .ac-actions-cell[data-label]::before { flex-basis: 100%; }
+    .ac-nav-toggle { align-self: flex-start; }
+    .ac-segmented a { min-height: 44px; }
+}
+
+/* Local workflow dialogs use the same viewport and surface contract. */
+.ac-page .modal-backdrop { background: var(--color-backdrop); }
+.ac-page .modal-card { max-height: calc(100dvh - 32px); overflow-y: auto; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
+.ac-page .modal-actions { flex-wrap: wrap; }
+.ac-page .modal-btn { min-height: var(--control-height); border-radius: var(--radius-sm); font-weight: 600; }

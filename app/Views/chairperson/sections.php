@@ -348,7 +348,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     }
 
     async function deleteSection(sectionId, label) {
-        if (!confirm(`Delete "${label}"? This cannot be undone.`)) {
+        if (!await acConfirm(`Delete "${label}"? This cannot be undone.`)) {
             return;
         }
 

@@ -78,6 +78,7 @@
 
                         <!-- Email -->
                         <div class="form-floating mb-3">
+                            <label for="floatingEmailInput">Email address</label>
                             <input type="email" class="form-control input" id="floatingEmailInput" name="email" inputmode="email" autocomplete="email" placeholder="<?= lang('Auth.email') ?>" value="<?= old('email') ?>" required>
                         </div>
 

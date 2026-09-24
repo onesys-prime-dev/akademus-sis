@@ -255,7 +255,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     }
 
     async function unmergeSection(offeringId, sectionId, label) {
-        if (!confirm(`Remove Section ${label} from this merged class?`)) {
+        if (!await acConfirm(`Remove Section ${label} from this merged class?`)) {
             return;
         }
 
