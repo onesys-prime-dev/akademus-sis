@@ -144,6 +144,20 @@
         button.textContent = <?= json_encode(lang('Auth.login')) ?>;
         button.removeAttribute('aria-busy');
     });
+    <?php if (session('error') !== null || session('errors') !== null) : ?>
+    (function () {
+        var fields = document.querySelectorAll('#loginForm .form-control');
+        fields.forEach(function (field) {
+            field.classList.add('is-shaking');
+            field.addEventListener('animationend', function () {
+                field.classList.remove('is-shaking');
+            }, { once: true });
+            field.addEventListener('input', function () {
+                field.classList.remove('is-shaking');
+            }, { once: true });
+        });
+    })();
+    <?php endif ?>
     document.getElementById('loginForm').addEventListener('submit', function () {
         document.getElementById('loginSubmit').disabled = true;
         document.getElementById('loginSubmit').textContent = 'Signing in…';

@@ -619,9 +619,25 @@
     35%, 100% { transform: translateX(120%); }
 }
 
+@keyframes fieldShake {
+    0%, 100% { transform: translateX(0); }
+    15%      { transform: translateX(-9px); }
+    30%      { transform: translateX(8px); }
+    45%      { transform: translateX(-6px); }
+    60%      { transform: translateX(5px); }
+    75%      { transform: translateX(-3px); }
+    90%      { transform: translateX(2px); }
+}
+
+.auth-card .form-control.is-shaking {
+    animation: fieldShake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    border-color: var(--bs-danger, #dc3545);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .auth-card,
-    .auth__right--hero::after {
+    .auth__right--hero::after,
+    .auth-card .form-control.is-shaking {
         animation: none;
     }
 }
