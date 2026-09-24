@@ -10,27 +10,27 @@
 
 :root {
     /* ---- Brand / primary ---- */
-    --color-primary:           #0037b0;
-    --color-primary-hover:     #002d8f;
-    --color-primary-soft:      #eaf0fc;
-    --color-primary-soft-text: #0037b0;
+    --color-primary:           #174ea6;
+    --color-primary-hover:     #123f88;
+    --color-primary-soft:      #edf3fc;
+    --color-primary-soft-text: #174ea6;
 
     /* ---- Surfaces ---- */
-    --color-background:        #f6f7f9;
+    --color-background:        #f5f6f8;
     --color-surface:            #ffffff;
     --color-surface-secondary:  #fafbfc;
-    --color-surface-sunken:     #f2f4f6;
+    --color-surface-sunken:     #f1f3f5;
     --color-surface-overlay:    rgba(255, 255, 255, .7);
 
     /* ---- Text ---- */
-    --color-text-primary:    #191c1e;
-    --color-text-secondary:  #515f74;
-    --color-text-tertiary:   #64748b;
+    --color-text-primary:    #1d2433;
+    --color-text-secondary:  #566174;
+    --color-text-tertiary:   #748094;
     --color-text-on-primary: #ffffff;
 
     /* ---- Borders / separators ---- */
-    --color-border:         #e5e9ef;
-    --color-border-control: #e2e8f0;
+    --color-border:         #e3e7ed;
+    --color-border-control: #d9dee7;
     --color-border-medium:  #cbd5e1;
     --color-border-strong:  #c4c5d7;
     --separator:            #eceef0;
@@ -54,10 +54,10 @@
     --color-info-soft:       #eff6ff;
 
     /* ---- Radius ---- */
-    --radius-sm:  8px;
-    --radius-md:  10px;
-    --radius-lg:  14px;
-    --radius-xl:  18px;
+    --radius-sm:  6px;
+    --radius-md:  8px;
+    --radius-lg:  10px;
+    --radius-xl:  12px;
     --radius-pill: 999px;
 
     /* ---- Spacing (4px rhythm) ---- */
@@ -82,9 +82,9 @@
     --text-caption: 500 12px/1.4 var(--font-family);
 
     /* ---- Shadows (restrained — mostly for floating elements) ---- */
-    --shadow-xs: 0 1px 2px rgba(0,0,0,.05);
-    --shadow-sm: 0 2px 12px rgba(0,0,0,.03), 0 0 1px rgba(0,0,0,.1);
-    --shadow-md: 0 8px 24px -6px rgba(0,0,0,.08), 0 0 1px rgba(0,0,0,.1);
+    --shadow-xs: 0 1px 2px rgba(16,24,40,.04);
+    --shadow-sm: 0 1px 3px rgba(16,24,40,.04), 0 1px 2px rgba(16,24,40,.03);
+    --shadow-md: 0 12px 28px -10px rgba(16,24,40,.18), 0 2px 6px rgba(16,24,40,.04);
     --shadow-lg: 0 20px 50px -12px rgba(0,0,0,.25);
 
     /* ---- Motion ----
@@ -108,7 +108,7 @@
        them pointing at the new scale instead of duplicating values. */
     --transition-fast:   var(--motion-fast) var(--ease-standard);
     --transition-normal: var(--motion-normal) var(--ease-standard);
-    --focus-ring: 0 0 0 3px rgba(0, 55, 176, .18);
+    --focus-ring: 0 0 0 3px rgba(23, 78, 166, .16);
     --control-height: 40px;
     --control-height-sm: 32px;
     --color-danger-hover: #b91c1c;

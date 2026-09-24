@@ -824,8 +824,9 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .ai-status { font-size: 12px; color: var(--on-surface-variant); }
         .ai-fill { font-size: 12px; padding: 4px 10px; }
         .suggestion { margin-bottom: 10px; }
-        .suggestion .impact.good { background: var(--success, #16a34a); }
-        .suggestion .impact.warn { background: var(--error, #dc2626); }
+        .suggestion .impact { font-size: 11px; padding: 3px 10px; letter-spacing: .02em; }
+        .suggestion .impact.good { background: #15803d; color: #fff; }
+        .suggestion .impact.warn { background: #b91c1c; color: #fff; }
         .suggestion .ai-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         .suggestion .ai-apply { background: var(--primary-container); color: #fff; border: 0; border-radius: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
         .suggestion .ai-apply:hover { filter: brightness(1.1); }
@@ -1545,6 +1546,124 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
            per element made every subject card its own tiny scroll box,
            clipping wrapped two-line titles. */
         .panel-scroll > *:last-child { margin-bottom: 0; }
+
+        /* Quiet-premium plotting workspace -------------------------------- */
+        .ac-content { padding-top: 28px; }
+        .plotting-page-head { align-items: flex-start; margin-bottom: 22px; }
+        .plotting-page-head .ac-page-header__title { font-size: 27px; font-weight: 650; letter-spacing: -.025em; }
+        .plotting-page-head .ac-page-header__sub { margin-top: 5px; }
+        .plotting-page-actions { max-width: 760px; gap: 10px; }
+        .plotting-page-actions__buttons { gap: 6px; }
+        .plotting-page-actions .btn {
+            min-height: 38px; padding: 7px 11px; border-color: var(--color-border-control);
+            background: var(--color-surface); color: var(--color-text-secondary); font-weight: 600;
+        }
+        .plotting-page-actions .btn:hover { border-color: var(--color-border-medium); background: var(--color-surface-secondary); color: var(--color-text-primary); }
+        .approval-badge { min-width: 18px; padding: 1px 5px; background: var(--color-danger); }
+        .approval-badge.zero { background: var(--color-surface-sunken); color: var(--color-text-tertiary); }
+        .sync-status {
+            min-height: 32px; padding: 5px 10px; border-color: #d9e8de; border-radius: var(--radius-pill);
+            background: #f4faf6; color: var(--color-text-secondary); font-weight: 500;
+        }
+        .sync-status .sync-dot { width: 7px; height: 7px; }
+
+        .filters {
+            display: grid; grid-template-columns: minmax(150px, .8fr) minmax(120px, .65fr) minmax(230px, 1.4fr) minmax(145px, .8fr) minmax(130px, .7fr);
+            gap: 12px; margin: 0 0 18px; padding: 16px 18px; border-radius: var(--radius-lg); box-shadow: none;
+        }
+        .filters > div { min-width: 0; }
+        .filters label { margin-bottom: 6px; color: var(--color-text-tertiary); font-size: 10px; letter-spacing: .055em; }
+        .filters select {
+            width: 100%; min-width: 0; min-height: 38px; padding: 7px 32px 7px 10px;
+            border-color: var(--color-border-control); border-radius: var(--radius-sm);
+            background: var(--color-surface-secondary); color: var(--color-text-primary); font-size: 12.5px;
+        }
+        .filters select:hover { border-color: var(--color-border-medium); }
+        .filters select:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+        .readonly-banner { margin-bottom: 18px; padding: 11px 14px; border-color: #ead7ad; box-shadow: none; background: var(--color-warning-soft); }
+
+        .layout {
+            grid-template-columns: 250px minmax(560px, 1fr) 300px;
+            gap: 14px; padding: 0; align-items: start;
+        }
+        .layout > .panel {
+            padding: 0; border-color: var(--color-border); border-radius: var(--radius-lg); box-shadow: none; overflow: hidden;
+        }
+        .subject-panel, .assistant-panel { position: sticky; top: 0; }
+        .layout > .panel > .panel-scroll { padding: 14px; }
+        .subject-panel > .panel-scroll, .assistant-panel > .panel-scroll { max-height: calc(100dvh - 285px); overflow-y: auto; }
+        .rail-head, .grid-toolbar, .assistant-panel > .ai-title {
+            min-height: 56px; margin: 0; padding: 14px 16px; border-bottom: 1px solid var(--color-border); background: var(--color-surface);
+        }
+        .rail-head h2, .grid-toolbar h2, .assistant-panel > .ai-title { margin: 0; font-size: 13.5px; font-weight: 650; letter-spacing: -.01em; }
+        .rail-hint { margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-secondary); color: var(--color-text-secondary); line-height: 1.5; }
+        .rail-btn { padding: 5px 8px; border: 1px solid var(--color-border-control); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-primary); font-weight: 600; }
+        .rail-btn:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
+
+        .subject { margin-bottom: 7px; padding: 11px 11px 11px 14px; border-color: var(--color-border); border-radius: var(--radius-sm); box-shadow: none; }
+        .subject:hover { border-color: var(--color-border-medium); box-shadow: var(--shadow-xs); transform: translateY(-1px); }
+        .subject::before { width: 3px; }
+        .subject .code { padding: 2px 0; background: transparent; font-size: 11px; }
+        .subject .title { margin-top: 6px; font-size: 12.5px; font-weight: 650; line-height: 1.35; }
+        .subject .meta, .subject .units { font-size: 11px; }
+        .lab-badge { border-radius: 3px; }
+        .plotted-units { margin: 0; padding: 13px 16px; border-top: 1px solid var(--color-border); background: var(--color-surface-secondary); color: var(--color-text-secondary); }
+        .plotted-units b { color: var(--color-text-primary); font-size: 14px; }
+
+        .schedule .panel-scroll { padding: 0; }
+        .grid-toolbar { flex-wrap: nowrap; }
+        .class-count { display: inline-block; margin-left: 5px; }
+        .room-legend { justify-content: flex-end; gap: 10px; font-size: 10.5px; }
+        .room-legend i { width: 7px; height: 7px; border-radius: 2px; }
+        .grid { min-width: 850px; }
+        .grid .head { padding: 11px 4px; border-color: var(--color-border); background: var(--color-surface-secondary); font-size: 10px; letter-spacing: .055em; }
+        .grid .time { padding-right: 9px; border-color: var(--color-border); background: var(--color-surface-secondary); color: var(--color-text-tertiary); }
+        .day-col { background: var(--color-surface); }
+        .slot { border-color: #e8ebf0; }
+        .slot:nth-child(odd) { border-bottom-style: solid; border-bottom-color: rgba(227, 231, 237, .55); }
+        .block { border-radius: 5px; box-shadow: none; background: var(--bg); }
+        .block:hover { box-shadow: var(--shadow-sm); }
+        .block.ghost { background: #f1f3f6; opacity: .85; }
+
+        .assistant-panel > .ai-title { display: flex; }
+        .ai-spark { width: 24px; height: 24px; border-radius: 5px; background: var(--color-primary); box-shadow: none; }
+        .context-card { margin-bottom: 12px; padding: 11px 12px; border-color: var(--color-border); border-left: 3px solid var(--color-primary); box-shadow: none; }
+        .legend { padding: 0 2px; line-height: 1.5; }
+        .ai-tools { margin: 12px 0; }
+        .ai-icon-btn { min-height: 34px; border-radius: var(--radius-sm); color: var(--color-text-secondary); }
+        .ai-rules { border-radius: var(--radius-md); box-shadow: none; }
+        .ai-head { border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-secondary); }
+        .suggestion { border-radius: var(--radius-md); box-shadow: none; }
+        .suggestion:hover { border-color: var(--color-border-medium); box-shadow: var(--shadow-xs); transform: none; }
+        .suggestion .ai-apply { background: var(--color-primary); border-radius: var(--radius-sm); box-shadow: none; }
+
+        @media (max-width: 1500px) {
+            .layout { grid-template-columns: 240px minmax(560px, 1fr); }
+            .assistant-panel { grid-column: 1 / -1; position: static; }
+            .assistant-panel > .panel-scroll { max-height: none; display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 0 18px; }
+            .assistant-panel .context-card, .assistant-panel .legend, .assistant-panel .ai-tools, .assistant-panel .ai-rules { grid-column: 1; }
+            .assistant-panel .ai-head, .assistant-panel #aiSuggestions { grid-column: 2; }
+            .assistant-panel .ai-head { grid-row: 1; margin-top: 0; }
+            .assistant-panel #aiSuggestions { grid-row: 2 / span 8; }
+        }
+        @media (max-width: 1050px) {
+            .plotting-page-actions { width: 100%; max-width: none; justify-content: space-between; }
+            .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .filters > div:nth-child(3) { grid-column: 1 / -1; }
+            .layout { grid-template-columns: 1fr; }
+            .subject-panel, .assistant-panel { grid-column: 1; }
+            .subject-panel { position: static; }
+            .subject-panel > .panel-scroll { max-height: 320px; }
+            .assistant-panel > .panel-scroll { display: block; max-height: none; }
+        }
+        @media (max-width: 680px) {
+            .ac-content { padding-top: 22px; }
+            .plotting-page-actions__buttons { grid-template-columns: 1fr 1fr; width: 100%; }
+            .filters { grid-template-columns: 1fr; padding: 14px; }
+            .filters > div:nth-child(3) { grid-column: auto; }
+            .grid-toolbar { align-items: flex-start; flex-direction: column; }
+            .room-legend { justify-content: flex-start; }
+        }
     </style>
 <?= $this->endSection() ?>
 
@@ -1581,16 +1700,16 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
     <form class="filters" method="get" action="<?= site_url('chairperson/dashboard') ?>" id="contextForm" data-no-dirty-tracking>
         <div>
-            <label>Academic Year</label>
-            <select name="ay_label" class="context-select">
+            <label for="plotAcademicYear">Academic Year</label>
+            <select name="ay_label" class="context-select" id="plotAcademicYear">
                 <?php foreach ($filters['academic_year_labels'] as $label): ?>
                     <option <?= $label === $selected['ay_label'] ? 'selected' : '' ?>><?= esc($label) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
         <div>
-            <label>Semester</label>
-            <select name="semester" class="context-select">
+            <label for="plotSemester">Semester</label>
+            <select name="semester" class="context-select" id="plotSemester">
                 <?php foreach ($filters['semester'] as $option): ?>
                     <option <?= $option === $selected['semester'] ? 'selected' : '' ?>><?= esc($option) ?></option>
                 <?php endforeach; ?>
@@ -1605,8 +1724,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         ?>
         <?php foreach ($filterLabels as $name => $label): ?>
             <div>
-                <label><?= esc($label) ?></label>
-                <select name="<?= esc($name, 'attr') ?>" class="context-select">
+                <label for="plot-<?= esc($name, 'attr') ?>"><?= esc($label) ?></label>
+                <select name="<?= esc($name, 'attr') ?>" class="context-select" id="plot-<?= esc($name, 'attr') ?>">
                     <?php foreach ($filters[$name] as $option): ?>
                         <option <?= $option === $selected[$name] ? 'selected' : '' ?>><?= esc($option) ?></option>
                     <?php endforeach; ?>
@@ -1625,7 +1744,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     <main class="layout">
 
         <!-- Left rail: curriculum subjects (draggable) -->
-        <aside class="panel">
+        <aside class="panel subject-panel">
             <div class="rail-head">
                 <h2>Curriculum Subjects</h2>
                 <a class="rail-btn" style="display:inline-block; text-decoration:none;" href="<?= site_url('chairperson/curriculum') . '?' . http_build_query($selected) ?>">
@@ -1700,7 +1819,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         </section>
 
         <!-- Right rail: AI scheduling assistant -->
-        <aside class="panel">
+        <aside class="panel assistant-panel">
             <h2 class="ai-title"><span class="ai-spark" aria-hidden="true">✦</span> AI Scheduling Assistant</h2>
 
             <div class="panel-scroll">
