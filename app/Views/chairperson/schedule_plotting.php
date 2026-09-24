@@ -3172,6 +3172,13 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
                 if (response.ok && result.ok) {
                     setSync('saved', 'All changes saved');
+
+                    // Blocks for subjects no longer in this term's curriculum
+                    // were removed by the server; refresh so the grid matches.
+                    if (Array.isArray(result.dropped) && result.dropped.length > 0) {
+                        showToast('Removed outdated block(s) no longer in this term\'s curriculum: ' + result.dropped.join(', ') + '.', 'success');
+                        await reloadFromServer();
+                    }
                 } else {
                     // Server rejected the change (e.g. a conflict won the
                     // race): fall back to the server's truth.

@@ -1378,6 +1378,27 @@ class ChairpersonController extends BaseController
 
         $subjectsByCode = array_column($this->contextSubjects($context['academic_year'], $context['program'], $context['year_level']), null, 'code');
 
+        // Subjects this section already has plotted. If the curriculum has since
+        // moved on (a new published version, a subject moved to another term),
+        // these rows become "stale": still stored, but no longer valid. They
+        // must not make every future save fail — that would leave the section
+        // impossible to edit or clean up — so a save drops them and says so.
+        $alreadyPlotted = array_column(
+            db_connect()->table('plotted_schedules')
+                ->select('subject_code')
+                ->where([
+                    'academic_year' => $context['academic_year'],
+                    'program'       => $context['program'],
+                    'year_level'    => $context['year_level'],
+                    'section'       => $context['section'],
+                ])
+                ->distinct()
+                ->get()
+                ->getResultArray(),
+            'subject_code'
+        );
+        $dropped = [];
+
         $blocks = [];
 
         foreach ($payload['blocks'] as $block) {
@@ -1398,6 +1419,14 @@ class ChairpersonController extends BaseController
             // The subject must exist in the curriculum; its details are
             // canonicalized from the curriculum, not trusted from the client.
             if (! isset($subjectsByCode[$block['code']])) {
+                // Stale (already stored for this section) → drop it. A subject
+                // that was never plotted here is still rejected as invalid.
+                if (in_array($block['code'], $alreadyPlotted, true)) {
+                    $dropped[$block['code']] = true;
+
+                    continue;
+                }
+
                 return $this->fail("Unknown subject: {$block['code']}");
             }
 
@@ -1657,7 +1686,12 @@ class ChairpersonController extends BaseController
             }
         }
 
-        return $this->response->setJSON(['ok' => true, 'saved' => count($rows)]);
+        return $this->response->setJSON([
+            'ok'      => true,
+            'saved'   => count($rows),
+            // Subjects removed because they're no longer in this term's curriculum.
+            'dropped' => array_keys($dropped),
+        ]);
     }
 
     /**
