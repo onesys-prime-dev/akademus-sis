@@ -1,0 +1,121 @@
+/* Scoped to the faculty availability workflow; shell and other pages are unchanged. */
+.faculty-availability { max-width: 1200px; margin: 0 auto; color: var(--color-text-primary); }
+.faculty-availability .page-head { margin-bottom: 24px; }
+.faculty-availability .page-head h1 { font-size: 26px; font-weight: 650; letter-spacing: -.02em; margin: 0 0 8px; }
+.faculty-availability .page-head p { margin: 0; color: var(--color-text-secondary); font-size: 14px; }
+.faculty-availability .availability-sections { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 16px; }
+.faculty-availability .availability-sections a { padding: 4px 0; color: var(--color-primary); font-size: 13px; text-decoration: none; }
+.faculty-availability .availability-sections a:hover { text-decoration: underline; }
+.faculty-availability .availability-section h2 { scroll-margin-top: 20px; }
+.faculty-availability .term-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 0 0 24px; border-bottom: 1px solid var(--color-border); }
+.faculty-availability .term-bar label { font-size: 12px; color: var(--color-text-secondary); }
+.faculty-availability select, .faculty-availability input { min-height: 36px; padding: 8px 10px; border: 1px solid var(--color-border-control); border-radius: 4px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; max-width: 100%; }
+.faculty-availability .term-bar select { max-width: 370px; font-size: 13px; }
+.faculty-availability .term-pill { font-size: 12px; color: var(--color-text-secondary); }
+.faculty-availability .term-pill.is-active { color: var(--color-success); }
+.faculty-availability .term-pill.is-upcoming { color: var(--color-warning); }
+.faculty-availability .copy-group { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.faculty-availability .copy-group select { max-width: 290px; }
+.faculty-availability .copy-feedback { flex-basis: 100%; margin: 0; font-size: 13px; color: var(--color-text-secondary); }
+.faculty-availability .copy-feedback.is-error { color: var(--color-danger); }
+.faculty-availability .availability-section { margin-top: 28px; padding: 24px; background: var(--color-surface); border-radius: 8px; }
+.faculty-availability .availability-section h2 { font-size: 18px; font-weight: 650; margin: 0 0 6px; }
+.faculty-availability .panel-sub { font-size: 13px; line-height: 1.5; color: var(--color-text-secondary); margin: 0 0 20px; }
+.faculty-availability .panel-head-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.faculty-availability .availability-summary { margin: 0; font-size: 13px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.faculty-availability .tool-strip { padding: 12px 0; border-bottom: 1px solid var(--color-border); }
+.faculty-availability .preset-group { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.faculty-availability .preset-group .lbl { font-size: 12px; color: var(--color-text-secondary); margin-right: 8px; }
+.faculty-availability :is(.preset-btn, .copy-btn) { min-height: 36px; padding: 8px 12px; border: 0; border-radius: 4px; background: var(--color-surface-secondary); color: var(--color-primary); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
+.faculty-availability :is(.preset-btn, .copy-btn):hover { background: var(--color-primary-soft); }
+.faculty-availability .preset-btn.clear { margin-left: auto; background: transparent; color: var(--color-text-secondary); }
+.faculty-availability .preset-btn.clear:hover { color: var(--color-danger); }
+.faculty-availability .avail-row { display: grid; grid-template-columns: minmax(270px, 1fr) minmax(330px, 1fr) 160px; align-items: center; gap: 12px 20px; padding: 16px 0; border-bottom: 1px solid var(--color-border); }
+.faculty-availability .avail-day-group { display: grid; grid-template-columns: 112px minmax(140px, 180px); align-items: center; gap: 12px; }
+.faculty-availability .avail-day { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+.faculty-availability .avail-day::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--color-border-medium); flex: none; }
+.faculty-availability .is-available .avail-day::before { background: var(--color-success); }
+.faculty-availability .is-unavailable .avail-day::before { background: var(--color-text-secondary); }
+.faculty-availability .day-status { width: 100%; font-size: 13px; }
+.faculty-availability .avail-time-group { display: flex; align-items: center; gap: 8px; }
+.faculty-availability input[type="time"] { width: 120px; min-width: 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+.faculty-availability :is(input, button):disabled { color: var(--color-text-tertiary); background: var(--color-surface-secondary); cursor: not-allowed; }
+.faculty-availability .to, .faculty-availability .avail-hrs-badge { color: var(--color-text-secondary); font-size: 12px; white-space: nowrap; }
+.faculty-availability .avail-hrs-badge { min-width: 36px; font-variant-numeric: tabular-nums; }
+.faculty-availability .avail-copy-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; flex: none; border: 0; border-radius: 4px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.faculty-availability .avail-copy-btn:hover:not(:disabled) { color: var(--color-primary); background: var(--color-primary-soft); }
+.faculty-availability .avail-copy-btn .material-symbols-outlined { font-size: 16px; }
+.faculty-availability .avail-notes { min-width: 0; font-size: 12px; color: var(--color-text-secondary); }
+.faculty-availability .avail-notes summary { cursor: pointer; padding: 8px 0; }
+.faculty-availability .avail-notes[open] { grid-column: 1 / -1; }
+.faculty-availability .avail-notes input { width: 100%; max-width: 640px; margin-top: 4px; }
+.faculty-availability .heatmap-wrap { margin-top: 24px; overflow-x: auto; }
+.faculty-availability .heatmap-head h3 { font-size: 14px; font-weight: 600; margin: 0; }
+.faculty-availability .heatmap-head p { font-size: 12px; color: var(--color-text-secondary); margin: 4px 0 16px; }
+.faculty-availability .heatmap { min-width: 600px; }
+.faculty-availability .heatmap-row { display: grid; grid-template-columns: 40px 1fr; align-items: center; gap: 12px; min-height: 30px; }
+.faculty-availability .hm-day { font-size: 12px; color: var(--color-text-secondary); }
+.faculty-availability .heatmap-axis { position: relative; height: 24px; margin-left: 52px; color: var(--color-text-secondary); font-size: 11px; }
+.faculty-availability .heatmap-axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.faculty-availability .heatmap-axis span:first-child { transform: none; }
+.faculty-availability .heatmap-axis span:last-child { transform: translateX(-100%); }
+.faculty-availability .heatmap-track { position: relative; height: 30px; border-bottom: 1px solid var(--color-border); }
+.faculty-availability .heatmap-tick { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--color-border); }
+.faculty-availability .heatmap-block { position: absolute; top: 5px; height: 20px; border-left: 2px solid var(--color-success); background: var(--color-success-soft); color: var(--color-success); border-radius: 2px; font-size: 11px; padding: 2px 6px; overflow: hidden; white-space: nowrap; }
+.faculty-availability .heatmap-empty { position: relative; font-size: 11px; color: var(--color-text-tertiary); line-height: 30px; padding-left: 8px; }
+.faculty-availability .pref-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.faculty-availability .pref-search { position: relative; flex: 0 1 280px; }
+.faculty-availability .pref-search input { width: 100%; padding-left: 32px; font-size: 13px; }
+.faculty-availability .pref-search .material-symbols-outlined { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 18px; color: var(--color-text-secondary); }
+.faculty-availability .pref-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.faculty-availability .pref-tab { padding: 10px 8px; min-height: 40px; background: transparent; border: 0; border-bottom: 2px solid transparent; font-size: 12px; color: var(--color-text-secondary); cursor: pointer; }
+.faculty-availability .pref-tab.active { border-bottom-color: var(--color-primary); color: var(--color-primary); font-weight: 600; }
+.faculty-availability .subj-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 0; border-bottom: 1px solid var(--color-border); }
+.faculty-availability .subj-row.is-hidden { display: none; }
+.faculty-availability .subj-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.faculty-availability .subj-code-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; }
+.faculty-availability .subj-code { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+.faculty-availability .subj-units, .faculty-availability .subj-desc { font-size: 12px; color: var(--color-text-secondary); }
+.faculty-availability .subj-title { font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.faculty-availability .pref-pills { display: flex; gap: 4px; align-items: center; flex: none; }
+.faculty-availability :is(.pref-pill, .pref-pill-reset) { min-height: 36px; border: 0; border-radius: 4px; background: transparent; padding: 8px 12px; font-size: 12px; color: var(--color-text-secondary); cursor: pointer; }
+.faculty-availability .pref-pill.active { color: var(--color-primary); background: var(--color-primary-soft); font-weight: 600; box-shadow: inset 0 -2px var(--color-primary); }
+.faculty-availability .pref-pill:hover:not(.active), .faculty-availability .pref-tab:hover { background: var(--color-surface-secondary); }
+.faculty-availability .pref-pill-reset { padding: 8px; display: inline-flex; align-items: center; }
+.faculty-availability .pref-pill-reset:hover { color: var(--color-danger); }
+.faculty-availability .save-row { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; background: var(--color-surface); border-top: 1px solid var(--color-border); padding: 16px 0; margin-top: 20px; z-index: 3; }
+.faculty-availability .save-status { margin-right: auto; font-size: 12px; color: var(--color-text-secondary); }
+.faculty-availability .save-row .btn { border-radius: 4px; }
+.faculty-availability [hidden] { display: none !important; }
+.faculty-availability :is(button, input, select, summary):focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+@media (max-width: 1400px) {
+    .faculty-availability .avail-row { grid-template-columns: minmax(260px, 1fr) minmax(330px, 1fr); }
+    .faculty-availability .avail-notes { grid-column: 1 / -1; }
+    .faculty-availability .copy-group { flex-basis: 100%; margin-left: 0; }
+}
+@media (max-width: 760px) {
+    .faculty-availability .availability-section { padding: 20px 16px; }
+    .faculty-availability .avail-row { grid-template-columns: 1fr; gap: 8px; }
+    .faculty-availability .avail-day-group { grid-template-columns: 1fr 160px; }
+    .faculty-availability .avail-time-group { display: grid; grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr); }
+    .faculty-availability input[type="time"] { width: 100%; }
+    .faculty-availability .avail-copy-btn { grid-column: 3; justify-self: end; }
+    .faculty-availability .subj-row { flex-direction: column; align-items: stretch; gap: 12px; }
+    .faculty-availability .pref-pills { flex-wrap: wrap; }
+    .faculty-availability .pref-search { flex-basis: 100%; }
+    .faculty-availability .term-bar select { width: 100%; max-width: 100%; min-width: 0; }
+    .faculty-availability .copy-group { width: 100%; }
+    .faculty-availability .copy-group label { flex-basis: 100%; }
+    .faculty-availability .copy-group select { flex: 1; width: 0; }
+    .faculty-availability :is(button, input, select) { min-height: 44px; }
+    .faculty-availability input { font-size: 16px; }
+    .faculty-availability .preset-btn.clear { margin-left: 0; }
+    .faculty-availability .save-status { flex-basis: 100%; }
+    .faculty-availability .avail-notes summary { min-height: 44px; display: flex; align-items: center; }
+}
+@media (max-width: 360px) {
+    .faculty-availability .avail-day-group { grid-template-columns: 1fr; gap: 8px; }
+    .faculty-availability .avail-time-group input { grid-column: 1 / -1; }
+    .faculty-availability .avail-time-group .to { grid-column: 1 / -1; font-size: 0; }
+    .faculty-availability .avail-time-group .to::after { content: 'to'; font-size: 12px; }
+}
