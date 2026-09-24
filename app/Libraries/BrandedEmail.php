@@ -179,20 +179,7 @@ class BrandedEmail
     {
         try {
             $mailer = service('email');
-            $mailer->clear(true);
-
-            $header = FCPATH . self::HEADER_IMAGE;
-            $src    = '';
-
-            if (is_file($header)) {
-                $mailer->attach($header, 'inline', 'akademus-header.jpg', 'image/jpeg');
-                $src = 'cid:' . $mailer->setAttachmentCID($header);
-            }
-
-            $mailer->setTo($to);
-            $mailer->setSubject($subject);
-            $mailer->setMessage($this->render($content, $src));
-            $mailer->setAltMessage($this->renderText($content));
+            $this->prepare($mailer, $to, $subject, $content);
 
             if ($mailer->send(false)) {
                 return true;
@@ -204,6 +191,33 @@ class BrandedEmail
         }
 
         return false;
+    }
+
+    /**
+     * Fill a mailer with the recipient, subject, HTML + text bodies and the
+     * inline header image. Split out from send() so the assembled message can
+     * be inspected without touching SMTP.
+     */
+    public function prepare(\CodeIgniter\Email\Email $mailer, string $to, string $subject, array $content): void
+    {
+        $mailer->clear(true);
+
+        $header = FCPATH . self::HEADER_IMAGE;
+        $src    = '';
+
+        if (is_file($header)) {
+            // Do NOT pass a MIME type here: CodeIgniter then treats the first
+            // argument as the file's raw *contents* instead of its path (and
+            // would embed the path text as the "image"). Without it, the file
+            // is read from disk and its type is taken from the extension.
+            $mailer->attach($header, 'inline', 'akademus-header.jpg');
+            $src = 'cid:' . $mailer->setAttachmentCID($header);
+        }
+
+        $mailer->setTo($to);
+        $mailer->setSubject($subject);
+        $mailer->setMessage($this->render($content, $src));
+        $mailer->setAltMessage($this->renderText($content));
     }
 
     // Heredoc can't call constants directly.

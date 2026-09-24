@@ -77,4 +77,42 @@ final class BrandedEmailTest extends CIUnitTestCase
         $this->assertFileExists($path);
         $this->assertLessThan(150 * 1024, filesize($path), 'a header over ~150 KB slows every open of the email');
     }
+
+    /**
+     * Regression: passing a MIME type to Email::attach() makes it embed the
+     * first argument's TEXT as the file, so the header arrived as a broken
+     * image. Assemble the real message and decode the attached part.
+     */
+    public function testTheInlineHeaderIsARealImageTheHtmlPointsTo(): void
+    {
+        $mailer = new \CodeIgniter\Email\Email(new \Config\Email());
+        (new BrandedEmail())->prepare($mailer, 'to@example.com', 'Subject', $this->content());
+        $mailer->setFrom('from@example.com', 'Akademus'); // send() applies the configured sender; we bypass send()
+
+        foreach (['buildHeaders', 'buildMessage'] as $method) {
+            $ref = new \ReflectionMethod($mailer, $method);
+            $ref->setAccessible(true);
+            $ref->invoke($mailer);
+        }
+        $prop = new \ReflectionProperty($mailer, 'finalBody');
+        $prop->setAccessible(true);
+        $mime = (string) $prop->getValue($mailer);
+
+        // The HTML part (quoted-printable) references the CID...
+        $this->assertSame(1, preg_match('/Content-ID: <([^>]+)>/', $mime, $cid), 'no inline part with a Content-ID');
+        $this->assertStringContainsString('Content-Type: multipart/related', $mime);
+        $this->assertStringContainsString('cid:' . str_replace('=', '=3D', $cid[1]), str_replace(["=\r\n", "=\n"], '', $mime));
+
+        // ...and that part decodes to the actual 1200x400 JPEG, not text.
+        $afterHeaders = substr($mime, strpos($mime, 'Content-ID: <' . $cid[1] . '>'));
+        $body         = preg_split('/\r?\n\r?\n/', $afterHeaders, 2)[1] ?? '';
+        $base64       = preg_split('/\r?\n--/', $body, 2)[0];
+        $bytes        = base64_decode(preg_replace('/\s+/', '', $base64), true);
+
+        $this->assertNotFalse($bytes);
+        $info = getimagesizefromstring($bytes);
+        $this->assertNotFalse($info, 'the attachment is not an image');
+        $this->assertSame('image/jpeg', $info['mime']);
+        $this->assertSame(1200, $info[0]);
+    }
 }
