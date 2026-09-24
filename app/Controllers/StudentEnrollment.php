@@ -109,6 +109,49 @@ class StudentEnrollment extends BaseController
     }
 
     /**
+     * Student drops one of their OWN enrollments. Only the active term can
+     * be changed, and never one that already has a grade (enforced in
+     * EnrollmentModel::drop). Plain form post + redirect, like the rest of
+     * the portal's non-JSON actions.
+     */
+    public function drop()
+    {
+        $userId = (int) auth()->id();
+
+        if (! $this->validate(['enrollment_id' => 'required|is_natural_no_zero', 'reason' => 'permit_empty|max_length[255]'])) {
+            return redirect()->to('/student/schedule')->with('errors', ['Invalid request.']);
+        }
+
+        $enrollmentId = (int) $this->request->getPost('enrollment_id');
+        $enrollments  = new EnrollmentModel();
+
+        $mine = db_connect()->table('enrollments e')
+            ->select('sec.academic_year, e.subject_code')
+            ->join('sections sec', 'sec.section_id = e.section_id')
+            ->where('e.enrollment_id', $enrollmentId)
+            ->where('e.user_id', $userId)
+            ->get()
+            ->getRowArray();
+
+        if ($mine === null) {
+            return redirect()->to('/student/schedule')->with('errors', ['Enrollment not found.']);
+        }
+
+        if (! $this->isActiveYear($mine['academic_year'])) {
+            return redirect()->to('/student/schedule')->with('errors', ['Only subjects in the active term can be dropped.']);
+        }
+
+        $reason = trim((string) $this->request->getPost('reason')) ?: 'Dropped by student';
+        $result = $enrollments->drop($enrollmentId, $reason, $userId, $userId);
+
+        if (! $result['ok']) {
+            return redirect()->to('/student/schedule')->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to('/student/schedule')->with('message', "{$mine['subject_code']} dropped.");
+    }
+
+    /**
      * The student's own schedule: every meeting for every subject they're
      * actively enrolled in.
      */
@@ -165,10 +208,21 @@ class StudentEnrollment extends BaseController
             ];
         }, $meetings);
 
+        $activeYear = (new AcademicYearModel())->activeFormatted();
+
+        // "My Enrolled Subjects": droppable only in the active term and
+        // while no grade exists for it.
+        $enrolled = array_map(static function (array $e) use ($activeYear): array {
+            $e['can_drop'] = $e['academic_year'] === $activeYear && (int) $e['grade_count'] === 0;
+
+            return $e;
+        }, (new EnrollmentModel())->activeForStudent($userId));
+
         return view('student/schedule', [
             'pageTitle' => 'My Schedule',
             'meetings'  => $meetings,
             'blocks'    => $blocks,
+            'enrolled'  => $enrolled,
         ]);
     }
 

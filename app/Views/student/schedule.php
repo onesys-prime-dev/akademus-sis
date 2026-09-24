@@ -157,6 +157,38 @@ $toMinutes = static function (string $hhmm) {
 
 <?= $this->endSection() ?>
 
+<?php if (! empty($enrolled)): ?>
+<div class="panel" style="margin-top:16px;">
+    <h3 style="margin:0 0 4px; font-size:15px;">My Enrolled Subjects</h3>
+    <p style="font-size:12px; color:var(--color-text-secondary); margin:0 0 12px;">You can drop a subject in the active term until a grade is recorded for it.</p>
+    <table class="schedule-table">
+        <thead><tr><th>Subject</th><th>Section</th><th>Term</th><th></th></tr></thead>
+        <tbody>
+        <?php foreach ($enrolled as $e): ?>
+            <tr>
+                <td><b><?= esc($e['subject_code']) ?></b></td>
+                <td><?= esc($e['program']) ?> &middot; <?= esc($e['year_level']) ?> &middot; <?= esc($e['section']) ?></td>
+                <td><?= esc($e['academic_year']) ?></td>
+                <td style="text-align:right;">
+                    <?php if ($e['can_drop']): ?>
+                        <form method="post" action="<?= site_url('student/enrollments/drop') ?>" onsubmit="return confirm('Drop <?= esc($e['subject_code'], 'js') ?>? You can re-enroll later if a seat is available.');">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="enrollment_id" value="<?= (int) $e['enrollment_id'] ?>">
+                            <button type="submit" class="ac-btn ac-btn-secondary">Drop</button>
+                        </form>
+                    <?php elseif ((int) $e['grade_count'] > 0): ?>
+                        <span style="font-size:12px; color:var(--color-text-secondary);">Graded</span>
+                    <?php else: ?>
+                        <span style="font-size:12px; color:var(--color-text-secondary);">Past term</span>
+                    <?php endif ?>
+                </td>
+            </tr>
+        <?php endforeach ?>
+        </tbody>
+    </table>
+</div>
+<?php endif ?>
+
 <?= $this->section('scripts') ?>
 <script>
     (function () {

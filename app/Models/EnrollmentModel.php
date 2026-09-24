@@ -41,9 +41,17 @@ class EnrollmentModel extends Model
      * process by CourseOfferingModel::createMerge(), made the merge appear
      * to fail with no underlying SQL error at all.
      *
+     * $prerequisiteOverride ({reason, by}) lets a registrar/admin enroll a
+     * student despite an UNMET PREREQUISITE — and only that. The handbook
+     * makes prerequisites "automatic; overridable with adviser approval",
+     * while schedule conflicts, duplicates and curriculum membership stay
+     * hard rules. A used override is written to enrollment_logs with the
+     * missing subjects, the reason and the approver.
+     *
+     * @param array{reason: string, by: int}|null $prerequisiteOverride
      * @return array{ok: bool, error?: string, enrollment_id?: int}
      */
-    public function enrollOne(int $userId, int $sectionId, string $subjectCode, string $method = 'manual'): array
+    public function enrollOne(int $userId, int $sectionId, string $subjectCode, string $method = 'manual', ?array $prerequisiteOverride = null): array
     {
         $db = $this->db;
         $db->transStart();
@@ -68,11 +76,17 @@ class EnrollmentModel extends Model
 
         $missing = $this->unmetPrerequisites($userId, $subjectCode);
 
-        if ($missing !== []) {
-            $db->transRollback();
-            $db->resetTransStatus();
+        $overrideNote = null;
 
-            return ['ok' => false, 'error' => "Prerequisite not met for {$subjectCode}: " . implode(', ', $missing) . ' must be passed first.'];
+        if ($missing !== []) {
+            if ($prerequisiteOverride === null || trim($prerequisiteOverride['reason']) === '') {
+                $db->transRollback();
+                $db->resetTransStatus();
+
+                return ['ok' => false, 'error' => "Prerequisite not met for {$subjectCode}: " . implode(', ', $missing) . ' must be passed first.'];
+            }
+
+            $overrideNote = 'Prerequisite override (unmet: ' . implode(', ', $missing) . '): ' . trim($prerequisiteOverride['reason']);
         }
 
         $outsideCurriculum = $this->outsideCurriculum($userId, $subjectCode);
@@ -121,6 +135,23 @@ class EnrollmentModel extends Model
             }
         }
 
+        // A previously DROPPED enrollment in this same subject still holds
+        // the (user, section, subject) unique key, so re-enrolling
+        // reactivates that row (and logs it) instead of inserting a second.
+        $previous = $this->where(['user_id' => $userId, 'section_id' => $sectionId, 'subject_code' => $subjectCode])->first();
+
+        if ($previous !== null && $previous['status'] !== 'enrolled') {
+            $this->update((int) $previous['enrollment_id'], [
+                'offering_id' => $offeringId,
+                'method'      => $method,
+                'status'      => 'enrolled',
+            ]);
+            $this->logStatusChange((int) $previous['enrollment_id'], $previous['status'], 'enrolled', 'Re-enrolled' . ($overrideNote !== null ? ' — ' . $overrideNote : ''), $prerequisiteOverride['by'] ?? $userId);
+            $db->transComplete();
+
+            return ['ok' => true, 'enrollment_id' => (int) $previous['enrollment_id']];
+        }
+
         try {
             $inserted = $this->insert([
                 'user_id'      => $userId,
@@ -145,9 +176,130 @@ class EnrollmentModel extends Model
         }
 
         $enrollmentId = $this->getInsertID();
+
+        if ($overrideNote !== null) {
+            $this->logStatusChange((int) $enrollmentId, null, 'enrolled', $overrideNote, $prerequisiteOverride['by']);
+        }
+
         $db->transComplete();
 
         return ['ok' => true, 'enrollment_id' => $enrollmentId];
+    }
+
+    /**
+     * The (section, subject) classes a registrar can enroll a student into:
+     * everything plotted in the given term for the given program. Each entry
+     * is one option for the "Enroll in a subject" form.
+     *
+     * @return list<array{section_id: int, subject_code: string, subject_title: string, year_level: string, section: string}>
+     */
+    public function classOptions(string $programName, string $academicYear): array
+    {
+        return array_map(static function (array $r): array {
+            $r['section_id'] = (int) $r['section_id'];
+
+            return $r;
+        }, $this->db->table('plotted_schedules p')
+            ->select('sec.section_id, p.subject_code, MAX(p.subject_title) AS subject_title, p.year_level, p.section')
+            ->join('sections sec', 'sec.academic_year = p.academic_year AND sec.program = p.program AND sec.year_level = p.year_level AND sec.section = p.section')
+            ->where('p.academic_year', $academicYear)
+            ->where('p.program', $programName)
+            ->groupBy('sec.section_id, p.subject_code, p.year_level, p.section')
+            ->orderBy('p.year_level')
+            ->orderBy('p.section')
+            ->orderBy('p.subject_code')
+            ->get()
+            ->getResultArray());
+    }
+
+    /**
+     * Drops one enrollment: status -> 'dropped', row kept as history, change
+     * logged. Never a hard delete.
+     *
+     * Refused when the enrollment isn't 'enrolled' anymore, or when a grade
+     * has already been recorded for it (any state — drop/withdraw of a
+     * graded class is a registrar decision, not a self-service one).
+     * $ownerUserId, when given, must be the enrollment's student — a student
+     * can only ever drop their own enrollment (IDOR guard); the row is
+     * reported as "not found" otherwise so ids can't be probed.
+     *
+     * Freeing the seat needs no extra work: capacity/roster counts only
+     * ever count status = 'enrolled'.
+     *
+     * @return array{ok: bool, error?: string, enrollment?: array}
+     */
+    public function drop(int $enrollmentId, string $reason, ?int $changedBy, ?int $ownerUserId = null): array
+    {
+        $db     = $this->db;
+        $suffix = $db->DBDriver === 'MySQLi' ? ' FOR UPDATE' : '';
+
+        $db->transStart();
+
+        $row = $db->query("SELECT * FROM enrollments WHERE enrollment_id = ?{$suffix}", [$enrollmentId])->getRowArray();
+
+        if ($row === null || ($ownerUserId !== null && (int) $row['user_id'] !== $ownerUserId)) {
+            $db->transRollback();
+            $db->resetTransStatus();
+
+            return ['ok' => false, 'error' => 'Enrollment not found.'];
+        }
+
+        if ($row['status'] !== 'enrolled') {
+            $db->transRollback();
+            $db->resetTransStatus();
+
+            return ['ok' => false, 'error' => "That subject is already {$row['status']}."];
+        }
+
+        if ($db->table('grades')->where('enrollment_id', $enrollmentId)->countAllResults() > 0) {
+            $db->transRollback();
+            $db->resetTransStatus();
+
+            return ['ok' => false, 'error' => 'A grade has already been recorded for this subject, so it can no longer be dropped here. Contact the registrar.'];
+        }
+
+        $this->update($enrollmentId, ['status' => 'dropped']);
+        $this->logStatusChange($enrollmentId, 'enrolled', 'dropped', $reason, $changedBy);
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return ['ok' => false, 'error' => 'Could not drop the subject. Please retry.'];
+        }
+
+        return ['ok' => true, 'enrollment' => array_merge($row, ['status' => 'dropped'])];
+    }
+
+    /**
+     * A student's current enrollments with what the "My Enrolled Subjects"
+     * card needs: the section, and whether it can still be dropped.
+     *
+     * @return list<array>
+     */
+    public function activeForStudent(int $userId): array
+    {
+        return $this->db->table('enrollments e')
+            ->select('e.enrollment_id, e.subject_code, e.method, sec.academic_year, sec.program, sec.year_level, sec.section,
+                      (SELECT COUNT(*) FROM grades g WHERE g.enrollment_id = e.enrollment_id) AS grade_count')
+            ->join('sections sec', 'sec.section_id = e.section_id')
+            ->where('e.user_id', $userId)
+            ->where('e.status', 'enrolled')
+            ->orderBy('sec.academic_year', 'DESC')
+            ->orderBy('e.subject_code')
+            ->get()
+            ->getResultArray();
+    }
+
+    private function logStatusChange(int $enrollmentId, ?string $from, string $to, ?string $reason, ?int $changedBy): void
+    {
+        $this->db->table('enrollment_logs')->insert([
+            'enrollment_id' => $enrollmentId,
+            'from_status'   => $from,
+            'to_status'     => $to,
+            'reason'        => $reason,
+            'changed_by'    => $changedBy,
+            'created_at'    => date('Y-m-d H:i:s'),
+        ]);
     }
 
     /**

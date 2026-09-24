@@ -82,7 +82,7 @@
                 <label>Reason (required)</label>
                 <input type="text" name="reason" class="ac-input" placeholder="Why is this student moving curriculum versions?" required minlength="5">
             </div>
-            <button type="submit" class="ac-btn ac-btn-primary" onclick="return confirm('Reassign this student\'s curriculum version? This is recorded permanently.')">Assign</button>
+            <button type="submit" class="ac-btn ac-btn-primary" data-confirm="Reassign this student's curriculum version? This is recorded permanently.">Assign</button>
         </form>
         <?php if (empty($s['available_curricula'])): ?>
             <p class="ac-muted" style="font-size:11.5px; margin-top:8px;">No published curriculum exists for this student's program yet — publish one from Admin &rarr; Curricula.</p>
@@ -133,10 +133,10 @@
 <!-- Enrollment History -->
 <div class="ac-table-card sr-panel" id="sr-history" hidden>
     <table class="ac-table">
-        <thead><tr><th>Academic Year</th><th>Subject</th><th>Section</th><th>Method</th><th>Status</th><th>Enrolled On</th></tr></thead>
+        <thead><tr><th>Academic Year</th><th>Subject</th><th>Section</th><th>Method</th><th>Status</th><th>Enrolled On</th><th></th></tr></thead>
         <tbody>
         <?php if (empty($s['enrollment_history'])): ?>
-            <tr><td colspan="6" class="ac-muted">No enrollment records yet.</td></tr>
+            <tr><td colspan="7" class="ac-muted">No enrollment records yet.</td></tr>
         <?php endif ?>
         <?php foreach ($s['enrollment_history'] as $h): ?>
             <tr>
@@ -146,11 +146,48 @@
                 <td><?= esc(ucfirst($h['method'])) ?></td>
                 <td><?= esc(ucfirst($h['status'])) ?></td>
                 <td><?= esc(date('M j, Y', strtotime($h['created_at']))) ?></td>
+                <td>
+                    <?php if ($h['status'] === 'enrolled'): ?>
+                        <form method="post" action="<?= site_url('admin/students/' . $s['student_id'] . '/enrollments/' . $h['enrollment_id'] . '/drop') ?>" style="display:flex; gap:6px;" onsubmit="return confirm('Drop <?= esc($h['subject_code'], 'js') ?> for this student?');">
+                            <?= csrf_field() ?>
+                            <input type="text" name="reason" class="ac-input" placeholder="Reason (required)" minlength="5" required style="min-width:150px;">
+                            <button type="submit" class="ac-btn ac-btn-secondary">Drop</button>
+                        </form>
+                    <?php endif ?>
+                </td>
             </tr>
         <?php endforeach ?>
         </tbody>
     </table>
-    <p style="padding:12px 24px; font-size:11.5px; color:var(--color-text-secondary);">Append-only — sourced directly from <code>enrollments</code>. This is the complete record; there is no separate archival table.</p>
+    <div style="padding:16px 24px; border-top:1px solid var(--color-border, #e5e7eb);">
+        <h4 style="margin:0 0 4px; font-size:14px;">Enroll in a subject</h4>
+        <?php if (empty($classOptions)): ?>
+            <p class="ac-muted" style="margin:0;">No plotted classes for this student's program in the active term<?= $activeYear ? ' (' . esc($activeYear) . ')' : '' ?>.</p>
+        <?php else: ?>
+            <p style="font-size:11.5px; color:var(--color-text-secondary); margin:0 0 10px;">Schedule conflicts, capacity and the student's curriculum still apply. Only an unmet <b>prerequisite</b> can be overridden, and that needs a reason.</p>
+            <form method="post" action="<?= site_url('admin/students/' . $s['student_id'] . '/enroll') ?>" style="display:grid; grid-template-columns:2fr 2fr auto; gap:10px; align-items:end;">
+                <?= csrf_field() ?>
+                <div class="ac-field" style="margin:0;">
+                    <label for="enrollClass">Class (<?= esc($activeYear) ?>)</label>
+                    <select id="enrollClass" name="class" class="ac-input" required>
+                        <option value="">Choose a class…</option>
+                        <?php foreach ($classOptions as $o): ?>
+                            <option value="<?= esc($o['section_id'] . '|' . $o['subject_code'], 'attr') ?>"><?= esc($o['subject_code']) ?> — <?= esc($o['subject_title']) ?> (<?= esc($o['year_level']) ?> &middot; <?= esc($o['section']) ?>)</option>
+                        <?php endforeach ?>
+                    </select>
+                </div>
+                <div class="ac-field" style="margin:0;">
+                    <label for="enrollReason">Override reason (only if a prerequisite is unmet)</label>
+                    <input type="text" id="enrollReason" name="reason" class="ac-input" placeholder="e.g. Credited from previous school">
+                    <label style="display:flex; align-items:center; gap:6px; margin-top:6px; font-size:12px; text-transform:none;">
+                        <input type="checkbox" name="override_prerequisites" value="1"> Override unmet prerequisites
+                    </label>
+                </div>
+                <button type="submit" class="ac-btn ac-btn-primary">Enroll</button>
+            </form>
+        <?php endif ?>
+    </div>
+    <p style="padding:12px 24px; font-size:11.5px; color:var(--color-text-secondary);">Append-only — dropped subjects stay listed with status &ldquo;Dropped&rdquo;; every drop/re-enroll is logged in <code>enrollment_logs</code>. A subject with a recorded grade can&rsquo;t be dropped here.</p>
 </div>
 
 <!-- Academic Status -->
@@ -172,7 +209,7 @@
                 <label>Reason (required)</label>
                 <input type="text" name="reason" class="ac-input" placeholder="Why is this status changing?" required minlength="5">
             </div>
-            <button type="submit" class="ac-btn ac-btn-primary" onclick="return confirm('Change this student\'s status? This is recorded permanently.')">Change Status</button>
+            <button type="submit" class="ac-btn ac-btn-primary" data-confirm="Change this student's status? This is recorded permanently.">Change Status</button>
         </form>
 
         <h4 style="margin:24px 0 8px; font-size:13px;">Status History</h4>

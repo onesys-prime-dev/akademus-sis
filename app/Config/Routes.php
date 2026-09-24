@@ -113,6 +113,8 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->get('students/(:num)'              , 'Admin\StudentRecordController::show/$1');
     $routes->post('students/(:num)/status'      , 'Admin\StudentRecordController::changeStatus/$1');
     $routes->post('students/(:num)/curriculum'  , 'Admin\StudentRecordController::assignCurriculum/$1');
+    $routes->post('students/(:num)/enrollments/(:num)/drop', 'Admin\StudentRecordController::dropEnrollment/$1/$2');
+    $routes->post('students/(:num)/enroll', 'Admin\StudentRecordController::enrollStudent/$1');
 
     // grading scale (numeric GWA / percentage / letter — one active at a time)
     $routes->get('grading-scales'               , 'Admin\GradingScaleController::index');
@@ -175,6 +177,7 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->get('schedule', 'StudentEnrollment::schedule');
     $routes->post('enroll', 'StudentEnrollment::enroll');
     $routes->post('enroll/block', 'StudentEnrollment::enrollBlock');
+    $routes->post('enrollments/drop', 'StudentEnrollment::drop');
     $routes->get('grades', 'StudentGrades::index');
 
     // notifications (shared controller, scoped by auth()->id())
