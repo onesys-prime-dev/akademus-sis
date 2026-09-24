@@ -3,8 +3,10 @@
 namespace App\Controllers\API;
 
 use App\Controllers\BaseController;
+use App\Libraries\StudentWelcomeMailer;
 use App\Models\StudentModel;
 use CodeIgniter\API\ResponseTrait;
+use CodeIgniter\Events\Events;
 
 class StudentAPIController extends BaseController
 {
@@ -73,6 +75,19 @@ class StudentAPIController extends BaseController
                     'success' => false,
                     'message' => $result['error'],
                 ]);
+        }
+
+        // Brand-new student only (a retried handoff returns the existing one
+        // and must not email again). Sent after the response so a slow SMTP
+        // server never delays or fails the Admissions call.
+        if (! empty($result['created'])) {
+            $student = $result['student'];
+            $email   = (string) $data['email'];
+            $first   = (string) $data['first_name'];
+
+            Events::on('post_system', static function () use ($student, $email, $first): void {
+                (new StudentWelcomeMailer())->send((int) $student['user_id'], $email, $first, $student['student_number']);
+            });
         }
 
         return $this->respond([

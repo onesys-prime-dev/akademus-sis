@@ -153,6 +153,7 @@ class StudentModel extends Model
         return [
             'ok'              => true,
             'student'         => $this->hydrate($student),
+            'created'         => true,
             'program_created' => $programCreated !== null,
         ];
     }

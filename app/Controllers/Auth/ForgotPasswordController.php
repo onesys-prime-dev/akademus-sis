@@ -62,13 +62,18 @@ class ForgotPasswordController extends BaseController
             <p>This link expires in 1 hour.</p>
         ");
 
-        if (! $emailService->send()) {
-            dd($emailService->printDebugger(['headers']));
+        if (! $emailService->send(false)) {
+            // Log the SMTP detail server-side; never show it to the visitor.
+            log_message('error', '[Password reset] email to user ' . $user->id . ' failed: ' . strip_tags($emailService->printDebugger(['headers'])));
+
+            return redirect()
+                ->back()
+                ->with('error', 'We could not send the email right now. Please try again in a few minutes.');
         }
 
         return redirect()
             ->back()
-            ->with('message', 'Password reset link sent.');
+            ->with('message', 'If the email exists, a password reset link has been sent.');
     }
 
     public function showResetForm($token)
