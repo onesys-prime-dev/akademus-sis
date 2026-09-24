@@ -18,6 +18,8 @@
 
 <body class="bg-light auth-page">
 
+<?= $this->include('components/loading-splash') ?>
+
 <a class="ac-skip-link" href="#mainContent">Skip to content</a>
 
     <main id="mainContent" tabindex="-1" role="main" class="w-full h-full">

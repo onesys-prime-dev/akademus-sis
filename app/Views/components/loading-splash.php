@@ -1,10 +1,8 @@
 <?php
 /**
- * Branded full-page loading splash — shown at the very top of <body> on
- * every full page load (this is a traditional server-rendered multi-page
- * app, not an SPA, so "every navigation" means "every fresh page load").
- * Included by both layouts/admin_console.php and auth/layout.php so it's
- * identical everywhere.
+ * Branded full-page loading splash — shown at the very top of <body>, once
+ * per browser session (guarded by sessionStorage in the script below).
+ * Currently included by auth/layout.php only.
  *
  * Deliberately self-contained: all CSS/markup/JS needed to paint and then
  * dismiss itself lives in this one file, inlined (not in an external
@@ -135,6 +133,13 @@
     (function () {
         var el = document.getElementById('acSplash');
         if (!el) return;
+
+        // Play once per browser session. Later loads (e.g. a failed login
+        // reloading the page) skip it so they don't cover the shake feedback.
+        try {
+            if (sessionStorage.getItem('acSplashSeen') === '1') { el.remove(); return; }
+            sessionStorage.setItem('acSplashSeen', '1');
+        } catch (e) { /* storage blocked: just play it */ }
 
         var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         // Reduced motion: dismiss almost immediately instead of holding for
