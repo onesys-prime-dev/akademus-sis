@@ -53,6 +53,17 @@ class RoleController extends BaseController
                 ],
             ],
             [
+                'role'  => 'Registrar',
+                'color' => '#0e7490',
+                'bg'    => '#e0f2fe',
+                'perms' => [
+                    'Look up any student record (institution-wide)',
+                    'Change a student\'s academic status and curriculum (reason required, audited)',
+                    'Enroll or drop a student on their behalf, with prerequisite override (reason required, audited)',
+                    'No access to colleges, rooms, accounts or other admin settings',
+                ],
+            ],
+            [
                 'role'  => 'Admin',
                 'color' => '#5b21b6',
                 'bg'    => '#ede9fe',

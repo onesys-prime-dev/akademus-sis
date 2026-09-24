@@ -7,7 +7,23 @@ $routes->get('/', 'Home::index');
 
 service('auth')->routes($routes);
 
-$routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
+// Student records are served under both /admin and /registrar from the same
+// controller. Each route carries its own permission on top of the role group
+// (deny-by-default): reading needs students.view, every change needs
+// students.manage.
+$studentRecordRoutes = static function ($routes): void {
+    $view   = ['filter' => 'permission:students.view'];
+    $manage = ['filter' => 'permission:students.manage'];
+
+    $routes->get('students'                     , 'Admin\StudentRecordController::index', $view);
+    $routes->get('students/(:num)'              , 'Admin\StudentRecordController::show/$1', $view);
+    $routes->post('students/(:num)/status'      , 'Admin\StudentRecordController::changeStatus/$1', $manage);
+    $routes->post('students/(:num)/curriculum'  , 'Admin\StudentRecordController::assignCurriculum/$1', $manage);
+    $routes->post('students/(:num)/enrollments/(:num)/drop', 'Admin\StudentRecordController::dropEnrollment/$1/$2', $manage);
+    $routes->post('students/(:num)/enroll'      , 'Admin\StudentRecordController::enrollStudent/$1', $manage);
+};
+
+$routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($studentRecordRoutes) {
     $routes->get('dashboard', 'Admin\AdminController::index');
 
     // create programs
@@ -108,13 +124,8 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->get('academic-settings'        , 'Admin\AcademicSettingsController::index');
     $routes->post('academic-settings/update', 'Admin\AcademicSettingsController::update');
 
-    // student records
-    $routes->get('students'                     , 'Admin\StudentRecordController::index');
-    $routes->get('students/(:num)'              , 'Admin\StudentRecordController::show/$1');
-    $routes->post('students/(:num)/status'      , 'Admin\StudentRecordController::changeStatus/$1');
-    $routes->post('students/(:num)/curriculum'  , 'Admin\StudentRecordController::assignCurriculum/$1');
-    $routes->post('students/(:num)/enrollments/(:num)/drop', 'Admin\StudentRecordController::dropEnrollment/$1/$2');
-    $routes->post('students/(:num)/enroll', 'Admin\StudentRecordController::enrollStudent/$1');
+    // student records (shared with the registrar — see $studentRecordRoutes)
+    $studentRecordRoutes($routes);
 
     // grading scale (numeric GWA / percentage / letter — one active at a time)
     $routes->get('grading-scales'               , 'Admin\GradingScaleController::index');
@@ -127,8 +138,21 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) {
     $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
 });
 
-$routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) {
+$routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) use ($studentRecordRoutes) {
     $routes->get('dashboard', 'RegistrarController::index');
+
+    // student records (same controller/permissions as the admin console)
+    $studentRecordRoutes($routes);
+
+    // profile
+    $routes->get('profile', 'Registrar\ProfileController::edit');
+    $routes->post('profile/update', 'Registrar\ProfileController::updateProfile');
+    $routes->post('profile/password', 'Registrar\ProfileController::updatePassword');
+
+    // notifications (shared controller, scoped by auth()->id())
+    $routes->get('notifications', 'NotificationController::index');
+    $routes->post('notifications/mark-read', 'NotificationController::markRead');
+    $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
 });
 
 $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {

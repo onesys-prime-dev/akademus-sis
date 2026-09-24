@@ -83,7 +83,7 @@
                 </span>
             </div>
             <div class="ac-actions-cell">
-                <a href="<?= site_url('admin/students/' . $s['student_id']) ?>" class="ac-btn-outline">View Record</a>
+                <a href="<?= site_url($basePath . '/students/' . $s['student_id']) ?>" class="ac-btn-outline">View Record</a>
             </div>
         </div>
     <?php endforeach ?>
@@ -105,7 +105,7 @@
             <div class="ac-pagination__pages">
                 <?php
                     $pageUrl = static function (int $p) use ($qs) {
-                        return site_url('admin/students') . '?' . http_build_query($qs + ['page' => $p]);
+                        return site_url($basePath . '/students') . '?' . http_build_query($qs + ['page' => $p]);
                     };
                 ?>
                 <a class="ac-pagination__link" href="<?= $pageUrl(max(1, $page - 1)) ?>" aria-disabled="<?= $page <= 1 ? 'true' : 'false' ?>" aria-label="Previous page">

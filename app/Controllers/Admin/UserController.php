@@ -12,10 +12,10 @@ class UserController extends BaseController
 {
     protected DepartmentModel $departmentModel;
 
-    private const ROLES = ['admin', 'dean', 'chairperson', 'faculty', 'student'];
+    private const ROLES = ['admin', 'registrar', 'dean', 'chairperson', 'faculty', 'student'];
 
     /** Chairpersons are assigned via a specific Department (see Admin\SubDepartmentController::storeChair). */
-    private const CREATABLE_ROLES = ['admin', 'dean', 'faculty', 'student'];
+    private const CREATABLE_ROLES = ['admin', 'registrar', 'dean', 'faculty', 'student'];
 
     public function __construct()
     {
@@ -106,7 +106,7 @@ class UserController extends BaseController
         $username     = $this->request->getPost('username');
         $email        = $this->request->getPost('email');
         $role         = $this->request->getPost('role');
-        $departmentId = $role === 'admin' ? null : $this->request->getPost('department_id');
+        $departmentId = in_array($role, ['admin', 'registrar'], true) ? null : $this->request->getPost('department_id');
 
         // The minimum student->cohort link (block enrollment reads this
         // server-side — see StudentEnrollment::enrollBlock).
@@ -242,7 +242,7 @@ class UserController extends BaseController
 
         if (! $isChair) {
             $role         = $this->request->getPost('role');
-            $departmentId = $role === 'admin' ? null : $this->request->getPost('department_id');
+            $departmentId = in_array($role, ['admin', 'registrar'], true) ? null : $this->request->getPost('department_id');
             $sectionId    = $role === 'student' ? $this->request->getPost('section_id') ?: null : null;
 
             if ($sectionId !== null && (new SectionModel())->find((int) $sectionId) === null) {

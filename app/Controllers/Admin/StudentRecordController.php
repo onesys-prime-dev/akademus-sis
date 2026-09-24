@@ -3,6 +3,7 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Libraries\RegistrarPortal;
 use App\Models\AcademicYearModel;
 use App\Models\DepartmentModel;
 use App\Models\EnrollmentModel;
@@ -18,6 +19,29 @@ use CodeIgniter\Exceptions\PageNotFoundException;
  */
 class StudentRecordController extends BaseController
 {
+    /**
+     * Served under both /admin/students and /registrar/students. Which one is
+     * decided by the URL the route group matched (each group is already
+     * filtered by role, and each route by permission), never by user input.
+     */
+    private function isRegistrarPortal(): bool
+    {
+        return service('request')->getUri()->getSegment(1) === 'registrar';
+    }
+
+    private function recordUrl($id): string
+    {
+        return '/' . ($this->isRegistrarPortal() ? 'registrar' : 'admin') . '/students/' . $id;
+    }
+
+    /** Shell (sidebar/brand) + link prefix for the current portal. */
+    private function shell(): array
+    {
+        return $this->isRegistrarPortal()
+            ? RegistrarPortal::shell('students')
+            : ['activeAdmin' => 'students', 'basePath' => 'admin'];
+    }
+
     public function index()
     {
         $studentModel = new StudentModel();
@@ -40,7 +64,6 @@ class StudentRecordController extends BaseController
 
         return view('admin/students/index', [
             'pageTitle'     => 'Student Records',
-            'activeAdmin'   => 'students',
             'students'      => $students,
             'programs'      => (new ProgramModel())->where('is_active', 1)->orderBy('program_name')->findAll(),
             'yearLevels'    => ['1st Year', '2nd Year', '3rd Year', '4th Year'],
@@ -50,7 +73,7 @@ class StudentRecordController extends BaseController
             'totalPages'    => $totalPages,
             'totalStudents' => $totalStudents,
             'perPage'       => $perPage,
-        ]);
+        ] + $this->shell());
     }
 
     public function show($id)
@@ -72,12 +95,11 @@ class StudentRecordController extends BaseController
 
         return view('admin/students/show', [
             'pageTitle'    => $student['first_name'] . ' ' . $student['last_name'] . ' — Student Record',
-            'activeAdmin'  => 'students',
             'student'      => $student,
             'statuses'     => StudentModel::STATUSES,
             'classOptions' => $classOptions,
             'activeYear'   => $activeYear,
-        ]);
+        ] + $this->shell());
     }
 
     public function changeStatus($id)
@@ -103,7 +125,7 @@ class StudentRecordController extends BaseController
         }
 
         return redirect()
-            ->to('/admin/students/' . $id)
+            ->to($this->recordUrl($id))
             ->with('message', 'Student status updated.');
     }
 
@@ -125,7 +147,7 @@ class StudentRecordController extends BaseController
         $rules    = ['class' => 'required', 'reason' => $override ? 'required|min_length[5]' : 'permit_empty'];
 
         if (! $this->validate($rules)) {
-            return redirect()->to('/admin/students/' . $id)->with('errors', $this->validator->getErrors());
+            return redirect()->to($this->recordUrl($id))->with('errors', $this->validator->getErrors());
         }
 
         // "<section_id>|<subject_code>" — parsed, then re-validated against
@@ -133,7 +155,7 @@ class StudentRecordController extends BaseController
         [$sectionId, $subjectCode] = array_pad(explode('|', (string) $this->request->getPost('class'), 2), 2, '');
 
         if (! ctype_digit($sectionId) || $subjectCode === '') {
-            return redirect()->to('/admin/students/' . $id)->with('errors', ['Choose a class to enroll the student into.']);
+            return redirect()->to($this->recordUrl($id))->with('errors', ['Choose a class to enroll the student into.']);
         }
 
         $result = (new EnrollmentModel())->enrollOne(
@@ -145,7 +167,7 @@ class StudentRecordController extends BaseController
         );
 
         if (! $result['ok']) {
-            return redirect()->to('/admin/students/' . $id)->with('errors', [$result['error']]);
+            return redirect()->to($this->recordUrl($id))->with('errors', [$result['error']]);
         }
 
         (new NotificationModel())->notify(
@@ -155,7 +177,7 @@ class StudentRecordController extends BaseController
             'student/schedule'
         );
 
-        return redirect()->to('/admin/students/' . $id)->with('message', "Enrolled in {$subjectCode}" . ($override ? ' (prerequisite override recorded).' : '.'));
+        return redirect()->to($this->recordUrl($id))->with('message', "Enrolled in {$subjectCode}" . ($override ? ' (prerequisite override recorded).' : '.'));
     }
 
     /**
@@ -166,7 +188,7 @@ class StudentRecordController extends BaseController
     public function dropEnrollment($id, $enrollmentId)
     {
         if (! $this->validate(['reason' => 'required|min_length[5]'])) {
-            return redirect()->to('/admin/students/' . $id)->with('errors', $this->validator->getErrors());
+            return redirect()->to($this->recordUrl($id))->with('errors', $this->validator->getErrors());
         }
 
         $student = (new StudentModel())->find((int) $id);
@@ -183,7 +205,7 @@ class StudentRecordController extends BaseController
         );
 
         if (! $result['ok']) {
-            return redirect()->to('/admin/students/' . $id)->with('errors', [$result['error']]);
+            return redirect()->to($this->recordUrl($id))->with('errors', [$result['error']]);
         }
 
         (new NotificationModel())->notify(
@@ -193,7 +215,7 @@ class StudentRecordController extends BaseController
             'student/schedule'
         );
 
-        return redirect()->to('/admin/students/' . $id)->with('message', "{$result['enrollment']['subject_code']} dropped.");
+        return redirect()->to($this->recordUrl($id))->with('message', "{$result['enrollment']['subject_code']} dropped.");
     }
 
     public function assignCurriculum($id)
@@ -219,7 +241,7 @@ class StudentRecordController extends BaseController
         }
 
         return redirect()
-            ->to('/admin/students/' . $id)
+            ->to($this->recordUrl($id))
             ->with('message', 'Curriculum assignment updated.');
     }
 }

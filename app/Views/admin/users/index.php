@@ -172,6 +172,7 @@
                         <select name="role" id="acRoleSelect" class="ac-input" required onchange="acToggleDeptField()">
                             <option value="faculty" <?= old('role') === 'faculty' ? 'selected' : '' ?>>Faculty</option>
                             <option value="dean" <?= old('role') === 'dean' ? 'selected' : '' ?>>Dean</option>
+                            <option value="registrar" <?= old('role') === 'registrar' ? 'selected' : '' ?>>Registrar</option>
                             <option value="student" <?= old('role') === 'student' ? 'selected' : '' ?>>Student</option>
                             <option value="admin" <?= old('role') === 'admin' ? 'selected' : '' ?>>Admin</option>
                         </select>
@@ -267,6 +268,7 @@
                         <select name="role" id="acEditRoleSelect" class="ac-input" required onchange="acToggleEditDeptField()">
                             <option value="faculty">Faculty</option>
                             <option value="dean">Dean</option>
+                            <option value="registrar">Registrar</option>
                             <option value="student">Student</option>
                             <option value="admin">Admin</option>
                         </select>
@@ -469,7 +471,7 @@
 
     function acToggleDeptField() {
         var role = document.getElementById('acRoleSelect').value;
-        document.getElementById('acDeptField').style.display = role === 'admin' ? 'none' : 'block';
+        document.getElementById('acDeptField').style.display = (role === 'admin' || role === 'registrar') ? 'none' : 'block';
         document.getElementById('acChairNotice').style.display = role === 'dean' ? 'flex' : 'none';
         document.getElementById('acSectionRow').style.display = role === 'student' ? 'grid' : 'none';
         document.getElementById('acSectionHint').style.display = role === 'student' ? 'block' : 'none';
@@ -513,7 +515,7 @@
 
     function acToggleEditDeptField(preselect) {
         var role = document.getElementById('acEditRoleSelect').value;
-        document.getElementById('acEditDeptField').style.display = role === 'admin' ? 'none' : 'block';
+        document.getElementById('acEditDeptField').style.display = (role === 'admin' || role === 'registrar') ? 'none' : 'block';
         document.getElementById('acEditSectionRow').style.display = role === 'student' ? 'grid' : 'none';
         document.getElementById('acEditSectionHint').style.display = role === 'student' ? 'block' : 'none';
         document.getElementById('acEditEmpStatusField').style.display = role === 'faculty' ? 'block' : 'none';

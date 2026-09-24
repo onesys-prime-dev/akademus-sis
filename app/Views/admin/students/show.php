@@ -6,7 +6,7 @@
 
 <div class="ac-page-header">
     <div>
-        <a href="<?= site_url('admin/students') ?>" style="font-size:12.5px; color:var(--color-text-secondary);">&larr; Back to Student Records</a>
+        <a href="<?= site_url($basePath . '/students') ?>" style="font-size:12.5px; color:var(--color-text-secondary);">&larr; Back to Student Records</a>
         <h2 class="ac-page-header__title" style="margin-top:6px;"><?= esc(trim($s['first_name'] . ' ' . $s['middle_name'] . ' ' . $s['last_name'])) ?></h2>
         <p class="ac-page-header__sub"><?= esc($s['student_number']) ?> &middot; <?= esc($s['program_code'] ?? 'No program set') ?> &middot;
             <span class="ac-status-dot ac-status-dot--<?= $s['student_status'] === 'active' ? 'active' : ($s['student_status'] === 'dropped' ? 'pending' : 'inactive') ?>"><?= esc(ucfirst($s['student_status'])) ?></span>
@@ -65,7 +65,7 @@
     </div>
 
     <div style="padding:0 24px 20px; max-width:720px;">
-        <form method="post" action="<?= site_url('admin/students/' . $s['student_id'] . '/curriculum') ?>" style="display:grid; grid-template-columns:1fr 2fr auto; gap:10px; align-items:end;">
+        <form method="post" action="<?= site_url($basePath . '/students/' . $s['student_id'] . '/curriculum') ?>" style="display:grid; grid-template-columns:1fr 2fr auto; gap:10px; align-items:end;">
             <?= csrf_field() ?>
             <div class="ac-field" style="margin:0;">
                 <label>Assign Curriculum Version</label>
@@ -148,7 +148,7 @@
                 <td><?= esc(date('M j, Y', strtotime($h['created_at']))) ?></td>
                 <td>
                     <?php if ($h['status'] === 'enrolled'): ?>
-                        <form method="post" action="<?= site_url('admin/students/' . $s['student_id'] . '/enrollments/' . $h['enrollment_id'] . '/drop') ?>" style="display:flex; gap:6px;" data-confirm="Drop <?= esc($h['subject_code'], 'attr') ?> for this student?">
+                        <form method="post" action="<?= site_url($basePath . '/students/' . $s['student_id'] . '/enrollments/' . $h['enrollment_id'] . '/drop') ?>" style="display:flex; gap:6px;" data-confirm="Drop <?= esc($h['subject_code'], 'attr') ?> for this student?">
                             <?= csrf_field() ?>
                             <input type="text" name="reason" class="ac-input" placeholder="Reason (required)" minlength="5" required style="min-width:150px;">
                             <button type="submit" class="ac-btn ac-btn-secondary">Drop</button>
@@ -165,7 +165,7 @@
             <p class="ac-muted" style="margin:0;">No plotted classes for this student's program in the active term<?= $activeYear ? ' (' . esc($activeYear) . ')' : '' ?>.</p>
         <?php else: ?>
             <p style="font-size:11.5px; color:var(--color-text-secondary); margin:0 0 10px;">Schedule conflicts, capacity and the student's curriculum still apply. Only an unmet <b>prerequisite</b> can be overridden, and that needs a reason.</p>
-            <form method="post" action="<?= site_url('admin/students/' . $s['student_id'] . '/enroll') ?>" style="display:grid; grid-template-columns:2fr 2fr auto; gap:10px; align-items:end;">
+            <form method="post" action="<?= site_url($basePath . '/students/' . $s['student_id'] . '/enroll') ?>" style="display:grid; grid-template-columns:2fr 2fr auto; gap:10px; align-items:end;">
                 <?= csrf_field() ?>
                 <div class="ac-field" style="margin:0;">
                     <label for="enrollClass">Class (<?= esc($activeYear) ?>)</label>
@@ -195,7 +195,7 @@
     <div style="padding:20px 24px;">
         <p style="margin-bottom:14px;">Current status: <span class="ac-status-dot ac-status-dot--<?= $s['student_status'] === 'active' ? 'active' : ($s['student_status'] === 'dropped' ? 'pending' : 'inactive') ?>"><?= esc(ucfirst($s['student_status'])) ?></span></p>
 
-        <form method="post" action="<?= site_url('admin/students/' . $s['student_id'] . '/status') ?>" style="display:grid; grid-template-columns:1fr 2fr auto; gap:10px; align-items:end; max-width:720px;">
+        <form method="post" action="<?= site_url($basePath . '/students/' . $s['student_id'] . '/status') ?>" style="display:grid; grid-template-columns:1fr 2fr auto; gap:10px; align-items:end; max-width:720px;">
             <?= csrf_field() ?>
             <div class="ac-field" style="margin:0;">
                 <label>New Status</label>
