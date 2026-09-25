@@ -486,6 +486,26 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         .noprof-banner__text { flex: 1; }
         .block .assign-prof { cursor: pointer; font-weight: 700; text-decoration: underline; }
 
+        .ai-context { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
+        .ai-context__chip { padding: 3px 10px; border-radius: 999px; background: rgba(99, 102, 241, .1); color: #4338ca; font-size: 11.5px; font-weight: 600; }
+        .ai-context__info { margin-left: auto; font-size: 18px; color: var(--on-surface-variant); cursor: help; }
+        .plot-progress { display: flex; align-items: center; gap: 8px; margin-left: auto; font-size: 11.5px; font-weight: 600; color: var(--on-surface-variant); white-space: nowrap; }
+        .plot-progress__bar { width: 110px; height: 7px; overflow: hidden; border-radius: 999px; background: var(--surface-dim, #e5e7eb); }
+        .plot-progress__bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #6366f1, #22c55e); transition: width .6s cubic-bezier(.2, .9, .3, 1); }
+        .plot-progress.is-done { color: #15803d; }
+        .subject { transition: transform .15s ease, box-shadow .15s ease; }
+        .subject:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15, 23, 42, .1); }
+        .subject.is-plotted .plot-count { color: #15803d; font-weight: 600; }
+        .suggestion { transition: transform .15s ease, box-shadow .15s ease; }
+        .suggestion:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(15, 23, 42, .09); }
+        .confetti-piece { position: fixed; top: -12px; z-index: 3000; width: 9px; height: 14px; border-radius: 2px; pointer-events: none; animation: confettiFall 1.9s ease-in forwards; }
+        @keyframes confettiFall { to { transform: translate(var(--dx), 105vh) rotate(var(--rot)); opacity: .9; } }
+        @media (prefers-reduced-motion: reduce) {
+            .subject, .suggestion, .plot-progress__bar i { transition: none; }
+            .subject:hover, .suggestion:hover { transform: none; }
+            .confetti-piece { display: none; }
+        }
+
         .slot { height: 28px; border-bottom: 1px solid var(--surface-dim); }
 
         .block {
@@ -1811,6 +1831,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <h2>Weekly Plotting Grid
                     <span class="class-count" id="classCount"></span>
                 </h2>
+                <div class="plot-progress" id="plotProgress" title="Subjects fully plotted">
+                    <div class="plot-progress__bar"><i id="plotProgressFill"></i></div>
+                    <span id="plotProgressText"></span>
+                </div>
                 <div class="room-legend">
                     <span><i class="lg-green"></i> Available</span>
                     <span><i class="lg-yellow"></i> High utilization</span>
@@ -1846,17 +1870,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             <h2 class="ai-title"><span class="ai-spark" aria-hidden="true">✦</span> AI Scheduling Assistant</h2>
 
             <div class="panel-scroll">
-                <div class="context-card">
-                    <div class="context-title">Plotting for</div>
-                    <div class="context-line"><?= esc($selected['section']) ?> &middot; <?= esc($selected['year_level']) ?></div>
-                    <div class="context-line"><?= esc($selected['program']) ?></div>
-                    <div class="context-line"><?= esc($selected['academic_year']) ?></div>
-                </div>
-
-                <div class="legend">
-                    <span class="legend-swatch"></span>
-                    Grey blocks belong to other sections. Their rooms and professors
-                    are unavailable during those times.
+                <div class="ai-context">
+                    <span class="ai-context__chip"><?= esc($selected['section']) ?> &middot; <?= esc($selected['year_level']) ?></span>
+                    <span class="ai-context__chip"><?= esc($selected['program']) ?></span>
+                    <span class="ai-context__info material-symbols-outlined" tabindex="0" aria-label="Grey blocks belong to other sections. Their rooms and professors are unavailable during those times." title="Grey blocks belong to other sections. Their rooms and professors are unavailable during those times.">info</span>
                 </div>
 
                 <div class="ai-tools">
@@ -3277,7 +3294,53 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
             document.getElementById('plottedUnits').textContent = units;
             document.getElementById('classCount').textContent =
-                blocks.length === 0 ? 'No classes plotted yet' : `${blocks.length} ${blocks.length === 1 ? 'class' : 'classes'} plotted for this section`;
+                blocks.length === 0 ? 'Nothing plotted yet. Drag a subject onto the grid ✨' : `${blocks.length} ${blocks.length === 1 ? 'class' : 'classes'} plotted for this section`;
+
+            updatePlotProgress();
+        }
+
+        // Progress toward a fully plotted, fully staffed section, with a small
+        // celebration the moment it gets there (never on first page load).
+        let progressPrimed = false;
+        let wasComplete = false;
+
+        function updatePlotProgress() {
+            const total = SUBJECTS.length;
+            const done = SUBJECTS.filter(s => {
+                const card = document.querySelector(`.subject[data-code="${s.code}"]`);
+                return card && card.classList.contains('is-plotted');
+            }).length;
+
+            document.getElementById('plotProgressFill').style.width = (total ? done / total * 100 : 0) + '%';
+            document.getElementById('plotProgressText').textContent = total ? `${done} of ${total} subjects plotted` : '';
+
+            const complete = total > 0 && done === total && subjectsWithoutProf().length === 0;
+            document.getElementById('plotProgress').classList.toggle('is-done', complete);
+
+            if (complete && !wasComplete && progressPrimed) {
+                confetti();
+                showToast('Section complete! Every subject is plotted and staffed 🎉', 'success');
+            }
+
+            wasComplete = complete;
+            progressPrimed = true;
+        }
+
+        function confetti() {
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const colors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#a855f7'];
+
+            for (let i = 0; i < 40; i++) {
+                const piece = document.createElement('i');
+                piece.className = 'confetti-piece';
+                piece.style.left = (Math.random() * 100) + 'vw';
+                piece.style.background = colors[i % colors.length];
+                piece.style.setProperty('--dx', (Math.random() * 200 - 100) + 'px');
+                piece.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+                piece.style.animationDelay = (Math.random() * .4) + 's';
+                document.body.appendChild(piece);
+                setTimeout(() => piece.remove(), 2600);
+            }
         }
 
         function setSync(state, text) {
