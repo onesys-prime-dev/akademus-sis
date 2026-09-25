@@ -3081,6 +3081,7 @@ function beginPlacement(place) {
     renderInspector();
     if (ui.place.kind === 'new') renderBlocks();
     if (ui.place.step === 'faculty') loadFacultyForPicker();
+    else loadFaculty(true).catch(() => {}); // ready by the time a room is chosen
     focusPicker();
 }
 
@@ -3110,7 +3111,7 @@ function cancelPlacement() {
 
 function focusPicker() {
     requestAnimationFrame(() => {
-        const input = $('placeBody').querySelector('.picker__search input');
+        const input = $('placeBody').querySelector('.step.is-open .picker__search input');
         if (input) input.focus({ preventScroll: true });
     });
 }
@@ -3132,38 +3133,82 @@ function renderPlacement() {
         box.appendChild(note);
     });
 
+    // Steps are stacked cards. The active one is open; finished ones fold
+    // down to a single summary line, and the next one unfolds beneath.
     const steps = mk('ol', 'steps');
-
-    if (p.kind !== 'faculty') {
-        const done = p.step !== 'room';
-        const step = mk('li', 'step' + (done ? ' is-done' : ' is-active'));
-        const head = mk('div', 'step__head');
-        head.appendChild(mk('span', 'step__num', '1'));
-        head.appendChild(mk('strong', '', 'Room'));
-        if (done) {
-            head.appendChild(mk('span', 'step__value', p.roomName));
-            head.appendChild(textButton('Change', () => { p.step = 'room'; p.pendingRoom = null; renderInspector(); if (p.kind === 'new') renderBlocks(); focusPicker(); }));
-        }
-        step.appendChild(head);
-        if (!done) step.appendChild(pickerControls('room'));
-        steps.appendChild(step);
-    }
-
-    if (p.kind !== 'room') {
-        const active = p.step === 'faculty';
-        const inherited = p.kind === 'new' ? assignedFaculty(p.subject.code) : null;
-        const step = mk('li', 'step' + (active ? ' is-active' : ''));
-        const head = mk('div', 'step__head');
-        head.appendChild(mk('span', 'step__num', p.kind === 'faculty' ? '1' : '2'));
-        head.appendChild(mk('strong', '', 'Faculty'));
-        if (!active) head.appendChild(mk('span', 'step__value muted', inherited ? `${inherited.name} (already teaches ${p.subject.code})` : 'Chosen after the room'));
-        step.appendChild(head);
-        if (active) step.appendChild(pickerControls('faculty'));
-        steps.appendChild(step);
-    }
+    if (p.kind !== 'faculty') steps.appendChild(stepCard('room', p.kind === 'new' ? '1' : ''));
+    if (p.kind !== 'room') steps.appendChild(stepCard('faculty', p.kind === 'new' ? '2' : ''));
     box.appendChild(steps);
 
+    paintSteps(p, false);
+    box.appendChild(placeActions(p));
+    refreshPlacementLists();
+}
+
+function stepCard(kind, number) {
+    const card = mk('li', 'step');
+    card.id = kind === 'room' ? 'stepRoom' : 'stepFaculty';
+    card.dataset.step = kind;
+    card.dataset.number = number;
+    card.append(mk('div', 'step__head'), mk('div', 'step__body'));
+    card.querySelector('.step__body').appendChild(mk('div', 'step__inner'));
+    return card;
+}
+
+function stepHead(kind, number, p) {
+    const done = kind === 'room' && p.kind === 'new' && p.step === 'faculty';
+    const head = mk('div', 'step__head');
+    head.id = (kind === 'room' ? 'stepRoom' : 'stepFaculty') + 'Head';
+
+    const num = mk('span', 'step__num');
+    if (done) {
+        const check = mk('span', 'material-symbols-outlined', 'check');
+        check.setAttribute('aria-hidden', 'true');
+        num.appendChild(check);
+    } else if (number) {
+        num.textContent = number;
+    } else {
+        num.hidden = true;
+    }
+    head.append(num, mk('strong', '', kind === 'room' ? 'Room' : 'Faculty'));
+
+    if (done) {
+        head.appendChild(mk('span', 'step__value', p.roomName));
+        head.appendChild(textButton('Change', () => showStep('room')));
+    } else if (kind === 'faculty' && p.step !== 'faculty') {
+        const inherited = p.kind === 'new' ? assignedFaculty(p.subject.code) : null;
+        head.appendChild(mk('span', 'step__value muted', inherited ? `${inherited.name} (already teaches ${p.subject.code})` : 'Chosen after the room'));
+    }
+    return head;
+}
+
+/** Opens the active card and folds the others; the CSS animates the change. */
+function paintSteps(p, animate) {
+    ['room', 'faculty'].forEach(kind => {
+        const card = $(kind === 'room' ? 'stepRoom' : 'stepFaculty');
+        if (!card) return;
+
+        const open = p.step === kind;
+        const inner = card.querySelector('.step__inner');
+        card.querySelector('.step__head').replaceWith(stepHead(kind, card.dataset.number, p));
+        card.classList.toggle('is-done', kind === 'room' && p.kind === 'new' && p.step === 'faculty');
+
+        if (open && !inner.firstChild) inner.appendChild(pickerControls(kind));
+
+        if (!animate) {
+            card.classList.toggle('is-open', open);
+        } else if (open) {
+            // Next frame, so the browser has the folded height to animate from.
+            requestAnimationFrame(() => card.classList.add('is-open'));
+        } else {
+            card.classList.remove('is-open');
+        }
+    });
+}
+
+function placeActions(p) {
     const actions = mk('div', 'ins-actions');
+    actions.id = 'placeActions';
     if (p.step === 'faculty') {
         const skip = mk('button', 'btn btn-secondary', p.kind === 'new' ? 'Plot without faculty' : 'Unassign faculty');
         skip.type = 'button';
@@ -3174,9 +3219,23 @@ function renderPlacement() {
     cancel.type = 'button';
     cancel.addEventListener('click', cancelPlacement);
     actions.appendChild(cancel);
-    box.appendChild(actions);
+    return actions;
+}
 
+/** Moves between the room and faculty cards. */
+function showStep(next) {
+    const p = ui.place;
+    if (!p) return;
+    if (!$('stepRoom') && !$('stepFaculty')) { p.step = next; renderInspector(); return; }
+
+    p.step = next;
+    p.pendingRoom = null;
+    paintSteps(p, true);
+    $('placeActions').replaceWith(placeActions(p));
     refreshPlacementLists();
+
+    if (next === 'faculty') loadFacultyForPicker();
+    setTimeout(focusPicker, 420);
 }
 
 function pickerControls(kind) {
@@ -3279,6 +3338,7 @@ function roomRow(room, occupant, load) {
     btn.type = 'button';
     btn.disabled = !!occupant;
     btn.dataset.state = occupant ? 'occupied' : 'free';
+    btn.dataset.room = room.name;
     btn.setAttribute('aria-expanded', String(expanded));
 
     const main = mk('span', 'pick-main');
@@ -3409,11 +3469,11 @@ function acceptRoom(room) {
         return;
     }
 
-    p.step = 'faculty';
-    renderInspector();
+    // Let the chosen card acknowledge the click, then slide to faculty.
+    const picked = Array.from(document.querySelectorAll('#roomList .pick-row')).find(r => r.dataset.room === room.name);
+    if (picked) picked.classList.add('is-picked');
     renderBlocks();
-    loadFacultyForPicker();
-    focusPicker();
+    setTimeout(() => { if (ui.place === p) showStep('faculty'); }, picked ? 280 : 0);
 }
 
 /** Leaves the picker and shows the class that was just edited. */
@@ -3477,7 +3537,8 @@ async function loadFacultyForPicker() {
     renderFacultyList();
 
     try {
-        const data = await loadFaculty(true);
+        // A roster fetched moments ago (while choosing the room) is fresh enough.
+        const data = await loadFaculty(!facultyCache || Date.now() - facultyCache.at > 20000);
         if (ui.place !== p) return;
         p.facultyData = data;
         p.facultyState = 'ready';

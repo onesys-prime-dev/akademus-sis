@@ -832,27 +832,48 @@ body.is-plot-dragging .block.is-other { opacity: .7; }
 .ap-actions .btn { min-height: var(--control-height-sm); padding: 4px 12px; font-size: 12px; }
 .approvals-empty { padding: var(--space-6) 0; text-align: center; font-size: 13px; color: var(--color-text-secondary); }
 
-/* room and faculty picker */
-.modal.place-modal { width: min(820px, 100%); display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-5) var(--space-6); }
-.place-modal .facts { max-width: 100%; }
+/* room and faculty picker: a fixed-size stepper so nothing jumps between steps */
+.modal.place-modal { width: min(820px, 100%); height: min(780px, calc(100dvh - 32px)); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-5) var(--space-6); overflow: hidden; }
+.place-modal .facts { flex: none; }
 .place-modal .fact { grid-template-columns: 96px minmax(0, 1fr) auto; }
-.place-modal .steps { flex-direction: column; }
-.place-modal .pick-list { max-height: clamp(200px, calc(100dvh - 560px), 520px); }
-.place-modal .pick-row { padding: 10px 8px; }
-.place-modal .search-field { max-width: 420px; }
-.place-modal .pick-detail { margin-left: 52px; }
+.place-modal .ins-head, .place-modal .verdict { flex: none; }
+
+/* stacked step cards: the active card is open, finished ones fold to one line */
+.place-modal { --fold: 460ms; --fold-fade: 320ms; }
+.place-modal .steps { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.place-modal .step { display: grid; grid-template-rows: auto 0fr; align-content: start; flex: 0 0 auto; min-height: 0; padding: 0; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); box-shadow: none;
+    transition: grid-template-rows var(--fold) var(--ease-enter), flex-grow var(--fold) var(--ease-enter), border-color var(--motion-normal) var(--ease-standard), box-shadow var(--motion-normal) var(--ease-standard); }
+.place-modal .step.is-open { grid-template-rows: auto 1fr; flex: 1 1 auto; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+.place-modal .step__head { padding: 12px 14px; }
+.place-modal .step__num { transition: background-color var(--motion-normal) var(--ease-standard), color var(--motion-normal) var(--ease-standard); }
+.place-modal .step__num .material-symbols-outlined { font-size: 15px; }
+.place-modal .step.is-open .step__num { background: var(--color-primary); color: #fff; }
+.place-modal .step.is-done .step__num { background: var(--color-success-soft); color: var(--color-success); }
+.place-modal .step__value { transition: opacity var(--motion-normal) var(--ease-standard); animation: plReveal var(--motion-normal) var(--ease-enter); }
+.place-modal .step__body { min-height: 0; overflow: hidden; visibility: hidden; transition: visibility 0s linear var(--fold); }
+.place-modal .step.is-open .step__body { visibility: visible; transition-delay: 0s; }
+.place-modal .step__inner { height: 100%; display: flex; flex-direction: column; padding: 0 14px 14px; opacity: 0; transform: translateY(8px); transition: opacity var(--fold-fade) var(--ease-standard), transform var(--fold) var(--ease-enter); }
+.place-modal .step.is-open .step__inner { opacity: 1; transform: none; transition-delay: 160ms; }
+.place-modal .step__inner .picker { flex: 1; min-height: 0; margin-top: 0; }
+.place-modal .step__inner .pick-list { flex: 1; min-height: 0; max-height: none; }
+
 .chips--floors { padding-bottom: 2px; }
-.place-modal #roomList { max-height: clamp(200px, calc(100dvh - 560px), 520px); display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-2); align-content: start; padding: 2px; margin: 0; }
+.place-modal .search-field { max-width: 420px; }
+.place-modal .pick-row { padding: 10px 8px; }
+.place-modal .pick-detail { margin-left: 52px; }
+.place-modal #roomList { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); grid-auto-rows: max-content; gap: var(--space-2); align-content: start; align-items: start; padding: 2px; margin: 0; }
 .place-modal #roomList .pick-group { grid-column: 1 / -1; position: static; padding: 10px 2px 2px; }
 .place-modal #roomList .pick-empty { grid-column: 1 / -1; }
-.place-modal #roomList .pick-item { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0; overflow: hidden; }
+.place-modal #roomList .pick-item { flex: none; min-height: 104px; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0; overflow: hidden; transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard); }
+.place-modal #roomList .pick-item:has(.pick-row:hover:not(:disabled)) { border-color: var(--color-primary); box-shadow: var(--shadow-sm); }
 .place-modal #roomList .pick-item:has(.pick-row:disabled) { background: var(--color-surface-sunken); }
 .place-modal #roomList .pick-item:has(.pick-warn) { grid-column: 1 / -1; border-color: var(--color-warning); }
+.place-modal #roomList .pick-item:has(.is-picked) { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary); transform: scale(.985); }
 .place-modal #roomList .pick-row { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px; border-radius: 0; }
-.place-modal #roomList .pick-row:hover:not(:disabled) { background: var(--color-primary-soft); }
+.place-modal #roomList .pick-row:hover:not(:disabled), .place-modal #roomList .pick-row.is-picked { background: var(--color-primary-soft); }
 .place-modal #roomList .pick-status { align-self: flex-start; padding-top: 6px; border-top: 1px solid var(--color-border); width: 100%; }
 .place-modal #roomList .pick-warn { margin: 0; border-radius: 0; }
-.place-modal .ins-actions { justify-content: flex-end; border-top: 1px solid var(--color-border); padding-top: var(--space-3); }
+.place-modal .ins-actions { flex: none; justify-content: flex-end; border-top: 1px solid var(--color-border); padding-top: var(--space-3); }
 
 /* room overview */
 .modal.overview-modal, .modal.faculty-directory { width: min(1040px, 100%); padding: 0; display: flex; flex-direction: column; overflow: hidden; }
