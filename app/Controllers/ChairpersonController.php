@@ -2048,6 +2048,22 @@ class ChairpersonController extends BaseController
             $rosterBySection[(int) $row['section_id']][] = $row;
         }
 
+        // Subject enrollments can exist for students who are not on the
+        // roster (for example irregular students). They block deleting the
+        // section, so the page must be able to show them.
+        $enrollmentsBySection = [];
+
+        if ($sectionIds !== []) {
+            foreach (db_connect()->table('enrollments')
+                ->select('section_id, COUNT(DISTINCT user_id) AS students, GROUP_CONCAT(DISTINCT subject_code ORDER BY subject_code SEPARATOR ", ") AS subjects')
+                ->whereIn('section_id', $sectionIds)
+                ->groupBy('section_id')
+                ->get()
+                ->getResultArray() as $row) {
+                $enrollmentsBySection[(int) $row['section_id']] = ['students' => (int) $row['students'], 'subjects' => $row['subjects']];
+            }
+        }
+
         $students = db_connect()->table('users u')
             ->select('u.id, u.username, u.section_id')
             ->join('auth_groups_users g', 'g.user_id = u.id')
@@ -2069,6 +2085,7 @@ class ChairpersonController extends BaseController
             'academicYears'   => $this->academicYears(),
             'sections'        => $sections,
             'rosterBySection' => $rosterBySection,
+            'enrollmentsBySection' => $enrollmentsBySection,
             'students'        => $students,
         ]);
     }
@@ -2241,10 +2258,22 @@ class ChairpersonController extends BaseController
         }
 
         $rosterCount = db_connect()->table('users')->where('section_id', $section['section_id'])->countAllResults();
-        $enrolledCount = db_connect()->table('enrollments')->where('section_id', $section['section_id'])->countAllResults();
 
-        if ($rosterCount > 0 || $enrolledCount > 0) {
-            return $this->fail('This section still has students assigned or enrolled — remove them first.');
+        if ($rosterCount > 0) {
+            return $this->fail("{$section['section']} still has {$rosterCount} student" . ($rosterCount === 1 ? '' : 's') . ' on its roster. Remove them first.');
+        }
+
+        $enrolled = db_connect()->table('enrollments')
+            ->select('COUNT(DISTINCT user_id) AS students, GROUP_CONCAT(DISTINCT subject_code ORDER BY subject_code SEPARATOR ", ") AS subjects')
+            ->where('section_id', $section['section_id'])
+            ->get()
+            ->getRowArray();
+
+        if ((int) ($enrolled['students'] ?? 0) > 0) {
+            $students = (int) $enrolled['students'];
+
+            return $this->fail("{$section['section']} can't be deleted yet: {$students} student" . ($students === 1 ? ' is' : 's are')
+                . " still enrolled in its subjects ({$enrolled['subjects']}). Drop those enrollments first.");
         }
 
         (new SectionModel())->delete($section['section_id']);
@@ -2534,7 +2563,68 @@ class ChairpersonController extends BaseController
         // programs. No department assigned = no programs to schedule.
         $filters['program'] = $subDept === null ? [] : $deptModel->programsOfSubDept((int) $subDept['sub_dept_id']);
 
+        // Sections come from what the department actually has, not a fixed
+        // list, so a section created on the Sections page is plottable at once.
+        $filters['section'] = $this->sectionOptions($filters['program']);
+
         return $filters;
+    }
+
+    /**
+     * Section names for the plotting selector: the sections that actually
+     * exist (Sections page) for the program, year level and term being
+     * viewed, in natural order (BIT2 before BIT10). A section that only
+     * appears in old plotted rows is not offered.
+     *
+     * When nothing exists for that exact context (say, a year level with no
+     * sections yet) it offers the department's section names from other year
+     * levels, so a new cohort can still be started; and only a department with
+     * no sections at all falls back to the built-in names.
+     *
+     * @param list<string> $programs
+     *
+     * @return list<string>
+     */
+    private function sectionOptions(array $programs): array
+    {
+        if ($programs === []) {
+            return self::FILTERS['section'];
+        }
+
+        $names = static function ($query): array {
+            $rows = array_column($query->select('section')->distinct()->get()->getResultArray(), 'section');
+            $rows = array_values(array_unique(array_filter(array_map('trim', $rows), static fn ($n) => $n !== '')));
+            natcasesort($rows);
+
+            return array_values($rows);
+        };
+
+        $db      = db_connect();
+        $program = $this->request->getGet('program');
+        $year    = $this->request->getGet('year_level');
+
+        // Narrow to what is being viewed when the request says so (page
+        // loads); JSON saves carry no query string and get the department-wide list.
+        if (is_string($program) && in_array($program, $programs, true) && is_string($year) && in_array($year, self::FILTERS['year_level'], true)) {
+            $scoped = $db->table('sections')->where('program', $program)->where('year_level', $year);
+
+            $ayLabel  = $this->request->getGet('ay_label');
+            $semester = $this->request->getGet('semester');
+
+            if (is_string($ayLabel) && is_string($semester)) {
+                $scoped->where('academic_year', AcademicYearModel::format($ayLabel, $semester));
+            }
+
+            $found = $names($scoped);
+
+            if ($found !== []) {
+                return $found;
+            }
+        }
+
+        $all = $names($db->table('sections')->whereIn('program', $programs));
+
+        return $all !== [] ? $all : self::FILTERS['section'];
     }
 
     /**

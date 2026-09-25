@@ -281,7 +281,14 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <?php endif ?>
 
                 <?php if ($roster === []): ?>
-                    <div class="roster-empty">No students assigned yet.</div>
+                    <?php $enrolledHere = $enrollmentsBySection[(int) $sec['section_id']] ?? null; ?>
+                    <div class="roster-empty">
+                        No students assigned yet.
+                        <?php if ($enrolledHere !== null): ?>
+                            <strong><?= esc($enrolledHere['students']) ?> student<?= $enrolledHere['students'] === 1 ? ' is' : 's are' ?> still enrolled in its subjects</strong>
+                            (<?= esc($enrolledHere['subjects']) ?>), so this section can't be deleted until those enrollments are dropped.
+                        <?php endif ?>
+                    </div>
                 <?php else: ?>
                     <table class="roster-table">
                         <thead>
@@ -324,6 +331,9 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         el.style.display = 'block';
         el.className = 'flash ' + (isError ? 'error' : 'success');
         el.textContent = message;
+        // The banner sits at the top of a long page; without this a failed
+        // delete further down looks like nothing happened.
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     async function postJSON(url, body) {

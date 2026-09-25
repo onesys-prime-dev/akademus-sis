@@ -46,6 +46,11 @@
 
     function trackForm(form) {
         if (!form || trackedForms.has(form)) return;
+        // A GET form (filters, search, term pickers) only changes what is
+        // shown; there is nothing to lose, so it must never arm the guard.
+        // Otherwise changing a filter that reloads the page triggers the
+        // browser's own "Leave site?" prompt.
+        if (String(form.getAttribute('method') || 'get').toLowerCase() === 'get') return;
         trackedForms.add(form);
         form.addEventListener('input', onFieldChange, true);
         form.addEventListener('change', onFieldChange, true);
