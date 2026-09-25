@@ -53,6 +53,13 @@
     --color-info:            #1d4ed8;
     --color-info-soft:       #eff6ff;
 
+    /* ---- Domain accent: laboratory sessions (scheduling). One restrained
+       hue so lecture and lab read differently without giving every subject
+       its own colour. ---- */
+    --color-lab:             #0f766e;
+    --color-lab-soft:        #f0fdfa;
+    --color-lab-border:      #99d6cf;
+
     /* ---- Radius ---- */
     --radius-sm:  6px;
     --radius-md:  8px;
