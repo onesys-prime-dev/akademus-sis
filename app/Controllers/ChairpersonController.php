@@ -1604,6 +1604,27 @@ class ChairpersonController extends BaseController
         );
         $dropped = [];
 
+        // A room can be retired (deactivated or deleted, e.g. a whole floor is
+        // closed) while classes are still plotted in it. Those classes must
+        // stay editable and removable, so a block that is unchanged from what
+        // is already stored keeps its retired room. Choosing a retired room
+        // for anything new is still rejected below.
+        $activeRoomNames = array_column($this->rooms(), 'name');
+        $storedPlacements = [];
+
+        foreach (db_connect()->table('plotted_schedules')
+            ->select('subject_code, day, start_time, room')
+            ->where([
+                'academic_year' => $context['academic_year'],
+                'program'       => $context['program'],
+                'year_level'    => $context['year_level'],
+                'section'       => $context['section'],
+            ])
+            ->get()
+            ->getResultArray() as $stored) {
+            $storedPlacements[$stored['subject_code'] . '|' . $stored['day'] . '|' . substr($stored['start_time'], 0, 5) . '|' . $stored['room']] = true;
+        }
+
         $blocks = [];
 
         foreach ($payload['blocks'] as $block) {
@@ -1637,8 +1658,10 @@ class ChairpersonController extends BaseController
 
             $subject = $subjectsByCode[$block['code']];
 
-            if (! in_array($block['room'], array_column($this->rooms(), 'name'), true)) {
-                return $this->fail("Unknown room: {$block['room']}");
+            $unchangedInRetiredRoom = isset($storedPlacements["{$block['code']}|{$block['day']}|{$block['start']}|{$block['room']}"]);
+
+            if (! in_array($block['room'], $activeRoomNames, true) && ! $unchangedInRetiredRoom) {
+                return $this->fail("{$block['room']} is no longer an available room. Choose another room for {$block['code']}.");
             }
 
             if (! preg_match('/^\d{2}:\d{2}$/', $block['start']) || ! preg_match('/^\d{2}:\d{2}$/', $block['end'])

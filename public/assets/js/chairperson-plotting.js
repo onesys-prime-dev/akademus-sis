@@ -466,6 +466,10 @@ function blockIssues(b) {
         }
     }
 
+    if (!room) {
+        issues.push({ level: 'warn', title: 'Room no longer available', detail: b.room + ' was removed or deactivated. Choose another room for this class.' });
+    }
+
     if (subject && subject.is_lab && room && !room.is_laboratory) {
         issues.push({ level: 'warn', title: 'Room type', detail: `${b.code} is a laboratory class, but ${b.room} is not configured as a laboratory.` });
     }
@@ -1554,6 +1558,11 @@ function evaluatePlacement({ subject, day, startRow, endRow, ignoreKey = null, r
     if (roomClash) {
         return { hard: { type: 'room', title: 'Room conflict', attempted, existing: roomClash,
             message: `${roomName} is already in use by ${roomClash.code} · ${roomClash.section || CONTEXT.section} at this time.` }, warnings: [] };
+    }
+
+    if (roomName && !ROOM_BY_NAME.has(roomName)) {
+        return { hard: { type: 'retired', title: 'Room no longer available', attempted, existing: null,
+            message: roomName + ' was removed or deactivated. Change the room first, then move the class.' }, warnings: [] };
     }
 
     const roomsFree = ROOMS.filter(r => !everyone.some(b => b.room === r.name && inSlot(b))).length;
@@ -2661,6 +2670,7 @@ function issueList(issues, block) {
                 'Faculty conflict': ['Choose another faculty', () => beginFacultyChange(key)],
                 'Outside faculty availability': ['Choose another faculty', () => beginFacultyChange(key)],
                 'Room type': ['Change room', () => beginRoomChange(key)],
+                'Room no longer available': ['Change room', () => beginRoomChange(key)],
                 'Room capacity': ['Change room', () => beginRoomChange(key)],
                 'Room conflict': ['Change room', () => beginRoomChange(key)],
                 'Section conflict': ['Move class', () => { ui.moveOpen = true; renderInspector(); }],

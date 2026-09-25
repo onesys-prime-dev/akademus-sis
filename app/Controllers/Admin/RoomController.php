@@ -123,6 +123,34 @@ class RoomController extends BaseController
             ->with('message', "Floor \"{$name}\" added — add its first room below.");
     }
 
+    /**
+     * Removes a floor that no longer has any rooms. A floor that still has
+     * rooms is refused, so closing a floor is always a deliberate two-step
+     * (move or delete its rooms, then the floor) instead of silently
+     * orphaning rooms and the classes plotted in them.
+     */
+    public function deleteFloor()
+    {
+        $name  = trim((string) $this->request->getPost('name'));
+        $floor = $this->floorModel->where('name', $name)->first();
+
+        if ($floor === null) {
+            return redirect()->to('/admin/rooms')->with('errors', ['name' => "Floor \"{$name}\" no longer exists."]);
+        }
+
+        $rooms = $this->roomModel->where('floor', $name)->countAllResults();
+
+        if ($rooms > 0) {
+            return redirect()
+                ->to('/admin/rooms?floor=' . urlencode($name))
+                ->with('errors', ['floor' => "\"{$name}\" still has {$rooms} room" . ($rooms === 1 ? '' : 's') . '. Delete or move them to another floor first, then delete the floor.']);
+        }
+
+        $this->floorModel->delete($floor['floor_id']);
+
+        return redirect()->to('/admin/rooms')->with('message', "Floor \"{$name}\" deleted.");
+    }
+
     private function ensureFloorExists(string $name): void
     {
         if ($this->floorModel->where('name', $name)->first() === null) {
@@ -176,11 +204,19 @@ class RoomController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
+        $inUse = db_connect()->table('plotted_schedules')->where('room', $room['name'])->countAllResults();
+
         $this->roomModel->delete($id);
+
+        $message = "{$room['name']} deleted.";
+
+        if ($inUse > 0) {
+            $message .= " {$inUse} plotted class" . ($inUse === 1 ? ' is' : 'es are') . ' still scheduled in it; chairpersons will see a "room no longer available" warning and can move them.';
+        }
 
         return redirect()
             ->to('/admin/rooms?floor=' . urlencode($room['floor']))
-            ->with('message', "{$room['name']} deleted.");
+            ->with('message', $message);
     }
 
     public function toggleStatus($id)

@@ -31,10 +31,22 @@ $floorLabel = static fn (string $name): string => preg_match('/\bfloor$/i', trim
             <a href="<?= site_url('admin/rooms?floor=' . urlencode($floor)) ?>" class="ac-tabs__link <?= $activeFloor === $floor ? 'is-active' : '' ?>"><?= $floorLabel($floor) ?></a>
         <?php endforeach ?>
     </div>
-    <button type="button" onclick="acOpenModal('modalAddFloor')" class="ac-tabs__add-floor">
-        <span class="material-symbols-outlined" style="font-size:16px;">add</span>
-        <span>Add Floor</span>
-    </button>
+    <div style="display:flex; gap:8px; align-items:center;">
+        <?php if ($activeFloor !== 'overview' && in_array($activeFloor, $floors, true)): ?>
+            <form method="post" action="<?= site_url('admin/floors/delete') ?>">
+                <?= csrf_field() ?>
+                <input type="hidden" name="name" value="<?= esc($activeFloor, 'attr') ?>">
+                <button type="submit" class="ac-tabs__add-floor" data-confirm="Delete <?= esc($activeFloor, 'attr') ?> floor? Only floors with no rooms can be deleted.">
+                    <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
+                    <span>Delete Floor</span>
+                </button>
+            </form>
+        <?php endif ?>
+        <button type="button" onclick="acOpenModal('modalAddFloor')" class="ac-tabs__add-floor">
+            <span class="material-symbols-outlined" style="font-size:16px;">add</span>
+            <span>Add Floor</span>
+        </button>
+    </div>
 </div>
 
 <?php if ($activeFloor === 'overview'): ?>

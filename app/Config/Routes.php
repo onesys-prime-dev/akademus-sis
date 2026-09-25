@@ -100,6 +100,7 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->get('rooms'                    , 'Admin\RoomController::index');
     $routes->post('rooms/store'             , 'Admin\RoomController::store');
     $routes->post('floors/store'            , 'Admin\RoomController::storeFloor');
+    $routes->post('floors/delete'           , 'Admin\RoomController::deleteFloor');
     $routes->post('rooms/update/(:num)'     , 'Admin\RoomController::update/$1');
     $routes->post('rooms/delete/(:num)'     , 'Admin\RoomController::delete/$1');
     $routes->post('rooms/toggle-status/(:num)', 'Admin\RoomController::toggleStatus/$1');
