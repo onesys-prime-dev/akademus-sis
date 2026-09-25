@@ -656,9 +656,9 @@ class ScheduleSuggester
                 if ($rules['lunch_enabled']) {
                     $lunchOverlap = max(0, min($end, $ctx['lunch_end']) - max($start, $ctx['lunch_start']));
 
+                    // Hard: the lunch break stays free.
                     if ($lunchOverlap > 0) {
-                        $score -= 25 * ($lunchOverlap / 60);
-                        $reasonsBase[] = 'overlaps lunch';
+                        continue;
                     }
                 }
 

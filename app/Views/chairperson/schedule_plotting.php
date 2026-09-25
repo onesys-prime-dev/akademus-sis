@@ -64,7 +64,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             --on-surface:         var(--color-text-primary);
             --on-surface-variant: var(--color-text-secondary);
             --outline:            var(--color-text-tertiary);
-            --outline-variant:    var(--color-border);        }
+            --outline-variant:    var(--color-border);
+        }
 
         body {
             font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
@@ -467,6 +468,23 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             position: relative;
             border-right: 1px solid var(--surface-dim);
         }
+
+        .lunch-band {
+            position: absolute; left: 0; right: 0; z-index: 0; pointer-events: none;
+            background: repeating-linear-gradient(135deg, rgba(245, 158, 11, .10) 0 6px, rgba(245, 158, 11, .04) 6px 12px);
+            border-top: 1px dashed rgba(217, 119, 6, .45); border-bottom: 1px dashed rgba(217, 119, 6, .45);
+            color: #b45309; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+
+        .noprof-banner {
+            display: flex; align-items: center; gap: 10px; margin: 0 16px 10px; padding: 9px 12px;
+            border: 1px solid #f59e0b; border-radius: var(--radius-sm); background: #fffbeb; color: #92400e; font-size: 13px;
+        }
+        .noprof-banner[hidden] { display: none; }
+        .noprof-banner .material-symbols-outlined { font-size: 20px; }
+        .noprof-banner__text { flex: 1; }
+        .block .assign-prof { cursor: pointer; font-weight: 700; text-decoration: underline; }
 
         .slot { height: 28px; border-bottom: 1px solid var(--surface-dim); }
 
@@ -1800,6 +1818,11 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     <span><i class="lg-grey"></i> Occupied</span>
                 </div>
             </div>
+            <div class="noprof-banner" id="noProfBanner" role="status" hidden>
+                <span class="material-symbols-outlined" aria-hidden="true">person_alert</span>
+                <span class="noprof-banner__text" id="noProfText"></span>
+                <button type="button" class="btn btn-ghost" id="noProfAuto">Auto-assign professors</button>
+            </div>
             <div class="panel-scroll">
                 <div class="grid">
                     <div class="head"></div>
@@ -2540,6 +2563,17 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 showToast('Removed ' + b.code + ' from the schedule.', '');
             });
 
+            if (!prof) {
+                prof = document.createElement('div');
+                prof.className = 'meta prof assign-prof';
+                prof.title = 'No professor yet. Click to assign one to this meeting';
+                prof.textContent = '＋ Assign professor';
+                prof.addEventListener('click', ev => {
+                    ev.stopPropagation();
+                    reassignBlockFaculty(index);
+                });
+            }
+
             el.append(code, title, time, room);
             if (prof) el.appendChild(prof);
             el.appendChild(remove);
@@ -2595,9 +2629,55 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             }
 
             updateRail();
+            updateNoProfBanner();
             renderRoomOverview(); // keep the overview live with every change
             queueSuggestions();
         }
+
+        // Plotted subjects with no professor never reach a faculty member's
+        // "My Assignments", so call them out and offer a one-click fix.
+        function subjectsWithoutProf() {
+            const codes = [];
+            blocks.forEach(b => { if (!b.prof && !codes.includes(b.code)) codes.push(b.code); });
+            return codes.filter(code => !blocks.some(b => b.code === code && b.prof));
+        }
+
+        function updateNoProfBanner() {
+            const banner = document.getElementById('noProfBanner');
+            if (!banner) return;
+            const codes = subjectsWithoutProf();
+            banner.hidden = codes.length === 0;
+            if (codes.length === 0) return;
+            document.getElementById('noProfText').textContent = codes.length === 1
+                ? `${codes[0]} has no professor, so no faculty member can see or take it.`
+                : `${codes.length} plotted subjects have no professor (${codes.join(', ')}), so no faculty member can see or take them.`;
+        }
+
+        document.getElementById('noProfAuto').addEventListener('click', () => {
+            const codes = subjectsWithoutProf();
+            const picks = (aiPlan.improvements || []).filter(i => i.type === 'assign_faculty' && i.faculty && codes.includes(i.code));
+
+            if (picks.length === 0) {
+                showToast('No professor could be matched automatically. Click "＋ Assign professor" on a class to choose one.', 'error');
+                return;
+            }
+
+            pushUndo(`assigned professors to ${picks.length} subject${picks.length === 1 ? '' : 's'}`);
+            clearPreview();
+            picks.forEach(item => {
+                blocks.filter(x => x.code === item.code && !x.prof).forEach(x => {
+                    x.prof = item.faculty.name;
+                    x.faculty_id = item.faculty.id;
+                });
+            });
+            renderBlocks();
+            scheduleSave();
+
+            const left = subjectsWithoutProf();
+            showToast(left.length
+                ? `Assigned ${picks.length}. ${left.join(', ')} still need a professor. Assign manually.`
+                : `Professors assigned to ${picks.length} subject${picks.length === 1 ? '' : 's'}.`, left.length ? 'error' : 'success');
+        });
 
         // ---------- AI scheduling assistant ----------
         // The server ranks conflict-free placements for whatever is still
@@ -2632,6 +2712,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 if (!response.ok || !data.ok) throw new Error('bad response');
 
                 aiPlan = data;
+                renderLunchBand(data.rules);
                 if (rulesForm.hidden) fillRulesForm(data.rules);
                 renderSuggestions();
             } catch (err) {
@@ -2750,7 +2831,27 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             rulesForm.max_hours_day.appendChild(opt);
         }
 
+        function renderLunchBand(rules) {
+            document.querySelectorAll('.lunch-band').forEach(el => el.remove());
+            if (!rules || !rules.lunch_enabled) return;
+
+            const top = (toMinutes(rules.lunch_start) - CONFIG.gridStartMin) / 30 * CONFIG.rowHeight;
+            const height = (toMinutes(rules.lunch_end) - toMinutes(rules.lunch_start)) / 30 * CONFIG.rowHeight;
+            if (height <= 0 || top < 0) return;
+
+            DAY_COLS.forEach(col => {
+                const band = document.createElement('div');
+                band.className = 'lunch-band';
+                band.style.top = top + 'px';
+                band.style.height = height + 'px';
+                band.textContent = 'Lunch break';
+                band.setAttribute('aria-hidden', 'true');
+                col.prepend(band);
+            });
+        }
+
         function fillRulesForm(rules) {
+            renderLunchBand(rules);
             if (!rules) return;
             rulesForm.lunch_enabled.checked = !!rules.lunch_enabled;
             rulesForm.allow_saturday.checked = !!rules.allow_saturday;
@@ -4626,6 +4727,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             saveTimer = setTimeout(doSave, 250);
         }
 
+        let lastNoProfWarning = '';
+
         async function doSave() {
             if (saving) { saveQueued = true; return; }
             saving = true;
@@ -4640,6 +4743,12 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
                 if (response.ok && result.ok) {
                     setSync('saved', 'All changes saved');
+
+                    const unstaffed = subjectsWithoutProf().join(', ');
+                    if (unstaffed && unstaffed !== lastNoProfWarning) {
+                        showToast(`Saved, but ${unstaffed} ${unstaffed.includes(',') ? 'have' : 'has'} no professor yet.`, 'error');
+                    }
+                    lastNoProfWarning = unstaffed;
 
                     // Blocks for subjects no longer in this term's curriculum
                     // were removed by the server; refresh so the grid matches.

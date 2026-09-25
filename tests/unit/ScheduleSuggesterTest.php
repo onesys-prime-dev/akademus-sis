@@ -501,12 +501,12 @@ final class ScheduleSuggesterTest extends CIUnitTestCase
         }
         $subject = [$this->subject('A', 1.5, 1.5)];
 
-        $on  = $this->withRules(['lunch_enabled' => true, 'spread' => 'off'], $subject, [], $others)['suggestions'][0]['best'];
+        // Lunch is a hard rule: the only free window overlaps it, so nothing is suggested.
+        $on  = $this->withRules(['lunch_enabled' => true, 'spread' => 'off'], $subject, [], $others)['suggestions'];
         $off = $this->withRules(['lunch_enabled' => false, 'spread' => 'off'], $subject, [], $others)['suggestions'][0]['best'];
 
-        $this->assertStringContainsString('overlaps lunch', implode(' ', $on['reasons']));
-        $this->assertStringNotContainsString('overlaps lunch', implode(' ', $off['reasons']));
-        $this->assertGreaterThan($on['score'], $off['score']);
+        $this->assertEmpty($on[0]['best'] ?? null);
+        $this->assertSame('12:00', $off['start']);
     }
 
     public function testSpacedDayPatternPrefersMonWedOverMonTue(): void
