@@ -832,6 +832,28 @@ body.is-plot-dragging .block.is-other { opacity: .7; }
 .ap-actions .btn { min-height: var(--control-height-sm); padding: 4px 12px; font-size: 12px; }
 .approvals-empty { padding: var(--space-6) 0; text-align: center; font-size: 13px; color: var(--color-text-secondary); }
 
+/* room and faculty picker */
+.modal.place-modal { width: min(820px, 100%); display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-5) var(--space-6); }
+.place-modal .facts { max-width: 100%; }
+.place-modal .fact { grid-template-columns: 96px minmax(0, 1fr) auto; }
+.place-modal .steps { flex-direction: column; }
+.place-modal .pick-list { max-height: clamp(200px, calc(100dvh - 560px), 520px); }
+.place-modal .pick-row { padding: 10px 8px; }
+.place-modal .search-field { max-width: 420px; }
+.place-modal .pick-detail { margin-left: 52px; }
+.chips--floors { padding-bottom: 2px; }
+.place-modal #roomList { max-height: clamp(200px, calc(100dvh - 560px), 520px); display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-2); align-content: start; padding: 2px; margin: 0; }
+.place-modal #roomList .pick-group { grid-column: 1 / -1; position: static; padding: 10px 2px 2px; }
+.place-modal #roomList .pick-empty { grid-column: 1 / -1; }
+.place-modal #roomList .pick-item { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0; overflow: hidden; }
+.place-modal #roomList .pick-item:has(.pick-row:disabled) { background: var(--color-surface-sunken); }
+.place-modal #roomList .pick-item:has(.pick-warn) { grid-column: 1 / -1; border-color: var(--color-warning); }
+.place-modal #roomList .pick-row { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px; border-radius: 0; }
+.place-modal #roomList .pick-row:hover:not(:disabled) { background: var(--color-primary-soft); }
+.place-modal #roomList .pick-status { align-self: flex-start; padding-top: 6px; border-top: 1px solid var(--color-border); width: 100%; }
+.place-modal #roomList .pick-warn { margin: 0; border-radius: 0; }
+.place-modal .ins-actions { justify-content: flex-end; border-top: 1px solid var(--color-border); padding-top: var(--space-3); }
+
 /* room overview */
 .modal.overview-modal, .modal.faculty-directory { width: min(1040px, 100%); padding: 0; display: flex; flex-direction: column; overflow: hidden; }
 .ov-head, .fd-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--color-border); }

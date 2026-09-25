@@ -431,6 +431,11 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
         </div>
     </div>
 
+    <!-- Room and faculty picker for plotting and editing a class -->
+    <div class="modal-backdrop" id="placeModal" role="dialog" aria-modal="true" aria-label="Assign room and faculty">
+        <div class="modal place-modal" id="placeBody"></div>
+    </div>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <div class="sr-only" id="srAnnounce" role="status" aria-live="polite"></div>
 

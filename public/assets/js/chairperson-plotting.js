@@ -69,7 +69,8 @@ const CONFIG = Object.assign({
 CONFIG.totalRows = (CONFIG.gridEndMin - CONFIG.gridStartMin) / 30;
 
 const SUBJECTS = BOOT.subjects;
-const ROOMS    = BOOT.rooms;
+// Some rooms are stored as "4th Floor" and the server appends " Floor" again.
+const ROOMS    = BOOT.rooms.map(r => Object.assign({}, r, { floor: String(r.floor).replace(/(\s*floor)+$/i, '') + ' Floor' }));
 const WEEK     = BOOT.week;
 const CONTEXT  = BOOT.context;
 let OTHERS          = BOOT.others;
@@ -2718,14 +2719,37 @@ function slotVerdict(result) {
 }
 
 // ---------- inspector views ----------
+// Room and faculty choices open in a modal: there is room to compare
+// options, and the side panel keeps showing the class underneath.
+const placeModal = $('placeModal');
+
+function syncPlaceModal(placing) {
+    const isOpen = placeModal.classList.contains('open');
+    if (placing && !isOpen) placeModal.classList.add('open');
+    if (!placing && isOpen) {
+        placeModal.classList.remove('open');
+        $('placeBody').replaceChildren();
+    }
+}
+
+placeModal.addEventListener('click', e => { if (e.target === placeModal) cancelPlacement(); });
+
 function renderInspector() {
     inspectorBody.replaceChildren();
-    inspectorBody.dataset.mode = ui.mode;
 
-    if (ui.mode === 'place' && ui.place) renderPlacement();
-    else if (ui.mode === 'conflict' && ui.conflict) renderConflictView();
-    else if (ui.mode === 'block' && ui.blockKey) renderBlockView();
-    else if (ui.mode === 'subject' && ui.subjectCode) renderSubjectView();
+    const placing = ui.mode === 'place' && !!ui.place;
+    syncPlaceModal(placing);
+    if (placing) {
+        $('placeBody').replaceChildren();
+        renderPlacement();
+    }
+
+    const mode = placing ? (ui.blockKey ? 'block' : ui.subjectCode ? 'subject' : 'overview') : ui.mode;
+    inspectorBody.dataset.mode = mode;
+
+    if (mode === 'conflict' && ui.conflict) renderConflictView();
+    else if (mode === 'block' && ui.blockKey) renderBlockView();
+    else if (mode === 'subject' && ui.subjectCode) renderSubjectView();
     else renderOverview();
 }
 
@@ -3037,14 +3061,13 @@ function beginPlacement(place) {
         roomName: null,
         faculty: undefined,
         warnings: [],
-        roomQuery: '', roomFilter: 'all', pendingRoom: null,
+        roomQuery: '', roomFilter: 'all', roomFloor: 'all', pendingRoom: null,
         facultyQuery: '', facultyFilter: 'all', facultyState: 'idle', facultyData: null, openWeek: null,
     }, place);
     ui.conflict = null;
     ui.moveOpen = false;
     ui.mode = 'place';
     setTab('inspector');
-    openPanel();
     renderInspector();
     if (ui.place.kind === 'new') renderBlocks();
     if (ui.place.step === 'faculty') loadFacultyForPicker();
@@ -3077,14 +3100,14 @@ function cancelPlacement() {
 
 function focusPicker() {
     requestAnimationFrame(() => {
-        const input = inspectorBody.querySelector('.picker__search input');
+        const input = $('placeBody').querySelector('.picker__search input');
         if (input) input.focus({ preventScroll: true });
     });
 }
 
 function renderPlacement() {
     const p = ui.place;
-    const box = inspectorBody;
+    const box = $('placeBody');
     const kicker = p.kind === 'new' ? 'Plotting' : p.kind === 'room' ? 'Change room' : 'Change faculty';
     box.appendChild(insHeader(kicker, p.subject, cancelPlacement, 'Cancel'));
 
@@ -3186,13 +3209,34 @@ function pickerControls(kind) {
         chips.appendChild(chip);
     });
 
+    let floors = null;
+    if (kind === 'room' && FLOORS.length > 1) {
+        floors = mk('div', 'chips chips--floors');
+        floors.setAttribute('role', 'group');
+        floors.setAttribute('aria-label', 'Filter by floor');
+        [['all', 'All floors'], ...FLOORS.map(f => [f, f])].forEach(([value, label]) => {
+            const chip = mk('button', 'chip' + (value === p.roomFloor ? ' is-active' : ''), label);
+            chip.type = 'button';
+            chip.setAttribute('aria-pressed', String(value === p.roomFloor));
+            chip.addEventListener('click', () => {
+                p.roomFloor = value;
+                floors.querySelectorAll('.chip').forEach(c => {
+                    c.classList.toggle('is-active', c === chip);
+                    c.setAttribute('aria-pressed', String(c === chip));
+                });
+                renderRoomList();
+            });
+            floors.appendChild(chip);
+        });
+    }
+
     const summary = mk('p', 'picker__summary');
     summary.id = kind + 'Summary';
     summary.setAttribute('aria-live', 'polite');
     const list = mk('ul', 'pick-list');
     list.id = kind + 'List';
 
-    wrap.append(search, chips, summary, list);
+    wrap.append(search, ...(floors ? [floors] : []), chips, summary, list);
     return wrap;
 }
 
@@ -3233,8 +3277,12 @@ function roomRow(room, occupant, load) {
     if (p.currentRoom === room.name) title.appendChild(mk('span', 'pick-tag', 'Current'));
 
     const seats = room.capacity > 0 ? `${room.capacity} seats` : '';
-    const sub = [room.floor, room.is_laboratory ? 'Laboratory' : (room.type || 'Room'), seats].filter(Boolean).join(' · ');
+    const sub = [room.floor, room.is_laboratory ? 'Laboratory' : (room.type || 'Room')].filter(Boolean).join(' · ');
     main.append(title, mk('span', 'pick-sub', sub));
+    if (seats) {
+        const short = room.capacity > 0 && (aiPlan.headcount || 0) > room.capacity;
+        main.appendChild(mk('span', 'pick-sub' + (short ? ' is-warn' : ''), short ? `${seats} · fewer than ${aiPlan.headcount} students` : seats));
+    }
     if (occupant) {
         main.appendChild(mk('span', 'pick-note', `In use by ${occupant.code} · ${occupant.section || CONTEXT.section}, ${blockRange(occupant)}`));
     }
@@ -3276,6 +3324,7 @@ function renderRoomList() {
         occupant: everyone.find(b => b.room === room.name && inSlot(b)) || null,
         load: everyone.filter(b => b.room === room.name && Number(b.day) === p.day).length,
     })).filter(({ room, occupant }) => {
+        if (p.roomFloor !== 'all' && room.floor !== p.roomFloor) return false;
         if (query && ![room.name, room.floor, room.type].some(v => String(v || '').toLowerCase().includes(query))) return false;
         if (p.roomFilter === 'free') return !occupant;
         if (p.roomFilter === 'lab') return room.is_laboratory;
