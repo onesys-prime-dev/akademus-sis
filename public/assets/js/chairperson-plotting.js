@@ -151,6 +151,21 @@ function shortYear(yearLevel) {
     return (yearLevel || '').replace(' Year', ' Yr');
 }
 
+/** Shows or hides a section with a short fade instead of popping. Opening is animated in CSS. */
+function setShown(el, show) {
+    if (show) {
+        el.classList.remove('is-closing');
+        el.hidden = false;
+        return;
+    }
+    if (el.hidden || el.classList.contains('is-closing')) return;
+    el.classList.add('is-closing');
+    setTimeout(() => {
+        el.hidden = true;
+        el.classList.remove('is-closing');
+    }, 150);
+}
+
 function plural(count, one, many) {
     return `${count} ${count === 1 ? one : (many || one + 's')}`;
 }
@@ -976,8 +991,9 @@ $('noProfAuto').addEventListener('click', () => {
         }
 
         rulesBtn.addEventListener('click', () => {
-            rulesForm.hidden = !rulesForm.hidden;
-            rulesBtn.setAttribute('aria-expanded', String(!rulesForm.hidden));
+            const opening = rulesForm.hidden || rulesForm.classList.contains('is-closing');
+            setShown(rulesForm, opening);
+            rulesBtn.setAttribute('aria-expanded', String(opening));
         });
 
         async function saveRules(payload, doneMessage) {
@@ -1085,7 +1101,7 @@ $('noProfAuto').addEventListener('click', () => {
                 alts.appendChild(row);
             });
 
-            toggle.addEventListener('click', () => { alts.hidden = !alts.hidden; });
+            toggle.addEventListener('click', () => setShown(alts, alts.hidden || alts.classList.contains('is-closing')));
             actions.appendChild(toggle);
             card.appendChild(alts);
         }
@@ -1501,8 +1517,8 @@ function setupQueueControls() {
 
     const toggle = $('queueFilterToggle');
     toggle.addEventListener('click', () => {
-        const open = $('queueFilters').hidden;
-        $('queueFilters').hidden = !open;
+        const open = $('queueFilters').hidden || $('queueFilters').classList.contains('is-closing');
+        setShown($('queueFilters'), open);
         toggle.setAttribute('aria-expanded', String(open));
     });
 
@@ -2468,7 +2484,27 @@ const ui = {
 const workspace = $('plottingWorkspace');
 const inspectorBody = $('inspectorBody');
 
+// The underline glides to the selected tab, and the incoming panel slides in
+// from the side the tab sits on, so switching reads as movement.
+const tabList = document.querySelector('.panel-tabs');
+const tabIndicator = mk('span', 'panel-tabs__indicator');
+tabIndicator.setAttribute('aria-hidden', 'true');
+tabList.appendChild(tabIndicator);
+
+function moveTabIndicator(animate = true) {
+    const tab = $('tab-' + ui.tab);
+    if (!tab || !tab.offsetWidth) return;
+    if (!animate) tabIndicator.style.transition = 'none';
+    tabIndicator.style.width = tab.offsetWidth + 'px';
+    tabIndicator.style.transform = 'translateX(' + tab.offsetLeft + 'px)';
+    if (!animate) {
+        void tabIndicator.offsetWidth;
+        tabIndicator.style.transition = '';
+    }
+}
+
 function setTab(name) {
+    const previous = ui.tab;
     ui.tab = name;
     ['inspector', 'assistant'].forEach(n => {
         const on = n === name;
@@ -2476,7 +2512,24 @@ function setTab(name) {
         $('tab-' + n).tabIndex = on ? 0 : -1;
         $('panel-' + n).hidden = !on;
     });
+
+    moveTabIndicator(previous !== name);
+
+    if (previous !== name) {
+        const panel = $('panel-' + name);
+        panel.dataset.dir = name === 'assistant' ? 'right' : 'left';
+        panel.classList.remove('is-entering');
+        void panel.offsetWidth;
+        panel.classList.add('is-entering');
+    }
 }
+
+// Badge counts and fonts change tab widths after the first paint.
+if (window.ResizeObserver) {
+    const watcher = new ResizeObserver(() => moveTabIndicator(false));
+    document.querySelectorAll('.panel-tab').forEach(t => watcher.observe(t));
+}
+window.addEventListener('resize', () => moveTabIndicator(false));
 
 document.querySelectorAll('.panel-tab').forEach(tab => {
     tab.addEventListener('click', () => setTab(tab.dataset.tab));

@@ -201,3 +201,18 @@ textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
 :is(.ac-btn-primary, .ac-page .btn-primary) { background: var(--color-primary); color: var(--color-text-on-primary); }
 :is(.ac-btn-primary, .ac-page .btn-primary):hover { background: var(--color-primary-hover); }
 .ac-table tbody tr, .ac-dtable__row { transition: background-color var(--motion-fast) var(--ease-standard); }
+
+/* Show/hide without popping: anything the page scripts reveal by clearing
+   `hidden` or setting display gets a short fade-and-settle. The browser
+   restarts a CSS animation whenever an element goes from display:none to
+   visible, so the scripts need no changes. Reduced motion is handled by the
+   global rule in base.css. Native <select> menus are drawn by the OS and
+   cannot be animated from CSS. */
+@keyframes acFadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.ac-search-results:not([hidden]),
+.sr-panel:not([hidden]),
+#acDeptField, #acChairNotice, #acSectionRow, #acSectionHint, #acEmpStatusField,
+#acEditRoleRow, #acEditChairNotice, #acEditDeptField, #acEditSectionRow, #acEditSectionHint, #acEditEmpStatusField,
+#numericFields, #letterFields {
+    animation: acFadeIn var(--motion-normal) var(--ease-enter);
+}
