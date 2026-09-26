@@ -20,7 +20,7 @@
 .ac-notif.is-open .ac-notif__panel, .ac-user-menu.is-open .ac-user-menu__dropdown { visibility: visible; }
 .ac-notif__item { display: block; width: 100%; border: 0; background: transparent; text-align: left; font: var(--text-body-sm); }
 .ac-notif__head strong { color: var(--color-text-primary); }
-.ac-notif__list { min-height: 100px; }
+.ac-notif__list { min-height: 0; }
 .ac-notif__loading { display: grid; gap: 12px; padding: 20px 12px; }
 .ac-notif__loading > span:not(.sr-only) { height: 12px; background: var(--color-surface-sunken); border-radius: 4px; animation: acSkeleton 1.2s ease-in-out infinite alternate; }
 .ac-notif__loading > span:last-child { width: 65%; }
@@ -124,13 +124,36 @@ textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
 .auth-page .auth-actions p { margin: 0; }
 
 @media (max-width: 1100px) {
-    .ac-sidebar { position: fixed; left: 12px; top: 12px; bottom: 12px; height: auto; width: 250px;
-        transform: translateX(calc(-100% - 24px)); visibility: hidden; transition: transform var(--transition-normal), visibility var(--transition-normal); z-index: 80; }
-    .ac-page.ac-nav-open .ac-sidebar { transform: none; visibility: visible; box-shadow: var(--shadow-lg); }
-    .ac-sidebar .ac-sidebar__brand { padding-left: 14px; padding-right: 30px; }
+    .ac-sidebar {
+        position: fixed; left: max(12px, env(safe-area-inset-left));
+        top: max(12px, env(safe-area-inset-top)); bottom: max(12px, env(safe-area-inset-bottom));
+        height: auto; width: min(304px, calc(100vw - 40px)); padding: 24px 14px 18px;
+        border: 1px solid var(--color-border); border-radius: 24px;
+        background: var(--color-surface); overflow: hidden;
+        transform: translateX(calc(-100% - 32px)); visibility: hidden;
+        transition: transform 240ms cubic-bezier(.22, 1, .36, 1), visibility 240ms;
+        z-index: 80;
+    }
+    .ac-page.ac-nav-open { overflow: hidden; }
+    .ac-page.ac-nav-open .ac-sidebar {
+        transform: none; visibility: visible;
+        box-shadow: 0 24px 64px rgb(15 23 42 / 22%), 0 4px 16px rgb(15 23 42 / 8%);
+    }
+    .ac-sidebar .ac-sidebar__brand { padding: 4px 40px 24px 8px; gap: 10px; }
+    .ac-sidebar .ac-sidebar__brand-logo { width: 38px; height: 38px; border-radius: 12px; }
+    .ac-sidebar .ac-sidebar__brand-text { flex: 1; white-space: normal; }
+    .ac-sidebar .ac-sidebar__brand-name { font-size: 16px; letter-spacing: -.025em; }
+    .ac-sidebar .ac-sidebar__brand-sub { margin-top: 3px; font-size: 11px; line-height: 1.5; }
+    .ac-sidebar .ac-sidebar__nav { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px 2px; gap: 6px; border-top: 1px solid var(--color-border); }
+    .ac-sidebar .ac-nav-item { flex-shrink: 0; height: auto; min-height: 48px; padding: 12px 14px; gap: 12px; border-radius: 14px; }
+    .ac-sidebar .ac-nav-label { white-space: normal; line-height: 1.45; }
+    .ac-sidebar .ac-nav-item.is-active { background: var(--color-primary-soft); box-shadow: inset 0 0 0 1px rgb(37 99 235 / 5%); }
+    .ac-sidebar .ac-nav-item:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
     .ac-nav-toggle, .ac-nav-close { display: inline-flex; flex-shrink: 0; }
-    .ac-nav-close { position: absolute; right: 4px; top: 4px; }
-    .ac-nav-backdrop:not([hidden]) { display: block; position: fixed; inset: 0; border: 0; background: var(--color-backdrop); z-index: 75; }
+    .ac-sidebar .ac-nav-close { position: absolute; right: 10px; top: 22px; width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%; background: var(--color-surface-secondary); }
+    .ac-sidebar .ac-nav-close:hover { background: var(--color-surface-sunken); }
+    .ac-sidebar .ac-nav-close:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+    .ac-nav-backdrop:not([hidden]) { display: block; position: fixed; inset: 0; border: 0; background: rgb(15 23 42 / 32%); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 75; }
     .ac-topbar { flex-wrap: wrap; gap: 12px; }
     .ac-topbar__actions { flex: 1; justify-content: flex-end; }
     .ac-content { padding: 16px 20px 32px; }
@@ -142,7 +165,7 @@ textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
     .ac-topbar__actions { gap: 8px; }
     .ac-topbar__icons { padding-left: 0; margin-left: 0; border-left: 0; }
     .ac-topbar__actions > .ac-btn { order: 3; white-space: normal; }
-    .ac-sidebar { width: min(280px, calc(100vw - 32px)); }
+    .ac-sidebar { width: min(304px, calc(100vw - 40px)); }
     .ac-notif__panel { position: fixed; top: 76px; left: 16px; right: 16px; width: auto; max-height: calc(100dvh - 100px); }
     .ac-page-header__title, .page-head h1 { font-size: 24px; }
     .ac-card, .ac-stat-card, .stat-card, .panel { padding: 20px; }
@@ -161,6 +184,11 @@ textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
 @media (prefers-reduced-motion: reduce) {
     .ac-notif__loading > span { animation: none; }
 }
+
+/* While the window is being resized, layout must snap to each width instead of
+   animating toward it (drawer/sidebar would otherwise "chase" the cursor when a
+   breakpoint is crossed). Set by the shell script, cleared once resizing stops. */
+html.is-resizing *, html.is-resizing *::before, html.is-resizing *::after { transition: none !important; }
 
 /* Consistency review: preserve action space and readable mobile row labels. */
 .ac-utable .ac-dtable__head, .ac-utable .ac-dtable__row {

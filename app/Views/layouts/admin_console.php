@@ -418,6 +418,16 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         }
     });
 
+    // Suspend transitions while the window is being resized (see components.css).
+    (function () {
+        var root = document.documentElement, timer;
+        window.addEventListener('resize', function () {
+            root.classList.add('is-resizing');
+            clearTimeout(timer);
+            timer = setTimeout(function () { root.classList.remove('is-resizing'); }, 150);
+        });
+    })();
+
     (function () {
         var menu = document.getElementById('acUserMenu');
         var btn  = document.getElementById('acUserMenuBtn');
@@ -426,6 +436,13 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
             e.stopPropagation();
             var open = menu.classList.toggle('is-open');
             btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open) document.dispatchEvent(new CustomEvent('ac:topbar-popover', { detail: menu }));
+        });
+        // Only one topbar popover (account menu / notifications) open at a time.
+        document.addEventListener('ac:topbar-popover', function (e) {
+            if (e.detail === menu) return;
+            menu.classList.remove('is-open');
+            btn.setAttribute('aria-expanded', 'false');
         });
         document.addEventListener('click', function () {
             menu.classList.remove('is-open');
@@ -514,7 +531,15 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
             e.stopPropagation();
             var open = wrap.classList.toggle('is-open');
             btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-            if (open) loadList();
+            if (open) {
+                document.dispatchEvent(new CustomEvent('ac:topbar-popover', { detail: wrap }));
+                loadList();
+            }
+        });
+        document.addEventListener('ac:topbar-popover', function (e) {
+            if (e.detail === wrap) return;
+            wrap.classList.remove('is-open');
+            btn.setAttribute('aria-expanded', 'false');
         });
         document.addEventListener('click', function () {
             wrap.classList.remove('is-open');

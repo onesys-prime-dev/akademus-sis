@@ -400,16 +400,16 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
                 </div>
             </div>
             <div class="fd-metrics" aria-live="polite">
-                <div class="fd-metric"><strong id="facultyMetricTotal">—</strong><span>Total faculty</span></div>
-                <div class="fd-metric is-ready"><strong id="facultyMetricAvailable">—</strong><span>Availability set</span></div>
-                <div class="fd-metric"><strong id="facultyMetricPreferences">—</strong><span>Preferences set</span></div>
+                <div class="fd-metric"><strong id="facultyMetricTotal">—</strong><span>faculty</span></div>
+                <div class="fd-metric is-ready"><strong id="facultyMetricAvailable">—</strong><span>with availability</span></div>
+                <div class="fd-metric"><strong id="facultyMetricPreferences">—</strong><span>with preferences</span></div>
             </div>
             <div class="fd-list-wrap" id="facultyPanelResults" aria-busy="true">
                 <p class="fd-summary" id="facultyPanelSummary" aria-live="polite">Loading faculty…</p>
                 <div class="fd-list" id="facultyPanelList" role="list"></div>
             </div>
             <footer class="fd-footer">
-                <span>Availability and preferences reflect the upcoming term.</span>
+                <span id="facultyLoadTerm">Teaching load · Active term</span>
                 <button type="button" class="btn btn-ghost" id="facultyPanelCloseBottom">Close</button>
             </footer>
         </div>

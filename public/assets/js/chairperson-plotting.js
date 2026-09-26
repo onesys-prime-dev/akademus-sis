@@ -2300,23 +2300,124 @@ function announce(message) {
         function facultyAvailabilityDetails(faculty) {
             const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             if (!(faculty.availability || []).length) return '<span class="fd-day is-unavailable">No availability submitted</span>';
-            return days.map((day, index) => {
+            const groups = [];
+            days.forEach((day, index) => {
                 const row = faculty.availability.find(item => Number(item.day_of_week) === index);
-                if (!row || !row.is_available || row.is_available == 0) return `<span class="fd-day is-unavailable">${day} · Unavailable</span>`;
-                const start = minutesTo12h(toMinutes((row.start_time || '00:00').slice(0, 5)));
-                const end = minutesTo12h(toMinutes((row.end_time || '00:00').slice(0, 5)));
-                return `<span class="fd-day">${day} · ${start}–${end}</span>`;
-            }).join('');
+                const available = row && row.is_available && row.is_available != 0;
+                const time = available
+                    ? `${minutesTo12h(toMinutes((row.start_time || '00:00').slice(0, 5)))}–${minutesTo12h(toMinutes((row.end_time || '00:00').slice(0, 5)))}`
+                    : 'Unavailable';
+                const previous = groups[groups.length - 1];
+                if (previous && previous.time === time) previous.end = day;
+                else groups.push({ start: day, end: day, time, available });
+            });
+            return groups.map(group => `<div class="fd-schedule-row ${group.available ? '' : 'is-unavailable'}"><strong>${group.start}${group.end !== group.start ? `–${group.end}` : ''}</strong><span>${group.time}</span></div>`).join('');
         }
 
         function facultyPreferenceDetails(faculty) {
             if (!(faculty.preferences || []).length) return '<span class="fd-day is-unavailable">No preferences submitted</span>';
-            return faculty.preferences.map(preference =>
-                `<span class="fd-pref ${escapeHtml(preference.level)}" title="${escapeHtml(preference.title || preference.code)}">${escapeHtml(preference.code)} · ${escapeHtml(preference.level)}</span>`
-            ).join('');
+            const levels = [...new Set(['preferred', 'qualified', 'willing', ...faculty.preferences.map(item => item.level)])];
+            return levels.map(level => {
+                const subjects = faculty.preferences.filter(item => item.level === level);
+                if (!subjects.length) return '';
+                const chips = subjects.map(preference => `<span class="fd-pref" title="${escapeHtml(preference.title || preference.code)}">${escapeHtml(preference.code)}</span>`);
+                return `<div class="fd-preference-group"><div class="fd-preference-heading">${escapeHtml(level)}<span>${subjects.length}</span></div><div class="fd-pref-list">${chips.slice(0, 6).join('')}</div>${chips.length > 6 ? `<details class="fd-more"><summary data-show="Show ${chips.length - 6} more subjects" data-hide="Show fewer subjects">Show ${chips.length - 6} more subjects</summary><div class="fd-pref-list">${chips.slice(6).join('')}</div></details>` : ''}</div>`;
+            }).join('');
         }
 
-        function renderFacultyPanel() {
+        // Sliding pill behind the active filter tab.
+        const facultyFilters = document.getElementById('facultyPanelFilters');
+        const facultyFilterPill = mk('span', 'fd-filter-indicator');
+        facultyFilterPill.setAttribute('aria-hidden', 'true');
+        facultyFilters.prepend(facultyFilterPill);
+
+        function moveFacultyFilterPill(instant = false) {
+            const active = facultyFilters.querySelector('.fd-filter.active');
+            if (!active || !active.offsetWidth) return;
+            if (instant) facultyFilterPill.style.transition = 'none';
+            facultyFilterPill.style.width = active.offsetWidth + 'px';
+            facultyFilterPill.style.transform = `translateX(${active.offsetLeft}px)`;
+            facultyFilters.classList.add('has-indicator');
+            if (instant) {
+                void facultyFilterPill.offsetWidth;
+                facultyFilterPill.style.transition = '';
+            }
+        }
+        window.addEventListener('resize', () => moveFacultyFilterPill(true));
+
+        // Smoothly open/close a card's details (height + padding + fade).
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        function toggleFacultyDetails(details, open) {
+            if (!details) return;
+            if (details._anim) { details._anim.cancel(); details._anim = null; }
+            if (open === !details.hidden) return;
+            if (reduceMotion.matches) { details.hidden = !open; return; }
+
+            const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
+            const collapsed = { height: '0px', paddingTop: '0px', paddingBottom: '0px', opacity: 0 };
+            let expandedFrame;
+
+            if (open) {
+                details.hidden = false;
+                const cs = getComputedStyle(details);
+                expandedFrame = { height: details.offsetHeight + 'px', paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, opacity: 1 };
+            } else {
+                const cs = getComputedStyle(details);
+                expandedFrame = { height: details.offsetHeight + 'px', paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, opacity: 1 };
+            }
+
+            details.style.overflow = 'hidden';
+            const anim = details.animate(
+                open ? [collapsed, expandedFrame] : [expandedFrame, collapsed],
+                { duration: open ? 360 : 260, easing: ease }
+            );
+            details._anim = anim;
+            const done = () => {
+                if (details._anim !== anim) return;
+                details._anim = null;
+                details.style.overflow = '';
+                if (!open) details.hidden = true;
+            };
+            anim.onfinish = done;
+            anim.oncancel = () => { details.style.overflow = ''; };
+        }
+
+        // "Show N more subjects": native <details> can't animate, so drive it.
+        document.getElementById('facultyPanelList').addEventListener('click', event => {
+            const summary = event.target.closest('.fd-more > summary');
+            if (!summary) return;
+            event.preventDefault();
+
+            const more = summary.parentElement;
+            const body = more.querySelector('.fd-pref-list');
+            const opening = !more.open && !more.classList.contains('is-closing');
+            if (more._anim) { more._anim.cancel(); more._anim = null; }
+            more.classList.remove('is-closing');
+            summary.textContent = opening ? summary.dataset.hide : summary.dataset.show;
+
+            if (reduceMotion.matches) { more.open = opening; return; }
+
+            if (opening) more.open = true;
+            const height = body.offsetHeight;
+            body.style.overflow = 'hidden';
+            more.classList.toggle('is-closing', !opening);
+            const frames = [{ height: '0px', opacity: 0 }, { height: height + 'px', opacity: 1 }];
+            const anim = body.animate(opening ? frames : frames.reverse(), {
+                duration: opening ? 320 : 220,
+                easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            });
+            more._anim = anim;
+            anim.onfinish = () => {
+                if (more._anim !== anim) return;
+                more._anim = null;
+                body.style.overflow = '';
+                more.classList.remove('is-closing');
+                if (!opening) more.open = false;
+            };
+            anim.oncancel = () => { body.style.overflow = ''; };
+        });
+
+        function renderFacultyPanel(animate = false) {
             const list = document.getElementById('facultyPanelList');
             const summary = document.getElementById('facultyPanelSummary');
             const needle = facultyPanelState.query.trim().toLowerCase();
@@ -2331,12 +2432,17 @@ function announce(message) {
 
             summary.textContent = `${visible.length} of ${facultyPanelState.faculty.length} faculty shown`;
             list.innerHTML = '';
+            list.classList.remove('is-switching');
+            if (animate) {
+                void list.offsetWidth; // restart the CSS animation
+                list.classList.add('is-switching');
+            }
             if (!visible.length) {
                 list.innerHTML = '<div class="fd-state"><div><strong>No matching faculty</strong><span>Try another name or setup filter.</span></div></div>';
                 return;
             }
 
-            visible.forEach(faculty => {
+            visible.forEach((faculty, index) => {
                 const setup = facultySetupState(faculty);
                 const availableDays = (faculty.availability || []).filter(row => row.is_available && row.is_available != 0).length;
                 const preferenceCount = (faculty.preferences || []).length;
@@ -2348,6 +2454,7 @@ function announce(message) {
                 const card = document.createElement('article');
                 card.className = `fd-card ${setup.complete ? 'is-ready' : 'needs-setup'}`;
                 card.setAttribute('role', 'listitem');
+                card.style.setProperty('--i', Math.min(index, 8));
                 card.innerHTML = `
                     <div class="fd-card-main">
                         <div class="fd-person">
@@ -2360,26 +2467,31 @@ function announce(message) {
                             ${maxUnits ? `<div class="fd-load-track" aria-hidden="true"><div class="fd-load-fill ${units >= maxUnits ? 'is-full' : ''}" style="width:${loadPercent}%"></div></div>` : ''}
                         </div>
                         <div class="fd-fact">
-                            <span class="fd-fact-label">Availability</span>
-                            <span class="fd-fact-value ${setup.availabilitySet ? 'is-ready' : 'needs-setup'}">${setup.availabilitySet ? `${availableDays} of 6 days available` : 'Not submitted'}</span>
+                            <span class="fd-status ${setup.complete ? 'is-ready' : 'needs-setup'}">${setup.complete ? 'Setup complete' : 'Needs setup'}</span>
+                            <span class="fd-fact-label">${setup.availabilitySet ? `${availableDays} days available` : 'Availability missing'} · ${setup.preferencesSet ? `${preferenceCount} subjects` : 'Preferences missing'}</span>
                         </div>
-                        <div class="fd-fact">
-                            <span class="fd-fact-label">Preferences</span>
-                            <span class="fd-fact-value ${setup.preferencesSet ? 'is-ready' : 'needs-setup'}">${setup.preferencesSet ? `${preferenceCount} subjects set` : 'Not submitted'}</span>
-                        </div>
-                        <button type="button" class="fd-details-btn" aria-expanded="false">View details</button>
+                        <button type="button" class="fd-details-btn" aria-expanded="false" aria-controls="facultyDetails${index}" aria-label="Details for ${escapeHtml(faculty.name)}">View details</button>
                     </div>
-                    <div class="fd-details" hidden>
+                    <div class="fd-details" id="facultyDetails${index}" hidden>
                         <div class="fd-detail-group"><div class="fd-detail-title">Weekly availability</div><div class="fd-day-list">${facultyAvailabilityDetails(faculty)}</div></div>
-                        <div class="fd-detail-group"><div class="fd-detail-title">Subject preferences</div><div class="fd-pref-list">${facultyPreferenceDetails(faculty)}</div></div>
+                        <div class="fd-detail-group"><div class="fd-detail-title">Subject preferences <span>${preferenceCount}</span></div><div class="fd-preferences">${facultyPreferenceDetails(faculty)}</div></div>
                     </div>`;
                 const button = card.querySelector('.fd-details-btn');
                 const details = card.querySelector('.fd-details');
                 button.addEventListener('click', () => {
                     const expanded = button.getAttribute('aria-expanded') === 'true';
+                    list.querySelectorAll('.fd-card').forEach(other => {
+                        if (other === card) return;
+                        other.classList.remove('is-expanded');
+                        toggleFacultyDetails(other.querySelector('.fd-details'), false);
+                        const toggle = other.querySelector('.fd-details-btn');
+                        toggle.setAttribute('aria-expanded', 'false');
+                        toggle.textContent = 'View details';
+                    });
+                    card.classList.toggle('is-expanded', !expanded);
                     button.setAttribute('aria-expanded', String(!expanded));
                     button.textContent = expanded ? 'View details' : 'Hide details';
-                    details.hidden = expanded;
+                    toggleFacultyDetails(details, !expanded);
                 });
                 list.appendChild(card);
             });
@@ -2389,12 +2501,16 @@ function announce(message) {
             const list = document.getElementById('facultyPanelList');
             const results = document.getElementById('facultyPanelResults');
             results.setAttribute('aria-busy', 'true');
+            facultyPanelState.faculty = [];
+            ['facultyMetricTotal', 'facultyMetricAvailable', 'facultyMetricPreferences'].forEach(id => {
+                document.getElementById(id).textContent = '—';
+            });
             document.getElementById('facultyPanelSummary').textContent = 'Loading faculty…';
             document.getElementById('facultyPanelCount').textContent = 'Loading…';
             list.innerHTML = Array.from({ length: 4 }, () => '<div class="fd-skeleton" aria-hidden="true"></div>').join('');
 
             try {
-                const response = await fetch(CONFIG.facultyPanelUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' });
+                const response = await fetch(CONFIG.facultyPanelUrl + '?for_academic_year=' + encodeURIComponent(CONTEXT.academic_year), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' });
                 if (!response.ok) throw new Error('Faculty request failed');
                 const data = await response.json();
 
@@ -2404,12 +2520,13 @@ function announce(message) {
                 const preferenceCount = facultyPanelState.faculty.filter(faculty => facultySetupState(faculty).preferencesSet).length;
 
                 document.getElementById('facultyPanelSub').textContent = data.upcoming_term
-                    ? `Availability & preferences for ${data.upcoming_term}. Current load for ${data.active_year || 'the active term'}.`
+                    ? `Availability & preferences · ${data.upcoming_term}`
                     : 'No upcoming term configured yet — faculty cannot submit availability until an admin adds one.';
                 document.getElementById('facultyPanelCount').textContent = `${facultyPanelState.faculty.length} faculty`;
                 document.getElementById('facultyMetricTotal').textContent = facultyPanelState.faculty.length;
                 document.getElementById('facultyMetricAvailable').textContent = availabilityCount;
                 document.getElementById('facultyMetricPreferences').textContent = preferenceCount;
+                document.getElementById('facultyLoadTerm').textContent = `Teaching load · ${data.active_year || 'Active term'}`;
                 results.setAttribute('aria-busy', 'false');
 
                 if (!facultyPanelState.faculty.length) {
@@ -2437,6 +2554,7 @@ function announce(message) {
                 button.setAttribute('aria-pressed', String(active));
             });
             facultyPanelModal.classList.add('open');
+            requestAnimationFrame(() => moveFacultyFilterPill(true));
             loadFacultyPanel();
             requestAnimationFrame(() => document.getElementById('facultyPanelSearch').focus());
         });
@@ -2453,7 +2571,8 @@ function announce(message) {
                     filter.classList.toggle('active', active);
                     filter.setAttribute('aria-pressed', String(active));
                 });
-                renderFacultyPanel();
+                moveFacultyFilterPill();
+                renderFacultyPanel(true);
             });
         });
 
