@@ -68,6 +68,7 @@
     <link rel="stylesheet" href="<?= base_url('assets/css/pages/admin-console.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/admin-console.css') ?>">
     <?= $this->renderSection('styles') ?>
     <link rel="stylesheet" href="<?= base_url('assets/css/design-system/components.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/components.css') ?>">
+    <script src="<?= base_url('assets/js/session-guard.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/session-guard.js') ?>" data-login-url="<?= esc(site_url('login'), 'attr') ?>"></script>
     <script defer src="<?= base_url('assets/js/interface.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/interface.js') ?>"></script>
     <script src="<?= base_url('assets/js/unsaved-changes.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/unsaved-changes.js') ?>"></script>
 </head>

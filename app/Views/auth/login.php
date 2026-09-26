@@ -5,6 +5,8 @@
 
 <link rel="stylesheet"
       href="<?= base_url('assets/css/pages/auth.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/auth.css') ?>">
+<link rel="stylesheet"
+      href="<?= base_url('assets/css/design-system/session-guard.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/session-guard.css') ?>">
 
 <?= $this->endSection() ?>
 
@@ -83,7 +85,13 @@
                         <!-- Password -->
                         <div class="form-floating mb-3">
                             <label for="floatingPasswordInput">Password</label>
-                            <input type="password" class="form-control input" id="floatingPasswordInput" name="password" inputmode="text" autocomplete="current-password" placeholder="<?= lang('Auth.password') ?>" required>
+                            <div class="pw-field">
+                                <input type="password" class="form-control input" id="floatingPasswordInput" name="password" inputmode="text" autocomplete="current-password" placeholder="<?= lang('Auth.password') ?>" required>
+                                <button type="button" class="pw-toggle" id="pwToggle" aria-label="Show password" aria-controls="floatingPasswordInput" aria-pressed="false">
+                                    <svg class="pw-toggle__eye" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    <svg class="pw-toggle__eye-off" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.9 17.9A10.1 10.1 0 0 1 12 19c-6.4 0-10-7-10-7a17.6 17.6 0 0 1 4.1-5.1M9.9 5.2A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17.7 17.7 0 0 1-2.2 3.2M14.1 14.1a3 3 0 1 1-4.2-4.2"/><path d="M2 2l20 20"/></svg>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="auth-actions">
@@ -130,6 +138,21 @@
         </div>
     </div>
 
+    <?php if (session('sessionEnded')) : ?>
+        <dialog class="sg-dialog" id="sessionEndedDialog" aria-labelledby="sessionEndedTitle" aria-describedby="sessionEndedText">
+            <div class="sg-card" role="alertdialog">
+                <div class="sg-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+                </div>
+                <h2 id="sessionEndedTitle">Your session has ended</h2>
+                <p id="sessionEndedText">For your security you were signed out. Sign in again to pick up where you left off.</p>
+                <div class="sg-actions">
+                    <button type="button" class="sg-btn sg-btn--primary" id="sessionEndedOk">Sign in again</button>
+                </div>
+            </div>
+        </dialog>
+    <?php endif ?>
+
 <?= $this->endSection() ?>
 
 
@@ -158,6 +181,29 @@
         });
     })();
     <?php endif ?>
+    (function () {
+        var dialog = document.getElementById('sessionEndedDialog');
+        if (!dialog) return;
+        dialog.showModal();
+        document.getElementById('sessionEndedOk').addEventListener('click', function () {
+            dialog.close();
+        });
+        dialog.addEventListener('close', function () {
+            document.getElementById('floatingEmailInput').focus();
+        });
+    })();
+    (function () {
+        var input = document.getElementById('floatingPasswordInput');
+        var toggle = document.getElementById('pwToggle');
+        toggle.addEventListener('click', function () {
+            var show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            toggle.classList.toggle('is-showing', show);
+            toggle.setAttribute('aria-pressed', show ? 'true' : 'false');
+            toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+            input.focus();
+        });
+    })();
     document.getElementById('loginForm').addEventListener('submit', function () {
         document.getElementById('loginSubmit').disabled = true;
         document.getElementById('loginSubmit').textContent = 'Signing in…';

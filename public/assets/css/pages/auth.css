@@ -339,6 +339,35 @@
     font-size: var(--font-sm);
 }
 
+/* Show/hide password */
+.pw-field { position: relative; }
+.auth-page .auth-card .pw-field .form-control, .pw-field .form-control { padding-right: 52px; }
+.pw-toggle {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-secondary, #5b6475);
+    cursor: pointer;
+    transition: background-color var(--motion-fast, 150ms) ease, color var(--motion-fast, 150ms) ease;
+}
+.pw-toggle:hover { background: var(--color-surface-sunken, #eef1f6); color: var(--color-text-primary, #1a2233); }
+.pw-toggle:focus-visible { outline: 2px solid var(--color-primary, #174ea6); outline-offset: 1px; }
+.pw-toggle svg { grid-area: 1 / 1; transition: opacity var(--motion-fast, 150ms) ease, transform var(--motion-normal, 200ms) var(--ease-enter, ease); }
+.pw-toggle { display: inline-grid; place-items: center; }
+.pw-toggle .pw-toggle__eye-off { opacity: 0; transform: scale(.7) rotate(-20deg); }
+.pw-toggle.is-showing .pw-toggle__eye { opacity: 0; transform: scale(.7) rotate(20deg); }
+.pw-toggle.is-showing .pw-toggle__eye-off { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .pw-toggle, .pw-toggle svg { transition: none; } }
+
 .auth-actions {
     display: flex;
     justify-content: space-between;

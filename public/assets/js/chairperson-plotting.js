@@ -4090,7 +4090,13 @@ async function doSave() {
         }
     } catch (err) {
         setSync('error');
-        retryTimer = setTimeout(doSave, 3000);
+        if (err && err.name === 'SessionExpiredError') {
+            // Session ended: don't hammer the server. The changes stay on
+            // screen and are saved as soon as the person signs back in.
+            window.SessionGuard.whenRestored().then(() => { clearTimeout(retryTimer); doSave(); });
+        } else {
+            retryTimer = setTimeout(doSave, 3000);
+        }
     } finally {
         saving = false;
         if (saveQueued) {
@@ -4209,6 +4215,11 @@ document.querySelectorAll('#contextForm .context-select').forEach(select => {
 
                     if (changed) renderBlocks();
                 } catch (err) {
+                    if (err && err.name === 'SessionExpiredError') {
+                        // Wait for sign-in instead of polling a login page.
+                        await window.SessionGuard.whenRestored();
+                        continue;
+                    }
                     // Offline or server hiccup: back off briefly, then resume.
                     await new Promise(resolve => setTimeout(resolve, 3000));
                 }

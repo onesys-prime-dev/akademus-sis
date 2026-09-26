@@ -5,12 +5,9 @@
 
 <link rel="stylesheet"
       href="<?= base_url('assets/css/pages/auth.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/auth.css') ?>">
+<link rel="stylesheet"
+      href="<?= base_url('assets/css/design-system/session-guard.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/design-system/session-guard.css') ?>">
 
-<?= $this->endSection() ?>
-
-
-<?= $this->section('pageScripts') ?>
-<script src="<?= base_url('assets/js/auth-hero.js') ?>"></script>
 <?= $this->endSection() ?>
 
 
@@ -18,11 +15,6 @@
 
 <?= lang('Auth.login') ?> 
 
-<?= $this->endSection() ?>
-
-
-<?= $this->section('pageScripts') ?>
-<script src="<?= base_url('assets/js/auth-hero.js') ?>"></script>
 <?= $this->endSection() ?>
 
 
@@ -69,10 +61,6 @@
                         </div>
                     <?php endif ?>
 
-                    <?php if (session('message') !== null) : ?>
-                        <div class="alert alert-success" role="alert"><?= esc(session('message')) ?></div>
-                    <?php endif ?>
-
                     <form method="post" action="<?= site_url('forgot-password') ?>">
                         <?= csrf_field() ?>
 
@@ -105,9 +93,35 @@
         </div>
     </div>
 
+    <?php if (session('message') !== null) : ?>
+        <dialog class="sg-dialog" id="noticeDialog" aria-labelledby="noticeTitle" aria-describedby="noticeText">
+            <div class="sg-card" role="alertdialog">
+                <div class="sg-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>
+                </div>
+                <h2 id="noticeTitle">Check your email</h2>
+                <p id="noticeText"><?= esc(session('message')) ?></p>
+                <div class="sg-actions">
+                    <button type="button" class="sg-btn sg-btn--primary" id="noticeOk">Got it</button>
+                </div>
+            </div>
+        </dialog>
+    <?php endif ?>
+
 <?= $this->endSection() ?>
 
 
 <?= $this->section('pageScripts') ?>
 <script src="<?= base_url('assets/js/auth-hero.js') ?>"></script>
+<script>
+    (function () {
+        var dialog = document.getElementById('noticeDialog');
+        if (!dialog) return;
+        dialog.showModal();
+        document.getElementById('noticeOk').addEventListener('click', function () { dialog.close(); });
+        dialog.addEventListener('close', function () {
+            document.getElementById('floatingEmailInput').focus();
+        });
+    })();
+</script>
 <?= $this->endSection() ?>

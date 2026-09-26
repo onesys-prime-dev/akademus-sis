@@ -5,7 +5,10 @@ use CodeIgniter\Router\RouteCollection;
 /** @var RouteCollection $routes */
 $routes->get('/', 'Home::index');
 
-service('auth')->routes($routes);
+// Login is routed to our subclass (see App\Controllers\Auth\LoginController).
+service('auth')->routes($routes, ['except' => ['login']]);
+$routes->get('login', '\App\Controllers\Auth\LoginController::loginView', ['as' => 'login']);
+$routes->post('login', '\App\Controllers\Auth\LoginController::loginAction');
 
 // Student records are served under both /admin and /registrar from the same
 // controller. Each route carries its own permission on top of the role group
