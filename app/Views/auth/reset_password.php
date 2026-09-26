@@ -92,10 +92,10 @@
 
             </div>
 
-            <div class="auth__right">
+            <div class="auth__right auth__right--plain">
 
-                <div class="auth__right--hero">
-                    <img class="auth__right--hero--img" src="<?= base_url('assets/images/background/auth-image.png') ?>" alt="">
+                <div class="auth__right--hero" data-hero="reset">
+                    <img class="auth__right--hero--img" src="<?= base_url('assets/images/background/reset-pass.png') ?>" alt="">
                 </div>
 
             </div>
@@ -103,4 +103,9 @@
         </div>
     </div>
 
+<?= $this->endSection() ?>
+
+
+<?= $this->section('pageScripts') ?>
+<script src="<?= base_url('assets/js/auth-hero.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/auth-hero.js') ?>"></script>
 <?= $this->endSection() ?>

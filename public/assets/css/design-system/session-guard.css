@@ -39,7 +39,10 @@
     background: var(--color-primary-soft, #e8effc);
     color: var(--color-primary, #174ea6);
 }
+.sg-icon--danger { background: var(--color-danger-soft, #fdecea); color: var(--color-danger, #b42318); }
+.sg-icon--success { background: var(--color-success-soft, #e3f7ea); color: var(--color-success, #157347); }
 .sg-card h2 { margin: 0 0 8px; font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+.sg-card p + p { margin-top: 6px; }
 .sg-card p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--color-text-secondary, #5b6475); }
 
 .sg-actions { margin-top: 20px; }

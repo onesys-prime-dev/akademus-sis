@@ -614,6 +614,15 @@
     max-width: 560px;
 }
 
+/* The reset artwork is opaque white, so the panel behind it is white too. */
+.auth__right--plain { background: #fff; border-left: 1px solid var(--color-border, #e5e9f0); }
+
+.auth__right--hero[data-hero="reset"] {
+    aspect-ratio: 1672 / 941;
+    max-width: 640px;
+    border-radius: 0;
+}
+
 .auth__right--hero--canvas {
     position: absolute;
     inset: 0;

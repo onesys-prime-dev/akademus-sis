@@ -62,10 +62,10 @@ class ForgotPasswordController extends BaseController
         ]);
 
         if (! $sent) {
-            // SMTP detail is logged inside BrandedEmail; never show it to the visitor.
-            return redirect()
-                ->back()
-                ->with('error', 'We could not send the email right now. Please try again in a few minutes.');
+            // SMTP detail is logged inside BrandedEmail. Deliberately answer
+            // exactly as for an unknown address: a visible failure only for
+            // real accounts would reveal which emails are registered.
+            log_message('error', 'Password reset email could not be sent for user {id}.', ['id' => $user->id]);
         }
 
         return redirect()
@@ -82,13 +82,11 @@ class ForgotPasswordController extends BaseController
             ->first();
 
         if (! $resetToken) {
-            return redirect()->to('/login')
-                ->with('error', 'This password reset link is invalid, expired, or has already been used.');
+            return $this->linkNoLongerValid();
         }
 
         if (strtotime($resetToken['expires_at']) < time()) {
-            return redirect()->to('/login')
-                ->with('error', 'This password reset link has expired.');
+            return $this->linkNoLongerValid();
         }
 
         return view('auth/reset_password', [
@@ -117,25 +115,53 @@ class ForgotPasswordController extends BaseController
             ->first();
 
         if (! $resetToken) {
-            return redirect()->to('/login')
-                ->with('error', 'Invalid reset token.');
+            return $this->linkNoLongerValid();
         }
 
         if (strtotime($resetToken['expires_at']) < time()) {
-            return redirect()->to('/login')
-                ->with('error', 'Reset token has expired.');
+            return $this->linkNoLongerValid();
         }
 
         $user = auth()->getProvider()
             ->findById($resetToken['user_id']);
 
+        if ($user === null) {
+            return $this->linkNoLongerValid();
+        }
+
+        // Same rules as registration (minimum length, composition, nothing
+        // personal, dictionary) — an empty or trivial password is refused.
+        $check = service('passwords')->check((string) $password, $user);
+
+        if (! $check->isOK()) {
+            return redirect()->back()
+                ->with('error', $check->reason());
+        }
+
         $user->password = $password;
 
         auth()->getProvider()->save($user);
 
-        $model->delete($resetToken['id']);
+        // The link is single-use: drop every outstanding reset token for this
+        // account, and revoke "remember me" logins so a stolen device can't
+        // stay signed in after the owner changes the password.
+        $model->where('user_id', $resetToken['user_id'])->delete();
+
+        db_connect()->table(setting('Auth.tables')['remember_tokens'])
+            ->where('user_id', $resetToken['user_id'])
+            ->delete();
 
         return redirect()->to('/login')
             ->with('message', 'Password successfully reset.');
+    }
+
+    /**
+     * Old, used or expired link: say so where they can act on it (asking for
+     * a new one) instead of dropping them on the login page.
+     */
+    private function linkNoLongerValid()
+    {
+        return redirect()->to('/forgot-password')
+            ->with('error', 'This reset link is no longer valid. It may have expired, already been used, or been replaced by a newer request. Enter your email to get a new one.');
     }
 }

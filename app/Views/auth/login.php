@@ -69,10 +69,6 @@
                         </div>
                     <?php endif ?>
 
-                    <?php if (session('message') !== null) : ?>
-                        <div class="alert alert-success" role="alert"><?= esc(session('message')) ?></div>
-                    <?php endif ?>
-
                     <form method="post" action="<?= url_to('login') ?>" id="loginForm">
                         <?= csrf_field() ?>
 
@@ -138,16 +134,48 @@
         </div>
     </div>
 
-    <?php if (session('sessionEnded')) : ?>
-        <dialog class="sg-dialog" id="sessionEndedDialog" aria-labelledby="sessionEndedTitle" aria-describedby="sessionEndedText">
+    <?php
+    // Errors stay inline (red banner above the form); the modal is for the
+    // session-ended notice and success messages. Priority: session ended > success.
+    $notice = null;
+    $icons = [
+        'lock'    => '<rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+        'alert'   => '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/>',
+        'success' => '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/>',
+    ];
+
+    if (session('sessionEnded')) {
+        $notice = [
+            'type'  => 'info', 'icon' => 'lock',
+            'title' => 'Your session has ended',
+            'lines' => ['For your security you were signed out. Sign in again to pick up where you left off.'],
+            'button' => 'Sign in again', 'focus' => 'floatingEmailInput',
+        ];
+    } elseif (session('message') !== null) {
+        $message = (string) session('message');
+        $notice = [
+            'type'  => 'success', 'icon' => 'success',
+            'title' => stripos($message, 'logged out') !== false ? 'Signed out'
+                     : (stripos($message, 'password') !== false ? 'Password updated' : 'Success'),
+            'lines' => [$message],
+            'button' => 'Continue', 'focus' => 'floatingEmailInput',
+        ];
+    }
+    ?>
+    <?php if ($notice !== null) : ?>
+        <dialog class="sg-dialog" id="loginNoticeDialog" aria-labelledby="loginNoticeTitle" aria-describedby="loginNoticeText" data-focus="<?= esc($notice['focus'], 'attr') ?>">
             <div class="sg-card" role="alertdialog">
-                <div class="sg-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+                <div class="sg-icon sg-icon--<?= esc($notice['type'], 'attr') ?>" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><?= $icons[$notice['icon']] ?></svg>
                 </div>
-                <h2 id="sessionEndedTitle">Your session has ended</h2>
-                <p id="sessionEndedText">For your security you were signed out. Sign in again to pick up where you left off.</p>
+                <h2 id="loginNoticeTitle"><?= esc($notice['title']) ?></h2>
+                <div id="loginNoticeText">
+                    <?php foreach ($notice['lines'] as $line) : ?>
+                        <p><?= esc($line) ?></p>
+                    <?php endforeach ?>
+                </div>
                 <div class="sg-actions">
-                    <button type="button" class="sg-btn sg-btn--primary" id="sessionEndedOk">Sign in again</button>
+                    <button type="button" class="sg-btn sg-btn--primary" id="loginNoticeOk"><?= esc($notice['button']) ?></button>
                 </div>
             </div>
         </dialog>
@@ -158,7 +186,7 @@
 
 <?= $this->section('pageScripts') ?>
 
-<script src="<?= base_url('assets/js/auth-hero.js') ?>"></script>
+<script src="<?= base_url('assets/js/auth-hero.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/auth-hero.js') ?>"></script>
 
 <script>
     window.addEventListener('pageshow', function () {
@@ -182,14 +210,16 @@
     })();
     <?php endif ?>
     (function () {
-        var dialog = document.getElementById('sessionEndedDialog');
+        var dialog = document.getElementById('loginNoticeDialog');
         if (!dialog) return;
+
         dialog.showModal();
-        document.getElementById('sessionEndedOk').addEventListener('click', function () {
+        document.getElementById('loginNoticeOk').addEventListener('click', function () {
             dialog.close();
         });
         dialog.addEventListener('close', function () {
-            document.getElementById('floatingEmailInput').focus();
+            var target = document.getElementById(dialog.dataset.focus);
+            if (target) target.focus();
         });
     })();
     (function () {

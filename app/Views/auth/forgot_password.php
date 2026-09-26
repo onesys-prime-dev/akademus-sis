@@ -39,15 +39,10 @@
                 <div class="card-body">
                     <div class="card-title__group">
                         <h5 class="card-title mb-5">Reset Password</h5>
-                        <span class="card-subtitle">Enter your email for the verification code</span>
+                        <span class="card-subtitle">Enter your email to receive a reset link</span>
                     </div>
 
-                    <?php if (session('error') !== null) : ?>
-                        <div class="alert alert-danger" role="alert">
-                            <img class="auth-alert--img" src="<?= base_url('assets/images/icons/alert-danger.png') ?>" alt="">
-                            <?= esc(session('error')) ?>
-                        </div>
-                    <?php elseif (session('errors') !== null) : ?>
+                    <?php if (session('errors') !== null) : ?>
                         <div class="alert alert-danger" role="alert">
                             <?php if (is_array(session('errors'))) : ?>
                                 <?php foreach (session('errors') as $error) : ?>
@@ -71,7 +66,7 @@
                         </div>
 
                         <div class="d-grid col-12 col-md-8 mx-auto m-3">
-                            <button type="submit" class="auth-btn btn btn-primary btn-block">Send Code</button>
+                            <button type="submit" class="auth-btn btn btn-primary btn-block">Send Reset Link</button>
                         </div>
 
                     </form>
@@ -93,14 +88,15 @@
         </div>
     </div>
 
-    <?php if (session('message') !== null) : ?>
+    <?php $notice = session('message') ?? session('error'); $isError = session('message') === null && session('error') !== null; ?>
+    <?php if ($notice !== null) : ?>
         <dialog class="sg-dialog" id="noticeDialog" aria-labelledby="noticeTitle" aria-describedby="noticeText">
             <div class="sg-card" role="alertdialog">
                 <div class="sg-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>
                 </div>
-                <h2 id="noticeTitle">Check your email</h2>
-                <p id="noticeText"><?= esc(session('message')) ?></p>
+                <h2 id="noticeTitle"><?= $isError ? 'Link no longer valid' : 'Check your email' ?></h2>
+                <p id="noticeText"><?= esc($notice) ?></p>
                 <div class="sg-actions">
                     <button type="button" class="sg-btn sg-btn--primary" id="noticeOk">Got it</button>
                 </div>
@@ -112,7 +108,7 @@
 
 
 <?= $this->section('pageScripts') ?>
-<script src="<?= base_url('assets/js/auth-hero.js') ?>"></script>
+<script src="<?= base_url('assets/js/auth-hero.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/auth-hero.js') ?>"></script>
 <script>
     (function () {
         var dialog = document.getElementById('noticeDialog');

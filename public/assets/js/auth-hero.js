@@ -45,6 +45,21 @@
                 { c: [160, 560], s: [55, 100], a: [3, -1.5], w: 1.2, p: 0.3 },    // plant left
                 { c: [930, 620], s: [60, 110], a: [-3, -1.5], w: 1.1, p: 2.0 }    // plant right
             ]
+        },
+        // Artwork is 1672px wide but shown ~560px wide, so amplitudes are
+        // larger than the other presets to read as the same gentle motion.
+        reset: {
+            size: [1672, 941],
+            bumps: [
+                { c: [250, 540], s: [120, 260], a: [5, -16], w: 2.0, p: 0.0 },   // person
+                { c: [390, 240], s: [60, 60], a: [3, -20], w: 1.6, p: 0.8 },     // shield badge
+                { c: [735, 335], s: [75, 75], a: [0, -14], w: 1.8, p: 1.2 },     // lock
+                { c: [1165, 150], s: [75, 55], a: [32, -22], w: 1.3, p: 0.6 },   // paper plane
+                { c: [1085, 650], s: [95, 135], a: [-9, -5], w: 1.1, p: 2.0 },   // plant
+                { c: [875, 145], s: [110, 35], a: [0, -14], w: 2.2, p: 0.3 },    // sparkles top
+                { c: [1055, 410], s: [40, 40], a: [0, -14], w: 1.9, p: 1.5 },    // sparkle right
+                { c: [78, 297], s: [38, 38], a: [0, -14], w: 2.0, p: 0.4 }       // sparkle left
+            ]
         }
     };
     var preset = PRESETS[hero.getAttribute('data-hero') || 'login'];
