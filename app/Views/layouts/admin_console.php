@@ -100,6 +100,8 @@ $navGroups = $navGroups ?? [
     ],
     'Finance' => [
         'tuition-rates'        => ['label' => 'Tuition Rates',   'icon' => 'payments',       'url' => 'admin/tuition-rates'],
+        'fee-types'            => ['label' => 'Fee Types',       'icon' => 'sell',           'url' => 'admin/fee-types'],
+        'payment-proofs'       => ['label' => 'Payment Proofs',  'icon' => 'receipt_long',   'url' => 'admin/payment-proofs'],
     ],
     'Administration' => [
         'rooms'                => ['label' => 'Facilities',      'icon' => 'meeting_room',   'url' => 'admin/rooms'],

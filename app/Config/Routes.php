@@ -32,8 +32,18 @@ $tuitionRateRoutes = static function ($routes): void {
     $view   = ['filter' => 'permission:fees.view'];
     $manage = ['filter' => 'permission:fees.manage'];
 
-    $routes->get('tuition-rates'        , 'Admin\TuitionController::index', $view);
-    $routes->post('tuition-rates/store' , 'Admin\TuitionController::store', $manage);
+    $routes->get('tuition-rates'                       , 'Admin\TuitionController::index', $view);
+    $routes->get('tuition-rates/edit/(:num)/(:any)'     , 'Admin\TuitionController::edit/$1/$2', $view);
+    $routes->post('tuition-rates/store'                 , 'Admin\TuitionController::store', $manage);
+
+    $routes->get('fee-types'          , 'Admin\FeeTypeController::index', $view);
+    $routes->post('fee-types/store'   , 'Admin\FeeTypeController::store', $manage);
+    $routes->post('fee-types/(:num)/update'        , 'Admin\FeeTypeController::update/$1', $manage);
+    $routes->post('fee-types/(:num)/toggle-active' , 'Admin\FeeTypeController::toggleActive/$1', $manage);
+
+    $routes->get('payment-proofs'                  , 'Admin\PaymentProofController::index', $view);
+    $routes->post('payment-proofs/(:num)/approve'  , 'Admin\PaymentProofController::approve/$1', $manage);
+    $routes->post('payment-proofs/(:num)/reject'   , 'Admin\PaymentProofController::reject/$1', $manage);
 };
 
 $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($studentRecordRoutes, $tuitionRateRoutes) {
@@ -224,6 +234,7 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->post('enrollments/drop', 'StudentEnrollment::drop');
     $routes->get('grades', 'StudentGrades::index');
     $routes->get('tuition', 'StudentController::tuition');
+    $routes->post('tuition/proof/upload', 'StudentController::uploadProof');
 
     // notifications (shared controller, scoped by auth()->id())
     $routes->get('notifications', 'NotificationController::index');
@@ -284,6 +295,12 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);
+
+// Proof-of-payment file serving — any signed-in role; StudentController::
+// viewProof() itself enforces ownership (the student) or fees.view/manage
+// (staff reviewing via the Payment Proofs queue), since the requester could
+// be either.
+$routes->get('/student/tuition/proof/(:num)', 'StudentController::viewProof/$1', ['filter' => 'session']);
 
 // Forced password change (temp-password first login) — any signed-in role.
 $routes->post('/account/set-temp-password', 'AccountController::setTempPassword', ['filter' => 'session']);

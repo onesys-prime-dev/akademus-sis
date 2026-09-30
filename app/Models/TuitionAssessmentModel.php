@@ -14,7 +14,6 @@ class TuitionAssessmentModel extends Model
         'academic_year',
         'total_units',
         'tuition_amount',
-        'misc_fee_amount',
         'total_amount',
         'amount_paid',
         'balance',

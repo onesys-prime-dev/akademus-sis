@@ -185,6 +185,32 @@ class ChairpersonController extends BaseController
      * (label, semester) row — this is what makes semester a real scheduling
      * dimension, not just a display label — with the active term first.
      */
+    /**
+     * Just the active term + the upcoming one (AcademicYearModel::
+     * upcomingTerm() — same "term being planned for" concept faculty
+     * availability already uses) — the only terms it ever makes sense to
+     * create a NEW section under. academicYears() itself stays the full
+     * history for pages that legitimately need it (filtering/browsing
+     * existing sections, curriculum).
+     */
+    private function creatableAcademicYears(): array
+    {
+        $years = new AcademicYearModel();
+        $rows  = array_filter([$years->activeRow(), $years->upcomingTerm()]);
+
+        $formatted = [];
+
+        foreach ($rows as $row) {
+            $label = AcademicYearModel::format($row['label'], $row['semester']);
+
+            if (! in_array($label, $formatted, true)) {
+                $formatted[] = $label;
+            }
+        }
+
+        return $formatted;
+    }
+
     private function academicYears(): array
     {
         $rows = (new AcademicYearModel())
@@ -2082,7 +2108,8 @@ class ChairpersonController extends BaseController
             'deptName'        => $subDept['name'] ?? null,
             'programs'        => $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']),
             'yearLevels'      => self::FILTERS['year_level'],
-            'academicYears'   => $this->academicYears(),
+            'academicYears'   => $this->creatableAcademicYears(),
+            'activeAcademicYear' => (new AcademicYearModel())->activeFormatted(),
             'sections'        => $sections,
             'rosterBySection' => $rosterBySection,
             'enrollmentsBySection' => $enrollmentsBySection,
@@ -2198,7 +2225,7 @@ class ChairpersonController extends BaseController
             return $this->fail('Invalid year level.');
         }
 
-        if (! in_array($payload['academic_year'], $this->academicYears(), true)) {
+        if (! in_array($payload['academic_year'], $this->creatableAcademicYears(), true)) {
             return $this->fail('Invalid academic year.');
         }
 

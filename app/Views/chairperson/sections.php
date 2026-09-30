@@ -145,9 +145,12 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <label for="newAcademicYear">Academic Year</label>
                 <select id="newAcademicYear">
                     <?php foreach ($academicYears as $ay): ?>
-                        <option value="<?= esc($ay) ?>"><?= esc($ay) ?></option>
+                        <option value="<?= esc($ay) ?>" <?= $ay === $activeAcademicYear ? 'selected' : '' ?>>
+                            <?= esc($ay) ?><?= $ay === $activeAcademicYear ? ' (Active term)' : ' (Upcoming term)' ?>
+                        </option>
                     <?php endforeach ?>
                 </select>
+                <span style="display:block; margin-top:6px; font-size:11px; color:var(--color-text-tertiary);">Only the active term and the upcoming one are offered — enrollment/scheduling only ever runs against one term's data, so a section under any other term would have nothing to enroll into.</span>
             </div>
             <div class="cs-field">
                 <label for="newSectionName">Section Name</label>

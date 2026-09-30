@@ -417,6 +417,16 @@ class StudentModel extends Model
 
         $student['tuition_assessments'] = (new TuitionAssessmentModel())->historyFor($studentId);
         $student['payment_history']     = (new StudentPaymentModel())->historyFor($studentId);
+        $student['pending_proofs']      = (new PaymentProofModel())->where('student_id', $studentId)->where('status', 'pending')->findAll();
+
+        $currentAssessment = $student['tuition_assessments'][0] ?? null;
+
+        $student['assessment_items']  = $currentAssessment !== null
+            ? (new AssessmentItemModel())->forAssessment((int) $currentAssessment['assessment_id'])
+            : [];
+        $student['payment_schedule']  = $currentAssessment !== null
+            ? (new PaymentScheduleModel())->withBalances((int) $currentAssessment['assessment_id'], (float) $currentAssessment['amount_paid'])
+            : [];
 
         return $student;
     }

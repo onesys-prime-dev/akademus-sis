@@ -255,6 +255,57 @@
         </tbody>
     </table>
 
+    <?php if (!empty($s['assessment_items'])): ?>
+    <div style="padding:16px 24px; border-top:1px solid var(--color-border, #e5e7eb);">
+        <h4 style="margin:0 0 8px; font-size:14px;">Current Assessment Breakdown</h4>
+        <table class="ac-table">
+            <thead><tr><th>Category</th><th>Fee</th><th style="text-align:right;">Amount</th></tr></thead>
+            <tbody>
+                <?php foreach ($s['assessment_items'] as $category => $rows): ?>
+                    <?php foreach ($rows as $i => $item): ?>
+                        <tr>
+                            <td><?= $i === 0 ? esc(ucfirst($category)) : '' ?></td>
+                            <td><?= esc($item['label']) ?></td>
+                            <td style="text-align:right;"><?= number_format((float) $item['amount'], 2) ?></td>
+                        </tr>
+                    <?php endforeach ?>
+                <?php endforeach ?>
+            </tbody>
+        </table>
+    </div>
+    <?php endif ?>
+
+    <?php if (!empty($s['payment_schedule'])): ?>
+    <div style="padding:16px 24px; border-top:1px solid var(--color-border, #e5e7eb);">
+        <h4 style="margin:0 0 8px; font-size:14px;">Payment Schedule</h4>
+        <table class="ac-table">
+            <thead><tr><th>Payment For</th><th>Due Date</th><th style="text-align:right;">Amount</th><th style="text-align:right;">Balance</th></tr></thead>
+            <tbody>
+                <?php foreach ($s['payment_schedule'] as $row): ?>
+                    <tr>
+                        <td><?= esc($row['label']) ?></td>
+                        <td><?= $row['due_date'] ? esc(date('M j, Y', strtotime($row['due_date']))) : '—' ?></td>
+                        <td style="text-align:right;"><?= number_format((float) $row['amount'], 2) ?></td>
+                        <td style="text-align:right;"><?= number_format((float) $row['balance'], 2) ?></td>
+                    </tr>
+                <?php endforeach ?>
+            </tbody>
+        </table>
+    </div>
+    <?php endif ?>
+
+    <?php if (!empty($s['pending_proofs'])): ?>
+    <div style="padding:16px 24px; border-top:1px solid var(--color-border, #e5e7eb);">
+        <h4 style="margin:0 0 8px; font-size:14px;">Pending Proofs of Payment</h4>
+        <p class="ac-muted" style="font-size:11.5px; margin:0 0 10px;">Review and act on these from <a href="<?= site_url($basePath . '/payment-proofs') ?>">Payment Proofs</a>.</p>
+        <ul style="margin:0; padding-left:18px;">
+            <?php foreach ($s['pending_proofs'] as $proof): ?>
+                <li><a href="<?= site_url('student/tuition/proof/' . $proof['proof_id']) ?>" target="_blank"><?= esc($proof['original_filename']) ?></a> — <?= esc(date('M j, Y', strtotime($proof['created_at']))) ?></li>
+            <?php endforeach ?>
+        </ul>
+    </div>
+    <?php endif ?>
+
     <div style="padding:16px 24px; border-top:1px solid var(--color-border, #e5e7eb);">
         <h4 style="margin:0 0 8px; font-size:14px;">Record a Payment</h4>
         <?php if (empty($s['tuition_assessments'])): ?>

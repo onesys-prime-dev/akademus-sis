@@ -13,7 +13,7 @@ class TuitionRateModel extends Model
         'program_id',
         'academic_year',
         'per_unit_rate',
-        'misc_fee',
+        'installment_count',
     ];
 
     protected $useTimestamps = true;
