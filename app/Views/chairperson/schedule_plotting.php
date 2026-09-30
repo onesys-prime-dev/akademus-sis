@@ -86,6 +86,13 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
         <?php endforeach; ?>
     </form>
 
+    <?php if (! empty($selected['missing_term_combo'])): ?>
+        <div class="pl-banner" role="alert">
+            <b><?= esc($selected['missing_term_combo']) ?></b> doesn't exist yet in Admin &gt; Academic Years, so the page stayed on
+            <b><?= esc($selected['academic_year']) ?></b> instead. Add that term there first if you need to plot for it.
+        </div>
+    <?php endif ?>
+
     <?php if (! $is_active_year): ?>
         <div class="pl-banner" role="status">
             <b><?= esc($selected['academic_year']) ?></b> is not the active term, so this view is read-only.
