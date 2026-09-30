@@ -9,10 +9,10 @@ $userRoleLabel = $section !== null ? "{$section['program']} · {$section['year_l
 $navGroups     = [
     '' => [
         'dashboard' => ['label' => 'Dashboard',   'icon' => 'home',           'url' => 'student/dashboard'],
+        'profile'   => ['label' => 'Profile',     'icon' => 'person',         'url' => 'student/profile'],
+        'tuition'   => ['label' => 'Tuition & Fees', 'icon' => 'payments',    'url' => 'student/tuition'],
         'schedule'  => ['label' => 'My Schedule', 'icon' => 'calendar_month', 'url' => 'student/schedule'],
         'grades'    => ['label' => 'My Grades',   'icon' => 'grade',          'url' => 'student/grades'],
-        'tuition'   => ['label' => 'Tuition & Fees', 'icon' => 'payments',    'url' => 'student/tuition'],
-        'profile'   => ['label' => 'Profile',     'icon' => 'person',         'url' => 'student/profile'],
     ],
 ];
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
