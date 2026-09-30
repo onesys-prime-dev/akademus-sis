@@ -2,84 +2,62 @@
 
 namespace App\Libraries;
 
-use App\Models\PasswordResetTokenModel;
 use Throwable;
 
 /**
  * First-login email for a student created by the Admissions handoff.
  *
- * The SIS creates the account with a random password nobody knows, so the
- * email carries a set-password link built on the existing reset-password
- * flow (same token table, same page). The link outlives the 1-hour "forgot
- * password" window because a new student may not check their inbox for days.
+ * Mirrors the Admission Portal's registration email (EmailService::
+ * sendWelcomeEmail): the temp password is emailed in plaintext exactly once
+ * and never stored anywhere — StudentModel::promoteFromApplicant() sets
+ * users.must_change_password = 1, and the student is forced to replace it
+ * with a real password on first login (see the change-password modal in
+ * layouts/admin_console.php + AccountController::setTempPassword()).
  */
 class StudentWelcomeMailer
 {
-    public const LINK_LIFETIME_DAYS = 7;
-
-    /**
-     * Issue a set-password token for the user and return the full link.
-     * Any earlier token for the same user is replaced.
-     */
-    public function issueSetPasswordLink(int $userId): string
-    {
-        $token  = bin2hex(random_bytes(32));
-        $tokens = new PasswordResetTokenModel();
-
-        $tokens->where('user_id', $userId)->delete();
-        $tokens->insert([
-            'user_id'    => $userId,
-            'token'      => hash('sha256', $token),
-            'expires_at' => date('Y-m-d H:i:s', strtotime('+' . self::LINK_LIFETIME_DAYS . ' days')),
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
-
-        return site_url('reset-password/' . $token);
-    }
-
     /** The words of the email (plain text; BrandedEmail escapes and lays them out). */
-    public function content(string $firstName, string $studentNumber, string $email, string $link): array
+    public function content(string $firstName, string $studentNumber, string $email, string $tempPassword): array
     {
         return [
-            'preheader'  => "Your student number is {$studentNumber}. Set your password to get started.",
+            'preheader'  => "Your student number is {$studentNumber}. Sign in with the temporary password below.",
             'eyebrow'    => 'Welcome aboard',
             'title'      => "Welcome to Akademus, {$firstName}",
             'paragraphs' => [
-                'Your reservation is confirmed and your student account is ready. Here are your details — keep them handy.',
+                'Your reservation is confirmed and your student account is ready. Here are your sign-in details — you will be asked to set a new password the first time you sign in.',
             ],
             'details'    => [
-                'Student number' => $studentNumber,
-                'Sign-in email'  => $email,
+                'Student number'      => $studentNumber,
+                'Sign-in email'       => $email,
+                'Temporary password'  => $tempPassword,
             ],
-            'button'     => ['label' => 'Set my password', 'url' => $link],
+            'button'     => ['label' => 'Sign in to Akademus', 'url' => site_url('login')],
             'footnote'   => [
-                'This link works for ' . self::LINK_LIFETIME_DAYS . ' days. If it expires, choose "Forgot password?" on the sign-in page and we will send you a new one.',
+                'For your security, please sign in and set a new password as soon as possible.',
             ],
         ];
     }
 
-    public function buildMessage(string $firstName, string $studentNumber, string $email, string $link): string
+    public function buildMessage(string $firstName, string $studentNumber, string $email, string $tempPassword): string
     {
-        return (new BrandedEmail())->render($this->content($firstName, $studentNumber, $email, $link), 'cid:akademus-header');
+        return (new BrandedEmail())->render($this->content($firstName, $studentNumber, $email, $tempPassword), 'cid:akademus-header');
     }
 
     /**
-     * Issue the link and send the email. Never throws — a mail problem must
-     * not undo a student who was already created; the student can always use
-     * "Forgot password?" instead.
+     * Send the welcome email carrying the temp password. Never throws — a
+     * mail problem must not undo a student who was already created; the
+     * student can always use "Forgot password?" instead.
      */
-    public function send(int $userId, string $email, string $firstName, string $studentNumber): bool
+    public function send(string $email, string $firstName, string $studentNumber, string $tempPassword): bool
     {
         try {
-            $link = $this->issueSetPasswordLink($userId);
-
             return (new BrandedEmail())->send(
                 $email,
-                'Welcome to Akademus — set your password',
-                $this->content($firstName, $studentNumber, $email, $link)
+                'Welcome to Akademus — your sign-in details',
+                $this->content($firstName, $studentNumber, $email, $tempPassword)
             );
         } catch (Throwable $e) {
-            log_message('error', '[Welcome email] failed for user ' . $userId . ': ' . $e->getMessage());
+            log_message('error', '[Welcome email] failed for ' . $email . ': ' . $e->getMessage());
         }
 
         return false;

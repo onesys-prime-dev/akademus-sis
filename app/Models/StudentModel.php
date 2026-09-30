@@ -35,7 +35,12 @@ class StudentModel extends Model
      * request/process, silently failing any later, unrelated transaction on
      * the same connection even though its own queries succeeded.
      *
-     * @return array{ok: bool, error?: string, student?: array}
+     * temp_password is only present on a brand-new promotion (never on a
+     * retried/idempotent one) — the caller (StudentAPIController) uses it
+     * once to send StudentWelcomeMailer, then it is gone; it is never
+     * written to any column.
+     *
+     * @return array{ok: bool, error?: string, student?: array, created?: bool, temp_password?: string}
      */
     public function promoteFromApplicant(array $data): array
     {
@@ -108,18 +113,25 @@ class StudentModel extends Model
 
         $userId = $users->getInsertID();
 
+        // Random, human-typeable temp password — mirrors Admissions'
+        // AuthController::register() (bin2hex(random_bytes(6))). Emailed
+        // once by StudentWelcomeMailer, never persisted in plaintext;
+        // must_change_password forces it to be replaced on first login.
+        $tempPassword = bin2hex(random_bytes(6));
+
         $db->table('users')->where('id', $userId)->update([
-            'first_name'     => $data['first_name'],
-            'middle_name'    => $data['middle_name'] ?? null,
-            'last_name'      => $data['last_name'],
-            'contact_number' => $data['contact_number'] ?? null,
+            'first_name'            => $data['first_name'],
+            'middle_name'           => $data['middle_name'] ?? null,
+            'last_name'             => $data['last_name'],
+            'contact_number'        => $data['contact_number'] ?? null,
+            'must_change_password'  => 1,
         ]);
 
         $user = $users->findById($userId);
 
         $user->createEmailIdentity([
             'email'    => $data['email'],
-            'password' => bin2hex(random_bytes(6)),
+            'password' => $tempPassword,
         ]);
 
         $user->addGroup('student');
@@ -154,6 +166,7 @@ class StudentModel extends Model
             'ok'              => true,
             'student'         => $this->hydrate($student),
             'created'         => true,
+            'temp_password'   => $tempPassword,
             'program_created' => $programCreated !== null,
         ];
     }
@@ -401,6 +414,9 @@ class StudentModel extends Model
             ->orderBy('l.created_at', 'DESC')
             ->get()
             ->getResultArray();
+
+        $student['tuition_assessments'] = (new TuitionAssessmentModel())->historyFor($studentId);
+        $student['payment_history']     = (new StudentPaymentModel())->historyFor($studentId);
 
         return $student;
     }

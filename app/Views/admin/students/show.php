@@ -22,6 +22,7 @@
         <a href="#" class="ac-tabs__link" data-tab="section" onclick="return srTab(event,'section')">Current Section</a>
         <a href="#" class="ac-tabs__link" data-tab="history" onclick="return srTab(event,'history')">Enrollment History</a>
         <a href="#" class="ac-tabs__link" data-tab="status" onclick="return srTab(event,'status')">Academic Status</a>
+        <a href="#" class="ac-tabs__link" data-tab="tuition" onclick="return srTab(event,'tuition')">Tuition &amp; Fees</a>
     </div>
 </div>
 
@@ -231,6 +232,78 @@
             </tbody>
         </table>
     </div>
+</div>
+
+<!-- Tuition & Fees -->
+<div class="ac-table-card sr-panel" id="sr-tuition" hidden>
+    <table class="ac-table">
+        <thead><tr><th>Academic Year</th><th>Units</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+        <tbody>
+        <?php if (empty($s['tuition_assessments'])): ?>
+            <tr><td colspan="6" class="ac-muted">No tuition assessments yet — one is created automatically once the student enrolls.</td></tr>
+        <?php endif ?>
+        <?php foreach ($s['tuition_assessments'] as $a): ?>
+            <tr>
+                <td><?= esc($a['academic_year']) ?></td>
+                <td><?= esc((string) $a['total_units']) ?></td>
+                <td><?= number_format((float) $a['total_amount'], 2) ?></td>
+                <td><?= number_format((float) $a['amount_paid'], 2) ?></td>
+                <td><?= number_format((float) $a['balance'], 2) ?></td>
+                <td><?= esc(ucfirst($a['status'])) ?></td>
+            </tr>
+        <?php endforeach ?>
+        </tbody>
+    </table>
+
+    <div style="padding:16px 24px; border-top:1px solid var(--color-border, #e5e7eb);">
+        <h4 style="margin:0 0 8px; font-size:14px;">Record a Payment</h4>
+        <?php if (empty($s['tuition_assessments'])): ?>
+            <p class="ac-muted" style="margin:0;">No assessment exists yet for this student — nothing to record a payment against.</p>
+        <?php else: ?>
+            <form method="post" action="<?= site_url($basePath . '/students/' . $s['student_id'] . '/tuition/payment') ?>" style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto; gap:10px; align-items:end;">
+                <?= csrf_field() ?>
+                <div class="ac-field" style="margin:0;">
+                    <label>Academic Year</label>
+                    <select name="academic_year" class="ac-input" required>
+                        <?php foreach ($s['tuition_assessments'] as $a): ?>
+                            <option value="<?= esc($a['academic_year']) ?>"><?= esc($a['academic_year']) ?></option>
+                        <?php endforeach ?>
+                    </select>
+                </div>
+                <div class="ac-field" style="margin:0;">
+                    <label>Amount</label>
+                    <input type="number" name="amount" class="ac-input" step="0.01" min="0.01" required>
+                </div>
+                <div class="ac-field" style="margin:0;">
+                    <label>Method</label>
+                    <input type="text" name="method" class="ac-input" placeholder="Cash, Bank Transfer, etc." required>
+                </div>
+                <div class="ac-field" style="margin:0;">
+                    <label>Reference No.</label>
+                    <input type="text" name="reference_no" class="ac-input" placeholder="Optional">
+                </div>
+                <button type="submit" class="ac-btn ac-btn-primary" data-confirm="Record this payment? It will update the student's balance.">Record</button>
+            </form>
+        <?php endif ?>
+    </div>
+
+    <h4 style="padding:16px 24px 0; font-size:13px;">Payment History</h4>
+    <table class="ac-table">
+        <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead>
+        <tbody>
+        <?php if (empty($s['payment_history'])): ?>
+            <tr><td colspan="4" class="ac-muted">No payments recorded yet.</td></tr>
+        <?php endif ?>
+        <?php foreach ($s['payment_history'] as $p): ?>
+            <tr>
+                <td><?= esc(date('M j, Y', strtotime($p['payment_date']))) ?></td>
+                <td><?= number_format((float) $p['amount'], 2) ?></td>
+                <td><?= esc($p['method']) ?></td>
+                <td><?= $p['reference_no'] !== null ? esc($p['reference_no']) : '—' ?></td>
+            </tr>
+        <?php endforeach ?>
+        </tbody>
+    </table>
 </div>
 
 <?= $this->endSection() ?>

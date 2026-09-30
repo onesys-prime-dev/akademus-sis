@@ -98,6 +98,9 @@ $navGroups = $navGroups ?? [
         'students'             => ['label' => 'Student Records', 'icon' => 'school',         'url' => 'admin/students'],
         'users'                => ['label' => 'User Accounts',   'icon' => 'group',          'url' => 'admin/users'],
     ],
+    'Finance' => [
+        'tuition-rates'        => ['label' => 'Tuition Rates',   'icon' => 'payments',       'url' => 'admin/tuition-rates'],
+    ],
     'Administration' => [
         'rooms'                => ['label' => 'Facilities',      'icon' => 'meeting_room',   'url' => 'admin/rooms'],
         'academic-years'       => ['label' => 'Academic Years',  'icon' => 'event',          'url' => 'admin/academic-years'],
@@ -117,6 +120,14 @@ $initial       = strtoupper(substr($username, 0, 1));
 // prefix — so the bell can stay in this one shared layout instead of being
 // wired per page, by reading which role prefix the current URL is under.
 $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
+
+// Forced first-login password change (see AccountController::setTempPassword
+// and StudentModel::promoteFromApplicant). Checked via a raw column read,
+// same convention used elsewhere in this layout/controllers for custom
+// users columns Shield's own entity doesn't expose.
+$mustChangePassword = auth()->loggedIn()
+    ? (bool) (db_connect()->table('users')->select('must_change_password')->where('id', auth()->id())->get()->getRowArray()['must_change_password'] ?? 0)
+    : false;
 ?>
 
 <button class="ac-nav-backdrop" type="button" aria-label="Close navigation" hidden></button>
@@ -567,6 +578,72 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
         setInterval(refreshUnread, 30000);
     })();
 </script>
+
+<?php if ($mustChangePassword): ?>
+<!-- Forced password change: temp password from the welcome email must be replaced before anything else is usable. -->
+<div id="tempPwModal" style="position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center; background:rgba(15,23,42,.55); backdrop-filter:blur(3px);">
+    <div style="background:#fff; border-radius:12px; padding:28px; width:100%; max-width:380px; box-shadow:0 20px 60px rgba(0,0,0,.25);">
+        <h3 style="margin:0 0 6px; font-size:17px;">Set Your Password</h3>
+        <p style="margin:0 0 18px; font-size:13px; color:var(--color-text-secondary);">You're signed in with a temporary password. Please set a new one to continue.</p>
+        <div class="ac-field" style="margin-bottom:12px;">
+            <label>New Password</label>
+            <input type="password" id="tempPwNew" class="ac-input" placeholder="At least 8 characters">
+        </div>
+        <div class="ac-field" style="margin-bottom:6px;">
+            <label>Confirm Password</label>
+            <input type="password" id="tempPwConfirm" class="ac-input" placeholder="Re-enter your password">
+        </div>
+        <p id="tempPwError" style="display:none; color:var(--color-danger,#dc2626); font-size:12.5px; margin:6px 0 0;"></p>
+        <button type="button" id="tempPwBtn" class="ac-btn ac-btn-primary" style="width:100%; margin-top:14px;" onclick="tempPwSubmit()">Save Password</button>
+    </div>
+</div>
+<script>
+    async function tempPwSubmit() {
+        var btn     = document.getElementById('tempPwBtn');
+        var errorEl = document.getElementById('tempPwError');
+        var newPw   = document.getElementById('tempPwNew').value;
+        var confirm = document.getElementById('tempPwConfirm').value;
+
+        errorEl.style.display = 'none';
+
+        if (newPw.length < 8) {
+            errorEl.textContent = 'Password must be at least 8 characters.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        if (newPw !== confirm) {
+            errorEl.textContent = 'Passwords do not match.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        btn.disabled = true;
+
+        var form = new FormData();
+        form.append('new_password', newPw);
+        form.append('confirm_password', confirm);
+
+        try {
+            var res  = await fetch('<?= site_url('/account/set-temp-password') ?>', { method: 'POST', body: form });
+            var data = await res.json();
+
+            if (data.success) {
+                window.location.reload();
+                return;
+            }
+
+            errorEl.textContent = data.message || 'Could not save password.';
+            errorEl.style.display = 'block';
+        } catch (e) {
+            errorEl.textContent = 'Network error — please try again.';
+            errorEl.style.display = 'block';
+        }
+
+        btn.disabled = false;
+    }
+</script>
+<?php endif ?>
 
 </body>
 </html>

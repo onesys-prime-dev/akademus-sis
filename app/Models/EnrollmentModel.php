@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Libraries\ScheduleOverlap;
+use App\Services\TuitionAssessmentService;
 use CodeIgniter\Model;
 
 class EnrollmentModel extends Model
@@ -149,6 +150,8 @@ class EnrollmentModel extends Model
             $this->logStatusChange((int) $previous['enrollment_id'], $previous['status'], 'enrolled', 'Re-enrolled' . ($overrideNote !== null ? ' — ' . $overrideNote : ''), $prerequisiteOverride['by'] ?? $userId);
             $db->transComplete();
 
+            $this->recomputeTuition($userId, $section['academic_year']);
+
             return ['ok' => true, 'enrollment_id' => (int) $previous['enrollment_id']];
         }
 
@@ -182,6 +185,8 @@ class EnrollmentModel extends Model
         }
 
         $db->transComplete();
+
+        $this->recomputeTuition($userId, $section['academic_year']);
 
         return ['ok' => true, 'enrollment_id' => $enrollmentId];
     }
@@ -235,7 +240,12 @@ class EnrollmentModel extends Model
 
         $db->transStart();
 
-        $row = $db->query("SELECT * FROM enrollments WHERE enrollment_id = ?{$suffix}", [$enrollmentId])->getRowArray();
+        $row = $db->query(
+            "SELECT e.*, sec.academic_year FROM enrollments e
+             JOIN sections sec ON sec.section_id = e.section_id
+             WHERE e.enrollment_id = ?{$suffix}",
+            [$enrollmentId]
+        )->getRowArray();
 
         if ($row === null || ($ownerUserId !== null && (int) $row['user_id'] !== $ownerUserId)) {
             $db->transRollback();
@@ -266,6 +276,8 @@ class EnrollmentModel extends Model
         if ($db->transStatus() === false) {
             return ['ok' => false, 'error' => 'Could not drop the subject. Please retry.'];
         }
+
+        $this->recomputeTuition((int) $row['user_id'], $row['academic_year']);
 
         return ['ok' => true, 'enrollment' => array_merge($row, ['status' => 'dropped'])];
     }
@@ -523,5 +535,27 @@ class EnrollmentModel extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Keeps the student's tuition assessment in sync with their roster.
+     * Runs after the enrollment change's own transaction has already
+     * committed — a billing recompute must never be able to roll back an
+     * otherwise-successful enroll/drop, so failures here are logged, not
+     * surfaced to the caller.
+     */
+    private function recomputeTuition(int $userId, string $academicYear): void
+    {
+        $student = $this->db->table('students')->select('student_id')->where('user_id', $userId)->get()->getRowArray();
+
+        if ($student === null) {
+            return;
+        }
+
+        try {
+            (new TuitionAssessmentService())->recompute((int) $student['student_id'], $academicYear);
+        } catch (\Throwable $e) {
+            log_message('error', '[Tuition] recompute failed for student ' . $student['student_id'] . ': ' . $e->getMessage());
+        }
     }
 }

@@ -10,6 +10,7 @@ use App\Models\EnrollmentModel;
 use App\Models\NotificationModel;
 use App\Models\ProgramModel;
 use App\Models\StudentModel;
+use App\Services\TuitionAssessmentService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
 /**
@@ -216,6 +217,55 @@ class StudentRecordController extends BaseController
         );
 
         return redirect()->to($this->recordUrl($id))->with('message', "{$result['enrollment']['subject_code']} dropped.");
+    }
+
+    /**
+     * Records a payment against the student's tuition assessment for one
+     * academic year. Rejected if no assessment exists yet for that year —
+     * an assessment is created automatically on enrollment
+     * (EnrollmentModel::recomputeTuition), so this only fails for a student
+     * with no enrollments at all yet.
+     */
+    public function recordPayment($id)
+    {
+        $rules = [
+            'academic_year' => 'required',
+            'amount'        => 'required|decimal|greater_than[0]',
+            'method'        => 'required',
+            'reference_no'  => 'permit_empty|max_length[50]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()->to($this->recordUrl($id))->with('errors', $this->validator->getErrors());
+        }
+
+        $student = (new StudentModel())->find((int) $id);
+
+        if ($student === null) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $result = (new TuitionAssessmentService())->recordPayment(
+            (int) $id,
+            (string) $this->request->getPost('academic_year'),
+            (float) $this->request->getPost('amount'),
+            (string) $this->request->getPost('method'),
+            $this->request->getPost('reference_no') ?: null,
+            (int) auth()->id()
+        );
+
+        if (! $result['ok']) {
+            return redirect()->to($this->recordUrl($id))->with('errors', [$result['error']]);
+        }
+
+        (new NotificationModel())->notify(
+            (int) $student['user_id'],
+            'payment_recorded',
+            'A payment of ' . number_format((float) $this->request->getPost('amount'), 2) . ' was recorded on your tuition account.',
+            'student/tuition'
+        );
+
+        return redirect()->to($this->recordUrl($id))->with('message', 'Payment recorded.');
     }
 
     public function assignCurriculum($id)

@@ -15,8 +15,9 @@ $routes->post('login', '\App\Controllers\Auth\LoginController::loginAction');
 // (deny-by-default): reading needs students.view, every change needs
 // students.manage.
 $studentRecordRoutes = static function ($routes): void {
-    $view   = ['filter' => 'permission:students.view'];
-    $manage = ['filter' => 'permission:students.manage'];
+    $view       = ['filter' => 'permission:students.view'];
+    $manage     = ['filter' => 'permission:students.manage'];
+    $feesManage = ['filter' => 'permission:fees.manage'];
 
     $routes->get('students'                     , 'Admin\StudentRecordController::index', $view);
     $routes->get('students/(:num)'              , 'Admin\StudentRecordController::show/$1', $view);
@@ -24,9 +25,18 @@ $studentRecordRoutes = static function ($routes): void {
     $routes->post('students/(:num)/curriculum'  , 'Admin\StudentRecordController::assignCurriculum/$1', $manage);
     $routes->post('students/(:num)/enrollments/(:num)/drop', 'Admin\StudentRecordController::dropEnrollment/$1/$2', $manage);
     $routes->post('students/(:num)/enroll'      , 'Admin\StudentRecordController::enrollStudent/$1', $manage);
+    $routes->post('students/(:num)/tuition/payment', 'Admin\StudentRecordController::recordPayment/$1', $feesManage);
 };
 
-$routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($studentRecordRoutes) {
+$tuitionRateRoutes = static function ($routes): void {
+    $view   = ['filter' => 'permission:fees.view'];
+    $manage = ['filter' => 'permission:fees.manage'];
+
+    $routes->get('tuition-rates'        , 'Admin\TuitionController::index', $view);
+    $routes->post('tuition-rates/store' , 'Admin\TuitionController::store', $manage);
+};
+
+$routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($studentRecordRoutes, $tuitionRateRoutes) {
     $routes->get('dashboard', 'Admin\AdminController::index');
 
     // create programs
@@ -131,6 +141,9 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     // student records (shared with the registrar — see $studentRecordRoutes)
     $studentRecordRoutes($routes);
 
+    // tuition rates (shared with the registrar — see $tuitionRateRoutes)
+    $tuitionRateRoutes($routes);
+
     // grading scale (numeric GWA / percentage / letter — one active at a time)
     $routes->get('grading-scales'               , 'Admin\GradingScaleController::index');
     $routes->post('grading-scales/store'        , 'Admin\GradingScaleController::store');
@@ -142,11 +155,14 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
 });
 
-$routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) use ($studentRecordRoutes) {
+$routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) use ($studentRecordRoutes, $tuitionRateRoutes) {
     $routes->get('dashboard', 'RegistrarController::index');
 
     // student records (same controller/permissions as the admin console)
     $studentRecordRoutes($routes);
+
+    // tuition rates (same controller/permissions as the admin console)
+    $tuitionRateRoutes($routes);
 
     // profile
     $routes->get('profile', 'Registrar\ProfileController::edit');
@@ -207,6 +223,7 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->post('enroll/block', 'StudentEnrollment::enrollBlock');
     $routes->post('enrollments/drop', 'StudentEnrollment::drop');
     $routes->get('grades', 'StudentGrades::index');
+    $routes->get('tuition', 'StudentController::tuition');
 
     // notifications (shared controller, scoped by auth()->id())
     $routes->get('notifications', 'NotificationController::index');
@@ -267,6 +284,9 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);
+
+// Forced password change (temp-password first login) — any signed-in role.
+$routes->post('/account/set-temp-password', 'AccountController::setTempPassword', ['filter' => 'session']);
 
 /*
 $routes->get('/profile', function () {

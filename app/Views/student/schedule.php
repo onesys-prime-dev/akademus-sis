@@ -11,6 +11,7 @@ $navGroups     = [
         'dashboard' => ['label' => 'Dashboard',   'icon' => 'home',           'url' => 'student/dashboard'],
         'schedule'  => ['label' => 'My Schedule', 'icon' => 'calendar_month', 'url' => 'student/schedule'],
         'grades'    => ['label' => 'My Grades',   'icon' => 'grade',          'url' => 'student/grades'],
+        'tuition'   => ['label' => 'Tuition & Fees', 'icon' => 'payments',    'url' => 'student/tuition'],
         'profile'   => ['label' => 'Profile',     'icon' => 'person',         'url' => 'student/profile'],
     ],
 ];

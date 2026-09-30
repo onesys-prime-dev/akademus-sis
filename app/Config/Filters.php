@@ -14,6 +14,7 @@ use CodeIgniter\Filters\PerformanceMetrics;
 use CodeIgniter\Filters\SecureHeaders;
 use App\Filters\ApiKeyFilter;
 use App\Filters\AuthThrottleFilter;
+use App\Filters\ForcePasswordChangeFilter;
 
 class Filters extends BaseFilters
 {
@@ -38,6 +39,7 @@ class Filters extends BaseFilters
         'performance'   => PerformanceMetrics::class,
         'apikey'        => ApiKeyFilter::class,
         'auththrottle'  => AuthThrottleFilter::class,
+        'forcepwchange' => ForcePasswordChangeFilter::class,
     ];
 
     /**
@@ -79,6 +81,10 @@ class Filters extends BaseFilters
             // 'honeypot',
             'csrf' => ['except' => ['api/*']],
             'invalidchars',
+            // Server-side backstop for the temp-password modal (see
+            // ForcePasswordChangeFilter's docblock). api/* is Admissions'
+            // service-to-service webhook, gated by X-API-KEY, not a session.
+            'forcepwchange' => ['except' => ['api/*']],
         ],
         'after' => [
             // 'honeypot',

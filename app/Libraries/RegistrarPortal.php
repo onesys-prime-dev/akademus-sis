@@ -25,6 +25,7 @@ class RegistrarPortal
                 '' => [
                     'dashboard' => ['label' => 'Dashboard',       'icon' => 'dashboard', 'url' => 'registrar/dashboard'],
                     'students'  => ['label' => 'Student Records', 'icon' => 'school',    'url' => 'registrar/students'],
+                    'tuition-rates' => ['label' => 'Tuition Rates', 'icon' => 'payments', 'url' => 'registrar/tuition-rates'],
                     'profile'   => ['label' => 'Profile',         'icon' => 'person',    'url' => 'registrar/profile'],
                 ],
             ],

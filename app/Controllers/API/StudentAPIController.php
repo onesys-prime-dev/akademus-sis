@@ -81,12 +81,13 @@ class StudentAPIController extends BaseController
         // and must not email again). Sent after the response so a slow SMTP
         // server never delays or fails the Admissions call.
         if (! empty($result['created'])) {
-            $student = $result['student'];
-            $email   = (string) $data['email'];
-            $first   = (string) $data['first_name'];
+            $student      = $result['student'];
+            $email        = (string) $data['email'];
+            $first        = (string) $data['first_name'];
+            $tempPassword = (string) $result['temp_password'];
 
-            Events::on('post_system', static function () use ($student, $email, $first): void {
-                (new StudentWelcomeMailer())->send((int) $student['user_id'], $email, $first, $student['student_number']);
+            Events::on('post_system', static function () use ($student, $email, $first, $tempPassword): void {
+                (new StudentWelcomeMailer())->send($email, $first, $student['student_number'], $tempPassword);
             });
         }
 

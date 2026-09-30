@@ -116,6 +116,8 @@ class AuthGroups extends ShieldAuthGroups
         'users.delete'        => 'Can delete existing non-admin users',
         'students.view'       => 'Can look up any student record',
         'students.manage'     => "Can change a student's status, curriculum and enrollments (add, drop, prerequisite override)",
+        'fees.view'            => 'Can view tuition rates and student fee assessments',
+        'fees.manage'          => 'Can set tuition rates and record student payments',
         // 'beta.access'        => 'Can access beta-level features',
     ];
 
@@ -132,6 +134,7 @@ class AuthGroups extends ShieldAuthGroups
             'admin.*',
             'users.*',
             'students.*',
+            'fees.*',
         ],
         'admin' => [
             'admin.access',
@@ -140,12 +143,16 @@ class AuthGroups extends ShieldAuthGroups
             'users.delete',
             'students.view',
             'students.manage',
+            'fees.view',
+            'fees.manage',
         ],
         // Institution-wide by design: a registrar looks up and corrects any
         // student's record (audited, reason required), but administers nothing else.
         'registrar' => [
             'students.view',
             'students.manage',
+            'fees.view',
+            'fees.manage',
         ],
         'faculty' => [],
         'dean' => [],

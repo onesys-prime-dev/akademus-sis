@@ -4,6 +4,9 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\SectionModel;
+use App\Models\StudentModel;
+use App\Models\StudentPaymentModel;
+use App\Models\TuitionAssessmentModel;
 
 class StudentController extends BaseController
 {
@@ -52,6 +55,28 @@ class StudentController extends BaseController
             'activePage' => 'profile',
             'account'    => $account,
             'section'    => $section,
+        ]);
+    }
+
+    public function tuition(): string
+    {
+        $account = auth()->user();
+        $student = (new StudentModel())->where('user_id', (int) auth()->id())->first();
+
+        $assessments = [];
+        $payments    = [];
+
+        if ($student !== null) {
+            $assessments = (new TuitionAssessmentModel())->historyFor((int) $student['student_id']);
+            $payments    = (new StudentPaymentModel())->historyFor((int) $student['student_id']);
+        }
+
+        return view('student/tuition', [
+            'pageTitle'   => 'Tuition & Fees',
+            'activePage'  => 'tuition',
+            'account'     => $account,
+            'assessments' => $assessments,
+            'payments'    => $payments,
         ]);
     }
 
