@@ -17,6 +17,8 @@ class StudentModel extends Model
         'curriculum_id',
         'admission_date',
         'student_status',
+        'intended_school_year',
+        'intended_semester',
     ];
 
     protected $useTimestamps = true;
@@ -139,13 +141,20 @@ class StudentModel extends Model
         $studentNumber = $this->nextStudentNumber();
 
         $this->insert([
-            'user_id'         => $userId,
-            'applicant_id'    => $data['applicant_id'],
-            'student_number'  => $studentNumber,
-            'program_id'      => $programId,
-            'curriculum_id'   => $curriculumId,
-            'admission_date'  => $data['admission_date'] ?? date('Y-m-d H:i:s'),
-            'student_status'  => 'active',
+            'user_id'               => $userId,
+            'applicant_id'          => $data['applicant_id'],
+            'student_number'        => $studentNumber,
+            'program_id'            => $programId,
+            'curriculum_id'         => $curriculumId,
+            'admission_date'        => $data['admission_date'] ?? date('Y-m-d H:i:s'),
+            'student_status'        => 'active',
+            // Snapshot of what Admission recorded, if it sent one — never
+            // overwritten afterward. The term the student is actually
+            // SECTIONED into is a separate, later decision; this is only
+            // provenance for spotting a mismatch (see Student Records'
+            // Admission Info tab).
+            'intended_school_year'  => $data['school_year'] ?? null,
+            'intended_semester'     => $data['semester'] ?? null,
         ]);
 
         $student = $this->find($this->getInsertID());

@@ -44,6 +44,30 @@
     <div style="padding:20px 24px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
         <div><label class="ac-muted" style="font-size:11px; text-transform:uppercase;">Applicant ID</label><p><?= esc($s['applicant_id']) ?></p></div>
         <div><label class="ac-muted" style="font-size:11px; text-transform:uppercase;">Admission Date</label><p><?= esc($s['admission_date'] ? date('M j, Y g:i A', strtotime($s['admission_date'])) : '—') ?></p></div>
+        <div>
+            <label class="ac-muted" style="font-size:11px; text-transform:uppercase;">Intended Term (from Admission)</label>
+            <?php if (empty($s['intended_school_year']) && empty($s['intended_semester'])): ?>
+                <p class="ac-muted">Not recorded — this student was promoted before Admission sent this field.</p>
+            <?php else: ?>
+                <?php
+                    $intended = trim(($s['intended_semester'] ?? '') . ', AY ' . ($s['intended_school_year'] ?? ''), ', ');
+                    // Loose match on purpose — Admission stores "1st Semester"/"2025-2026"
+                    // as free strings, SIS stores its own "AY 2025 - 2026 · 1st Semester"
+                    // format; checking both pieces show up in the active term string is
+                    // honest without pretending the two systems share one format.
+                    $semesterWord = trim((string) preg_replace('/\s*Semester$/i', '', (string) ($s['intended_semester'] ?? '')));
+                    $matches = $activeYear !== null
+                        && (empty($s['intended_school_year']) || str_contains($activeYear, (string) $s['intended_school_year']))
+                        && ($semesterWord === '' || str_contains($activeYear, $semesterWord));
+                ?>
+                <p><?= esc($intended) ?></p>
+                <?php if (! $matches): ?>
+                    <p style="color:var(--color-danger,#dc2626); font-size:12px; margin-top:4px;">
+                        Doesn't match the SIS's current active term (<?= esc($activeYear ?? 'none set') ?>). This student applied for a different term than what's active now — worth checking before sectioning them.
+                    </p>
+                <?php endif ?>
+            <?php endif ?>
+        </div>
     </div>
     <p style="padding:0 24px 16px; font-size:11.5px; color:var(--color-text-secondary);">Read-only — a historical fact owned by the Admissions Portal, recorded at the moment this student was promoted (<code>POST /api/students/promote</code>).</p>
 </div>

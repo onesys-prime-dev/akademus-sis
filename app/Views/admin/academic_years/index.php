@@ -2,9 +2,18 @@
 
 <?= $this->section('content') ?>
 
-<button type="button" class="ac-btn ac-btn-primary" onclick="acOpenModal('modalAddAy')">
-    <?= admin_icon('plus', 16) ?> Add Academic Year
-</button>
+<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+    <button type="button" class="ac-btn ac-btn-primary" onclick="acOpenModal('modalAddAy')">
+        <?= admin_icon('plus', 16) ?> Add Academic Year
+    </button>
+
+    <form method="post" action="<?= site_url('admin/academic-years/sync-active') ?>">
+        <?= csrf_field() ?>
+        <button type="submit" class="ac-btn ac-btn-secondary" data-confirm="Set the active term to whichever one's date range covers today (<?= esc(date('M j, Y')) ?>)?">
+            <?= admin_icon('cal', 16) ?> Sync to Today (<?= esc(date('M j, Y')) ?>)
+        </button>
+    </form>
+</div>
 
 <?php if (empty($years)): ?>
     <div class="ac-empty-block" style="margin-top:16px;">No academic years yet.</div>
@@ -19,6 +28,13 @@
                     <?php endif ?>
                 </div>
                 <div class="ac-dept-meta"><?= esc($ay['semester']) ?> Semester</div>
+                <div class="ac-dept-meta">
+                    <?php if ($ay['start_date'] && $ay['end_date']): ?>
+                        <?= esc(date('M j, Y', strtotime($ay['start_date']))) ?> &ndash; <?= esc(date('M j, Y', strtotime($ay['end_date']))) ?>
+                    <?php else: ?>
+                        <span style="color:var(--color-text-tertiary);">No dates set</span>
+                    <?php endif ?>
+                </div>
 
                 <?php if (! $ay['is_active']): ?>
                     <form method="post" action="<?= site_url('admin/academic-years/set-active/' . $ay['ay_id']) ?>" style="margin-top:12px;">
@@ -53,6 +69,14 @@
                         <option value="2nd">2nd</option>
                         <option value="Summer">Summer</option>
                     </select>
+                </div>
+                <div class="ac-field">
+                    <label>Start Date <span class="optional">(Optional)</span></label>
+                    <input type="date" name="start_date" class="ac-input" value="<?= old('start_date') ?>">
+                </div>
+                <div class="ac-field">
+                    <label>End Date <span class="optional">(Optional)</span></label>
+                    <input type="date" name="end_date" class="ac-input" value="<?= old('end_date') ?>">
                 </div>
             </div>
             <div class="ac-modal__actions">

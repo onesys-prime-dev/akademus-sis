@@ -132,6 +132,7 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->get('academic-years'                 , 'Admin\AcademicYearController::index');
     $routes->post('academic-years/store'          , 'Admin\AcademicYearController::store');
     $routes->post('academic-years/set-active/(:num)', 'Admin\AcademicYearController::setActive/$1');
+    $routes->post('academic-years/sync-active'    , 'Admin\AcademicYearController::syncActive');
 
     // user accounts
     $routes->get('users'                       , 'Admin\UserController::index');

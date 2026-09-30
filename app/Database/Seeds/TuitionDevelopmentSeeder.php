@@ -91,6 +91,7 @@ class TuitionDevelopmentSeeder extends Seeder
     private const ACADEMIC_YEARS = [
         'AY 2025 - 2026 · 1st Semester',
         'AY 2025 - 2026 · 2nd Semester',
+        'AY 2026 - 2027 · 1st Semester',
     ];
 
     public function run()

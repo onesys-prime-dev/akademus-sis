@@ -28,8 +28,10 @@ class AcademicYearController extends BaseController
     public function store()
     {
         $rules = [
-            'label'    => 'required|max_length[20]',
-            'semester' => 'required|in_list[1st,2nd,Summer]',
+            'label'      => 'required|max_length[20]',
+            'semester'   => 'required|in_list[1st,2nd,Summer]',
+            'start_date' => 'permit_empty|valid_date',
+            'end_date'   => 'permit_empty|valid_date',
         ];
 
         if (! $this->validate($rules)) {
@@ -40,8 +42,10 @@ class AcademicYearController extends BaseController
         }
 
         $this->ayModel->insert([
-            'label'    => $this->request->getPost('label'),
-            'semester' => $this->request->getPost('semester'),
+            'label'      => $this->request->getPost('label'),
+            'semester'   => $this->request->getPost('semester'),
+            'start_date' => $this->request->getPost('start_date') ?: null,
+            'end_date'   => $this->request->getPost('end_date') ?: null,
         ]);
 
         return redirect()
@@ -62,5 +66,31 @@ class AcademicYearController extends BaseController
         return redirect()
             ->to('/admin/academic-years')
             ->with('message', "{$ay['label']} ({$ay['semester']}) set as active term.");
+    }
+
+    /**
+     * Manual trigger for AcademicYearModel::syncActiveToDate() — flips the
+     * active term to whichever row's date range covers today, if it
+     * differs. The existing setActive() action above stays as an explicit
+     * manual override; this is the date-driven alternative, not a
+     * replacement.
+     */
+    public function syncActive()
+    {
+        $result = $this->ayModel->syncActiveToDate();
+
+        if (! $result['changed']) {
+            $message = $result['to'] === null
+                ? ($result['reason'] ?? 'No term covers today.')
+                : "Already correct — {$result['to']['label']} ({$result['to']['semester']}) already matches today.";
+
+            return redirect()->to('/admin/academic-years')->with('message', $message);
+        }
+
+        $to = $result['to'];
+
+        return redirect()
+            ->to('/admin/academic-years')
+            ->with('message', "Active term updated to {$to['label']} ({$to['semester']}) to match today's date.");
     }
 }
