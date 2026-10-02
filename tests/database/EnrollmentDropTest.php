@@ -43,8 +43,29 @@ final class EnrollmentDropTest extends CIUnitTestCase
         parent::tearDown();
     }
 
+    /**
+     * EnrollmentModel::enrollOne() now requires subject_code to resolve to
+     * a real, active subjects row (see the catalog-integrity hardening) —
+     * this fixture previously plotted DR101 with no matching catalog entry.
+     */
+    private function seedSubject(string $code): void
+    {
+        if (db_connect()->table('subjects')->where('subject_code', $code)->countAllResults() > 0) {
+            return;
+        }
+
+        db_connect()->table('subjects')->insert([
+            'subject_code' => $code,
+            'subject_name' => $code . ' Title',
+            'units'        => 3,
+            'is_active'    => 1,
+        ]);
+    }
+
     private function makeSection(?int $capacity = null): array
     {
+        $this->seedSubject('DR101');
+
         $sections = new SectionModel();
         $sections->insert([
             'academic_year' => 'AY 2026 - 2027 · 1st Semester',

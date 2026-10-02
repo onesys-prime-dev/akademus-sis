@@ -17,8 +17,7 @@ use App\Models\DepartmentModel;
  * that translates between them.
  *
  * forContext() returns null when no published curriculum governs the
- * context, so callers can fall back to the legacy presets and nothing
- * breaks for programs that haven't been cut over yet.
+ * context — the program/term simply offers nothing yet.
  */
 class TermCurriculum
 {

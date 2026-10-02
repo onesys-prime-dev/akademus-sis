@@ -40,9 +40,9 @@ class AcademicYearModel extends Model
      * Flips is_active to whichever term's date range covers $date, if that
      * differs from the currently active row. Leaves the active row alone
      * when termForDate() finds nothing (a gap) — several callers
-     * (SISDevelopmentSeeder, CurriculumImportPresets, dashboards) assume
-     * some row is always active, and clearing it to zero would be worse
-     * than leaving a stale-but-present one.
+     * (SISDevelopmentSeeder, dashboards) assume some row is always active,
+     * and clearing it to zero would be worse than leaving a stale-but-present
+     * one.
      *
      * @return array{changed: bool, from: ?array, to: ?array, reason?: string}
      */
@@ -67,7 +67,7 @@ class AcademicYearModel extends Model
     /**
      * "2025-2026" -> "AY 2025 - 2026", matching the format stored on
      * scheduling rows (plotted_schedules.academic_year, faculty_assignments.academic_year,
-     * sections.academic_year, curriculum_presets.academic_year). Pass $semester
+     * sections.academic_year). Pass $semester
      * to fold the term into the same identity string ("AY 2025 - 2026 · 1st
      * Semester") — this is what makes semester a real, distinct scheduling
      * dimension instead of just a display label, since every table above

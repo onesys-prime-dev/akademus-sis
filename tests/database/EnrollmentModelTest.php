@@ -39,8 +39,31 @@ final class EnrollmentModelTest extends CIUnitTestCase
         return $sections->find($sections->getInsertID());
     }
 
+    /**
+     * Real plotting always derives subject_code from an already-catalog-
+     * validated source (see ChairpersonController::sync()); this fixture
+     * previously plotted bare codes with no matching subjects row at all,
+     * which EnrollmentModel::enrollOne() now correctly rejects as
+     * unrecognized. Seeding the catalog row here matches real usage.
+     */
+    private function seedSubject(string $code): void
+    {
+        if (db_connect()->table('subjects')->where('subject_code', $code)->countAllResults() > 0) {
+            return;
+        }
+
+        db_connect()->table('subjects')->insert([
+            'subject_code' => $code,
+            'subject_name' => $code . ' Title',
+            'units'        => 3,
+            'is_active'    => 1,
+        ]);
+    }
+
     private function plotSubject(array $section, string $subjectCode, int $day, string $start, string $end): void
     {
+        $this->seedSubject($subjectCode);
+
         db_connect()->table('plotted_schedules')->insert([
             'academic_year' => $section['academic_year'],
             'program'       => $section['program'],

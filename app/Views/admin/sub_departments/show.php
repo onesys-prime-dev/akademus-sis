@@ -22,7 +22,12 @@
         <h1 class="ac-page-header__title"><?= esc($department['name']) ?> (<?= esc($department['code']) ?>)</h1>
         <div class="ac-detail-header__meta">
             <span class="material-symbols-outlined">person</span>
-            <?php if ($department['chair']): ?>
+            <?php if (count($department['chairs']) > 1): ?>
+                Chairpersons: <?= esc(implode(', ', array_map(
+                    static fn ($c) => $c['username'] . ($c['is_primary'] ? '' : ' (shared)'),
+                    $department['chairs']
+                ))) ?>
+            <?php elseif ($department['chair']): ?>
                 Chairperson: <?= esc($department['chair']['username']) ?>
             <?php else: ?>
                 <span style="color:var(--color-warning); font-weight:700;">No chairperson assigned</span>
@@ -291,20 +296,46 @@
             </button>
         </div>
 
-        <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/store-chair') ?>">
+        <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/store-chair') ?>" id="formChair">
             <?= csrf_field() ?>
             <div class="ac-modal__body">
                 <div class="ac-field">
-                    <label>Full Name</label>
-                    <input type="text" name="username" class="ac-input" placeholder="Prof. Maria Reyes" value="<?= esc($department['chair']['username'] ?? '') ?>" required>
+                    <div style="display:flex; gap:16px; margin-bottom:4px;">
+                        <label style="display:flex; align-items:center; gap:6px; font-weight:400; text-transform:none;">
+                            <input type="radio" name="chair_mode" value="existing" checked onchange="acToggleChairMode(this)"> Existing user
+                        </label>
+                        <label style="display:flex; align-items:center; gap:6px; font-weight:400; text-transform:none;">
+                            <input type="radio" name="chair_mode" value="new" onchange="acToggleChairMode(this)"> New account
+                        </label>
+                    </div>
                 </div>
-                <div class="ac-field">
-                    <label>Email</label>
-                    <input type="email" name="email" class="ac-input" placeholder="mreyes@spum.edu.ph" value="<?= esc($department['chair']['email'] ?? '') ?>" required>
+
+                <div class="ac-field" id="chairExistingField">
+                    <label>User</label>
+                    <select name="existing_user_id" class="ac-input" id="chairExistingSelect" required>
+                        <option value="">Choose a user…</option>
+                        <?php foreach ($assignableUsers as $u): ?>
+                            <option value="<?= (int) $u['id'] ?>">
+                                <?= esc($u['username']) ?><?= $u['email'] ? ' — ' . esc($u['email']) : '' ?><?= $u['groups'] !== [] ? ' (' . esc(implode(', ', $u['groups'])) . ')' : '' ?>
+                            </option>
+                        <?php endforeach ?>
+                    </select>
                 </div>
+
+                <div id="chairNewFields" style="display:none;">
+                    <div class="ac-field">
+                        <label>Full Name</label>
+                        <input type="text" name="username" class="ac-input" placeholder="Prof. Maria Reyes" value="<?= esc($department['chair']['username'] ?? '') ?>">
+                    </div>
+                    <div class="ac-field">
+                        <label>Email</label>
+                        <input type="email" name="email" class="ac-input" placeholder="mreyes@spum.edu.ph" value="<?= esc($department['chair']['email'] ?? '') ?>">
+                    </div>
+                </div>
+
                 <div class="ac-notice">
                     <span class="material-symbols-outlined" style="font-size:14px; color:var(--color-info); margin-top:1px;">info</span>
-                    <span class="ac-notice__text">This will set the account as <?= esc($department['name']) ?>'s chairperson, replacing the current one if any.</span>
+                    <span class="ac-notice__text">This will set the account as <?= esc($department['name']) ?>'s chairperson, replacing the current one if any. An existing user keeps their other roles/departments — this only adds chairperson access here.</span>
                 </div>
             </div>
             <div class="ac-modal__actions">
@@ -312,6 +343,19 @@
                 <button type="submit" class="ac-btn ac-btn-primary"><?= $department['chair'] ? 'Reassign' : 'Assign' ?></button>
             </div>
         </form>
+        <script>
+            function acToggleChairMode(radio) {
+                const existing = radio.form.querySelector('#chairExistingField');
+                const existingSelect = radio.form.querySelector('#chairExistingSelect');
+                const newFields = radio.form.querySelector('#chairNewFields');
+                const newInputs = newFields.querySelectorAll('input');
+                const isExisting = radio.value === 'existing';
+                existing.style.display = isExisting ? '' : 'none';
+                newFields.style.display = isExisting ? 'none' : '';
+                existingSelect.required = isExisting;
+                newInputs.forEach(input => { input.required = !isExisting; });
+            }
+        </script>
     </div>
 </div>
 

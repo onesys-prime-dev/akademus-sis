@@ -29,7 +29,8 @@ class SubDepartmentController extends BaseController
         }
 
         $college = (new DepartmentModel())->find($department['college_id']);
-        $department['chair'] = $this->chairOf($id);
+        $department['chair']  = $this->chairOf($id);
+        $department['chairs'] = $this->allChairsOf($id);
 
         $programs = (new ProgramModel())
             ->where('sub_department_id', $id)
@@ -48,7 +49,40 @@ class SubDepartmentController extends BaseController
             'facultyMembers' => $this->facultyMembersOf($id),
             'facultyCount'   => $this->countInGroup($id, 'faculty'),
             'studentCount'   => $this->countInGroup($id, 'student'),
+            'assignableUsers' => $this->assignableUsers(),
         ]);
+    }
+
+    /**
+     * Every active, non-deleted account — for the "Assign Chairperson"
+     * modal's existing-user picker, so promoting someone already in the
+     * system (most commonly an existing faculty member) doesn't require
+     * re-typing their name/email and hoping it matches exactly.
+     *
+     * @return list<array{id: int, username: string, email: ?string, groups: list<string>}>
+     */
+    private function assignableUsers(): array
+    {
+        $rows = db_connect()->table('users u')
+            ->select('u.id, u.username, i.secret as email')
+            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->where('u.deleted_at', null)
+            ->orderBy('u.username')
+            ->get()
+            ->getResultArray();
+
+        $groupsByUser = [];
+
+        foreach (db_connect()->table('auth_groups_users')->select('user_id, `group`')->get()->getResultArray() as $g) {
+            $groupsByUser[(int) $g['user_id']][] = $g['group'];
+        }
+
+        foreach ($rows as &$row) {
+            $row['groups'] = $groupsByUser[(int) $row['id']] ?? [];
+        }
+        unset($row);
+
+        return $rows;
     }
 
     public function update($id)
@@ -87,6 +121,12 @@ class SubDepartmentController extends BaseController
 
         if (! $department) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $existingUserId = (int) ($this->request->getPost('existing_user_id') ?? 0);
+
+        if ($this->request->getPost('chair_mode') === 'existing' || $existingUserId > 0) {
+            return $this->assignExistingChair($id, $department, $existingUserId);
         }
 
         $rules = [
@@ -153,6 +193,64 @@ class SubDepartmentController extends BaseController
 
         if ($tempPassword) {
             $message .= " Temporary password: {$tempPassword} (share this with them — it won't be shown again).";
+        }
+
+        return redirect()
+            ->to("/admin/sub-departments/{$id}")
+            ->with('message', $message);
+    }
+
+    /**
+     * Assigns an ALREADY-EXISTING user as this department's chairperson —
+     * never overwriting their primary sub_department_id if they're already
+     * the primary chairperson of a DIFFERENT department (a real scenario:
+     * one person chairing two related departments, e.g. a combined CS/IT
+     * chairmanship, or a faculty member teaching across both). In that
+     * case this grants DELEGATED access via sub_department_schedulers (the
+     * mechanism SchedulingAuthorization::authorizedSubDeptIds() already
+     * reads) instead of silently stealing them away from their first
+     * department.
+     */
+    private function assignExistingChair(int $id, array $department, int $userId)
+    {
+        $users = auth()->getProvider();
+        $user  = $users->findById($userId);
+
+        if ($user === null) {
+            return redirect()->back()->with('errors', ['Selected user not found.']);
+        }
+
+        if (! $user->inGroup('chairperson')) {
+            $user->addGroup('chairperson');
+        }
+
+        $db = db_connect();
+        $currentSubDept = $db->table('users')->select('sub_department_id')->where('id', $user->id)->get()->getRowArray()['sub_department_id'] ?? null;
+
+        if ($currentSubDept === null || (int) $currentSubDept === $id) {
+            $db->table('users')
+                ->where('id', $user->id)
+                ->update([
+                    'sub_department_id' => $id,
+                    'department_id'     => $department['college_id'],
+                ]);
+
+            $message = "{$user->username} assigned as chairperson of {$department['name']}.";
+        } else {
+            $alreadyDelegated = $db->table('sub_department_schedulers')
+                ->where('sub_dept_id', $id)
+                ->where('user_id', $user->id)
+                ->countAllResults() > 0;
+
+            if (! $alreadyDelegated) {
+                $db->table('sub_department_schedulers')->insert([
+                    'sub_dept_id' => $id,
+                    'user_id'     => $user->id,
+                    'created_at'  => date('Y-m-d H:i:s'),
+                ]);
+            }
+
+            $message = "{$user->username} is already chairperson of another department, so they weren't moved — they've been granted additional chairperson access to {$department['name']} as well. Both departments remain under their management.";
         }
 
         return redirect()
@@ -406,9 +504,16 @@ class SubDepartmentController extends BaseController
             ->with('message', "{$username} removed.");
     }
 
+    /**
+     * The PRIMARY chairperson (sub_department_id match), falling back to
+     * the first DELEGATED chairperson (sub_department_schedulers) when no
+     * primary is set — e.g. someone whose primary department is CS but who
+     * also chairs IT. See allChairsOf() for the full list when there's
+     * more than one.
+     */
     private function chairOf(int $subDeptId): ?array
     {
-        return db_connect()->table('users u')
+        $primary = db_connect()->table('users u')
             ->select('u.id, u.username, i.secret as email')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'")
@@ -417,6 +522,60 @@ class SubDepartmentController extends BaseController
             ->where('u.deleted_at', null)
             ->get()
             ->getRowArray();
+
+        if ($primary !== null) {
+            return $primary;
+        }
+
+        return db_connect()->table('users u')
+            ->select('u.id, u.username, i.secret as email')
+            ->join('sub_department_schedulers sds', 'sds.user_id = u.id')
+            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->where('sds.sub_dept_id', $subDeptId)
+            ->where('u.deleted_at', null)
+            ->get()
+            ->getRowArray();
+    }
+
+    /**
+     * Every chairperson who manages this department — primary plus any
+     * delegated via sub_department_schedulers — for display when more than
+     * one person is involved (a combined chairmanship across departments).
+     *
+     * @return list<array{id: int, username: string, email: ?string, is_primary: bool}>
+     */
+    private function allChairsOf(int $subDeptId): array
+    {
+        $primary = db_connect()->table('users u')
+            ->select('u.id, u.username, i.secret as email')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->where('g.group', 'chairperson')
+            ->where('u.sub_department_id', $subDeptId)
+            ->where('u.deleted_at', null)
+            ->get()
+            ->getResultArray();
+
+        $delegated = db_connect()->table('users u')
+            ->select('u.id, u.username, i.secret as email')
+            ->join('sub_department_schedulers sds', 'sds.user_id = u.id')
+            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->where('sds.sub_dept_id', $subDeptId)
+            ->where('u.deleted_at', null)
+            ->get()
+            ->getResultArray();
+
+        $primaryIds = array_map(static fn (array $row) => (int) $row['id'], $primary);
+
+        $all = array_map(static fn (array $row) => $row + ['is_primary' => true], $primary);
+
+        foreach ($delegated as $row) {
+            if (! in_array((int) $row['id'], $primaryIds, true)) {
+                $all[] = $row + ['is_primary' => false];
+            }
+        }
+
+        return $all;
     }
 
     private function facultyMembersOf(int $subDeptId): array

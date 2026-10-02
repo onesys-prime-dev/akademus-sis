@@ -6,7 +6,7 @@ use App\Controllers\BaseController;
 use App\Libraries\ScheduleOverlap;
 use App\Models\AcademicYearModel;
 use App\Libraries\TermCurriculum;
-use App\Models\CurriculumPresetModel;
+use App\Libraries\SchedulingAuthorization;
 use App\Models\DepartmentModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\FacultyAvailabilityModel;
@@ -28,7 +28,6 @@ class ChairpersonController extends BaseController
 {
     private const FILTERS = [
         'year_level' => ['1st Year', '2nd Year', '3rd Year', '4th Year'],
-        'section'    => ['AIT1', 'AIT2', 'BIT1'],
     ];
 
     /** A subject can meet at most this many times per week. */
@@ -71,24 +70,45 @@ class ChairpersonController extends BaseController
 
         $rows = $query->orderBy('subject_code')->findAll();
 
-        return array_map(static function (array $row): array {
-            $units    = (float) $row['units'];
-            $duration = (float) $row['contact_hours'];
+        return array_map([self::class, 'formatCatalogSubject'], $rows);
+    }
 
-            $fmt = static fn (float $n): string => $n == (int) $n ? (string) (int) $n : (string) $n;
+    /**
+     * Shared row->catalog-item shape, used both by catalog() (this
+     * program's own subjects) and subjectByCode() (a cross-program lookup
+     * for subjects another department already owns).
+     */
+    private static function formatCatalogSubject(array $row): array
+    {
+        $units    = (float) $row['units'];
+        $duration = (float) $row['contact_hours'];
 
-            return [
-                'subject_id'   => (int) $row['subject_id'],
-                'code'         => $row['subject_code'],
-                'title'        => $row['subject_name'],
-                'units'        => $fmt($units) . ' Units',
-                'hours'        => $fmt($duration) . ' hours',
-                'duration'     => $duration,
-                'weekly_hours' => (float) ($row['weekly_hours'] ?? 0),
-                'is_lab'       => (bool) $row['is_laboratory'],
-                'color'        => self::COLORS[array_sum(array_map('ord', str_split($row['subject_code']))) % count(self::COLORS)],
-            ];
-        }, $rows);
+        $fmt = static fn (float $n): string => $n == (int) $n ? (string) (int) $n : (string) $n;
+
+        return [
+            'subject_id'   => (int) $row['subject_id'],
+            'code'         => $row['subject_code'],
+            'title'        => $row['subject_name'],
+            'units'        => $fmt($units) . ' Units',
+            'hours'        => $fmt($duration) . ' hours',
+            'duration'     => $duration,
+            'weekly_hours' => (float) ($row['weekly_hours'] ?? 0),
+            'is_lab'       => (bool) $row['is_laboratory'],
+            'color'        => self::COLORS[array_sum(array_map('ord', str_split($row['subject_code']))) % count(self::COLORS)],
+        ];
+    }
+
+    /**
+     * Any ACTIVE subject by code, regardless of which program/department
+     * owns its catalog entry — used to find a subject that's genuinely
+     * shared across programs (e.g. ITE 101, a core course required by both
+     * BSCS and BSIT) so it can be reused rather than duplicated or blocked.
+     */
+    private function subjectByCode(string $code): ?array
+    {
+        $row = (new SubjectModel())->where('subject_code', $code)->where('is_active', 1)->first();
+
+        return $row === null ? null : self::formatCatalogSubject($row);
     }
 
     /**
@@ -101,29 +121,21 @@ class ChairpersonController extends BaseController
      * curriculum (see the semester-isolation fix on the Curriculum page).
      * Shared by index() (the plotting rail) and sync() (block validation) so
      * both always agree on a subject's curriculum-specific classification.
+     * The published curriculum (`curriculum`/`curriculum_subjects`) is the
+     * sole source of truth; a program/term with no published curriculum
+     * simply offers nothing yet.
      */
     private function contextSubjects(string $academicYear, string $program, string $yearLevel): array
     {
-        // A published curriculum version, when the program has one, is the
-        // source of truth for what a term offers. Programs not cut over yet
-        // fall through to the legacy per-term preset below.
         $term = (new TermCurriculum())->forContext($academicYear, $program, $yearLevel);
 
-        if ($term !== null) {
-            return $term['subjects'];
-        }
-
-        $preset = (new CurriculumPresetModel())->forContext($academicYear, $program, $yearLevel);
-
-        return $preset === null
-            ? []
-            : (new CurriculumPresetModel())->subjectsForContext($academicYear, $program, $yearLevel);
+        return $term === null ? [] : $term['subjects'];
     }
 
     /**
-     * Subject codes offered in one context, or null when nothing has been
-     * configured for it (legacy preset missing). A published curriculum
-     * answers authoritatively — an empty list means "offers nothing".
+     * Subject codes offered in one context, or null when no published
+     * curriculum governs this program/term. An empty list means "offers
+     * nothing"; null means "not configured at all".
      *
      * @return list<string>|null
      */
@@ -131,29 +143,7 @@ class ChairpersonController extends BaseController
     {
         $term = (new TermCurriculum())->forContext($context['academic_year'], $context['program'], $context['year_level']);
 
-        if ($term !== null) {
-            return array_column($term['subjects'], 'code');
-        }
-
-        $preset = (new CurriculumPresetModel())->forContext($context['academic_year'], $context['program'], $context['year_level']);
-
-        return $preset === null ? null : (json_decode($preset['subject_codes'], true) ?: []);
-    }
-
-    /**
-     * Non-null (a user-facing message) when this context's program is
-     * governed by a published curriculum, in which case the per-term
-     * preset endpoints must not be used to change what it offers.
-     */
-    private function curriculumManagedMessage(array $context): ?string
-    {
-        $curriculum = (new TermCurriculum())->curriculumFor($context['program']);
-
-        if ($curriculum === null) {
-            return null;
-        }
-
-        return "This program's subjects come from published curriculum {$curriculum['curriculum_code']} (v{$curriculum['version_number']}). To change them, publish a new curriculum version under Admin → Curriculum.";
+        return $term === null ? null : array_column($term['subjects'], 'code');
     }
 
     /**
@@ -1187,402 +1177,27 @@ class ChairpersonController extends BaseController
     }
 
     /**
-     * Validate and persist the submitted plot for one context. Called after
-     * every change (insta-plot); every rule the UI enforces is re-checked.
+     * Live search for the "Add a New Subject" modal — any ACTIVE subject
+     * system-wide whose code starts with the typed prefix, regardless of
+     * which program owns it. Lets a chairperson discover and reuse an
+     * existing shared subject (e.g. ITE 101) before typing out a full
+     * duplicate, rather than finding out only after submitting.
      */
-    /**
-     * Create or replace the curriculum preset for an AY + program + year
-     * level. All sections of that year level share it.
-     */
-    public function savePreset()
+    public function searchSubjects()
     {
-        $payload = $this->request->getJSON(true);
+        $query = strtoupper(trim((string) ($this->request->getGet('q') ?? '')));
 
-        if (! is_array($payload) || ! isset($payload['context'], $payload['subjects']) || ! is_array($payload['context']) || ! is_array($payload['subjects'])) {
-            return $this->fail('Invalid payload.');
+        if ($query === '') {
+            return $this->response->setJSON(['ok' => true, 'subjects' => []]);
         }
 
-        $context = [];
-
-        foreach (['academic_year', 'program', 'year_level'] as $key) {
-            if (! isset($payload['context'][$key]) || ! in_array($payload['context'][$key], $this->filters()[$key], true)) {
-                return $this->fail("Invalid or missing context: {$key}");
-            }
-            $context[$key] = $payload['context'][$key];
-        }
-
-        if (($managedMessage = $this->curriculumManagedMessage($context)) !== null) {
-            return $this->fail($managedMessage);
-        }
-
-        $catalog = array_column($this->catalog($context['program']), null, 'code');
-        $entries = [];
-        $seen    = [];
-
-        foreach ($payload['subjects'] as $item) {
-            // Accept either a plain code string or {code, is_laboratory} —
-            // the latter is what the curriculum page sends; the former is
-            // kept for any other caller that only cares about membership.
-            if (is_string($item)) {
-                $code = $item;
-                $isLab = null;
-            } elseif (is_array($item) && isset($item['code']) && is_string($item['code'])) {
-                $code  = $item['code'];
-                $isLab = isset($item['is_laboratory']) ? (bool) $item['is_laboratory'] : null;
-            } else {
-                return $this->fail('Invalid subject entry.');
-            }
-
-            if (! isset($catalog[$code])) {
-                return $this->fail("Unknown subject: {$code}");
-            }
-
-            if (isset($seen[$code])) {
-                continue;
-            }
-            $seen[$code] = true;
-
-            $entries[] = [
-                'subject_id'    => (int) $catalog[$code]['subject_id'],
-                'code'          => $code,
-                // Falls back to the subject's global default when the
-                // client doesn't specify a curriculum-specific value.
-                'is_laboratory' => $isLab ?? $catalog[$code]['is_lab'],
-            ];
-        }
-
-        // Empty is allowed — it's how a chairperson clears a year level's
-        // curriculum entirely (e.g. removing the last subject) to start a
-        // clean slate, rather than being forced to always keep at least one.
-        (new CurriculumPresetModel())->upsertWithSubjects(
-            $context['academic_year'],
-            $context['program'],
-            $context['year_level'],
-            $entries
-        );
-
-        return $this->response->setJSON(['ok' => true, 'saved' => count($entries)]);
-    }
-
-    /**
-     * Update a single subject's lab/lecture classification within one
-     * curriculum assignment, without resaving the whole subject list.
-     * Backs the per-row "Type" control on the Curriculum page.
-     */
-    public function updateSubjectType()
-    {
-        $payload = $this->request->getJSON(true);
-
-        if (! is_array($payload) || ! isset($payload['context'], $payload['code']) || ! is_array($payload['context'])) {
-            return $this->fail('Invalid payload.');
-        }
-
-        $context = [];
-
-        foreach (['academic_year', 'program', 'year_level'] as $key) {
-            if (! isset($payload['context'][$key]) || ! in_array($payload['context'][$key], $this->filters()[$key], true)) {
-                return $this->fail("Invalid or missing context: {$key}");
-            }
-            $context[$key] = $payload['context'][$key];
-        }
-
-        if (($managedMessage = $this->curriculumManagedMessage($context)) !== null) {
-            return $this->fail($managedMessage);
-        }
-
-        $code = (string) $payload['code'];
-
-        $presets = new CurriculumPresetModel();
-        $preset  = $presets->forContext($context['academic_year'], $context['program'], $context['year_level']);
-
-        if ($preset === null) {
-            return $this->fail('This year level has no curriculum yet.');
-        }
-
-        $subject = (new SubjectModel())->where('subject_code', $code)->first();
-
-        if ($subject === null) {
-            return $this->fail("Unknown subject: {$code}");
-        }
-
-        $presets->updateSubjectLabFlag((int) $preset['preset_id'], (int) $subject['subject_id'], ! empty($payload['is_laboratory']));
-
-        return $this->response->setJSON(['ok' => true]);
-    }
-
-    /**
-     * Copy another (academic_year+semester)'s subject list — including its
-     * own lab/lecture classifications — into the current one, for the same
-     * program + year level. An explicit, one-click action (never automatic)
-     * so a semester never silently inherits another semester's curriculum;
-     * the source is left completely untouched.
-     */
-    public function copyCurriculum()
-    {
-        $payload = $this->request->getJSON(true);
-
-        if (! is_array($payload) || ! isset($payload['context'], $payload['source_academic_year']) || ! is_array($payload['context'])) {
-            return $this->fail('Invalid payload.');
-        }
-
-        $context = [];
-
-        foreach (['academic_year', 'program', 'year_level'] as $key) {
-            if (! isset($payload['context'][$key]) || ! in_array($payload['context'][$key], $this->filters()[$key], true)) {
-                return $this->fail("Invalid or missing context: {$key}");
-            }
-            $context[$key] = $payload['context'][$key];
-        }
-
-        if (($managedMessage = $this->curriculumManagedMessage($context)) !== null) {
-            return $this->fail($managedMessage);
-        }
-
-        $sourceAcademicYear = (string) $payload['source_academic_year'];
-
-        if (! in_array($sourceAcademicYear, $this->filters()['academic_year'], true)) {
-            return $this->fail('Invalid source term.');
-        }
-
-        if ($sourceAcademicYear === $context['academic_year']) {
-            return $this->fail('Choose a different term to copy from.');
-        }
-
-        $presets = new CurriculumPresetModel();
-        $source  = $presets->subjectsForContext($sourceAcademicYear, $context['program'], $context['year_level']);
-
-        if ($source === []) {
-            return $this->fail('That term has no curriculum set for this program and year level.');
-        }
-
-        $entries = array_map(static fn (array $s): array => [
-            'subject_id'    => $s['subject_id'],
-            'code'          => $s['code'],
-            'is_laboratory' => $s['is_lab'],
-        ], $source);
-
-        $presets->upsertWithSubjects($context['academic_year'], $context['program'], $context['year_level'], $entries);
-
-        return $this->response->setJSON(['ok' => true, 'copied' => count($entries)]);
-    }
-
-    /**
-     * Add a subject to the catalog (curricula change; every school teaches
-     * different things). Reactivates a previously removed code.
-     */
-    public function addSubject()
-    {
-        $payload = $this->request->getJSON(true);
-
-        if (! is_array($payload)) {
-            return $this->fail('Invalid payload.');
-        }
-
-        $code  = strtoupper(trim((string) ($payload['code'] ?? '')));
-        $title = trim((string) ($payload['title'] ?? ''));
-
-        if (! preg_match('/^[A-Z0-9][A-Z0-9 ._-]{1,19}$/', $code)) {
-            return $this->fail('Subject code must be 2-20 letters/numbers (e.g. IT106 or ITE 108.1).');
-        }
-
-        if ($title === '' || mb_strlen($title) > 200) {
-            return $this->fail('Subject title is required (max 200 characters).');
-        }
-
-        $units = (float) ($payload['units'] ?? 0);
-
-        if ($units < 0.5 || $units > 6) {
-            return $this->fail('Units must be between 0.5 and 6.');
-        }
-
-        $duration = (float) ($payload['duration'] ?? 0);
-
-        if (! in_array($duration, self::ALLOWED_DURATIONS, true)) {
-            return $this->fail('Duration must be one of: ' . implode(', ', self::ALLOWED_DURATIONS) . ' hours.');
-        }
-
-        $isLab = ! empty($payload['is_lab']);
-
-        $programName = (string) ($payload['program'] ?? '');
-
-        if (! in_array($programName, $this->filters()['program'], true)) {
-            return $this->fail('Invalid or missing program.');
-        }
-
-        $subDept   = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-        $programId = DepartmentModel::programIdOfName($programName);
-
-        if ($subDept === null || $programId === null) {
-            return $this->fail('You are not assigned to a department yet.');
-        }
-
-        $subjects = new SubjectModel();
-        $existing = $subjects->where('subject_code', $code)->first();
-
-        if ($existing !== null && $existing['is_active']) {
-            return $this->fail("Subject {$code} already exists in the catalog.");
-        }
-
-        $row = [
-            'sub_department_id' => (int) $subDept['sub_dept_id'],
-            'program_id'        => $programId,
-            'subject_code'      => $code,
-            'subject_name'      => $title,
-            'units'             => $units,
-            'contact_hours'     => $duration,
-            'is_laboratory'     => $isLab ? 1 : 0,
-            'is_active'         => 1,
-        ];
-
-        if ($existing === null) {
-            $subjects->insert($row);
-        } else {
-            $subjects->update($existing['subject_id'], $row);
-        }
-
-        $subject = current(array_filter($this->catalog($programName), static fn (array $s) => $s['code'] === $code));
-
-        return $this->response->setJSON(['ok' => true, 'subject' => $subject]);
-    }
-
-    /**
-     * Edit an existing catalog subject. Title and units may always change;
-     * code, duration, and the lab flag are locked while the subject is
-     * plotted on any schedule, so existing blocks never become invalid.
-     */
-    public function updateSubject()
-    {
-        $payload = $this->request->getJSON(true);
-
-        if (! is_array($payload)) {
-            return $this->fail('Invalid payload.');
-        }
-
-        $originalCode = strtoupper(trim((string) ($payload['original_code'] ?? '')));
-
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-
-        $subjects = new SubjectModel();
-        $existing = $subjects->where('subject_code', $originalCode)->where('is_active', 1)->first();
-
-        if ($existing === null || $subDept === null || (int) $existing['sub_department_id'] !== (int) $subDept['sub_dept_id']) {
-            return $this->fail("Subject {$originalCode} is not in the catalog.");
-        }
-
-        $code  = strtoupper(trim((string) ($payload['code'] ?? '')));
-        $title = trim((string) ($payload['title'] ?? ''));
-
-        if (! preg_match('/^[A-Z0-9][A-Z0-9 ._-]{1,19}$/', $code)) {
-            return $this->fail('Subject code must be 2-20 letters/numbers (e.g. IT106 or ITE 108.1).');
-        }
-
-        if ($title === '' || mb_strlen($title) > 200) {
-            return $this->fail('Subject title is required (max 200 characters).');
-        }
-
-        $units = (float) ($payload['units'] ?? 0);
-
-        if ($units < 0.5 || $units > 6) {
-            return $this->fail('Units must be between 0.5 and 6.');
-        }
-
-        $duration = (float) ($payload['duration'] ?? 0);
-
-        if (! in_array($duration, self::ALLOWED_DURATIONS, true)) {
-            return $this->fail('Duration must be one of: ' . implode(', ', self::ALLOWED_DURATIONS) . ' hours.');
-        }
-
-        $isLab = ! empty($payload['is_lab']);
-
-        $plotted = (new PlottedScheduleModel())->where('subject_code', $originalCode)->countAllResults();
-
-        if ($plotted > 0) {
-            $classes = $plotted . ' ' . ($plotted === 1 ? 'class' : 'classes');
-
-            if ($code !== $originalCode) {
-                return $this->fail("{$originalCode} is plotted in {$classes} — its code cannot change until those are removed.");
-            }
-
-            if (abs($duration - (float) $existing['contact_hours']) > 0.01) {
-                return $this->fail("{$originalCode} is plotted in {$classes} — its duration cannot change until those are removed.");
-            }
-
-            if ($isLab !== (bool) $existing['is_laboratory']) {
-                return $this->fail("{$originalCode} is plotted in {$classes} — its laboratory setting cannot change until those are removed.");
-            }
-        }
-
-        if ($code !== $originalCode
-            && $subjects->where('subject_code', $code)->countAllResults() > 0) {
-            return $this->fail("Subject code {$code} is already used.");
-        }
-
-        $subjects->update($existing['subject_id'], [
-            'subject_code'  => $code,
-            'subject_name'  => $title,
-            'units'         => $units,
-            'contact_hours' => $duration,
-            'is_laboratory' => $isLab ? 1 : 0,
-        ]);
-
-        // Keep the denormalized titles on plotted blocks in sync.
-        if ($plotted > 0 && $title !== $existing['subject_name']) {
-            (new PlottedScheduleModel())
-                ->where('subject_code', $originalCode)
-                ->set('subject_title', $title)
-                ->update();
-        }
-
-        // Renames must follow through to curriculum presets.
-        if ($code !== $originalCode) {
-            $presets = new CurriculumPresetModel();
-            foreach ($presets->findAll() as $preset) {
-                $codes = json_decode($preset['subject_codes'], true) ?: [];
-                $index = array_search($originalCode, $codes, true);
-                if ($index !== false) {
-                    $codes[$index] = $code;
-                    $presets->update($preset['preset_id'], ['subject_codes' => json_encode(array_values($codes))]);
-                }
-            }
-        }
-
-        $programName = $existing['program_id'] === null ? null : DepartmentModel::programNameById((int) $existing['program_id']);
-        $subject     = current(array_filter($this->catalog($programName), static fn (array $s) => $s['code'] === $code));
-
-        return $this->response->setJSON(['ok' => true, 'subject' => $subject]);
-    }
-
-    /**
-     * Remove a subject from the catalog (soft delete). Blocked while any
-     * plotted class still uses it, so schedules never reference ghosts.
-     */
-    public function deleteSubject()
-    {
-        $payload = $this->request->getJSON(true);
-        $code    = is_array($payload) ? strtoupper(trim((string) ($payload['code'] ?? ''))) : '';
-
-        if ($code === '') {
-            return $this->fail('Missing subject code.');
-        }
-
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-
-        $subjects = new SubjectModel();
-        $subject  = $subjects->where('subject_code', $code)->where('is_active', 1)->first();
-
-        if ($subject === null || $subDept === null || (int) $subject['sub_department_id'] !== (int) $subDept['sub_dept_id']) {
-            return $this->fail("Subject {$code} is not in the catalog.");
-        }
-
-        $plotted = (new PlottedScheduleModel())->where('subject_code', $code)->countAllResults();
-
-        if ($plotted > 0) {
-            return $this->fail("{$code} is plotted in {$plotted} " . ($plotted === 1 ? 'class' : 'classes') . ' — remove those from the schedules first.');
-        }
-
-        $subjects->update($subject['subject_id'], ['is_active' => 0]);
-
-        return $this->response->setJSON(['ok' => true]);
+        $rows = (new SubjectModel())
+            ->where('is_active', 1)
+            ->like('subject_code', $query, 'after')
+            ->orderBy('subject_code')
+            ->findAll(8);
+
+        return $this->response->setJSON(['ok' => true, 'subjects' => array_map([self::class, 'formatCatalogSubject'], $rows)]);
     }
 
     public function sync()
@@ -1973,6 +1588,14 @@ class ChairpersonController extends BaseController
             return $this->fail('Invalid conflict_type.');
         }
 
+        $overrideSubjectCode = (string) $payload['subject_code'];
+
+        $subjectExists = (new SubjectModel())->where('subject_code', $overrideSubjectCode)->where('is_active', 1)->countAllResults() > 0;
+
+        if (! $subjectExists) {
+            return $this->fail("{$overrideSubjectCode} is not a recognized subject. Please contact the registrar.");
+        }
+
         (new FacultyOverrideModel())->insert([
             'chairperson_id' => (int) auth()->id(),
             'faculty_id'     => (int) $payload['faculty_id'],
@@ -1980,7 +1603,7 @@ class ChairpersonController extends BaseController
             'program'        => (string) $payload['program'],
             'year_level'     => (string) $payload['year_level'],
             'section'        => (string) $payload['section'],
-            'subject_code'   => (string) $payload['subject_code'],
+            'subject_code'   => $overrideSubjectCode,
             'day'            => (int) $payload['day'],
             'start_time'     => (string) $payload['start'],
             'end_time'       => (string) $payload['end'],
@@ -2046,10 +1669,9 @@ class ChairpersonController extends BaseController
     /**
      * Sections page: create sections for the department up front (rather
      * than waiting for one to be plotted), and assign/unassign students to
-     * them. Note: a section created here is NOT automatically selectable in
-     * the Schedule Plotting grid — that grid's own section list is still the
-     * fixed self::FILTERS['section'] set; wiring a dynamic section picker
-     * into plotting is a separate follow-up.
+     * them. A section created here IS automatically selectable in the
+     * Schedule Plotting grid — its section list is read live from the
+     * `sections` table (see sectionOptions()), never a fixed/hardcoded set.
      */
     public function sections()
     {
@@ -2118,82 +1740,9 @@ class ChairpersonController extends BaseController
     }
 
     /**
-     * Full-page curriculum builder: which subjects belong to a given
-     * academic year + program + year level's curriculum. Replaces the old
-     * in-modal editor on the plotting page — same underlying endpoints
-     * (subjects/add|update|delete, curriculum-preset), just more room to work.
-     */
-    public function curriculum()
-    {
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-
-        $context = $this->contextFromRequest();
-
-        // When a published curriculum governs this program, the term's
-        // subject list is generated from it (read-only here); otherwise the
-        // legacy per-term preset is what the chairperson edits.
-        $managed     = (new TermCurriculum())->forContext($context['academic_year'], $context['program'], $context['year_level']);
-        $presetCodes = $this->termSubjectCodes($context);
-
-        // Where each of this program's catalog subjects is currently
-        // assigned — every (academic_year+semester, year_level) it's part
-        // of, across the whole program, not just the year level being
-        // viewed right now. Lets the catalog panel show "Plotted in: 1st
-        // Year · AY 2025-2026 · 1st Semester" instead of leaving it a
-        // mystery whether/where a subject is actually in use.
-        $usageByCode = [];
-
-        foreach (db_connect()->table('curriculum_preset_subjects cps')
-            ->select('s.subject_code, cp.academic_year, cp.year_level')
-            ->join('curriculum_presets cp', 'cp.preset_id = cps.preset_id')
-            ->join('subjects s', 's.subject_id = cps.subject_id')
-            ->where('cp.program', $context['program'])
-            ->orderBy('cp.academic_year')
-            ->get()
-            ->getResultArray() as $row) {
-            $usageByCode[$row['subject_code']][] = "{$row['year_level']} · {$row['academic_year']}";
-        }
-
-        return view('chairperson/curriculum', [
-            'pageTitle' => 'Curriculum',
-            'user'      => [
-                'name' => auth()->user()->username ?? 'Chairperson',
-                'role' => ($subDept !== null ? $subDept['name'] . ' - ' : '') . 'Chairperson',
-            ],
-            'deptName'          => $subDept['name'] ?? null,
-            'filters'           => $this->filters(),
-            'selected'          => $context,
-            // Curriculum can be encoded ahead of time for any term, not just
-            // the currently active one — unlike Schedule Plotting (which
-            // touches live rooms/faculty), building a subject list here has
-            // no scheduling side effects, so it's never read-only.
-            // ...except when a published curriculum governs the program:
-            // then this page is a read-only view of the generated term list.
-            'is_active_year'    => $managed === null,
-            'catalog'           => $this->catalog($context['program']),
-            'preset_codes'      => $presetCodes,
-            // Curriculum-specific is_lab per assigned subject — this is
-            // THIS year+semester's own classification, not the subject's
-            // global default. No preset yet for this exact (academic_year+
-            // semester, program, year_level) = genuinely nothing assigned
-            // here yet — starts empty, on purpose. It must NOT fall back to
-            // the full catalog (that was tried and reverted: it made every
-            // unconfigured semester look like it "inherited" whatever
-            // subjects existed globally, including ones only ever assigned
-            // under a different semester — the opposite of what semester
-            // isolation is for).
-            'assigned_subjects' => $this->contextSubjects($context['academic_year'], $context['program'], $context['year_level']),
-            'usage_by_code'     => $usageByCode,
-            // The published curriculum version driving this term, or null
-            // for a legacy (preset-managed) program. Drives the read-only
-            // state of the page.
-            'managed_curriculum' => $managed['curriculum'] ?? null,
-        ]);
-    }
-
-    /**
-     * Create a section for the department up front. Free-typed name (not
-     * restricted to self::FILTERS['section'] — see sections() docblock).
+     * Create a section for the department up front. Free-typed name — the
+     * Schedule Plotting grid's section list is read live from this table,
+     * not restricted to any fixed/hardcoded set (see sectionOptions()).
      */
     public function createSection()
     {
@@ -2546,26 +2095,13 @@ class ChairpersonController extends BaseController
     }
 
     /**
-     * The section row, only if it belongs to the logged-in chairperson's
-     * own department (via its program).
+     * The section row, only if it belongs to a sub-department the
+     * logged-in user is authorized to schedule for (their own, or one
+     * they've been explicitly delegated). See SchedulingAuthorization.
      */
     private function ownSection(int $sectionId): ?array
     {
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-
-        if ($subDept === null) {
-            return null;
-        }
-
-        $section = (new SectionModel())->find($sectionId);
-
-        if ($section === null) {
-            return null;
-        }
-
-        $programs = (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
-
-        return in_array($section['program'], $programs, true) ? $section : null;
+        return (new SchedulingAuthorization())->ownSection((int) auth()->id(), $sectionId);
     }
 
     /**
@@ -2605,8 +2141,10 @@ class ChairpersonController extends BaseController
      *
      * When nothing exists for that exact context (say, a year level with no
      * sections yet) it offers the department's section names from other year
-     * levels, so a new cohort can still be started; and only a department with
-     * no sections at all falls back to the built-in names.
+     * levels, so a new cohort can still be started. A department with no
+     * programs, or no sections at all yet, genuinely has nothing to offer —
+     * this returns an empty list rather than any placeholder/fake names, so
+     * the UI shows an honest empty state instead of fabricated options.
      *
      * @param list<string> $programs
      *
@@ -2615,7 +2153,7 @@ class ChairpersonController extends BaseController
     private function sectionOptions(array $programs): array
     {
         if ($programs === []) {
-            return self::FILTERS['section'];
+            return [];
         }
 
         $names = static function ($query): array {
@@ -2649,9 +2187,7 @@ class ChairpersonController extends BaseController
             }
         }
 
-        $all = $names($db->table('sections')->whereIn('program', $programs));
-
-        return $all !== [] ? $all : self::FILTERS['section'];
+        return $names($db->table('sections')->whereIn('program', $programs));
     }
 
     /**
@@ -2664,7 +2200,7 @@ class ChairpersonController extends BaseController
         // selects (friendlier than one long combined dropdown) and combined
         // here into the single `academic_year` value the rest of the app
         // already expects everywhere (plotted_schedules, faculty_assignments,
-        // sections, curriculum_presets all just store this one string).
+        // sections all just store this one string).
         $ayLabel    = $this->request->getGet('ay_label');
         $aySemester = $this->request->getGet('semester');
 

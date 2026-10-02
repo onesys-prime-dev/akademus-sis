@@ -75,6 +75,14 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('subjects/(:num)/prerequisites', 'Admin\SubjectController::addPrerequisite/$1');
     $routes->post('subjects/(:num)/prerequisites/(:num)/remove', 'Admin\SubjectController::removePrerequisite/$1/$2');
 
+    // Step 9: subject component templates (Lecture/Laboratory/etc. split)
+    $routes->post('subjects/(:num)/components', 'Admin\SubjectController::addComponentTemplate/$1');
+    $routes->post('subjects/(:num)/components/(:num)/deactivate', 'Admin\SubjectController::deactivateComponentTemplate/$1/$2');
+
+    $routes->get('subject-substitutions'            , 'Admin\SubjectSubstitutionController::index');
+    $routes->post('subject-substitutions/store'     , 'Admin\SubjectSubstitutionController::store');
+    $routes->post('subject-substitutions/deactivate/(:num)', 'Admin\SubjectSubstitutionController::deactivate/$1');
+
     $routes->get('curriculum'               , 'Admin\CurriculumController::index');
     $routes->get('curriculum/create'        , 'Admin\CurriculumController::create');
     $routes->post('curriculum/store'        , 'Admin\CurriculumController::store');
@@ -254,10 +262,19 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->get('schedule/state', 'ChairpersonController::state');
     $routes->get('schedule/suggest', 'ChairpersonController::suggest');
     $routes->post('schedule/assistant-rules', 'ChairpersonController::saveAssistantRules');
-    $routes->post('curriculum-preset', 'ChairpersonController::savePreset');
-    $routes->post('curriculum-preset/subject-type', 'ChairpersonController::updateSubjectType');
-    $routes->post('curriculum-preset/copy', 'ChairpersonController::copyCurriculum');
-    $routes->get('curriculum', 'ChairpersonController::curriculum');
+    // Curriculum Builder (formal curriculum/curriculum_subjects, draft-scoped —
+    // the sole supported curriculum source of truth)
+    $routes->get('curriculum', 'Chairperson\CurriculumBuilderController::index');
+    $routes->post('curriculum-builder/create-draft', 'Chairperson\CurriculumBuilderController::createDraft');
+    $routes->post('curriculum-builder/add-subject', 'Chairperson\CurriculumBuilderController::addSubject');
+    $routes->post('curriculum-builder/subject/(:num)/remove', 'Chairperson\CurriculumBuilderController::removeSubject/$1');
+    $routes->post('curriculum-builder/subject/(:num)/classification', 'Chairperson\CurriculumBuilderController::updateClassification/$1');
+
+    // Subject Ownership
+    $routes->get('subject-ownership', 'Chairperson\SubjectOwnershipController::index');
+    $routes->post('subject-ownership/store', 'Chairperson\SubjectOwnershipController::store');
+    $routes->post('subject-ownership/(:num)/update', 'Chairperson\SubjectOwnershipController::update/$1');
+    $routes->post('subject-ownership/(:num)/toggle-status', 'Chairperson\SubjectOwnershipController::toggleStatus/$1');
     $routes->post('swaps/approve', 'ChairpersonController::approveSwap');
     $routes->post('swaps/reject', 'ChairpersonController::rejectSwap');
     $routes->post('change-requests/approve', 'ChairpersonController::approveChangeRequest');
@@ -268,9 +285,7 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->get('notifications', 'NotificationController::index');
     $routes->post('notifications/mark-read', 'NotificationController::markRead');
     $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
-    $routes->post('subjects/add', 'ChairpersonController::addSubject');
-    $routes->post('subjects/update', 'ChairpersonController::updateSubject');
-    $routes->post('subjects/delete', 'ChairpersonController::deleteSubject');
+    $routes->get('subjects/search', 'ChairpersonController::searchSubjects');
     $routes->post('sections/capacity', 'ChairpersonController::setSectionCapacity');
     $routes->get('sections', 'ChairpersonController::sections');
     $routes->post('sections/create', 'ChairpersonController::createSection');
@@ -286,6 +301,29 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->get('offerings'                , 'Chairperson\OfferingController::index');
     $routes->post('offerings/create'        , 'Chairperson\OfferingController::create');
     $routes->post('offerings/unmerge'       , 'Chairperson\OfferingController::unmergeSection');
+    $routes->get('offerings/schedule'       , 'Chairperson\OfferingController::scheduleState');
+    $routes->post('offerings/schedule/sync' , 'Chairperson\OfferingController::syncSchedule');
+
+    // Step 9: offering components (Lecture/Laboratory split scheduling + roster)
+    $routes->post('offerings/components/schedule/sync', 'Chairperson\OfferingController::syncComponentSchedule');
+    $routes->post('offerings/components/roster/add',    'Chairperson\OfferingController::assignComponentStudent');
+    $routes->post('offerings/components/roster/remove', 'Chairperson\OfferingController::removeComponentStudent');
+    $routes->post('offerings/components/deactivate',    'Chairperson\OfferingController::deactivateComponent');
+    $routes->post('offerings/components/reactivate',    'Chairperson\OfferingController::reactivateComponent');
+
+    // shared-subject dashboard (owning scheduler's operational overview)
+    $routes->get('shared-subjects', 'Chairperson\SharedSubjectDashboardController::index');
+
+    // shared-subject coverage (non-owning scheduler's "are my students covered?" view)
+    $routes->get('shared-subject-coverage', 'Chairperson\SharedSubjectCoverageController::index');
+
+    // shared-subject placement requests
+    $routes->get('placement-requests'          , 'Chairperson\PlacementRequestController::index');
+    $routes->post('placement-requests/create'  , 'Chairperson\PlacementRequestController::create');
+    $routes->post('placement-requests/cancel'  , 'Chairperson\PlacementRequestController::cancel');
+    $routes->post('placement-requests/approve' , 'Chairperson\PlacementRequestController::approve');
+    $routes->post('placement-requests/deny'    , 'Chairperson\PlacementRequestController::deny');
+    $routes->post('placement-requests/fulfill' , 'Chairperson\PlacementRequestController::fulfill');
 
     // grade approvals: lock a faculty-submitted class, decide correction requests
     $routes->get('grade-approvals'                     , 'Chairperson\GradeApprovalController::index');

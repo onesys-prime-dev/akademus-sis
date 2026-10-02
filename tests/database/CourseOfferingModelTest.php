@@ -44,6 +44,20 @@ final class CourseOfferingModelTest extends CIUnitTestCase
         return $sections->find($sections->getInsertID());
     }
 
+    private function seedSubject(string $subjectCode): void
+    {
+        $subjects = db_connect()->table('subjects');
+
+        if ($subjects->where('subject_code', $subjectCode)->countAllResults() > 0) {
+            return;
+        }
+
+        $subjects->insert([
+            'subject_code' => $subjectCode,
+            'subject_name' => $subjectCode . ' Title',
+        ]);
+    }
+
     private function plotSubject(array $section, string $subjectCode): void
     {
         db_connect()->table('plotted_schedules')->insert([
@@ -67,6 +81,7 @@ final class CourseOfferingModelTest extends CIUnitTestCase
     {
         $sectionA = $this->makeSection('A', 5); // each section's own capacity is generous —
         $sectionB = $this->makeSection('B', 5); // it's the MERGED cap of 2 that must bind.
+        $this->seedSubject('GE-ELEC1');
         $this->plotSubject($sectionA, 'GE-ELEC1');
         $this->plotSubject($sectionB, 'GE-ELEC1');
 
@@ -113,6 +128,7 @@ final class CourseOfferingModelTest extends CIUnitTestCase
     {
         $sectionA = $this->makeSection('A', 5);
         $sectionB = $this->makeSection('B', 1); // deliberately tiny once standalone again
+        $this->seedSubject('GE-ELEC1');
         $this->plotSubject($sectionA, 'GE-ELEC1');
         $this->plotSubject($sectionB, 'GE-ELEC1');
 
@@ -150,6 +166,7 @@ final class CourseOfferingModelTest extends CIUnitTestCase
         $sectionA = $this->makeSection('A');
         $sectionB = $this->makeSection('B');
         $sectionC = $this->makeSection('C');
+        $this->seedSubject('GE-ELEC1');
         $this->plotSubject($sectionA, 'GE-ELEC1');
         $this->plotSubject($sectionB, 'GE-ELEC1');
         $this->plotSubject($sectionC, 'GE-ELEC1');

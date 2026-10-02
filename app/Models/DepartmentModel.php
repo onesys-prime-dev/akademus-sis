@@ -48,8 +48,7 @@ class DepartmentModel extends Model
 
     /**
      * Active programs belonging to a sub-department, as the display-name
-     * values used throughout scheduling (plotted_schedules, faculty_assignments,
-     * curriculum_presets, ...).
+     * values used throughout scheduling (plotted_schedules, faculty_assignments, ...).
      */
     public function programsOfSubDept(int $subDeptId): array
     {

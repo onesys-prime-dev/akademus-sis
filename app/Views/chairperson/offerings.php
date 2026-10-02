@@ -6,17 +6,7 @@ $pageTitle     = 'Merged Classes';
 $brandSub      = 'Chairperson Portal';
 $userName      = $user['name'];
 $userRoleLabel = $user['role'];
-$navGroups     = [
-    '' => [
-        'overview'        => ['label' => 'Dashboard',        'icon' => 'home',           'url' => 'chairperson/overview'],
-        'profile'         => ['label' => 'Profile',           'icon' => 'person',          'url' => 'chairperson/profile'],
-        'schedule'        => ['label' => 'Schedule Plotting', 'icon' => 'calendar_month',  'url' => 'chairperson/dashboard'],
-        'sections'        => ['label' => 'Sections',          'icon' => 'groups',          'url' => 'chairperson/sections'],
-        'offerings'       => ['label' => 'Merged Classes',    'icon' => 'merge_type',      'url' => 'chairperson/offerings'],
-        'grade-approvals' => ['label' => 'Grade Approvals',   'icon' => 'grade',           'url' => 'chairperson/grade-approvals'],
-        'curriculum'      => ['label' => 'Curriculum',        'icon' => 'menu_book',       'url' => 'chairperson/curriculum'],
-    ],
-];
+$navGroups     = require __DIR__ . '/_nav.php';
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
 ?>
 
@@ -24,6 +14,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
 <style>
     .mc-card { padding: 0; }
+    .mc-schedule-form { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+    .mc-schedule-form select, .mc-schedule-form input { font-size: 12px; padding: 4px 6px; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
 
     .mc-card__head { padding: 20px 24px; border-bottom: 1px solid var(--color-border); }
     .mc-card__title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -192,6 +184,97 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                         <?php else: ?>
                             <div class="mc-meta" style="margin-bottom:0;">Roster <?= esc($o['roster_count']) ?> (unlimited capacity)</div>
                         <?php endif ?>
+
+                        <div class="mc-schedule">
+                            <div class="mc-meta" style="margin:10px 0 6px;">Schedule — one class time for every attached section</div>
+                            <?php if (empty($o['meetings'])): ?>
+                                <div class="mc-meta">No meeting plotted yet.</div>
+                            <?php else: ?>
+                                <?php foreach ($o['meetings'] as $m): ?>
+                                    <div class="mc-pill" style="margin-bottom:4px;">
+                                        <?= esc(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][(int) $m['day']] ?? '?') ?>
+                                        <?= esc(substr($m['start_time'], 0, 5)) ?>–<?= esc(substr($m['end_time'], 0, 5)) ?>
+                                        · <?= esc($m['room']) ?>
+                                        <?php if (! empty($m['prof'])): ?> · <?= esc($m['prof']) ?><?php endif ?>
+                                    </div>
+                                <?php endforeach ?>
+                            <?php endif ?>
+
+                            <form class="mc-schedule-form" onsubmit="return addOfferingMeeting(event, <?= (int) $o['offering_id'] ?>)">
+                                <select name="day" required>
+                                    <option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option>
+                                    <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option>
+                                </select>
+                                <input type="time" name="start" required>
+                                <input type="time" name="end" required>
+                                <select name="room" required>
+                                    <option value="">Room…</option>
+                                    <?php foreach ($rooms as $r): ?>
+                                        <option value="<?= esc($r['name']) ?>"><?= esc($r['name']) ?></option>
+                                    <?php endforeach ?>
+                                </select>
+                                <button type="submit" class="btn btn-primary">Add Meeting</button>
+                            </form>
+                        </div>
+
+                        <?php if (! empty($o['components'])): ?>
+                            <div class="mc-components" style="margin-top:14px; border-top:1px dashed var(--color-border); padding-top:12px;">
+                                <div class="mc-meta" style="margin-bottom:8px;">
+                                    Components
+                                    <?php if ($o['completeness'] !== null): ?>
+                                        <span class="mc-cap-pill" style="<?= $o['completeness']['complete'] ? '' : 'background:var(--color-danger-soft); color:var(--color-danger);' ?>">
+                                            <?= $o['completeness']['complete'] ? 'Complete' : 'Incomplete' ?>
+                                        </span>
+                                    <?php endif ?>
+                                </div>
+                                <?php foreach ($o['components'] as $c): ?>
+                                    <div class="mc-merged-card" style="background:var(--color-surface-sunken); margin-bottom:10px;">
+                                        <div class="mc-merged-card__top">
+                                            <span class="mc-merged-card__title" style="font-size:13px;"><?= esc($c['name'] ?: ('Component #' . $c['id'])) ?></span>
+                                            <span class="mc-cap-pill"><?= $c['is_required'] ? 'Required' : 'Optional' ?> · <?= esc($c['roster_mode']) ?></span>
+                                            <?php if ($c['required_hours'] !== null): ?><span class="mc-cap-pill"><?= esc($c['required_hours']) ?>h/wk</span><?php endif ?>
+                                            <button type="button" class="ac-btn-outline" onclick="deactivateComponent(<?= (int) $c['id'] ?>)">Deactivate</button>
+                                        </div>
+
+                                        <?php if (empty($c['meetings'])): ?>
+                                            <div class="mc-meta">No meeting plotted yet.</div>
+                                        <?php else: ?>
+                                            <?php foreach ($c['meetings'] as $m): ?>
+                                                <div class="mc-pill" style="margin-bottom:4px;">
+                                                    <?= esc(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][(int) $m['day']] ?? '?') ?>
+                                                    <?= esc(substr($m['start_time'], 0, 5)) ?>–<?= esc(substr($m['end_time'], 0, 5)) ?>
+                                                    · <?= esc($m['room']) ?>
+                                                </div>
+                                            <?php endforeach ?>
+                                        <?php endif ?>
+
+                                        <form class="mc-schedule-form" onsubmit="return addComponentMeeting(event, <?= (int) $c['id'] ?>)">
+                                            <select name="day" required>
+                                                <option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option>
+                                                <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option>
+                                            </select>
+                                            <input type="time" name="start" required>
+                                            <input type="time" name="end" required>
+                                            <select name="room" required>
+                                                <option value="">Room…</option>
+                                                <?php foreach ($rooms as $r): ?>
+                                                    <option value="<?= esc($r['name']) ?>"><?= esc($r['name']) ?></option>
+                                                <?php endforeach ?>
+                                            </select>
+                                            <button type="submit" class="btn btn-primary">Add Meeting</button>
+                                        </form>
+
+                                        <?php if ($c['roster_mode'] === 'explicit'): ?>
+                                            <div class="mc-meta" style="margin:10px 0 4px;">Roster (<?= count($c['members']) ?> students) — enter a user ID to add/remove</div>
+                                            <form class="mc-schedule-form" onsubmit="return addComponentStudent(event, <?= (int) $c['id'] ?>)">
+                                                <input type="number" name="user_id" placeholder="User ID" required>
+                                                <button type="submit" class="btn btn-primary">Add Student</button>
+                                            </form>
+                                        <?php endif ?>
+                                    </div>
+                                <?php endforeach ?>
+                            </div>
+                        <?php endif ?>
                     </div>
                 <?php endforeach ?>
             </div>
@@ -270,6 +353,113 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         }
 
         reloadWithMessage(`Section ${label} removed from the merge.`);
+    }
+
+    async function addOfferingMeeting(evt, offeringId) {
+        evt.preventDefault();
+        const form = evt.target;
+        const existing = <?= json_encode(array_map(static fn ($o) => [
+            'offering_id' => (int) $o['offering_id'],
+            'meetings'    => array_map(static fn ($m) => [
+                'day' => (int) $m['day'], 'start' => substr($m['start_time'], 0, 5), 'end' => substr($m['end_time'], 0, 5),
+                'time_label' => $m['time_label'], 'room' => $m['room'], 'faculty_id' => null,
+            ], $o['meetings']),
+        ], $offerings)) ?>;
+        const current = existing.find(o => o.offering_id === offeringId);
+        const blocks = current ? current.meetings.slice() : [];
+
+        const start = form.start.value, end = form.end.value;
+        blocks.push({
+            day: parseInt(form.day.value, 10),
+            start, end,
+            time_label: start + '–' + end,
+            room: form.room.value,
+            faculty_id: null,
+        });
+
+        const result = await postJSON('<?= site_url('chairperson/offerings/schedule/sync') ?>', {
+            offering_id: offeringId,
+            blocks: blocks,
+        });
+
+        if (!result.ok) {
+            showFeedback(result.error || 'Could not save the schedule.', true);
+            return false;
+        }
+
+        reloadWithMessage('Schedule saved for this offering.');
+        return false;
+    }
+
+    const componentMeetingsById = <?php
+        $componentMeetingsForJs = [];
+        foreach ($offerings as $o) {
+            foreach ($o['components'] as $c) {
+                $componentMeetingsForJs[(int) $c['id']] = array_map(static fn ($m) => [
+                    'day' => (int) $m['day'], 'start' => substr($m['start_time'], 0, 5), 'end' => substr($m['end_time'], 0, 5),
+                    'time_label' => $m['time_label'], 'room' => $m['room'], 'faculty_id' => null,
+                ], $c['meetings']);
+            }
+        }
+        echo json_encode($componentMeetingsForJs);
+    ?>;
+
+    async function addComponentMeeting(evt, componentId) {
+        evt.preventDefault();
+        const form = evt.target;
+        const start = form.start.value, end = form.end.value;
+
+        const blocks = (componentMeetingsById[componentId] || []).slice();
+        blocks.push({ day: parseInt(form.day.value, 10), start, end, time_label: start + '–' + end, room: form.room.value, faculty_id: null });
+
+        const result = await postJSON('<?= site_url('chairperson/offerings/components/schedule/sync') ?>', {
+            offering_component_id: componentId,
+            blocks: blocks,
+        });
+
+        if (!result.ok) {
+            showFeedback(result.error || 'Could not save the component schedule.', true);
+            return false;
+        }
+
+        reloadWithMessage('Schedule saved for this component.');
+        return false;
+    }
+
+    async function addComponentStudent(evt, componentId) {
+        evt.preventDefault();
+        const form = evt.target;
+        const userId = parseInt(form.user_id.value, 10);
+
+        const result = await postJSON('<?= site_url('chairperson/offerings/components/roster/add') ?>', {
+            offering_component_id: componentId,
+            user_id: userId,
+        });
+
+        if (!result.ok) {
+            showFeedback(result.error || 'Could not add this student.', true);
+            return false;
+        }
+
+        reloadWithMessage('Student added to the component roster.');
+        return false;
+    }
+
+    async function deactivateComponent(componentId) {
+        if (!await acConfirm('Deactivate this component? Its history is kept, but it stops counting toward current coverage.')) {
+            return;
+        }
+
+        const result = await postJSON('<?= site_url('chairperson/offerings/components/deactivate') ?>', {
+            offering_component_id: componentId,
+        });
+
+        if (!result.ok) {
+            showFeedback(result.error || 'Could not deactivate this component.', true);
+            return;
+        }
+
+        reloadWithMessage('Component deactivated.');
     }
 
     document.addEventListener('DOMContentLoaded', () => {

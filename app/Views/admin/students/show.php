@@ -133,9 +133,8 @@
         </tbody>
     </table>
     <p style="padding:12px 24px; font-size:11.5px; color:var(--color-text-secondary);">
-        This governs the <code>curriculum</code>/<code>curriculum_subjects</code> system only. The chairperson-facing
-        <code>curriculum_presets</code> (used for schedule-plotting templates) is a separate, still-unreconciled concept —
-        see the SIS development roadmap.
+        This governs the <code>curriculum</code>/<code>curriculum_subjects</code> system — the sole supported
+        curriculum source of truth.
     </p>
 </div>
 

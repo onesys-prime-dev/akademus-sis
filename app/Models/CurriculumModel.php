@@ -53,11 +53,10 @@ class CurriculumModel extends Model
 
     /**
      * The subjects one curriculum version offers in one term (year level +
-     * semester), catalog-shaped for the schedule-plotting UI — the same
-     * shape CurriculumPresetModel::subjectsForContext() returns, so the two
-     * are interchangeable. `is_lab` comes from the version's own
-     * classification on curriculum_subjects, falling back to the subject's
-     * global default when the curriculum doesn't specify one.
+     * semester), catalog-shaped for the schedule-plotting UI (see
+     * CatalogEntry). `is_lab` comes from the version's own classification
+     * on curriculum_subjects, falling back to the subject's global default
+     * when the curriculum doesn't specify one.
      *
      * @param int $semester 1 = 1st, 2 = 2nd, 3 = Summer
      */

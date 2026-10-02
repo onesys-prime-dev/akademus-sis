@@ -4,8 +4,13 @@ namespace App\Controllers;
 
 class Home extends BaseController
 {
-    public function index(): string
+    /**
+     * The site root has no content of its own — send visitors to login.
+     * Shield's LoginController already redirects an already-authenticated
+     * user straight to their role's dashboard, so this is never a dead end.
+     */
+    public function index()
     {
-        return view('home');
+        return redirect()->to('login');
     }
 }

@@ -60,6 +60,16 @@ usort($sortedSubjects, function ($a, $b) use ($preferencesById, $levelRank) {
             if ($upcomingAyId !== null && (int) $t['ay_id'] === $upcomingAyId) return ['is-upcoming', 'Upcoming term'];
             return ['is-archived', 'Archived'];
         };
+        // The system is new — archived (past) terms are just seed/test
+        // clutter right now, not real history worth showing. Hide them from
+        // the picker, EXCEPT the one currently being viewed (e.g. reached
+        // via a direct ?ay_id= link) so the dropdown never silently
+        // disagrees with what's actually on screen.
+        $allTerms = array_values(array_filter($allTerms, function ($t) use ($termStatus, $term) {
+            [$class] = $termStatus($t);
+
+            return $class !== 'is-archived' || ($term && (int) $t['ay_id'] === (int) $term['ay_id']);
+        }));
         $statusRank = ['is-active' => 0, 'is-upcoming' => 1, 'is-archived' => 2];
         // Active first, then upcoming, then archived (most recent archived
         // first) — instead of the raw label/semester order, which scattered
@@ -77,9 +87,9 @@ usort($sortedSubjects, function ($a, $b) use ($preferencesById, $levelRank) {
             <label for="termSelect">Current term</label>
             <select id="termSelect">
                 <?php foreach ($allTerms as $t): ?>
-                    <?php [, $tLabel] = $termStatus($t); ?>
+                    <?php [, $optLabel] = $termStatus($t); ?>
                     <option value="<?= (int) $t['ay_id'] ?>" <?= ($term && (int) $term['ay_id'] === (int) $t['ay_id']) ? 'selected' : '' ?>>
-                        <?= esc(\App\Models\AcademicYearModel::format($t['label'], $t['semester'])) ?>
+                        <?= esc(\App\Models\AcademicYearModel::format($t['label'], $t['semester'])) ?> — <?= esc($optLabel) ?>
                     </option>
                 <?php endforeach ?>
             </select>
@@ -93,7 +103,8 @@ usort($sortedSubjects, function ($a, $b) use ($preferencesById, $levelRank) {
                     <label for="copyTermSelect">Copy from another term</label>
                     <select id="copyTermSelect">
                         <?php foreach ($otherTerms as $t): ?>
-                            <option value="<?= (int) $t['ay_id'] ?>"><?= esc(\App\Models\AcademicYearModel::format($t['label'], $t['semester'])) ?></option>
+                            <?php [, $otLabel] = $termStatus($t); ?>
+                            <option value="<?= (int) $t['ay_id'] ?>"><?= esc(\App\Models\AcademicYearModel::format($t['label'], $t['semester'])) ?> — <?= esc($otLabel) ?></option>
                         <?php endforeach ?>
                     </select>
                     <button type="button" class="copy-btn" id="copyTermBtn">Copy</button>

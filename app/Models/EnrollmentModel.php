@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Libraries\ScheduleOverlap;
+use App\Libraries\SubjectRequirementService;
 use App\Services\TuitionAssessmentService;
 use CodeIgniter\Model;
 
@@ -73,6 +74,19 @@ class EnrollmentModel extends Model
             $db->resetTransStatus();
 
             return ['ok' => false, 'error' => "{$subjectCode} is not scheduled for this section."];
+        }
+
+        // A subject_code being scheduled somewhere is not the same as it
+        // being a real catalog subject — plotted_schedules/faculty_assignments
+        // carry no subject_id FK, so a typo'd or never-registered code could
+        // otherwise slip all the way into a real enrollment. This only gates
+        // NEW enrollments; outsideCurriculum() and every other read path that
+        // evaluates EXISTING historical rows is untouched.
+        if (! $this->subjectExistsInCatalog($subjectCode)) {
+            $db->transRollback();
+            $db->resetTransStatus();
+
+            return ['ok' => false, 'error' => "{$subjectCode} is not a recognized subject. Please contact the registrar."];
         }
 
         $missing = $this->unmetPrerequisites($userId, $subjectCode);
@@ -451,13 +465,30 @@ class EnrollmentModel extends Model
     }
 
     /**
+     * Whether $subjectCode resolves to a real, active row in the central
+     * subjects catalog. Used only to gate NEW enrollments (enrollOne()) —
+     * never called from a read/history path, so it has no effect on how
+     * existing enrollment records are evaluated or displayed.
+     */
+    private function subjectExistsInCatalog(string $subjectCode): bool
+    {
+        return $this->db->table('subjects')
+            ->where('subject_code', $subjectCode)
+            ->where('is_active', 1)
+            ->countAllResults() > 0;
+    }
+
+    /**
      * Subject codes of every prerequisite $subjectCode has that the student
      * has NOT yet passed (a locked grade with is_passing = 1, from any prior
-     * term/section — prerequisite credit doesn't expire). Empty array means
-     * clear to enroll. If $subjectCode isn't in the subject catalog at all
-     * (e.g. plotted under a code the admin hasn't registered as a Subject
-     * row yet), the check is skipped rather than blocking enrollment on a
-     * data gap that isn't the student's fault.
+     * term/section — prerequisite credit doesn't expire). A prerequisite is
+     * also satisfied by an explicitly configured active substitute (Step 8
+     * — App\Libraries\SubjectRequirementService; the same centralized rule
+     * demand aggregation uses, not a second copy of the logic). Empty array
+     * means clear to enroll. If $subjectCode isn't in the subject catalog at
+     * all (e.g. plotted under a code the admin hasn't registered as a
+     * Subject row yet), the check is skipped rather than blocking enrollment
+     * on a data gap that isn't the student's fault.
      *
      * @return string[]
      */
@@ -492,10 +523,17 @@ class EnrollmentModel extends Model
             'subject_code'
         );
 
+        $requirementService = new SubjectRequirementService();
         $missing = [];
 
         foreach ($prereqSubjects as $prereq) {
-            if (! in_array($prereq['subject_code'], $passedCodes, true)) {
+            $acceptableIds = $requirementService->satisfyingSubjectIds((int) $prereq['subject_id']);
+            $acceptableCodes = array_column(
+                (new SubjectModel())->whereIn('subject_id', $acceptableIds)->findAll(),
+                'subject_code'
+            );
+
+            if (array_intersect($acceptableCodes, $passedCodes) === []) {
                 $missing[] = $prereq['subject_code'];
             }
         }

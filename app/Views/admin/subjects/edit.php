@@ -130,4 +130,77 @@
     </form>
 </div>
 
+<div class="ac-card" style="max-width:640px; margin-top:16px;">
+    <h3 style="margin:0 0 4px; font-size:15px;">Components</h3>
+    <p style="font-size:12px; color:var(--color-text-secondary); margin:0 0 12px;">
+        Optional: split this subject into independently schedulable parts (e.g. Lecture + Laboratory). Leave this empty
+        for a simple subject — nothing changes for offerings that don't need components. Changes here apply to offerings
+        created from now on; already-created offerings keep their own snapshot.
+    </p>
+
+    <?php if (empty($componentTemplates)): ?>
+        <p style="font-size:13px; color:var(--color-text-secondary); margin:0 0 12px;">No components configured — this subject schedules as a single class.</p>
+    <?php else: ?>
+        <ul style="list-style:none; padding:0; margin:0 0 12px;">
+            <?php foreach ($componentTemplates as $t): ?>
+                <li style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--color-border, #e5e7eb);">
+                    <span>
+                        <b><?= esc($t['component_type_name']) ?></b><?= $t['name'] ? ' — ' . esc($t['name']) : '' ?>
+                        <span style="color:var(--color-text-secondary); font-size:12px;">
+                            · <?= $t['is_required'] ? 'Required' : 'Optional' ?>
+                            · <?= esc($t['assignment_rule']) ?>
+                            <?= $t['required_hours'] !== null ? '· ' . esc($t['required_hours']) . 'h/wk' : '' ?>
+                            <?= ! $t['is_active'] ? '· inactive' : '' ?>
+                        </span>
+                    </span>
+                    <?php if ($t['is_active']): ?>
+                        <form method="post" action="<?= site_url('admin/subjects/' . $subject['subject_id'] . '/components/' . $t['id'] . '/deactivate') ?>" data-confirm="Deactivate this component template? Existing offering components are unaffected.">
+                            <?= csrf_field() ?>
+                            <button type="submit" class="ac-btn ac-btn-secondary">Deactivate</button>
+                        </form>
+                    <?php endif ?>
+                </li>
+            <?php endforeach ?>
+        </ul>
+    <?php endif ?>
+
+    <form method="post" action="<?= site_url('admin/subjects/' . $subject['subject_id'] . '/components') ?>" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+        <?= csrf_field() ?>
+        <div>
+            <label style="display:block; font-size:12px; margin-bottom:4px;">Component type</label>
+            <select name="component_type_id" required style="min-width:160px;">
+                <option value="">Choose…</option>
+                <?php foreach ($componentTypes as $ct): ?>
+                    <option value="<?= (int) $ct['id'] ?>"><?= esc($ct['name']) ?></option>
+                <?php endforeach ?>
+            </select>
+        </div>
+        <div>
+            <label style="display:block; font-size:12px; margin-bottom:4px;">Instance name (optional)</label>
+            <input type="text" name="name" placeholder="e.g. Laboratory">
+        </div>
+        <div>
+            <label style="display:block; font-size:12px; margin-bottom:4px;">Required hours/wk</label>
+            <input type="number" step="0.5" name="required_hours" style="width:100px;">
+        </div>
+        <div>
+            <label style="display:block; font-size:12px; margin-bottom:4px;">Default capacity</label>
+            <input type="number" step="1" name="default_capacity" style="width:100px;">
+        </div>
+        <div>
+            <label style="display:block; font-size:12px; margin-bottom:4px;">Assignment rule</label>
+            <select name="assignment_rule">
+                <option value="shared">Shared (any number of instances)</option>
+                <option value="one_of">One of (exactly one instance per student)</option>
+            </select>
+        </div>
+        <div>
+            <label style="display:flex; align-items:center; gap:6px;">
+                <input type="checkbox" name="is_required" value="1" checked> Required
+            </label>
+        </div>
+        <button type="submit" class="ac-btn ac-btn-primary">Add Component</button>
+    </form>
+</div>
+
 <?= $this->endSection() ?>

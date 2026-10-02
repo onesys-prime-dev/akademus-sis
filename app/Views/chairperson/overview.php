@@ -6,17 +6,7 @@ $pageTitle     = 'Dashboard';
 $brandSub      = 'Chairperson Portal';
 $userName      = $user['name'];
 $userRoleLabel = $user['role'];
-$navGroups     = [
-    '' => [
-        'overview'        => ['label' => 'Dashboard',        'icon' => 'home',           'url' => 'chairperson/overview'],
-        'profile'         => ['label' => 'Profile',           'icon' => 'person',          'url' => 'chairperson/profile'],
-        'schedule'        => ['label' => 'Schedule Plotting', 'icon' => 'calendar_month',  'url' => 'chairperson/dashboard'],
-        'sections'        => ['label' => 'Sections',          'icon' => 'groups',          'url' => 'chairperson/sections'],
-        'offerings'       => ['label' => 'Merged Classes',    'icon' => 'merge_type',      'url' => 'chairperson/offerings'],
-        'grade-approvals' => ['label' => 'Grade Approvals',   'icon' => 'grade',           'url' => 'chairperson/grade-approvals'],
-        'curriculum'      => ['label' => 'Curriculum',        'icon' => 'menu_book',       'url' => 'chairperson/curriculum'],
-    ],
-];
+$navGroups     = require __DIR__ . '/_nav.php';
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
 ?>
 
@@ -214,10 +204,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <span class="kpi-flag <?= $curriculumPct >= 100 ? 'kpi-flag--ok' : 'kpi-flag--info' ?>"><?= $curriculumPct ?>% Synced</span>
             </div>
             <div class="kpi-value-row"><span class="kpi-value"><?= esc($stats['curriculum_set']) ?></span><span class="kpi-value-suffix">/ <?= esc($stats['curriculum_slots']) ?></span></div>
-            <div class="kpi-label">Curriculum presets set</div>
+            <div class="kpi-label">Curriculum terms published</div>
             <div class="kpi-footer">
                 <span>Program &times; year level combos</span>
-                <a href="<?= site_url('chairperson/curriculum') ?>">Presets →</a>
+                <a href="<?= site_url('chairperson/curriculum') ?>">Curriculum →</a>
             </div>
         </div>
     </div>

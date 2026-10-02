@@ -4,9 +4,8 @@ namespace App\Libraries;
 
 /**
  * The catalog-shaped subject array the schedule-plotting UI consumes
- * (same fields as ChairpersonController::catalog()). Shared by the legacy
- * CurriculumPresetModel and the versioned-curriculum path so both always
- * produce an identical shape.
+ * (same fields as ChairpersonController::catalog()), so every caller
+ * producing this shape stays consistent.
  */
 class CatalogEntry
 {

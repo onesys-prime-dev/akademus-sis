@@ -2,14 +2,32 @@
 
 namespace App\Models;
 
+use App\Libraries\ScheduleOverlap;
+use App\Libraries\SchedulingAuthorization;
+use App\Libraries\SchedulingConflictService;
 use CodeIgniter\Model;
+use App\Models\OfferingComponentModel;
 
+/**
+ * A plotted_schedules row has exactly one of two identities, never both and
+ * never mixed:
+ *
+ *  - offering_id IS NULL  -> legacy identity: the
+ *    (academic_year, program, year_level, section) tuple is canonical.
+ *  - offering_id IS NOT NULL -> offering identity: course_offerings is
+ *    canonical (subject via offering.subject_id, attached sections via
+ *    offering_sections). program/year_level/section are NULL on these rows
+ *    and MUST NEVER be read as a wildcard, a fallback, or "university-wide" —
+ *    they're simply not the identity for this kind of row.
+ */
 class PlottedScheduleModel extends Model
 {
     protected $table      = 'plotted_schedules';
     protected $primaryKey = 'schedule_id';
 
     protected $allowedFields = [
+        'offering_id',
+        'offering_component_id',
         'academic_year',
         'program',
         'year_level',
@@ -29,16 +47,38 @@ class PlottedScheduleModel extends Model
     protected $useTimestamps = true;
 
     /**
-     * Blocks plotted for one context (AY + program + year level + section).
+     * Blocks plotted for one legacy context (AY + program + year level +
+     * section), PLUS any offering-linked blocks reachable because that
+     * section is attached to an offering. The legacy query is unchanged
+     * from before offering_id existed — SQL's own NULL semantics already
+     * keep offering-linked rows (whose program/year_level/section are NULL)
+     * out of the equality match, so this stays correct without any extra
+     * guard.
      */
     public function forContext(string $academicYear, string $program, string $yearLevel, string $section): array
     {
-        return $this->where([
+        $legacy = $this->where([
             'academic_year' => $academicYear,
             'program'       => $program,
             'year_level'    => $yearLevel,
             'section'       => $section,
         ])->findAll();
+
+        $sectionRow = (new SectionModel())->forContext($academicYear, $program, $yearLevel, $section);
+
+        if ($sectionRow === null) {
+            return $legacy;
+        }
+
+        $offeringIds = $this->offeringIdsForSection((int) $sectionRow['section_id']);
+
+        if ($offeringIds === []) {
+            return $legacy;
+        }
+
+        $offeringRows = $this->whereIn('offering_id', $offeringIds)->findAll();
+
+        return array_merge($legacy, $offeringRows);
     }
 
     /**
@@ -48,7 +88,14 @@ class PlottedScheduleModel extends Model
      * names (used when displaying ghost blocks, so another department's
      * plots never leak into a chairperson's view). Leave it null for
      * school-wide room/faculty conflict checks, where every department's
-     * rows must still be considered.
+     * rows must still be considered — in that case, offering-linked rows
+     * school-wide are also included, closing the gap where a legacy save
+     * could otherwise double-book a room/faculty member already committed
+     * to a shared offering elsewhere. (With $deptPrograms set, offering rows
+     * are left out of this "ghost block" display path — they don't resolve
+     * to a single program the way legacy rows do, and getting that half
+     * right isn't required for conflict safety; conflict safety is the
+     * $deptPrograms === null path.)
      */
     public function forOtherContexts(string $academicYear, string $program, string $yearLevel, string $section, ?array $deptPrograms = null): array
     {
@@ -62,13 +109,48 @@ class PlottedScheduleModel extends Model
             $query = $query->whereIn('program', $deptPrograms);
         }
 
-        return $query
+        $legacyOthers = $query
             ->groupStart()
                 ->where('program !=', $program)
                 ->orWhere('year_level !=', $yearLevel)
                 ->orWhere('section !=', $section)
             ->groupEnd()
             ->findAll();
+
+        if ($deptPrograms !== null) {
+            return $legacyOthers;
+        }
+
+        $offeringRows = $this->where('academic_year', $academicYear)->where('offering_id IS NOT NULL')->findAll();
+
+        return array_merge($legacyOthers, $offeringRows);
+    }
+
+    /**
+     * Every row currently plotted for one offering.
+     */
+    public function forOffering(int $offeringId): array
+    {
+        return $this->where('offering_id', $offeringId)->findAll();
+    }
+
+    /**
+     * Every row currently plotted for one offering COMPONENT only.
+     */
+    public function forComponent(int $offeringComponentId): array
+    {
+        return $this->where('offering_component_id', $offeringComponentId)->findAll();
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function offeringIdsForSection(int $sectionId): array
+    {
+        return array_map('intval', array_column(
+            $this->db->table('offering_sections')->select('offering_id')->where('section_id', $sectionId)->get()->getResultArray(),
+            'offering_id'
+        ));
     }
 
     /**
@@ -92,5 +174,286 @@ class PlottedScheduleModel extends Model
         }
 
         $this->db->transComplete();
+    }
+
+    /**
+     * Replaces an offering's entire schedule (every meeting block), the
+     * offering-linked equivalent of replaceDraft(). Validates authorization,
+     * subject identity (always server-derived from the offering, never
+     * trusted from the caller), within-save overlaps, cohort conflicts
+     * across every attached section, and school-wide room/faculty
+     * conflicts — all excluding the offering's OWN current rows, so a valid
+     * edit never reports a conflict with itself.
+     *
+     * @param list<array{day: int, start: string, end: string, time_label: string, room: string, faculty_id: ?int}> $blocks
+     *
+     * @return array{ok: bool, error?: string, conflicts?: array}
+     */
+    public function syncOfferingSchedule(int $offeringId, int $actorId, array $blocks): array
+    {
+        $offerings = new CourseOfferingModel();
+        $offering  = $offerings->find($offeringId);
+
+        if ($offering === null) {
+            return ['ok' => false, 'error' => 'Offering not found.'];
+        }
+
+        if ($offering['subject_id'] === null) {
+            return ['ok' => false, 'error' => 'This offering has no linked subject and cannot be scheduled.'];
+        }
+
+        $subjectId = (int) $offering['subject_id'];
+
+        $auth = (new SchedulingAuthorization())->authorizeManageSubject($actorId, $subjectId);
+
+        if (! $auth['ok']) {
+            return ['ok' => false, 'error' => 'You are not authorized to schedule this offering.'];
+        }
+
+        $subject = db_connect()->table('subjects')->select('subject_code, subject_name')->where('subject_id', $subjectId)->get()->getRowArray();
+
+        if ($subject === null) {
+            return ['ok' => false, 'error' => 'Linked subject not found.'];
+        }
+
+        if ($blockError = $this->validateBlockShapes($blocks)) {
+            return ['ok' => false, 'error' => $blockError];
+        }
+
+        $existingIds = array_map('intval', array_column($this->forOffering($offeringId), 'schedule_id'));
+
+        $conflictService = new SchedulingConflictService();
+        $preparedBlocks   = $this->attachFacultyUsernames($blocks);
+
+        $cohort = $conflictService->cohortConflicts($offeringId, $preparedBlocks, $existingIds);
+
+        if (! $cohort['ok']) {
+            return ['ok' => false, 'error' => 'This time conflicts with a participating section\'s existing schedule.', 'conflicts' => $cohort['conflicts']];
+        }
+
+        $roomFaculty = $conflictService->roomAndFacultyConflicts((string) $offering['academic_year'], $preparedBlocks, $offeringId, $existingIds);
+
+        if (! $roomFaculty['ok']) {
+            $first = $roomFaculty['conflicts'][0];
+
+            return ['ok' => false, 'error' => ucfirst($first['type']) . " conflict: {$first['detail']}", 'conflicts' => $roomFaculty['conflicts']];
+        }
+
+        $rows = array_map(static fn (array $b) => [
+            'offering_id'           => $offeringId,
+            'offering_component_id' => null,
+            'academic_year'         => $offering['academic_year'],
+            'program'               => null,
+            'year_level'            => null,
+            'section'               => null,
+            'day'                   => $b['day'],
+            'start_time'            => $b['start'],
+            'end_time'              => $b['end'],
+            'time_label'            => $b['time_label'],
+            'subject_code'          => $subject['subject_code'],
+            'subject_title'         => $subject['subject_name'],
+            'prof'                  => $b['prof'],
+            'room'                  => $b['room'],
+            'theme'                 => 'blue',
+            'status'                => 'published',
+        ], $preparedBlocks);
+
+        $this->db->transException(true)->transStart();
+
+        $this->where('offering_id', $offeringId)->where('offering_component_id IS NULL')->delete();
+
+        if ($rows !== []) {
+            $this->insertBatch($rows);
+        }
+
+        $this->db->transComplete();
+
+        if ($this->db->transStatus() === false) {
+            return ['ok' => false, 'error' => 'Could not save the schedule. Please retry.'];
+        }
+
+        return ['ok' => true, 'saved' => count($rows), 'override' => $auth['override']];
+    }
+
+    /**
+     * Step 9: replaces one offering COMPONENT's schedule (e.g. "Laboratory
+     * Group A"), independent of its sibling components and independent of
+     * any whole-offering-level meetings. Conflict checking branches on the
+     * component's roster_mode:
+     *
+     *  - 'inherited': preserves the existing full-parent-roster behavior —
+     *    the same cohortConflicts() section-level expansion used for a
+     *    plain Step 5 offering, since an inherited component's membership
+     *    IS every student in the attached sections.
+     *  - 'explicit': uses SchedulingConflictService::studentConflicts()
+     *    against the component's ACTUAL member user_ids — never reduced to
+     *    home-section identity, so two disjoint groups sharing a home
+     *    section may legitimately share a time slot.
+     *
+     * @param list<array{day: int, start: string, end: string, time_label: string, room: string, faculty_id: ?int}> $blocks
+     *
+     * @return array{ok: bool, error?: string, conflicts?: array}
+     */
+    public function syncComponentSchedule(int $offeringComponentId, int $actorId, array $blocks): array
+    {
+        $components = new OfferingComponentModel();
+        $component  = $components->find($offeringComponentId);
+
+        if ($component === null) {
+            return ['ok' => false, 'error' => 'Component not found.'];
+        }
+
+        if ((int) $component['is_active'] !== 1) {
+            return ['ok' => false, 'error' => 'This component is inactive and cannot be scheduled.'];
+        }
+
+        $offerings = new CourseOfferingModel();
+        $offering  = $offerings->find((int) $component['offering_id']);
+
+        if ($offering === null || $offering['subject_id'] === null) {
+            return ['ok' => false, 'error' => 'This component has no linked subject and cannot be scheduled.'];
+        }
+
+        $subjectId = (int) $offering['subject_id'];
+
+        $auth = (new SchedulingAuthorization())->authorizeManageSubject($actorId, $subjectId);
+
+        if (! $auth['ok']) {
+            return ['ok' => false, 'error' => 'You are not authorized to schedule this component.'];
+        }
+
+        $subject = db_connect()->table('subjects')->select('subject_code, subject_name')->where('subject_id', $subjectId)->get()->getRowArray();
+
+        if ($subject === null) {
+            return ['ok' => false, 'error' => 'Linked subject not found.'];
+        }
+
+        if ($blockError = $this->validateBlockShapes($blocks)) {
+            return ['ok' => false, 'error' => $blockError];
+        }
+
+        $existingIds = array_map('intval', array_column($this->forComponent($offeringComponentId), 'schedule_id'));
+
+        $conflictService = new SchedulingConflictService();
+        $preparedBlocks   = $this->attachFacultyUsernames($blocks);
+
+        if ($component['roster_mode'] === 'explicit') {
+            $memberIds = $components->explicitMemberIds($offeringComponentId);
+            $memberCheck = $conflictService->studentConflicts($memberIds, $preparedBlocks, $existingIds);
+
+            if (! $memberCheck['ok']) {
+                return ['ok' => false, 'error' => 'This time conflicts with an existing class for one or more students assigned to this component.', 'conflicts' => $memberCheck['conflicts']];
+            }
+        } else {
+            $cohort = $conflictService->cohortConflicts((int) $component['offering_id'], $preparedBlocks, $existingIds);
+
+            if (! $cohort['ok']) {
+                return ['ok' => false, 'error' => 'This time conflicts with a participating section\'s existing schedule.', 'conflicts' => $cohort['conflicts']];
+            }
+        }
+
+        $roomFaculty = $conflictService->roomAndFacultyConflicts((string) $offering['academic_year'], $preparedBlocks, (int) $component['offering_id'], $existingIds);
+
+        if (! $roomFaculty['ok']) {
+            $first = $roomFaculty['conflicts'][0];
+
+            return ['ok' => false, 'error' => ucfirst($first['type']) . " conflict: {$first['detail']}", 'conflicts' => $roomFaculty['conflicts']];
+        }
+
+        $titleSuffix = $component['name'] !== null && $component['name'] !== '' ? ' · ' . $component['name'] : '';
+
+        $rows = array_map(static fn (array $b) => [
+            'offering_id'           => (int) $component['offering_id'],
+            'offering_component_id' => $offeringComponentId,
+            'academic_year'         => $offering['academic_year'],
+            'program'               => null,
+            'year_level'            => null,
+            'section'               => null,
+            'day'                   => $b['day'],
+            'start_time'            => $b['start'],
+            'end_time'              => $b['end'],
+            'time_label'            => $b['time_label'],
+            'subject_code'          => $subject['subject_code'],
+            'subject_title'         => $subject['subject_name'] . $titleSuffix,
+            'prof'                  => $b['prof'],
+            'room'                  => $b['room'],
+            'theme'                 => 'blue',
+            'status'                => 'published',
+        ], $preparedBlocks);
+
+        $this->db->transException(true)->transStart();
+
+        $this->where('offering_component_id', $offeringComponentId)->delete();
+
+        if ($rows !== []) {
+            $this->insertBatch($rows);
+        }
+
+        $this->db->transComplete();
+
+        if ($this->db->transStatus() === false) {
+            return ['ok' => false, 'error' => 'Could not save the schedule. Please retry.'];
+        }
+
+        return ['ok' => true, 'saved' => count($rows), 'override' => $auth['override']];
+    }
+
+    /**
+     * Shape/range validation shared by syncOfferingSchedule() and
+     * syncComponentSchedule() — returns the first error message, or null
+     * when every block is well-formed (including no overlap among the
+     * blocks being saved together).
+     */
+    private function validateBlockShapes(array $blocks): ?string
+    {
+        foreach ($blocks as $block) {
+            foreach (['day', 'start', 'end', 'time_label', 'room'] as $key) {
+                if (! isset($block[$key])) {
+                    return "Missing block field: {$key}";
+                }
+            }
+
+            if (! is_int($block['day']) || $block['day'] < 0 || $block['day'] > 5) {
+                return 'Invalid block day.';
+            }
+
+            if (! preg_match('/^\d{2}:\d{2}$/', $block['start']) || ! preg_match('/^\d{2}:\d{2}$/', $block['end']) || $block['start'] >= $block['end']) {
+                return 'Invalid block time range.';
+            }
+        }
+
+        foreach ($blocks as $i => $a) {
+            foreach (array_slice($blocks, $i + 1) as $b) {
+                if (ScheduleOverlap::clashes($a, $b)) {
+                    return 'These two meeting blocks overlap on the same day.';
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolves each block's faculty_id into the stored 'prof' username,
+     * shared by both sync methods.
+     */
+    private function attachFacultyUsernames(array $blocks): array
+    {
+        $usernameById = [];
+        $facultyIds   = array_filter(array_unique(array_column($blocks, 'faculty_id')));
+
+        if ($facultyIds !== []) {
+            $usernameById = array_column(
+                db_connect()->table('users')->select('id, username')->whereIn('id', $facultyIds)->get()->getResultArray(),
+                'username',
+                'id'
+            );
+        }
+
+        return array_map(static function (array $b) use ($usernameById) {
+            $b['prof'] = $b['faculty_id'] !== null ? ($usernameById[$b['faculty_id']] ?? null) : null;
+
+            return $b;
+        }, $blocks);
     }
 }
