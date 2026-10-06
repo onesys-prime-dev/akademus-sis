@@ -83,6 +83,8 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('subject-substitutions/store'     , 'Admin\SubjectSubstitutionController::store');
     $routes->post('subject-substitutions/deactivate/(:num)', 'Admin\SubjectSubstitutionController::deactivate/$1');
 
+    $routes->get('audit-logs', 'Admin\AuditLogController::index');
+
     $routes->get('curriculum'               , 'Admin\CurriculumController::index');
     $routes->get('curriculum/create'        , 'Admin\CurriculumController::create');
     $routes->post('curriculum/store'        , 'Admin\CurriculumController::store');

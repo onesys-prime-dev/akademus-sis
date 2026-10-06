@@ -20,6 +20,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
 <?= $this->section('styles') ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/grade-approvals.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/grade-approvals.css') ?>">
 <style>
     table.grade-table input[type=text] { width: 90px; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
     table.grade-table input[type=text].remarks { width: 160px; }
@@ -27,6 +28,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     .status-pill.locked { background: var(--color-success-soft); color: #14532d; }
     .status-pill.submitted { background: #dff8fb; color: #164e63; }
     .status-pill.draft { background: var(--color-warning-soft); color: #713f12; }
+    .status-pill.pending { background: var(--color-warning-soft); color: #713f12; }
 </style>
 <?= $this->endSection() ?>
 
@@ -64,7 +66,13 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             </thead>
             <tbody>
                 <?php foreach ($roster as $row): ?>
-                    <?php $g = $row['grade']; $locked = $g !== null && $g['status'] === 'locked'; ?>
+                    <?php
+                        $g         = $row['grade'];
+                        $locked    = $g !== null && $g['status'] === 'locked';
+                        $history   = $row['change_requests'];
+                        $pending   = null;
+                        foreach ($history as $h) { if ($h['status'] === 'pending') { $pending = $h; break; } }
+                    ?>
                     <tr data-enrollment-id="<?= esc($row['enrollment_id']) ?>">
                         <td><?= esc($row['username']) ?></td>
                         <td>
@@ -74,13 +82,27 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                             <input type="text" class="remarks-input" aria-label="Remarks for <?= esc($row['username']) ?>" value="<?= $g !== null ? esc($g['remarks']) : '' ?>" <?= $locked ? 'disabled' : '' ?>>
                         </td>
                         <td>
-                            <?php if ($g !== null): ?>
+                            <?php if ($pending !== null): ?>
+                                <span class="status-pill pending">Change requested</span>
+                            <?php elseif ($g !== null): ?>
                                 <span class="status-pill <?= esc($g['status']) ?>"><?= esc(ucfirst($g['status'])) ?></span>
+                            <?php endif ?>
+                            <?php if ($history !== []): ?>
+                                <details class="ga-history">
+                                    <summary>History</summary>
+                                    <?php foreach ($history as $h): ?>
+                                        <div class="ga-history-item">
+                                            <strong><?= esc($h['current_value']) ?></strong> &rarr; <strong><?= esc($h['requested_value']) ?></strong>
+                                            <span class="ga-status <?= esc($h['status']) ?>"><?= esc(ucfirst($h['status'])) ?></span>
+                                            <div><?= esc($h['reason']) ?></div>
+                                        </div>
+                                    <?php endforeach ?>
+                                </details>
                             <?php endif ?>
                         </td>
                         <td>
                             <?php if ($locked): ?>
-                                <button type="button" class="btn btn-secondary" onclick="openRequestChange(<?= esc($g['grade_id']) ?>, '<?= esc($g['grade_value'], 'js') ?>')">Request Change</button>
+                                <button type="button" class="btn btn-secondary" <?= $pending !== null ? 'disabled title="A change request is already pending for this grade."' : '' ?> onclick="openRequestChange(<?= esc($g['grade_id']) ?>, '<?= esc($row['username'], 'js') ?>', '<?= esc($g['grade_value'], 'js') ?>', this)"><?= $pending !== null ? 'Request pending' : 'Request Change' ?></button>
                             <?php endif ?>
                         </td>
                     </tr>
@@ -95,11 +117,43 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     <?php endif ?>
 </div>
 
+<dialog class="ga-dialog" id="gaRequestDialog" aria-labelledby="gaReqTitle" aria-describedby="gaReqDesc">
+    <form id="gaRequestForm">
+        <header class="ga-dialog-header">
+            <h2 id="gaReqTitle">Request a grade correction</h2>
+            <p id="gaReqDesc">This goes to your chairperson for approval. The official grade stays as-is until they decide.</p>
+        </header>
+        <div class="ga-dialog-body">
+            <div class="ga-feedback is-error" id="gaReqError" role="alert" hidden></div>
+            <div class="ga-dialog-summary">
+                <strong id="gaReqStudent"></strong>
+                <div class="ga-change">
+                    <div>Current <strong id="gaReqCurrent"></strong></div>
+                    <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                    <div>Corrected <strong id="gaReqPreview">—</strong></div>
+                </div>
+            </div>
+            <div class="ga-field">
+                <label for="gaReqValue">Corrected value</label>
+                <input type="text" id="gaReqValue" required autocomplete="off">
+            </div>
+            <div class="ga-field">
+                <label for="gaReqReason">Reason <span>Required</span></label>
+                <textarea id="gaReqReason" rows="3" required placeholder="Why does this grade need to change?"></textarea>
+            </div>
+        </div>
+        <footer class="ga-dialog-footer">
+            <button type="button" class="ga-button" id="gaReqCancel">Cancel</button>
+            <button type="submit" class="ga-button ga-button--primary" id="gaReqSubmit">Send request</button>
+        </footer>
+    </form>
+</dialog>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
 <script>
-    const CONTEXT = <?= json_encode($context) ?>;
+    const CONTEXT = <?= json_encode($context, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
     async function postJSON(url, body) {
         const res = await fetch(url, {
@@ -153,24 +207,72 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         setTimeout(() => location.reload(), 800);
     }
 
-    async function openRequestChange(gradeId, currentValue) {
-        const newValue = prompt(`Current value: ${currentValue}\nEnter the corrected value:`);
-        if (!newValue) return;
-        const reason = prompt('Reason for this correction (required):');
-        if (!reason) return;
+    const reqDialog  = document.getElementById('gaRequestDialog');
+    const reqForm    = document.getElementById('gaRequestForm');
+    const reqValue   = document.getElementById('gaReqValue');
+    const reqReason  = document.getElementById('gaReqReason');
+    const reqPreview = document.getElementById('gaReqPreview');
+    const reqError   = document.getElementById('gaReqError');
+    let reqContext   = null;
+    let reqBusy      = false;
+    let reqReturnFocus = null;
 
-        const result = await postJSON('<?= site_url('faculty/grading/request-change') ?>', {
-            grade_id: gradeId,
-            requested_value: newValue.trim(),
-            reason: reason.trim(),
-        });
+    function openRequestChange(gradeId, studentName, currentValue, triggerButton) {
+        reqContext = { gradeId, row: triggerButton.closest('tr') };
+        reqReturnFocus = triggerButton;
+        document.getElementById('gaReqStudent').textContent = studentName;
+        document.getElementById('gaReqCurrent').textContent = currentValue;
+        reqPreview.textContent = '—';
+        reqValue.value = '';
+        reqReason.value = '';
+        reqError.hidden = true;
+        reqDialog.showModal();
+        reqValue.focus();
+    }
 
-        if (!result.ok) {
-            showFeedback(result.error || 'Could not file the request.', true);
+    reqValue.addEventListener('input', () => { reqPreview.textContent = reqValue.value.trim() || '—'; });
+    document.getElementById('gaReqCancel').addEventListener('click', () => { if (!reqBusy) reqDialog.close(); });
+    reqDialog.addEventListener('cancel', event => { if (reqBusy) event.preventDefault(); });
+    reqDialog.addEventListener('close', () => { if (reqReturnFocus?.isConnected) reqReturnFocus.focus(); });
+
+    reqForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (reqBusy || !reqContext) return;
+
+        const newValue = reqValue.value.trim();
+        const reason = reqReason.value.trim();
+
+        if (!newValue || !reason) {
+            reqError.textContent = 'Both the corrected value and a reason are required.';
+            reqError.hidden = false;
             return;
         }
 
+        reqBusy = true;
+        const submitBtn = document.getElementById('gaReqSubmit');
+        const label = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending…';
+
+        const result = await postJSON('<?= site_url('faculty/grading/request-change') ?>', {
+            grade_id: reqContext.gradeId,
+            requested_value: newValue,
+            reason: reason,
+        });
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = label;
+        reqBusy = false;
+
+        if (!result.ok) {
+            reqError.textContent = result.error || 'Could not file the request.';
+            reqError.hidden = false;
+            return;
+        }
+
+        reqDialog.close();
         showFeedback('Change request submitted to the chairperson.', false);
-    }
+        setTimeout(() => location.reload(), 700);
+    });
 </script>
 <?= $this->endSection() ?>

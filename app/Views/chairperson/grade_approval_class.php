@@ -46,12 +46,30 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             <tbody>
                 <?php $allSubmitted = true; ?>
                 <?php foreach ($roster as $row): ?>
-                    <?php $g = $row['grade']; if ($g === null || $g['status'] !== 'submitted') { $allSubmitted = false; } ?>
+                    <?php
+                        $g = $row['grade'];
+                        if ($g === null || $g['status'] !== 'submitted') { $allSubmitted = false; }
+                        $history = $row['change_requests'] ?? [];
+                    ?>
                     <tr>
                         <td><?= esc($row['username']) ?></td>
                         <td><?= $g !== null ? esc($g['grade_value']) : '—' ?></td>
                         <td><?= $g !== null && $g['remarks'] !== null ? esc($g['remarks']) : '—' ?></td>
-                        <td><?= $g !== null ? '<span class="ga-status ' . esc($g['status']) . '">' . esc(ucfirst($g['status'])) . '</span>' : '—' ?></td>
+                        <td>
+                            <?= $g !== null ? '<span class="ga-status ' . esc($g['status']) . '">' . esc(ucfirst($g['status'])) . '</span>' : '—' ?>
+                            <?php if ($history !== []): ?>
+                                <details class="ga-history">
+                                    <summary>History</summary>
+                                    <?php foreach ($history as $h): ?>
+                                        <div class="ga-history-item">
+                                            <strong><?= esc($h['current_value']) ?></strong> &rarr; <strong><?= esc($h['requested_value']) ?></strong>
+                                            <span class="ga-status <?= esc($h['status']) ?>"><?= esc(ucfirst($h['status'])) ?></span>
+                                            <div><?= esc($h['reason']) ?></div>
+                                        </div>
+                                    <?php endforeach ?>
+                                </details>
+                            <?php endif ?>
+                        </td>
                     </tr>
                 <?php endforeach ?>
             </tbody>

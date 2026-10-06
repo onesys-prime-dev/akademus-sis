@@ -109,6 +109,7 @@ $navGroups = $navGroups ?? [
         'grading-scales'       => ['label' => 'Grading Scales',  'icon' => 'grade',          'url' => 'admin/grading-scales'],
         'academic-settings'    => ['label' => 'Scheduling Rules', 'icon' => 'tune',          'url' => 'admin/academic-settings'],
         'roles'                => ['label' => 'Roles',           'icon' => 'admin_panel_settings', 'url' => 'admin/roles'],
+        'audit-logs'           => ['label' => 'Audit Logs',      'icon' => 'history',        'url' => 'admin/audit-logs'],
     ],
 ];
 $active        = $activeAdmin ?? '';

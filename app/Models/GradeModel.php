@@ -73,8 +73,13 @@ class GradeModel extends Model
             $gradeByEnrollment[(int) $grade['enrollment_id']] = $grade;
         }
 
+        $gradeIds = array_map(static fn (array $g) => (int) $g['grade_id'], $gradeByEnrollment);
+        $history  = (new GradeChangeRequestModel())->forGrades($gradeIds);
+
         foreach ($roster as &$row) {
-            $row['grade'] = $gradeByEnrollment[(int) $row['enrollment_id']] ?? null;
+            $grade        = $gradeByEnrollment[(int) $row['enrollment_id']] ?? null;
+            $row['grade'] = $grade;
+            $row['change_requests'] = $grade !== null ? ($history[(int) $grade['grade_id']] ?? []) : [];
         }
         unset($row);
 
@@ -206,6 +211,21 @@ class GradeModel extends Model
             ->set(['status' => 'locked', 'locked_at' => date('Y-m-d H:i:s'), 'locked_by' => $chairpersonId])
             ->update();
 
+        $auditLog = new AuditLogModel();
+
+        foreach ($rows as $row) {
+            $auditLog->record(
+                'grade.locked',
+                'grade',
+                $row['grade_id'],
+                ['status' => $row['status'], 'grade_value' => $row['grade_value']],
+                ['status' => 'locked', 'grade_value' => $row['grade_value']],
+                null,
+                $chairpersonId,
+                'chairperson'
+            );
+        }
+
         // Locked is the moment a grade becomes visible to the student
         // (forStudent() only returns status = 'locked' rows) — the right
         // point to notify, not on draft/submit. helper('url') is loaded
@@ -273,7 +293,20 @@ class GradeModel extends Model
             'status'          => 'pending',
         ]);
 
-        return ['ok' => true, 'request_id' => $requests->getInsertID()];
+        $requestId = $requests->getInsertID();
+
+        (new AuditLogModel())->record(
+            'grade_change_request.filed',
+            'grade_change_request',
+            $requestId,
+            null,
+            ['grade_id' => $gradeId, 'current_value' => $grade['grade_value'], 'requested_value' => $newValue],
+            trim($reason),
+            $requestedBy,
+            'faculty'
+        );
+
+        return ['ok' => true, 'request_id' => $requestId];
     }
 
     public function approveChangeRequest(int $requestId, int $reviewedBy, ?string $notes = null): array
@@ -311,6 +344,17 @@ class GradeModel extends Model
         $db->transComplete();
 
         if ($db->transStatus() !== false) {
+            (new AuditLogModel())->record(
+                'grade_change_request.approved',
+                'grade',
+                $grade['grade_id'],
+                ['grade_value' => $grade['grade_value']],
+                ['grade_value' => $request['requested_value']],
+                $notes,
+                $reviewedBy,
+                'chairperson'
+            );
+
             helper('url');
             (new NotificationModel())->notify(
                 (int) $request['requested_by'],
@@ -340,6 +384,17 @@ class GradeModel extends Model
         ]);
 
         $grade = $this->find((int) $request['grade_id']);
+
+        (new AuditLogModel())->record(
+            'grade_change_request.rejected',
+            'grade_change_request',
+            $requestId,
+            ['status' => 'pending'],
+            ['status' => 'rejected'],
+            $notes,
+            $reviewedBy,
+            'chairperson'
+        );
 
         if ($grade !== null) {
             helper('url');

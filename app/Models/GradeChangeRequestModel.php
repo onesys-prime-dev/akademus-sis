@@ -39,6 +39,30 @@ class GradeChangeRequestModel extends Model
     }
 
     /**
+     * Every request (any status) ever filed against these grades, grouped by
+     * grade_id, newest first — the only place a grade's prior value survives
+     * once a correction is approved and overwrites grade_value. Powers the
+     * "what was it before?" history shown alongside a grade.
+     *
+     * @param int[] $gradeIds
+     * @return array<int, list<array>>
+     */
+    public function forGrades(array $gradeIds): array
+    {
+        if ($gradeIds === []) {
+            return [];
+        }
+
+        $byGrade = [];
+
+        foreach ($this->whereIn('grade_id', $gradeIds)->orderBy('created_at', 'DESC')->findAll() as $row) {
+            $byGrade[(int) $row['grade_id']][] = $row;
+        }
+
+        return $byGrade;
+    }
+
+    /**
      * Pending requests against a grade belonging to any of these programs —
      * the chairperson's own-department scoping, same idea as
      * SectionModel::forSubDepartment().

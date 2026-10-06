@@ -78,8 +78,22 @@
 .ga-dialog-summary .ga-change { margin-top:12px; }
 .ga-field label { display:block; font-size:12px; margin-bottom:8px; color:#53657e; }
 .ga-field label span { color:#8c9aae; font-size:10px; }
-.ga-field textarea { width:100%; border:1px solid #dbe3ed; border-radius:7px; padding:10px 12px; font-size:12px; line-height:1.6; resize:vertical; min-height:88px; }
+.ga-field textarea,.ga-field input[type=text] { width:100%; border:1px solid #dbe3ed; border-radius:7px; padding:10px 12px; font-size:12px; line-height:1.6; }
+.ga-field textarea { resize:vertical; min-height:88px; }
+.ga-field input[type=text]:focus,.ga-field textarea:focus { border-color:#8eaad0; }
+.ga-field + .ga-field { margin-top:16px; }
 .ga-dialog-footer { display:flex; justify-content:flex-end; gap:9px; padding:17px 26px; border-top:1px solid var(--ga-line); background:#fafbfd; }
+.ga-status.pending { color:#9a7324; background:#fcf4e3; }
+.ga-row-note { display:block; margin-top:5px; font-size:10px; color:#8a97aa; }
+.ga-history { margin-top:4px; font-size:10px; }
+.ga-history summary { cursor:pointer; color:#6e809a; list-style:none; display:inline-flex; align-items:center; gap:4px; }
+.ga-history summary::-webkit-details-marker { display:none; }
+.ga-history summary::before { content:'history'; font-family:'Material Symbols Outlined'; font-size:13px; }
+.ga-history[open] summary { margin-bottom:8px; }
+.ga-history-item { padding:8px 0; border-top:1px solid #edf0f5; color:#687b96; line-height:1.6; }
+.ga-history-item:first-of-type { border-top:0; }
+.ga-history-item strong { color:#334d70; font-weight:600; }
+.ga-history-item .ga-status { margin-left:6px; }
 .ga-back { display:inline-flex; align-items:center; gap:7px; color:#6e809a; font-size:11px; text-decoration:none; margin-bottom:22px; }
 .ga-review-meta { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:20px 26px; border-bottom:1px solid var(--ga-line); font-size:11px; color:#70829b; }
 .ga-review-meta strong { color:#435b7c; font-weight:600; }
