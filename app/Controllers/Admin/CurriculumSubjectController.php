@@ -28,8 +28,6 @@ class CurriculumSubjectController extends BaseController
                 curriculum_subjects.*,
                 curriculum.curriculum_name,
                 curriculum.curriculum_code,
-                curriculum.version_number,
-                curriculum.status as curriculum_status,
                 subjects.subject_code,
                 subjects.subject_name
             ')
@@ -54,11 +52,8 @@ class CurriculumSubjectController extends BaseController
 
     public function create()
     {
-        // Only draft curricula can receive new subject mappings — a
-        // published curriculum is an immutable snapshot (see CurriculumModel).
         $curricula = $this->curriculumModel
             ->where('is_active', 1)
-            ->where('status', 'draft')
             ->findAll();
 
         $subjects = $this->subjectModel
@@ -89,11 +84,6 @@ class CurriculumSubjectController extends BaseController
                 ->back()
                 ->withInput()
                 ->with('errors', $this->validator->getErrors());
-        }
-
-        $error = $this->guardDraft((int) $this->request->getPost('curriculum_id'));
-        if ($error) {
-            return redirect()->back()->withInput()->with('errors', [$error]);
         }
 
         $exists = $this->curriculumSubjectModel
@@ -132,12 +122,6 @@ class CurriculumSubjectController extends BaseController
 
         $curriculum = $this->curriculumModel->find($curriculumSubject['curriculum_id']);
 
-        if (! $this->curriculumModel->isEditable($curriculum)) {
-            return redirect()
-                ->to('/admin/curriculum-subjects')
-                ->with('errors', ['This mapping belongs to a published curriculum and cannot be edited — create a new curriculum version instead.']);
-        }
-
         return view('admin/curriculum-subjects/edit', [
             'curriculumSubject' => $curriculumSubject,
             'curriculum'        => $curriculum,
@@ -152,11 +136,6 @@ class CurriculumSubjectController extends BaseController
 
         if (! $curriculumSubject) {
             throw PageNotFoundException::forPageNotFound();
-        }
-
-        $error = $this->guardDraft((int) $curriculumSubject['curriculum_id']);
-        if ($error) {
-            return redirect()->to('/admin/curriculum-subjects')->with('errors', [$error]);
         }
 
         $rules = [
@@ -204,11 +183,6 @@ class CurriculumSubjectController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
-        $error = $this->guardDraft((int) $curriculumSubject['curriculum_id']);
-        if ($error) {
-            return redirect()->to('/admin/curriculum-subjects')->with('errors', [$error]);
-        }
-
         $this->curriculumSubjectModel->update($id, [
             'is_active' => $curriculumSubject['is_active'] ? 0 : 1,
         ]);
@@ -226,34 +200,10 @@ class CurriculumSubjectController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
-        $error = $this->guardDraft((int) $curriculumSubject['curriculum_id']);
-        if ($error) {
-            return redirect()->to('/admin/curriculum-subjects')->with('errors', [$error]);
-        }
-
         $this->curriculumSubjectModel->delete($id);
 
         return redirect()
             ->to('/admin/curriculum-subjects')
             ->with('message', 'Curriculum subject removed.');
-    }
-
-    /**
-     * Returns an error message if the given curriculum is not editable
-     * (i.e. not 'draft'), or null if the mutation may proceed.
-     */
-    private function guardDraft(int $curriculumId): ?string
-    {
-        $curriculum = $this->curriculumModel->find($curriculumId);
-
-        if ($curriculum === null) {
-            return 'Curriculum not found.';
-        }
-
-        if (! $this->curriculumModel->isEditable($curriculum)) {
-            return 'This curriculum is published and immutable — create a new version to change its subjects.';
-        }
-
-        return null;
     }
 }

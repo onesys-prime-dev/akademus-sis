@@ -66,17 +66,13 @@ class CurriculumController extends BaseController
             'academic_year'   => $this->request->getPost('academic_year'),
             'description'     => $this->request->getPost('description'),
             'version_number'  => 1,
-            'status'          => 'draft',
+            'status'          => 'published',
+            'is_current'      => 1,
         ]);
-
-        $newId = $this->curriculumModel->getInsertID();
-
-        // A brand-new curriculum is the root of its own version lineage.
-        $this->curriculumModel->update($newId, ['base_curriculum_id' => $newId]);
 
         return redirect()
             ->to('/admin/curriculum')
-            ->with('message', 'Curriculum created successfully as a draft. Publish it once its subjects are finalized.');
+            ->with('message', 'Curriculum created successfully.');
     }
 
     public function edit($id)
@@ -91,8 +87,6 @@ class CurriculumController extends BaseController
         return view('admin/curriculum/edit', [
             'curriculum'  => $curriculum,
             'programs'    => $programs,
-            'editable'    => $this->curriculumModel->isEditable($curriculum),
-            'versions'    => $this->curriculumModel->versionsOf((int) $id),
             'activeAdmin' => 'curriculum',
         ]);
     }
@@ -118,12 +112,6 @@ class CurriculumController extends BaseController
 
         if (! $curriculum) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
-        }
-
-        if (! $this->curriculumModel->isEditable($curriculum)) {
-            return redirect()
-                ->back()
-                ->with('errors', ['Published curricula are immutable — create a new version to make changes.']);
         }
 
         $duplicate = $this->curriculumModel
@@ -175,43 +163,5 @@ class CurriculumController extends BaseController
                     ? 'curriculum is activated successfully'
                     : 'curriculum is deactivated successfully'
             );
-    }
-
-    /**
-     * Locks a draft curriculum as an immutable, versioned snapshot and marks
-     * it the current version for its program (new promotions/assignments
-     * default to it). Older published versions of the same lineage remain
-     * published and valid for whichever students are already on them.
-     */
-    public function publish($id)
-    {
-        $result = $this->curriculumModel->publish((int) $id);
-
-        if (! $result['ok']) {
-            return redirect()->back()->with('errors', [$result['error'] ?? 'Could not publish curriculum.']);
-        }
-
-        return redirect()
-            ->to('/admin/curriculum')
-            ->with('message', 'Curriculum published. It is now immutable and set as the current version for its program.');
-    }
-
-    /**
-     * Creates a new draft version of a curriculum — a full copy of its
-     * subject list under a fresh curriculum_id — so it can be edited without
-     * touching the (possibly already-published, already-assigned-to-students)
-     * source version.
-     */
-    public function newVersion($id)
-    {
-        $result = $this->curriculumModel->createNewVersion((int) $id);
-
-        if (! $result['ok']) {
-            return redirect()->back()->with('errors', [$result['error'] ?? 'Could not create a new version.']);
-        }
-
-        return redirect()
-            ->to('/admin/curriculum/edit/' . $result['curriculum']['curriculum_id'])
-            ->with('message', 'New draft version created from this curriculum. Edit it freely — the source version is untouched.');
     }
 }

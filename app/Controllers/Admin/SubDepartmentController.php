@@ -179,6 +179,11 @@ class SubDepartmentController extends BaseController
             $user->addGroup('chairperson');
         }
 
+        // A department has exactly one chairperson at a time — clear whoever
+        // currently holds that slot (primary or delegated) before handing it
+        // to this account. See clearDepartmentChair().
+        $this->clearDepartmentChair($id, $user->id);
+
         // sub_department_id scopes them to this department; department_id keeps the
         // parent college in sync, since scheduling (ChairpersonController/TeachingLoads)
         // still scopes chairpersons/faculty by college via users.department_id.
@@ -209,7 +214,8 @@ class SubDepartmentController extends BaseController
      * case this grants DELEGATED access via sub_department_schedulers (the
      * mechanism SchedulingAuthorization::authorizedSubDeptIds() already
      * reads) instead of silently stealing them away from their first
-     * department.
+     * department. Either way, THIS department still ends up with exactly
+     * one chairperson — see clearDepartmentChair().
      */
     private function assignExistingChair(int $id, array $department, int $userId)
     {
@@ -223,6 +229,8 @@ class SubDepartmentController extends BaseController
         if (! $user->inGroup('chairperson')) {
             $user->addGroup('chairperson');
         }
+
+        $this->clearDepartmentChair($id, $userId);
 
         $db = db_connect();
         $currentSubDept = $db->table('users')->select('sub_department_id')->where('id', $user->id)->get()->getRowArray()['sub_department_id'] ?? null;
@@ -256,6 +264,46 @@ class SubDepartmentController extends BaseController
         return redirect()
             ->to("/admin/sub-departments/{$id}")
             ->with('message', $message);
+    }
+
+    /**
+     * Removes one chairperson's access to this department — the primary
+     * chair (users.sub_department_id match) is detached (set null, same as
+     * delete()'s department-deletion detach, never account-deleted since
+     * they may still chair/teach elsewhere); a delegated chair (a
+     * sub_department_schedulers row, see assignExistingChair()) simply has
+     * that delegation row removed. Either way the user account itself is
+     * untouched — this only revokes their management of THIS department.
+     */
+    public function removeChair($id, $userId)
+    {
+        $department = $this->subDeptModel->find($id);
+
+        if (! $department) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $users = auth()->getProvider();
+        $user  = $users->find($userId);
+
+        if (! $user) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $db = db_connect();
+
+        if ((int) $user->sub_department_id === (int) $id) {
+            $db->table('users')->where('id', $user->id)->update(['sub_department_id' => null]);
+        } else {
+            $db->table('sub_department_schedulers')
+                ->where('sub_dept_id', $id)
+                ->where('user_id', $user->id)
+                ->delete();
+        }
+
+        return redirect()
+            ->to("/admin/sub-departments/{$id}")
+            ->with('message', "{$user->username} removed as chairperson of {$department['name']}.");
     }
 
     public function transfer($id)
@@ -502,6 +550,45 @@ class SubDepartmentController extends BaseController
         return redirect()
             ->to("/admin/sub-departments/{$id}")
             ->with('message', "{$username} removed.");
+    }
+
+    /**
+     * Enforces "one chairperson per department": clears whoever currently
+     * holds this department's chair slot — the primary chair
+     * (users.sub_department_id match, detached to null, account untouched)
+     * and any delegated chair (sub_department_schedulers row, deleted) —
+     * except $exceptUserId, so re-assigning the same person is a no-op
+     * rather than momentarily unseating them. The person being newly
+     * assigned may still chair OTHER departments; only this department's
+     * single slot is cleared.
+     */
+    private function clearDepartmentChair(int $subDeptId, ?int $exceptUserId = null): void
+    {
+        $db = db_connect();
+
+        $primaryIds = $db->table('users u')
+            ->select('u.id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'chairperson')
+            ->where('u.sub_department_id', $subDeptId)
+            ->get()
+            ->getResultArray();
+
+        foreach ($primaryIds as $row) {
+            if ($exceptUserId !== null && (int) $row['id'] === $exceptUserId) {
+                continue;
+            }
+
+            $db->table('users')->where('id', $row['id'])->update(['sub_department_id' => null]);
+        }
+
+        $delegated = $db->table('sub_department_schedulers')->where('sub_dept_id', $subDeptId);
+
+        if ($exceptUserId !== null) {
+            $delegated->where('user_id !=', $exceptUserId);
+        }
+
+        $delegated->delete();
     }
 
     /**

@@ -6,9 +6,9 @@ use App\Models\CurriculumModel;
 use App\Models\DepartmentModel;
 
 /**
- * Resolves "what does this cohort take this term?" from the program's
- * current PUBLISHED curriculum version — the source of truth — instead of
- * from a hand-edited per-term preset.
+ * Resolves "what does this cohort take this term?" from the program's one
+ * (always-live) curriculum — the source of truth — instead of from a
+ * hand-edited per-term preset.
  *
  * The plotting screens speak in display strings (academic_year =
  * "AY 2025 - 2026 · 1st Semester", program = "BS in Information Technology",
@@ -16,8 +16,8 @@ use App\Models\DepartmentModel;
  * (program_id, year_level 1-4, semester 1/2/3). This class is the one place
  * that translates between them.
  *
- * forContext() returns null when no published curriculum governs the
- * context — the program/term simply offers nothing yet.
+ * forContext() returns null when the program has no curriculum at all yet —
+ * the program/term simply offers nothing until one is created.
  */
 class TermCurriculum
 {
@@ -50,21 +50,21 @@ class TermCurriculum
     }
 
     /**
-     * The published, current curriculum version for a program display name,
-     * or null when the program has none (=> not cut over yet).
+     * The one curriculum for a program display name (auto-created on first
+     * use), or null when the program name itself doesn't resolve.
      */
     public function curriculumFor(string $program): ?array
     {
         $programId = self::programIdOf($program);
 
-        return $programId === null ? null : (new CurriculumModel())->currentPublishedFor($programId);
+        return $programId === null ? null : (new CurriculumModel())->liveFor($programId);
     }
 
     /**
      * @return array{curriculum: array, subjects: list<array>}|null null =
-     *         no published curriculum governs this context (fall back to
-     *         presets). An empty `subjects` list is authoritative: the
-     *         curriculum simply offers nothing in that term.
+     *         the program name doesn't resolve to a program at all. An
+     *         empty `subjects` list is authoritative: the curriculum simply
+     *         offers nothing in that term yet.
      */
     public function forContext(string $academicYear, string $program, string $yearLevel): ?array
     {

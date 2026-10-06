@@ -46,16 +46,58 @@ class SubjectOwnershipController extends BaseController
             }
         }
 
+        $courses = [];
+
+        if ($subDeptIds !== []) {
+            foreach (db_connect()->table('programs')
+                ->select('program_id, program_code, program_name, sub_department_id')
+                ->whereIn('sub_department_id', $subDeptIds)
+                ->where('is_active', 1)
+                ->orderBy('program_name')
+                ->get()->getResultArray() as $row) {
+                $courses[(int) $row['sub_department_id']][] = [
+                    'id'   => (int) $row['program_id'],
+                    'code' => $row['program_code'],
+                    'name' => $row['program_name'],
+                ];
+            }
+        }
+
+        $subjectCourses = [];
+        $subjectIds     = array_column($subjects, 'subject_id');
+
+        if ($subjectIds !== []) {
+            foreach (db_connect()->table('curriculum_subjects cs')
+                ->select('cs.subject_id, cs.year_level, cs.semester, p.program_id, p.program_code, p.program_name')
+                ->join('curriculum c', 'c.curriculum_id = cs.curriculum_id')
+                ->join('programs p', 'p.program_id = c.program_id')
+                ->whereIn('cs.subject_id', $subjectIds)
+                ->where('cs.is_active', 1)
+                ->orderBy('cs.year_level')
+                ->orderBy('cs.semester')
+                ->get()->getResultArray() as $row) {
+                $subjectCourses[(int) $row['subject_id']][] = [
+                    'program_id'   => (int) $row['program_id'],
+                    'program_code' => $row['program_code'],
+                    'program_name' => $row['program_name'],
+                    'year_level'   => (int) $row['year_level'],
+                    'semester'     => (int) $row['semester'],
+                ];
+            }
+        }
+
         return view('chairperson/subject_ownership', [
             'pageTitle'   => 'Subject Ownership',
             'user'        => [
                 'name' => auth()->user()->username ?? 'Chairperson',
                 'role' => (count($deptNames) === 1 ? reset($deptNames) . ' - ' : '') . 'Chairperson',
             ],
-            'deptNames'   => $deptNames,
-            'hasAnyDept'  => $subDeptIds !== [],
-            'subjects'    => $subjects,
-            'durations'   => self::ALLOWED_DURATIONS,
+            'deptNames'      => $deptNames,
+            'hasAnyDept'     => $subDeptIds !== [],
+            'subjects'       => $subjects,
+            'durations'      => self::ALLOWED_DURATIONS,
+            'courses'        => $courses,
+            'subjectCourses' => $subjectCourses,
         ]);
     }
 

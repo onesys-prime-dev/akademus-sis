@@ -10,7 +10,7 @@
             <span class="current">Edit</span>
         </div>
         <h2 class="ac-page-header__title">Edit Curriculum Subject</h2>
-        <p class="ac-page-header__sub"><?= esc($curriculum['curriculum_code']) ?> &middot; v<?= esc($curriculum['version_number']) ?> (draft)</p>
+        <p class="ac-page-header__sub"><?= esc($curriculum['curriculum_code']) ?></p>
     </div>
 </div>
 

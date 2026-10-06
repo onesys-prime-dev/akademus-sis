@@ -1195,6 +1195,38 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 
 .ac-detail-header__meta .material-symbols-outlined { font-size: 18px; }
 
+.ac-chair-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.ac-chair-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 4px 3px 10px;
+    border-radius: 999px;
+    background: var(--color-surface-sunken);
+    color: var(--color-text-primary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.ac-chair-chip form { display: inline-flex; margin: 0; }
+
+.ac-chair-chip__remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.ac-chair-chip__remove .material-symbols-outlined { font-size: 14px; }
+.ac-chair-chip__remove:hover { background: rgba(255, 218, 214, .6); color: var(--color-danger); }
+
 .ac-detail-grid {
     display: grid;
     grid-template-columns: 1fr 2fr;

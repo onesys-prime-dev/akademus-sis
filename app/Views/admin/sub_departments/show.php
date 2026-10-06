@@ -22,13 +22,21 @@
         <h1 class="ac-page-header__title"><?= esc($department['name']) ?> (<?= esc($department['code']) ?>)</h1>
         <div class="ac-detail-header__meta">
             <span class="material-symbols-outlined">person</span>
-            <?php if (count($department['chairs']) > 1): ?>
-                Chairpersons: <?= esc(implode(', ', array_map(
-                    static fn ($c) => $c['username'] . ($c['is_primary'] ? '' : ' (shared)'),
-                    $department['chairs']
-                ))) ?>
-            <?php elseif ($department['chair']): ?>
-                Chairperson: <?= esc($department['chair']['username']) ?>
+            <?php if ($department['chairs']): ?>
+                <span><?= count($department['chairs']) > 1 ? 'Chairpersons:' : 'Chairperson:' ?></span>
+                <span class="ac-chair-list">
+                    <?php foreach ($department['chairs'] as $c): ?>
+                        <span class="ac-chair-chip">
+                            <?= esc($c['username']) ?><?= $c['is_primary'] ? '' : ' (shared)' ?>
+                            <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/chair/' . $c['id'] . '/remove') ?>">
+                                <?= csrf_field() ?>
+                                <button type="submit" class="ac-chair-chip__remove" title="Remove <?= esc($c['username'], 'attr') ?> as chairperson" data-confirm="Remove <?= esc($c['username'], 'attr') ?> as chairperson of <?= esc($department['name'], 'attr') ?>?">
+                                    <span class="material-symbols-outlined">close</span>
+                                </button>
+                            </form>
+                        </span>
+                    <?php endforeach ?>
+                </span>
             <?php else: ?>
                 <span style="color:var(--color-warning); font-weight:700;">No chairperson assigned</span>
             <?php endif ?>

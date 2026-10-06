@@ -9,16 +9,15 @@ use App\Models\CurriculumSubjectModel;
 use App\Models\SubjectModel;
 
 /**
- * Step: Subject Ownership -> Curriculum Builder -> Admin Publish/Approval.
+ * Step: Subject Ownership -> Curriculum Builder.
  *
- * Builds DRAFT curriculum versions on the formal, versioned tables
- * (curriculum / curriculum_subjects) — the same source of truth
- * SubjectDemandService / SharedSubjectDashboardService / Coverage and
- * EnrollmentModel already read from. A chairperson may only create/edit
- * drafts for programs their department owns (SchedulingAuthorization) and
- * only while status = 'draft' (CurriculumModel::isEditable()); a published
- * curriculum is immutable here exactly as it is in Admin's own tools —
- * publishing itself stays an explicit Admin action (Admin -> Curriculum).
+ * Builds curriculum directly on the formal tables (curriculum /
+ * curriculum_subjects) — the same source of truth SubjectDemandService /
+ * SharedSubjectDashboardService / Coverage and EnrollmentModel already read
+ * from. A chairperson may only edit curriculum for programs their
+ * department owns (SchedulingAuthorization). Every program has exactly one
+ * curriculum (CurriculumModel::liveFor()), always live and directly
+ * editable — there is no draft/publish step.
  *
  * This is the sole supported curriculum source of truth — the legacy
  * curriculum_presets-backed Curriculum page and its preset-writing
@@ -40,8 +39,7 @@ class CurriculumBuilderController extends BaseController
                 'user'      => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
                 'programs'  => [],
                 'selectedProgram' => null,
-                'versions'  => [],
-                'draft'     => null,
+                'curriculum' => null,
                 'termSubjects' => [],
                 'yearLevel' => 1,
                 'semester'  => '1',
@@ -62,32 +60,25 @@ class CurriculumBuilderController extends BaseController
             $semester = '1';
         }
 
-        $curricula = new CurriculumModel();
-        $versions  = $curricula->where('program_id', $programId)->orderBy('version_number', 'DESC')->findAll();
-        $draft     = current(array_filter($versions, static fn (array $v) => $v['status'] === 'draft')) ?: null;
+        $curriculum = (new CurriculumModel())->liveFor($programId);
 
-        $termSubjects = [];
-
-        if ($draft !== null) {
-            $termSubjects = db_connect()->table('curriculum_subjects cs')
-                ->select('cs.curriculum_subject_id, cs.is_required, cs.is_laboratory AS assignment_is_laboratory, s.subject_id, s.subject_code, s.subject_name, s.units, s.is_laboratory AS default_is_laboratory, s.sub_department_id')
-                ->join('subjects s', 's.subject_id = cs.subject_id')
-                ->where('cs.curriculum_id', $draft['curriculum_id'])
-                ->where('cs.year_level', $yearLevel)
-                ->where('cs.semester', (int) $semester)
-                ->where('cs.is_active', 1)
-                ->orderBy('s.subject_code')
-                ->get()
-                ->getResultArray();
-        }
+        $termSubjects = db_connect()->table('curriculum_subjects cs')
+            ->select('cs.curriculum_subject_id, cs.is_required, cs.is_laboratory AS assignment_is_laboratory, s.subject_id, s.subject_code, s.subject_name, s.units, s.is_laboratory AS default_is_laboratory, s.sub_department_id')
+            ->join('subjects s', 's.subject_id = cs.subject_id')
+            ->where('cs.curriculum_id', $curriculum['curriculum_id'])
+            ->where('cs.year_level', $yearLevel)
+            ->where('cs.semester', (int) $semester)
+            ->where('cs.is_active', 1)
+            ->orderBy('s.subject_code')
+            ->get()
+            ->getResultArray();
 
         return view('chairperson/curriculum_builder', [
             'pageTitle' => 'Curriculum Builder',
             'user'      => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
             'programs'  => $programs,
             'selectedProgram' => $programId,
-            'versions'  => $versions,
-            'draft'     => $draft,
+            'curriculum' => $curriculum,
             'termSubjects' => $termSubjects,
             'yearLevel' => $yearLevel,
             'semester'  => $semester,
@@ -96,77 +87,11 @@ class CurriculumBuilderController extends BaseController
     }
 
     /**
-     * Starts a new draft for a program: version 1 if the program has no
-     * curriculum at all yet, or the next version branched from its current
-     * published one (CurriculumModel::createNewVersion() copies its subject
-     * list forward so editing never starts from empty for an established
-     * program). Refuses if a draft already exists — only one open draft per
-     * program at a time, to avoid two chairpersons silently forking it.
-     */
-    public function createDraft()
-    {
-        $userId    = (int) auth()->id();
-        $programId = (int) ($this->request->getPost('program_id') ?? 0);
-
-        if (! $this->authorizedForProgram($userId, $programId)) {
-            return $this->fail('You are not authorized to build curriculum for that program.');
-        }
-
-        $curricula = new CurriculumModel();
-
-        if ($curricula->where('program_id', $programId)->where('status', 'draft')->countAllResults() > 0) {
-            return $this->fail('A draft already exists for this program.');
-        }
-
-        $current = $curricula->currentPublishedFor($programId);
-
-        if ($current !== null) {
-            $result = $curricula->createNewVersion((int) $current['curriculum_id']);
-
-            if (! $result['ok']) {
-                return $this->fail($result['error'] ?? 'Could not create a new draft version.');
-            }
-
-            return redirect()->to('/chairperson/curriculum?program_id=' . $programId)->with('message', 'New draft version created from the current published curriculum.');
-        }
-
-        $program = db_connect()->table('programs')->where('program_id', $programId)->get()->getRowArray();
-
-        if ($program === null) {
-            return $this->fail('Program not found.');
-        }
-
-        $code = $program['program_code'] . '-' . date('Y');
-        $n    = 1;
-
-        while ($curricula->where('curriculum_code', $code)->countAllResults() > 0) {
-            $code = $program['program_code'] . '-' . date('Y') . '-' . (++$n);
-        }
-
-        $curricula->insert([
-            'program_id'      => $programId,
-            'curriculum_code' => $code,
-            'curriculum_name' => $program['program_name'] . ' Curriculum',
-            'academic_year'   => date('Y') . '-' . (date('Y') + 1),
-            'description'     => 'Draft started from the Chairperson Curriculum Builder.',
-            'is_active'       => 1,
-            'version_number'  => 1,
-            'status'          => 'draft',
-            'is_current'      => 0,
-        ]);
-
-        $id = $curricula->getInsertID();
-        $curricula->update($id, ['base_curriculum_id' => $id]);
-
-        return redirect()->to('/chairperson/curriculum?program_id=' . $programId)->with('message', 'New draft curriculum started.');
-    }
-
-    /**
-     * Adds (or reuses) one subject into the draft at a specific
-     * year level + semester — the subject itself may come from ANY
+     * Adds (or reuses) one subject into the program's curriculum at a
+     * specific year level + semester — the subject itself may come from ANY
      * department's catalog (see Chairperson\SubjectOwnershipController /
      * ChairpersonController::searchSubjects()); only the ASSIGNMENT is
-     * scoped to this program's draft, never the catalog row's ownership.
+     * scoped to this program's curriculum, never the catalog row's ownership.
      */
     public function addSubject()
     {
@@ -178,10 +103,10 @@ class CurriculumBuilderController extends BaseController
         $semester     = (int) ($payload['semester'] ?? 0);
         $isLab        = $payload['is_laboratory'] ?? null;
 
-        $curriculum = $this->editableDraftFor($userId, $curriculumId);
+        $curriculum = $this->curriculumFor($userId, $curriculumId);
 
         if ($curriculum === null) {
-            return $this->fail('Draft not found, not yours to edit, or already published.');
+            return $this->fail('Curriculum not found, or not yours to edit.');
         }
 
         if (! isset(self::SEMESTERS[(string) $semester])) {
@@ -229,10 +154,10 @@ class CurriculumBuilderController extends BaseController
             return $this->fail('Not found.');
         }
 
-        $curriculum = $this->editableDraftFor($userId, (int) $row['curriculum_id']);
+        $curriculum = $this->curriculumFor($userId, (int) $row['curriculum_id']);
 
         if ($curriculum === null) {
-            return $this->fail('Draft not found, not yours to edit, or already published.');
+            return $this->fail('Curriculum not found, or not yours to edit.');
         }
 
         (new CurriculumSubjectModel())->delete((int) $curriculumSubjectId);
@@ -249,10 +174,10 @@ class CurriculumBuilderController extends BaseController
             return $this->fail('Not found.');
         }
 
-        $curriculum = $this->editableDraftFor($userId, (int) $row['curriculum_id']);
+        $curriculum = $this->curriculumFor($userId, (int) $row['curriculum_id']);
 
         if ($curriculum === null) {
-            return $this->fail('Draft not found, not yours to edit, or already published.');
+            return $this->fail('Curriculum not found, or not yours to edit.');
         }
 
         $payload = $this->request->getJSON(true) ?? [];
@@ -301,14 +226,14 @@ class CurriculumBuilderController extends BaseController
     }
 
     /**
-     * The curriculum row, only if it's a DRAFT (CurriculumModel::isEditable())
-     * belonging to a program this chairperson is authorized for.
+     * The curriculum row, only if it belongs to a program this chairperson
+     * is authorized for.
      */
-    private function editableDraftFor(int $userId, int $curriculumId): ?array
+    private function curriculumFor(int $userId, int $curriculumId): ?array
     {
         $curriculum = (new CurriculumModel())->find($curriculumId);
 
-        if ($curriculum === null || ! (new CurriculumModel())->isEditable($curriculum)) {
+        if ($curriculum === null) {
             return null;
         }
 

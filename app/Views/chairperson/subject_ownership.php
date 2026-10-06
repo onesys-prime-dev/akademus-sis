@@ -1,212 +1,83 @@
 <?= $this->extend('layouts/admin_console') ?>
-
 <?php
-$activeAdmin   = 'subject-ownership';
-$pageTitle     = 'Subject Ownership';
-$brandSub      = 'Chairperson Portal';
-$userName      = $user['name'];
+$activeAdmin = 'subject-ownership';
+$pageTitle = 'Subject Ownership';
+$brandSub = 'Chairperson Portal';
+$userName = $user['name'];
 $userRoleLabel = $user['role'];
-$navGroups     = require __DIR__ . '/_nav.php';
+$navGroups = require __DIR__ . '/_nav.php';
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
+$catalog = array_map(static fn ($s) => [
+    'id' => (int) $s['subject_id'], 'code' => $s['subject_code'], 'title' => $s['subject_name'],
+    'units' => (float) $s['units'], 'duration' => (float) $s['contact_hours'],
+    'is_lab' => (bool) $s['is_laboratory'], 'active' => (bool) $s['is_active'],
+    'department' => (int) $s['sub_department_id'],
+], $subjects);
 ?>
-
 <?= $this->section('styles') ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/subject-ownership.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/subject-ownership.css') ?>">
 <?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
+<div class="so-page">
+    <header class="so-heading">
+        <div><div class="so-eyebrow">ACADEMIC PLANNING / SUBJECTS</div><h2>Subject Ownership<span class="so-heading-dot">.</span></h2><p>Your department’s subjects, organized in one place.</p></div>
+        <?php if ($hasAnyDept): ?><button type="button" class="so-button so-button--primary" data-open-add><span class="material-symbols-outlined" aria-hidden="true">add</span>Add subject</button><?php endif ?>
+    </header>
+    <div id="soFeedback" class="so-feedback" role="status" aria-live="polite" hidden></div>
+    <?php if (!$hasAnyDept): ?>
+        <section class="so-card so-empty"><span class="material-symbols-outlined" aria-hidden="true">domain_disabled</span><h3>No department assigned</h3><p>Contact an administrator to assign a department to your account.</p></section>
+    <?php else: ?>
+        <section class="so-overview so-card" aria-label="Catalog overview">
+            <div class="so-department"><span class="so-department-icon material-symbols-outlined" aria-hidden="true">account_balance</span><div><div class="so-eyebrow">YOUR DEPARTMENT<?= count($deptNames) > 1 ? 'S' : '' ?></div><h3><?= count($deptNames) === 1 ? esc(reset($deptNames)) : count($deptNames) . ' departments' ?></h3><p>Owned here. Shared across programs.</p></div></div>
+            <div class="so-stat"><span>Total subjects</span><strong id="soTotal"><?= count($catalog) ?></strong></div>
+            <div class="so-stat"><span><i class="so-dot so-dot--green"></i>Active</span><strong id="soActive"><?= count(array_filter($catalog, static fn ($s) => $s['active'])) ?></strong></div>
+            <div class="so-stat"><span><i class="so-dot"></i>Inactive</span><strong id="soInactive"><?= count(array_filter($catalog, static fn ($s) => !$s['active'])) ?></strong></div>
+        </section>
+        <section class="so-card so-courses" aria-labelledby="soCoursesTitle">
+            <header class="so-catalog-heading">
+                <div><div class="so-title-line"><h3 id="soCoursesTitle">Course distribution</h3></div><p>Expand a course to explore its subjects by year and semester.</p></div>
+                <?php if (count($deptNames) > 1): ?><div class="so-filter"><label for="soCourseDept">Department</label><select id="soCourseDept"><?php foreach ($deptNames as $id => $name): ?><option value="<?= (int) $id ?>"><?= esc($name) ?></option><?php endforeach ?></select></div><?php endif ?>
+            </header>
+            <div class="so-course-groups" id="soCourseGroups"></div>
+            <p class="so-empty-inline" id="soCourseEmpty" hidden>This department has no active courses yet. Add one through the Curriculum Builder.</p>
+        </section>
+        <section class="so-card so-catalog" aria-labelledby="soCatalogTitle">
+            <header class="so-catalog-heading"><div><div class="so-title-line"><h3 id="soCatalogTitle">Subject catalog</h3><span class="so-count" id="soCatalogCount"><?= count($catalog) ?></span></div><p>Manage the subjects your department contributes to the shared catalog.</p></div><a class="so-link" href="<?= site_url('chairperson/curriculum') ?>">Curriculum Builder<span class="material-symbols-outlined" aria-hidden="true">arrow_outward</span></a></header>
+            <div class="so-toolbar">
+                <div class="so-search"><span class="material-symbols-outlined" aria-hidden="true">search</span><label class="so-sr-only" for="soSearch">Search subjects by code or title</label><input type="search" id="soSearch" placeholder="Search by subject code or title…" autocomplete="off"><kbd>/</kbd></div>
+                <div class="so-filter"><label for="soType">Class type</label><select id="soType"><option value="all">All types</option><option value="lecture">Lecture</option><option value="lab">Laboratory</option></select></div>
+                <?php if (count($deptNames) > 1): ?><div class="so-filter"><label for="soDepartment">Department</label><select id="soDepartment"><option value="all">All departments</option><?php foreach ($deptNames as $id => $name): ?><option value="<?= (int) $id ?>"><?= esc($name) ?></option><?php endforeach ?></select></div><?php endif ?>
+            </div>
+            <div class="so-list-controls"><nav class="so-status-tabs" aria-label="Filter subjects by status"><button type="button" class="is-active" data-status="all" aria-pressed="true">All subjects <span id="soAllTab"><?= count($catalog) ?></span></button><button type="button" data-status="active" aria-pressed="false">Active</button><button type="button" data-status="inactive" aria-pressed="false">Inactive</button></nav><div class="so-sort"><label for="soSort">Sort by</label><select id="soSort"><option value="code">Subject code</option><option value="title">Subject title</option></select></div></div>
+            <div class="so-table-wrap" id="soTableWrap"><table class="so-table"><caption class="so-sr-only">Subjects owned by your departments</caption><thead><tr><th scope="col">Subject</th><th scope="col">Units</th><th scope="col">Class type</th><th scope="col">Meeting length</th><th scope="col">Status</th><th scope="col" class="so-actions-heading">Actions</th></tr></thead><tbody id="soRows"></tbody></table></div>
+            <div class="so-empty" id="soEmpty" hidden><span class="material-symbols-outlined" aria-hidden="true">search_off</span><h3 id="soEmptyTitle">No matching subjects</h3><p id="soEmptyText">Try a different search or adjust your filters.</p><button type="button" class="so-button" id="soClearFilters">Clear filters</button><button type="button" class="so-button so-button--primary" id="soEmptyAdd" data-open-add hidden>Add your first subject</button></div>
+            <footer class="so-pagination"><p id="soRange" role="status" aria-live="polite"></p><div><button type="button" class="so-page-button" id="soPrevious" aria-label="Previous page"><span class="material-symbols-outlined" aria-hidden="true">chevron_left</span></button><span id="soPageNumber"></span><button type="button" class="so-page-button" id="soNext" aria-label="Next page"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button></div></footer>
+            <noscript><p class="so-notice">Enable JavaScript to browse and manage your subject catalog.</p></noscript>
+        </section>
+        <aside class="so-notice"><span class="material-symbols-outlined" aria-hidden="true">info</span><p><strong>A shared catalog, without duplicates.</strong> Reuse existing subjects through the Curriculum Builder. Inactive subjects are hidden from new assignments; subjects on live schedules cannot be deactivated.</p></aside>
 
-<div class="ac-page-header">
-    <div>
-        <h2 class="ac-page-header__title">Subject Ownership</h2>
-        <p class="ac-page-header__sub">Which subjects your department owns. These are the subjects the Curriculum Builder can draw from — yours and every other department's — never duplicated per program.</p>
-    </div>
-</div>
-
-<?php if (! $hasAnyDept): ?>
-    <div class="panel">
-        <div class="empty-state">
-            <div class="material-symbols-outlined">domain_disabled</div>
-            <p>You're not assigned to a department yet. Contact an administrator.</p>
-        </div>
-    </div>
-<?php else: ?>
-
-    <div id="feedback" class="flash" style="display:none;"></div>
-
-    <div class="panel" style="padding:20px 24px; margin-bottom:20px;">
-        <h3 style="margin:0 0 4px; font-size:15px;">Add a Subject</h3>
-        <p style="font-size:12.5px; color:var(--color-text-secondary); margin:0 0 14px;">Creates a subject owned by your department. If the code already exists elsewhere, use the Curriculum Builder's search to reuse it instead.</p>
-
-        <form id="addForm" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-            <?php if (count($deptNames) > 1): ?>
-                <div>
-                    <label style="display:block; font-size:12px; margin-bottom:4px;">Department</label>
-                    <select name="sub_department_id" id="addSubDept" style="min-width:160px;">
-                        <?php foreach ($deptNames as $id => $name): ?>
-                            <option value="<?= (int) $id ?>"><?= esc($name) ?></option>
-                        <?php endforeach ?>
-                    </select>
+        <dialog class="so-dialog" id="soEditor" aria-labelledby="soEditorTitle" aria-describedby="soEditorDescription">
+            <form id="soForm">
+                <header class="so-dialog-header"><div><div class="so-eyebrow">SUBJECT DETAILS</div><h3 id="soEditorTitle">Add a subject</h3><p id="soEditorDescription">Create a subject for your department’s shared catalog.</p></div><button type="button" class="so-icon-button" data-close-editor aria-label="Close subject editor"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></header>
+                <div class="so-dialog-body">
+                    <div class="so-feedback is-error" id="soFormError" role="alert" hidden></div>
+                    <div class="so-field" id="soOwnerField"><label for="soOwner">Owning department</label><select id="soOwner" required><?php foreach ($deptNames as $id => $name): ?><option value="<?= (int) $id ?>"><?= esc($name) ?></option><?php endforeach ?></select></div>
+                    <div class="so-field"><label for="soCode">Subject code <span>Required</span></label><input id="soCode" type="text" placeholder="e.g. ITE 101" maxlength="20" minlength="2" required aria-describedby="soCodeHelp"><small id="soCodeHelp">Use a unique code, 2–20 characters. Letters are capitalized automatically.</small></div>
+                    <div class="so-field"><label for="soTitle">Subject title <span>Required</span></label><input id="soTitle" type="text" placeholder="e.g. Introduction to Computing" maxlength="200" required></div>
+                    <div class="so-form-grid"><div class="so-field"><label for="soUnits">Units</label><input id="soUnits" type="number" min="0.5" max="6" step="any" value="3" required><small>Between 0.5 and 6 units.</small></div><div class="so-field"><label for="soDuration">Meeting length</label><select id="soDuration" required><?php foreach ($durations as $d): ?><option value="<?= (float) $d ?>" <?= (float) $d === 1.5 ? 'selected' : '' ?>><?= (float) $d ?> <?= (float) $d === 1.0 ? 'hour' : 'hours' ?></option><?php endforeach ?></select><small>Duration of each meeting.</small></div></div>
+                    <fieldset class="so-type-options"><legend>Class type</legend><label><input type="radio" name="class_type" value="lecture" checked><span class="material-symbols-outlined" aria-hidden="true">menu_book</span><span><strong>Lecture</strong><small>Classroom instruction</small></span></label><label><input type="radio" name="class_type" value="lab"><span class="material-symbols-outlined" aria-hidden="true">science</span><span><strong>Laboratory</strong><small>Practical instruction</small></span></label></fieldset>
+                    <p class="so-editor-hint" id="soEditorHint"><span class="material-symbols-outlined" aria-hidden="true">info</span>Already in the catalog? Reuse it through the Curriculum Builder.</p>
                 </div>
-            <?php endif ?>
-            <div>
-                <label style="display:block; font-size:12px; margin-bottom:4px;">Code</label>
-                <input type="text" id="addCode" placeholder="e.g. ITE 101" style="width:140px;">
-            </div>
-            <div style="flex:1; min-width:200px;">
-                <label style="display:block; font-size:12px; margin-bottom:4px;">Title</label>
-                <input type="text" id="addTitle" placeholder="Subject title" style="width:100%;">
-            </div>
-            <div>
-                <label style="display:block; font-size:12px; margin-bottom:4px;">Units</label>
-                <input type="number" id="addUnits" min="0.5" max="6" step="0.5" value="3" style="width:80px;">
-            </div>
-            <div>
-                <label style="display:block; font-size:12px; margin-bottom:4px;">Meeting length</label>
-                <select id="addDuration" style="width:120px;">
-                    <?php foreach ($durations as $d): ?>
-                        <option value="<?= $d ?>" <?= $d === 1.5 ? 'selected' : '' ?>><?= rtrim(rtrim(number_format($d, 1), '0'), '.') ?> hrs</option>
-                    <?php endforeach ?>
-                </select>
-            </div>
-            <label style="display:flex; align-items:center; gap:6px;">
-                <input type="checkbox" id="addLab"> Laboratory
-            </label>
-            <button type="submit" class="btn btn-primary">+ Add Subject</button>
-        </form>
-    </div>
-
-    <div class="panel mc-card">
-        <div class="mc-card__head">
-            <div class="mc-card__title-row">
-                <h2>Owned Subjects</h2>
-                <span class="mc-count"><?= count($subjects) ?></span>
-            </div>
-            <p>Deactivating a subject hides it from new curriculum assignments — it's blocked outright while plotted on any live schedule.</p>
-        </div>
-
-        <?php if (empty($subjects)): ?>
-            <div class="empty-state">
-                <div class="material-symbols-outlined">menu_book</div>
-                <p>Your department doesn't own any subjects yet. Add one above.</p>
-            </div>
-        <?php else: ?>
-            <table class="data-table" style="width:100%; border-collapse:collapse;">
-                <thead>
-                    <tr style="text-align:left; font-size:11px; text-transform:uppercase; color:var(--color-text-tertiary); border-bottom:1px solid var(--color-border);">
-                        <th style="padding:10px 24px;">Code</th>
-                        <th style="padding:10px;">Title</th>
-                        <th style="padding:10px;">Units</th>
-                        <th style="padding:10px;">Type</th>
-                        <th style="padding:10px;">Status</th>
-                        <th style="padding:10px 24px; text-align:right;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="subjectRows">
-                    <?php foreach ($subjects as $s): ?>
-                        <tr data-id="<?= (int) $s['subject_id'] ?>" data-duration="<?= (float) $s['contact_hours'] ?>" style="border-bottom:1px solid var(--color-border);">
-                            <td style="padding:10px 24px; font-weight:700;"><?= esc($s['subject_code']) ?></td>
-                            <td style="padding:10px;" class="s-title"><?= esc($s['subject_name']) ?></td>
-                            <td style="padding:10px;" class="s-units"><?= (float) $s['units'] ?></td>
-                            <td style="padding:10px;"><span class="s-lab"><?= $s['is_laboratory'] ? 'Laboratory' : 'Lecture' ?></span></td>
-                            <td style="padding:10px;">
-                                <span class="ac-status-dot <?= $s['is_active'] ? 'ac-status-dot--active' : 'ac-status-dot--inactive' ?>">
-                                    <?= $s['is_active'] ? 'Active' : 'Inactive' ?>
-                                </span>
-                            </td>
-                            <td style="padding:10px 24px; text-align:right; white-space:nowrap;">
-                                <button type="button" class="ac-btn-outline" data-act="edit">Edit</button>
-                                <button type="button" class="ac-btn-outline" data-act="toggle"><?= $s['is_active'] ? 'Deactivate' : 'Activate' ?></button>
-                            </td>
-                        </tr>
-                    <?php endforeach ?>
-                </tbody>
-            </table>
-        <?php endif ?>
-    </div>
-
-<?php endif ?>
-
+                <footer class="so-dialog-footer"><button type="button" class="so-button" data-close-editor>Cancel</button><button type="submit" class="so-button so-button--primary" id="soSave">Add subject</button></footer>
+            </form>
+        </dialog>
+        <dialog class="so-dialog so-dialog--small" id="soStatusDialog" aria-labelledby="soStatusTitle" aria-describedby="soStatusDescription"><div class="so-dialog-header"><div><div class="so-eyebrow">CATALOG AVAILABILITY</div><h3 id="soStatusTitle">Deactivate subject?</h3></div><button type="button" class="so-icon-button" id="soCloseStatus" aria-label="Close status dialog"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div><div class="so-dialog-body"><div class="so-feedback is-error" id="soStatusError" role="alert" hidden></div><strong id="soStatusSubject"></strong><p id="soStatusDescription"></p></div><footer class="so-dialog-footer"><button type="button" class="so-button" id="soCancelStatus">Cancel</button><button type="button" class="so-button so-button--danger" id="soConfirmStatus">Deactivate subject</button></footer></dialog>
+    <?php endif ?>
+</div>
 <?= $this->endSection() ?>
-
 <?= $this->section('scripts') ?>
-<script>
-    function showFeedback(message, isError) {
-        const el = document.getElementById('feedback');
-        if (!el) return;
-        el.style.display = 'block';
-        el.className = 'flash ' + (isError ? 'error' : 'success');
-        el.textContent = message;
-    }
-
-    async function postJSON(url, body) {
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify(body),
-        });
-        return res.json();
-    }
-
-    document.getElementById('addForm')?.addEventListener('submit', async (evt) => {
-        evt.preventDefault();
-
-        const deptSelect = document.getElementById('addSubDept');
-        const body = {
-            sub_department_id: deptSelect ? parseInt(deptSelect.value, 10) : undefined,
-            code: document.getElementById('addCode').value.trim().toUpperCase(),
-            title: document.getElementById('addTitle').value.trim(),
-            units: parseFloat(document.getElementById('addUnits').value),
-            duration: parseFloat(document.getElementById('addDuration').value),
-            is_lab: document.getElementById('addLab').checked,
-        };
-
-        if (!body.code || !body.title) {
-            showFeedback('Code and title are required.', true);
-            return;
-        }
-
-        const result = await postJSON('<?= site_url('chairperson/subject-ownership/store') ?>', body);
-
-        if (!result.ok) {
-            showFeedback(result.error || 'Could not add the subject.', true);
-            return;
-        }
-
-        showFeedback(`${body.code} added.`, false);
-        setTimeout(() => location.reload(), 600);
-    });
-
-    document.getElementById('subjectRows')?.addEventListener('click', async (evt) => {
-        const btn = evt.target.closest('button[data-act]');
-        if (!btn) return;
-        const row = btn.closest('tr');
-        const id = row.dataset.id;
-
-        if (btn.dataset.act === 'toggle') {
-            const result = await postJSON('<?= site_url('chairperson/subject-ownership') ?>/' + id + '/toggle-status', {});
-            if (!result.ok) { showFeedback(result.error || 'Could not update status.', true); return; }
-            location.reload();
-            return;
-        }
-
-        if (btn.dataset.act === 'edit') {
-            const title = row.querySelector('.s-title').textContent;
-            const units = row.querySelector('.s-units').textContent;
-            const isLab = row.querySelector('.s-lab').textContent.trim() === 'Laboratory';
-
-            const newTitle = prompt('Title', title);
-            if (newTitle === null) return;
-            const newUnits = prompt('Units', units);
-            if (newUnits === null) return;
-
-            const result = await postJSON('<?= site_url('chairperson/subject-ownership') ?>/' + id + '/update', {
-                title: newTitle.trim(), units: parseFloat(newUnits), duration: parseFloat(row.dataset.duration), is_lab: isLab,
-            });
-
-            if (!result.ok) { showFeedback(result.error || 'Could not save.', true); return; }
-            location.reload();
-        }
-    });
-</script>
+<?php if ($hasAnyDept): ?>
+<script type="application/json" id="soConfig"><?= json_encode(['subjects' => $catalog, 'departments' => (object) $deptNames, 'courses' => (object) $courses, 'subjectCourses' => (object) $subjectCourses, 'endpoint' => site_url('chairperson/subject-ownership')], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+<script src="<?= base_url('assets/js/subject-ownership.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/subject-ownership.js') ?>"></script>
+<?php endif ?>
 <?= $this->endSection() ?>

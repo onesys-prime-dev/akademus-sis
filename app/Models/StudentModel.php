@@ -77,16 +77,11 @@ class StudentModel extends Model
             $programCreated = $resolved['created'] ? $resolved['program'] : null;
         }
 
-        // Pin the student to whichever curriculum version is currently
-        // published+current for their program. If the program has no
-        // published curriculum yet, the student is left unassigned
-        // (curriculum_id null) rather than blocking promotion — that's an
-        // administrative gap to fill in later via Student Records, not a
-        // reason to refuse creating the student record.
+        // Pin the student to their program's (single, always-live) curriculum.
         $curriculumId = null;
 
         if ($programId !== null) {
-            $curriculum = (new CurriculumModel())->currentPublishedFor($programId);
+            $curriculum = (new CurriculumModel())->liveFor($programId);
             $curriculumId = $curriculum['curriculum_id'] ?? null;
         }
 
@@ -316,7 +311,7 @@ class StudentModel extends Model
                       u.id as user_id, u.first_name, u.last_name, u.username, u.section_id,
                       i.secret as email,
                       p.program_id, p.program_code, p.program_name,
-                      c.curriculum_id, c.curriculum_code, c.version_number as curriculum_version, c.status as curriculum_status,
+                      c.curriculum_id, c.curriculum_code,
                       sec.section, sec.year_level, sec.academic_year')
             ->join('users u', 'u.id = s.user_id')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
@@ -365,8 +360,7 @@ class StudentModel extends Model
         $student = $this->db->table('students s')
             ->select('s.*, u.id as user_id, u.username, u.first_name, u.middle_name, u.last_name, u.contact_number, u.section_id,
                       i.secret as email, p.program_id, p.program_code, p.program_name,
-                      c.curriculum_code, c.curriculum_name, c.version_number as curriculum_version,
-                      c.status as curriculum_status, c.base_curriculum_id as curriculum_base_id')
+                      c.curriculum_code, c.curriculum_name')
             ->join('users u', 'u.id = s.user_id')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
             ->join('programs p', 'p.program_id = s.program_id', 'left')
@@ -383,21 +377,19 @@ class StudentModel extends Model
             ? (new SectionModel())->find((int) $student['section_id'])
             : null;
 
-        // Every published version of this student's curriculum lineage —
-        // lets the registrar pick a specific version, or move the student
-        // to a newer one when they change.
+        // Every curriculum for the student's program — lets the registrar
+        // move the student between programs/curricula when they transfer.
         $student['available_curricula'] = $student['program_id']
             ? (new CurriculumModel())
                 ->where('program_id', $student['program_id'])
-                ->where('status', 'published')
-                ->orderBy('version_number', 'DESC')
+                ->orderBy('curriculum_id', 'DESC')
                 ->findAll()
             : [];
 
         $student['curriculum_history'] = $this->db->table('student_curriculum_logs l')
             ->select('l.reason, l.created_at, u2.username as changed_by_username,
-                      cf.curriculum_code as from_code, cf.version_number as from_version,
-                      ct.curriculum_code as to_code, ct.version_number as to_version')
+                      cf.curriculum_code as from_code,
+                      ct.curriculum_code as to_code')
             ->join('users u2', 'u2.id = l.changed_by', 'left')
             ->join('curriculum cf', 'cf.curriculum_id = l.from_curriculum_id', 'left')
             ->join('curriculum ct', 'ct.curriculum_id = l.to_curriculum_id', 'left')
@@ -491,10 +483,9 @@ class StudentModel extends Model
     }
 
     /**
-     * Assigns or reassigns a student's curriculum version — the "adviser-
-     * approved equivalency mapping, itself audited" the handbook calls for
-     * when a student's curriculum changes. Only published curricula may be
-     * assigned (a draft isn't a real, stable snapshot yet).
+     * Assigns or reassigns a student's curriculum — the "adviser-approved
+     * equivalency mapping, itself audited" the handbook calls for when a
+     * student's curriculum changes.
      */
     public function assignCurriculum(int $studentId, int $curriculumId, string $reason, ?int $changedBy): array
     {
@@ -506,8 +497,8 @@ class StudentModel extends Model
 
         $curriculum = (new CurriculumModel())->find($curriculumId);
 
-        if ($curriculum === null || $curriculum['status'] !== 'published') {
-            return ['ok' => false, 'error' => 'Only a published curriculum version may be assigned.'];
+        if ($curriculum === null) {
+            return ['ok' => false, 'error' => 'Curriculum not found.'];
         }
 
         if ((int) ($student['curriculum_id'] ?? 0) === $curriculumId) {

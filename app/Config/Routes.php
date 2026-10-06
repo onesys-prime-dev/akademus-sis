@@ -91,8 +91,6 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('curriculum/update/(:num)', 'Admin\CurriculumController::update/$1');
 
     $routes->post('curriculum/toggle/(:num)', 'Admin\CurriculumController::toggleStatus/$1');
-    $routes->post('curriculum/publish/(:num)', 'Admin\CurriculumController::publish/$1');
-    $routes->post('curriculum/new-version/(:num)', 'Admin\CurriculumController::newVersion/$1');
 
     $routes->get('curriculum-subjects'       , 'Admin\CurriculumSubjectController::index');
     $routes->get('curriculum-subjects/create', 'Admin\CurriculumSubjectController::create');
@@ -116,6 +114,7 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->get('sub-departments/(:num)'              , 'Admin\SubDepartmentController::show/$1');
     $routes->post('sub-departments/(:num)/update'      , 'Admin\SubDepartmentController::update/$1');
     $routes->post('sub-departments/(:num)/store-chair' , 'Admin\SubDepartmentController::storeChair/$1');
+    $routes->post('sub-departments/(:num)/chair/(:num)/remove', 'Admin\SubDepartmentController::removeChair/$1/$2');
     $routes->post('sub-departments/(:num)/transfer'    , 'Admin\SubDepartmentController::transfer/$1');
     $routes->post('sub-departments/(:num)/programs'    , 'Admin\SubDepartmentController::addProgram/$1');
     $routes->post('sub-departments/(:num)/toggle-status', 'Admin\SubDepartmentController::toggleStatus/$1');
@@ -265,7 +264,6 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     // Curriculum Builder (formal curriculum/curriculum_subjects, draft-scoped —
     // the sole supported curriculum source of truth)
     $routes->get('curriculum', 'Chairperson\CurriculumBuilderController::index');
-    $routes->post('curriculum-builder/create-draft', 'Chairperson\CurriculumBuilderController::createDraft');
     $routes->post('curriculum-builder/add-subject', 'Chairperson\CurriculumBuilderController::addSubject');
     $routes->post('curriculum-builder/subject/(:num)/remove', 'Chairperson\CurriculumBuilderController::removeSubject/$1');
     $routes->post('curriculum-builder/subject/(:num)/classification', 'Chairperson\CurriculumBuilderController::updateClassification/$1');

@@ -1,242 +1,170 @@
 <?= $this->extend('layouts/admin_console') ?>
-
 <?php
-$activeAdmin   = 'curriculum-builder';
-$pageTitle     = 'Curriculum Builder';
-$brandSub      = 'Chairperson Portal';
-$userName      = $user['name'];
+$activeAdmin = 'curriculum';
+$pageTitle = 'Curriculum Builder';
+$brandSub = 'Chairperson Portal';
+$userName = $user['name'];
 $userRoleLabel = $user['role'];
-$navGroups     = require __DIR__ . '/_nav.php';
+$navGroups = require __DIR__ . '/_nav.php';
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
+$yearNames = [1 => '1st Year', 2 => '2nd Year', 3 => '3rd Year', 4 => '4th Year'];
+$termUnits = array_sum(array_column($termSubjects, 'units'));
 ?>
-
 <?= $this->section('styles') ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/curriculum-builder.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/curriculum-builder.css') ?>">
 <?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
-
-<div class="ac-page-header">
-    <div>
-        <h2 class="ac-page-header__title">Curriculum Builder</h2>
-        <p class="ac-page-header__sub">Build your program's curriculum by year level and semester. Subjects come from the shared subject catalog, owned by any department. Publishing is an Admin step — your changes here stay a draft until reviewed.</p>
-    </div>
-</div>
-
-<?php if (empty($programs)): ?>
-    <div class="panel">
-        <div class="empty-state">
-            <div class="material-symbols-outlined">domain_disabled</div>
-            <p>You're not assigned to any program yet. Contact an administrator.</p>
-        </div>
-    </div>
-<?php else: ?>
-
-    <div id="feedback" class="flash" style="display:none;"></div>
-
-    <div class="panel" style="padding:16px 24px; margin-bottom:16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-        <label style="font-size:12px; font-weight:700;">Program</label>
-        <select id="programSelect">
-            <?php foreach ($programs as $p): ?>
-                <option value="<?= (int) $p['program_id'] ?>" <?= (int) $p['program_id'] === (int) $selectedProgram ? 'selected' : '' ?>><?= esc($p['program_name']) ?> (<?= esc($p['program_code']) ?>)</option>
-            <?php endforeach ?>
-        </select>
-
-        <?php
-            $published = current(array_filter($versions, static fn ($v) => $v['status'] === 'published' && $v['is_current']));
-            $archivedCount = count(array_filter($versions, static fn ($v) => $v['status'] === 'archived'));
-        ?>
-        <span class="mc-cap-pill">
-            <?= $published ? 'Published: ' . esc($published['curriculum_code']) . ' v' . (int) $published['version_number'] : 'Not published yet' ?>
-        </span>
-        <?php if ($archivedCount > 0): ?>
-            <span class="mc-cap-pill"><?= $archivedCount ?> archived version<?= $archivedCount === 1 ? '' : 's' ?></span>
-        <?php endif ?>
-    </div>
-
-    <?php if ($draft === null): ?>
-        <div class="panel">
-            <div class="empty-state">
-                <div class="material-symbols-outlined">edit_note</div>
-                <p><?= $published ? 'No draft in progress. Start a new version from the published curriculum to make changes.' : 'This program has no curriculum yet.' ?></p>
-                <form method="post" action="<?= site_url('chairperson/curriculum-builder/create-draft') ?>">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="program_id" value="<?= (int) $selectedProgram ?>">
-                    <button type="submit" class="btn btn-primary"><?= $published ? 'Start New Draft Version' : 'Start Curriculum' ?></button>
-                </form>
-            </div>
-        </div>
+<div class="cb-page">
+    <header class="cb-heading">
+        <div><div class="cb-eyebrow">ACADEMIC PLANNING</div><h2>Curriculum Builder</h2><p>Shape your program, one semester at a time.</p></div>
+        <span class="cb-heading-note"><span class="material-symbols-outlined" aria-hidden="true">auto_stories</span> Program workspace</span>
+    </header>
+    <div id="feedback" class="cb-feedback" role="status" aria-live="polite" hidden></div>
+    <?php if (empty($programs)): ?>
+        <div class="cb-card cb-empty"><span class="material-symbols-outlined" aria-hidden="true">domain_disabled</span><h3>No program assigned</h3><p>Contact an administrator to assign a program to your account.</p></div>
     <?php else: ?>
-
-        <div class="panel mc-card">
-            <div class="mc-card__head">
-                <div class="mc-card__title-row">
-                    <h2><?= esc($draft['curriculum_code']) ?> — v<?= (int) $draft['version_number'] ?></h2>
-                    <span class="mc-count">Draft</span>
-                </div>
-                <p>Not visible to students or demand tracking until an admin publishes it. Published curricula are immutable — further changes need a new version.</p>
-            </div>
-
-            <div style="padding:16px 24px; display:flex; gap:8px; flex-wrap:wrap; border-bottom:1px solid var(--color-border);">
-                <?php foreach ([1, 2, 3, 4] as $yl): ?>
-                    <button type="button" class="btn <?= $yl === $yearLevel ? 'btn-primary' : 'btn-secondary' ?> yl-tab" data-year="<?= $yl ?>"><?= $yl ?><?= ['', 'st', 'nd', 'rd', 'th'][$yl] ?? 'th' ?> Year</button>
-                <?php endforeach ?>
-                <span style="width:1px; background:var(--color-border);"></span>
-                <?php foreach ($semesters as $val => $label): ?>
-                    <button type="button" class="btn <?= $val === $semester ? 'btn-primary' : 'btn-secondary' ?> sem-tab" data-sem="<?= $val ?>"><?= esc($label) ?></button>
-                <?php endforeach ?>
-            </div>
-
-            <div style="padding:16px 24px;">
-                <?php if (empty($termSubjects)): ?>
-                    <div class="empty-state">
-                        <div class="material-symbols-outlined">inbox</div>
-                        <p>No subjects assigned to this term yet.</p>
+        <section class="cb-card cb-program" aria-label="Program">
+            <div class="cb-program-icon"><span class="material-symbols-outlined" aria-hidden="true">school</span></div>
+            <div class="cb-program-field"><label for="programSelect">PROGRAM</label><select id="programSelect"><?php foreach ($programs as $p): ?><option value="<?= (int) $p['program_id'] ?>" <?= (int) $p['program_id'] === (int) $selectedProgram ? 'selected' : '' ?>><?= esc($p['program_name']) ?> (<?= esc($p['program_code']) ?>)</option><?php endforeach ?></select></div>
+            <div class="cb-published"><span class="cb-version-code"><?= esc($curriculum['curriculum_code']) ?></span></div>
+        </section>
+            <section class="cb-card cb-workspace" aria-label="Curriculum editor">
+                <header class="cb-draft-header"><div><div class="cb-draft-title"><h3>Curriculum</h3></div><p class="cb-draft-code"><?= esc($curriculum['curriculum_name']) ?></p></div><span class="cb-save-note" id="saveStatus" role="status"><span class="material-symbols-outlined" aria-hidden="true">cloud_done</span> Changes save automatically</span></header>
+                <div class="cb-editor">
+                    <aside class="cb-years"><div class="cb-eyebrow">YEAR LEVEL</div><nav aria-label="Year level"><?php foreach ($yearNames as $yl => $label): ?><button type="button" class="yl-tab <?= $yl === (int) $yearLevel ? 'is-active' : '' ?>" data-year="<?= $yl ?>" aria-current="<?= $yl === (int) $yearLevel ? 'true' : 'false' ?>"><span class="cb-year-number">0<?= $yl ?></span><span><?= $label ?></span><span class="material-symbols-outlined cb-year-arrow" aria-hidden="true">chevron_right</span></button><?php endforeach ?></nav><div class="cb-year-help"><span class="material-symbols-outlined" aria-hidden="true">info</span><p>Choose a year, then a semester to manage its subjects.</p></div></aside>
+                    <div class="cb-term">
+                        <nav class="cb-semesters" aria-label="Semester"><?php foreach ($semesters as $val => $label): ?><button type="button" class="sem-tab <?= (string) $val === (string) $semester ? 'is-active' : '' ?>" data-sem="<?= esc((string) $val) ?>" aria-current="<?= (string) $val === (string) $semester ? 'true' : 'false' ?>"><?= esc($label) ?></button><?php endforeach ?></nav>
+                        <div class="cb-term-body"><div class="cb-term-heading"><div><div class="cb-eyebrow"><?= esc($yearNames[$yearLevel]) ?></div><h3><?= esc($semesters[$semester]) ?></h3><p>Manage the subjects for this term.</p></div><div class="cb-totals"><div><strong id="subjectCount"><?= count($termSubjects) ?></strong><span>Subjects</span></div><div><strong id="unitCount"><?= (float) $termUnits ?></strong><span>Total units</span></div></div></div>
+                        <div class="cb-catalog"><label for="subjectSearch">Add a subject</label><div class="cb-search-field"><span class="material-symbols-outlined" aria-hidden="true">search</span><input type="search" id="subjectSearch" placeholder="Search the catalog by code or title…" autocomplete="off" aria-describedby="searchHint" aria-controls="subjectSearchResults" aria-expanded="false"><kbd>/</kbd></div><div id="subjectSearchResults" class="cb-search-results" hidden></div><p id="searchHint">Subjects from all departments are available in the shared catalog.</p></div>
+                        <div class="cb-table-wrap" id="subjectTableWrap" <?= empty($termSubjects) ? 'hidden' : '' ?>><table class="cb-table"><caption class="cb-sr-only">Subjects assigned to <?= esc($yearNames[$yearLevel] . ', ' . $semesters[$semester]) ?></caption><thead><tr><th scope="col">Subject</th><th scope="col">Units</th><th scope="col">Class type</th><th scope="col"><span class="cb-sr-only">Actions</span></th></tr></thead><tbody id="subjectRows"><?php foreach ($termSubjects as $ts): ?><?php $isLab = $ts['assignment_is_laboratory'] !== null ? (bool) $ts['assignment_is_laboratory'] : (bool) $ts['default_is_laboratory']; ?><tr data-cs-id="<?= (int) $ts['curriculum_subject_id'] ?>" data-units="<?= (float) $ts['units'] ?>"><td><span class="cb-subject-code"><?= esc($ts['subject_code']) ?></span><span class="cb-subject-name"><?= esc($ts['subject_name']) ?></span></td><td><span class="cb-unit"><?= (float) $ts['units'] ?></span></td><td><select class="type-select" aria-label="Class type for <?= esc($ts['subject_code'], 'attr') ?>" data-saved="<?= $isLab ? '1' : '0' ?>"><option value="0" <?= !$isLab ? 'selected' : '' ?>>Lecture</option><option value="1" <?= $isLab ? 'selected' : '' ?>>Laboratory</option></select></td><td><button type="button" class="cb-remove" data-act="remove" aria-label="Remove <?= esc($ts['subject_code'], 'attr') ?>"><span class="material-symbols-outlined" aria-hidden="true">delete</span><span>Remove</span></button></td></tr><?php endforeach ?></tbody></table></div>
+                        <div class="cb-empty cb-term-empty" id="termEmpty" <?= !empty($termSubjects) ? 'hidden' : '' ?>><span class="material-symbols-outlined" aria-hidden="true">library_books</span><h3>A fresh start for this semester</h3><p>Search the catalog above to add your first subject.</p></div>
+                        </div>
                     </div>
-                <?php else: ?>
-                    <table class="data-table" style="width:100%; border-collapse:collapse; margin-bottom:16px;">
-                        <thead>
-                            <tr style="text-align:left; font-size:11px; text-transform:uppercase; color:var(--color-text-tertiary); border-bottom:1px solid var(--color-border);">
-                                <th style="padding:8px;">Code</th>
-                                <th style="padding:8px;">Title</th>
-                                <th style="padding:8px;">Units</th>
-                                <th style="padding:8px;">Type</th>
-                                <th style="padding:8px; text-align:right;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($termSubjects as $ts): ?>
-                                <?php $isLab = $ts['assignment_is_laboratory'] !== null ? (bool) $ts['assignment_is_laboratory'] : (bool) $ts['default_is_laboratory']; ?>
-                                <tr data-cs-id="<?= (int) $ts['curriculum_subject_id'] ?>" style="border-bottom:1px solid var(--color-border);">
-                                    <td style="padding:8px; font-weight:700;"><?= esc($ts['subject_code']) ?></td>
-                                    <td style="padding:8px;"><?= esc($ts['subject_name']) ?></td>
-                                    <td style="padding:8px;"><?= (float) $ts['units'] ?></td>
-                                    <td style="padding:8px;">
-                                        <select class="type-select">
-                                            <option value="0" <?= ! $isLab ? 'selected' : '' ?>>Lecture</option>
-                                            <option value="1" <?= $isLab ? 'selected' : '' ?>>Laboratory</option>
-                                        </select>
-                                    </td>
-                                    <td style="padding:8px; text-align:right;">
-                                        <button type="button" class="ac-btn-outline" data-act="remove">Remove</button>
-                                    </td>
-                                </tr>
-                            <?php endforeach ?>
-                        </tbody>
-                    </table>
-                <?php endif ?>
-
-                <div style="position:relative; max-width:420px;">
-                    <input type="text" id="subjectSearch" placeholder="Search subjects by code or title to add…" autocomplete="off" style="width:100%; padding:8px 10px; border:1px solid var(--color-border); border-radius:6px;">
-                    <div id="subjectSearchResults" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:20; background:var(--color-surface, #fff); border:1px solid var(--color-border, #d1d5db); border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,.08); margin-top:4px; max-height:240px; overflow-y:auto;"></div>
                 </div>
-            </div>
-        </div>
-
+            </section>
     <?php endif ?>
-
-<?php endif ?>
-
+</div>
 <?= $this->endSection() ?>
-
 <?= $this->section('scripts') ?>
 <script>
-    const DRAFT_ID = <?= $draft ? (int) $draft['curriculum_id'] : 'null' ?>;
+(() => {
+    const CURRICULUM_ID = <?= $curriculum ? (int) $curriculum['curriculum_id'] : 'null' ?>;
     const YEAR_LEVEL = <?= (int) $yearLevel ?>;
     const SEMESTER = '<?= esc($semester, 'js') ?>';
     const PROGRAM_ID = <?= (int) $selectedProgram ?>;
-
-    function showFeedback(message, isError) {
-        const el = document.getElementById('feedback');
-        if (!el) return;
-        el.style.display = 'block';
-        el.className = 'flash ' + (isError ? 'error' : 'success');
-        el.textContent = message;
-    }
-
-    async function postJSON(url, body) {
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify(body),
-        });
-        return res.json();
-    }
-
-    function gotoTerm(year, sem) {
-        const url = new URL(window.location.href);
-        url.searchParams.set('program_id', PROGRAM_ID);
-        url.searchParams.set('year_level', year);
-        url.searchParams.set('semester', sem);
-        window.location.href = url.toString();
-    }
-
-    document.getElementById('programSelect')?.addEventListener('change', (evt) => {
-        const url = new URL(window.location.href);
-        url.searchParams.set('program_id', evt.target.value);
-        url.searchParams.delete('year_level');
-        url.searchParams.delete('semester');
-        window.location.href = url.toString();
-    });
-
-    document.querySelectorAll('.yl-tab').forEach(btn => btn.addEventListener('click', () => gotoTerm(btn.dataset.year, SEMESTER)));
-    document.querySelectorAll('.sem-tab').forEach(btn => btn.addEventListener('click', () => gotoTerm(YEAR_LEVEL, btn.dataset.sem)));
-
-    document.querySelectorAll('.type-select').forEach(select => select.addEventListener('change', async function () {
-        const row = this.closest('tr');
-        const result = await postJSON('<?= site_url('chairperson/curriculum-builder/subject') ?>/' + row.dataset.csId + '/classification', {
-            is_laboratory: this.value === '1',
-        });
-        if (!result.ok) { showFeedback(result.error || 'Could not update.', true); }
-    }));
-
-    document.querySelectorAll('[data-act="remove"]').forEach(btn => btn.addEventListener('click', async function () {
-        const row = this.closest('tr');
-        const result = await postJSON('<?= site_url('chairperson/curriculum-builder/subject') ?>/' + row.dataset.csId + '/remove', {});
-        if (!result.ok) { showFeedback(result.error || 'Could not remove.', true); return; }
-        row.remove();
-    }));
-
+    const endpoint = '<?= site_url('chairperson/curriculum-builder') ?>';
     const searchInput = document.getElementById('subjectSearch');
     const searchResults = document.getElementById('subjectSearchResults');
-    let searchTimer = null;
-
-    function hideSearchResults() {
-        if (!searchResults) return;
-        searchResults.style.display = 'none';
-        searchResults.innerHTML = '';
+    let searchTimer, searchController, searchSequence = 0, mutationBusy = false;
+    function feedback(message, error = false) {
+        const el = document.getElementById('feedback');
+        el.hidden = false;
+        el.className = 'cb-feedback' + (error ? ' is-error' : '');
+        el.textContent = message;
     }
-
+    function saveStatus(text) {
+        const el = document.getElementById('saveStatus');
+        if (el) el.textContent = text;
+    }
+    async function post(path, body) {
+        const res = await fetch(endpoint + path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify(body) });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Unable to save. Please try again.');
+        return data;
+    }
+    function navigate(year, semester) {
+        const url = new URL(location.href);
+        url.searchParams.set('program_id', PROGRAM_ID);
+        url.searchParams.set('year_level', year);
+        url.searchParams.set('semester', semester);
+        location.href = url.toString();
+    }
+    document.getElementById('programSelect')?.addEventListener('change', evt => {
+        const url = new URL(location.href);
+        url.searchParams.set('program_id', evt.target.value);
+        url.searchParams.delete('year_level'); url.searchParams.delete('semester');
+        location.href = url.toString();
+    });
+    document.querySelectorAll('.yl-tab').forEach(btn => btn.addEventListener('click', () => navigate(btn.dataset.year, SEMESTER)));
+    document.querySelectorAll('.sem-tab').forEach(btn => btn.addEventListener('click', () => navigate(YEAR_LEVEL, btn.dataset.sem)));
+    function setBusy(busy) {
+        mutationBusy = busy;
+        document.querySelectorAll('.type-select, .cb-remove, .cb-result, .yl-tab, .sem-tab, #programSelect').forEach(el => el.disabled = busy);
+        if (searchInput) searchInput.disabled = busy;
+    }
+    document.querySelectorAll('.type-select').forEach(select => select.addEventListener('change', async () => {
+        const row = select.closest('tr');
+        setBusy(true); saveStatus('Saving changes…');
+        try {
+            await post('/subject/' + row.dataset.csId + '/classification', { is_laboratory: select.value === '1' });
+            select.dataset.saved = select.value; saveStatus('All changes saved');
+        } catch (error) { select.value = select.dataset.saved; feedback(error.message, true); saveStatus('Change not saved'); }
+        finally { setBusy(false); }
+    }));
+    document.querySelectorAll('[data-act="remove"]').forEach(btn => btn.addEventListener('click', async () => {
+        const row = btn.closest('tr');
+        setBusy(true); saveStatus('Saving changes…');
+        try {
+            await post('/subject/' + row.dataset.csId + '/remove', {});
+            const code = row.querySelector('.cb-subject-code').textContent;
+            row.remove();
+            const rows = [...document.querySelectorAll('#subjectRows tr')];
+            document.getElementById('subjectCount').textContent = rows.length;
+            document.getElementById('unitCount').textContent = Number(rows.reduce((sum, item) => sum + Number(item.dataset.units), 0).toFixed(2));
+            document.getElementById('subjectTableWrap').hidden = !rows.length;
+            document.getElementById('termEmpty').hidden = !!rows.length;
+            saveStatus('All changes saved'); feedback(code + ' removed from this term.');
+        } catch (error) { feedback(error.message, true); saveStatus('Change not saved'); }
+        finally { setBusy(false); }
+    }));
+    function closeSearch() {
+        clearTimeout(searchTimer); searchController?.abort(); searchSequence++;
+        if (searchResults) { searchResults.hidden = true; searchResults.replaceChildren(); searchInput.setAttribute('aria-expanded', 'false'); }
+    }
+    function searchMessage(message) {
+        searchResults.replaceChildren();
+        const el = document.createElement('p'); el.className = 'cb-search-message'; el.setAttribute('role', 'status'); el.textContent = message;
+        searchResults.append(el); searchResults.hidden = false; searchInput.setAttribute('aria-expanded', 'true');
+    }
     searchInput?.addEventListener('input', () => {
-        clearTimeout(searchTimer);
-        const q = searchInput.value.trim();
-        if (!q) { hideSearchResults(); return; }
+        closeSearch();
+        const q = searchInput.value.trim(); if (!q) return;
+        const sequence = searchSequence;
+        searchMessage('Searching the catalog…');
         searchTimer = setTimeout(async () => {
-            const res = await fetch('<?= site_url('chairperson/subjects/search') ?>?q=' + encodeURIComponent(q), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            const data = await res.json().catch(() => null);
-            if (!data || !data.ok || !data.subjects.length) { hideSearchResults(); return; }
-            searchResults.innerHTML = '';
-            data.subjects.forEach(s => {
-                const row = document.createElement('div');
-                row.style.cssText = 'padding:8px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid var(--color-border, #eee);';
-                row.innerHTML = `<b>${escapeHtml(s.code)}</b> — ${escapeHtml(s.title)} <span style="color:var(--color-text-secondary);">(${escapeHtml(s.units)})</span>`;
-                row.addEventListener('mouseenter', () => { row.style.background = 'var(--color-surface-secondary, #f3f4f6)'; });
-                row.addEventListener('mouseleave', () => { row.style.background = ''; });
-                row.addEventListener('mousedown', evt => evt.preventDefault());
-                row.addEventListener('click', async () => {
-                    const result = await postJSON('<?= site_url('chairperson/curriculum-builder/add-subject') ?>', {
-                        curriculum_id: DRAFT_ID, subject_id: s.subject_id, year_level: YEAR_LEVEL, semester: SEMESTER,
-                        is_laboratory: s.is_lab,
+            searchController = new AbortController();
+            try {
+                const res = await fetch('<?= site_url('chairperson/subjects/search') ?>?q=' + encodeURIComponent(q), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, signal: searchController.signal });
+                const data = await res.json();
+                if (sequence !== searchSequence) return;
+                if (!res.ok || !data.ok) throw new Error('Search is unavailable. Please try again.');
+                if (!data.subjects.length) { searchMessage('No subjects found. Try another code or title.'); return; }
+                searchResults.replaceChildren();
+                data.subjects.forEach(s => {
+                    const button = document.createElement('button'); button.type = 'button'; button.className = 'cb-result';
+                    button.innerHTML = `<span><strong>${escapeHtml(s.code)}</strong><span>${escapeHtml(s.title)}</span></span><small>${escapeHtml(s.units)} units</small><span class="material-symbols-outlined" aria-hidden="true">add</span>`;
+                    button.addEventListener('click', async () => {
+                        if (mutationBusy) return;
+                        setBusy(true); saveStatus('Adding subject…');
+                        try {
+                            await post('/add-subject', { curriculum_id: CURRICULUM_ID, subject_id: s.subject_id, year_level: YEAR_LEVEL, semester: SEMESTER, is_laboratory: s.is_lab });
+                            feedback(s.code + ' added to this term.'); location.reload();
+                        } catch (error) { feedback(error.message, true); saveStatus('Subject not added'); setBusy(false); }
                     });
-                    if (!result.ok) { showFeedback(result.error || 'Could not add the subject.', true); hideSearchResults(); return; }
-                    showFeedback(`${s.code} added to this term.`, false);
-                    setTimeout(() => location.reload(), 500);
+                    searchResults.append(button);
                 });
-                searchResults.appendChild(row);
-            });
-            searchResults.style.display = '';
+            } catch (error) { if (error.name !== 'AbortError' && sequence === searchSequence) searchMessage('Search is unavailable. Please try again.'); }
         }, 250);
     });
-    searchInput?.addEventListener('blur', () => setTimeout(hideSearchResults, 150));
+    document.addEventListener('click', evt => { if (!evt.target.closest('.cb-catalog')) closeSearch(); });
+    document.querySelector('.cb-catalog')?.addEventListener('focusout', evt => { if (!evt.currentTarget.contains(evt.relatedTarget)) closeSearch(); });
+    document.addEventListener('keydown', evt => {
+        if (evt.key === '/' && !evt.ctrlKey && !evt.metaKey && !evt.altKey && !evt.target.closest('input, select, textarea, [contenteditable="true"]') && searchInput) { evt.preventDefault(); searchInput.focus(); }
+        if (evt.key === 'Escape' && searchResults && !searchResults.hidden) { closeSearch(); searchInput.focus(); }
+        if (evt.key === 'ArrowDown' && evt.target === searchInput) { const first = searchResults.querySelector('button'); if (first) { evt.preventDefault(); first.focus(); } }
+        if (evt.target.matches('.cb-result') && ['ArrowDown', 'ArrowUp'].includes(evt.key)) { evt.preventDefault(); const next = evt.key === 'ArrowDown' ? evt.target.nextElementSibling : evt.target.previousElementSibling; (next || searchInput).focus(); }
+    });
+})();
 </script>
 <?= $this->endSection() ?>
