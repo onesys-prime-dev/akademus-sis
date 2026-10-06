@@ -25,17 +25,20 @@ class GradeApprovalController extends BaseController
                 'user'           => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
                 'deptName'       => null,
                 'classes'        => [],
+                'lockedClasses'  => [],
                 'changeRequests' => [],
             ]);
         }
 
-        $programs = (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
+        $programs   = (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
+        $gradeModel = new GradeModel();
 
         return view('chairperson/grade_approvals', [
             'pageTitle'      => 'Grade Approvals',
             'user'           => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => $subDept['name'] . ' - Chairperson'],
             'deptName'       => $subDept['name'],
-            'classes'        => (new GradeModel())->submittedClasses($programs),
+            'classes'        => $gradeModel->submittedClasses($programs),
+            'lockedClasses'  => $gradeModel->lockedClasses($programs),
             'changeRequests' => (new GradeChangeRequestModel())->pendingForPrograms($programs),
         ]);
     }

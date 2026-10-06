@@ -363,15 +363,38 @@ class GradeModel extends Model
      */
     public function submittedClasses(array $programs): array
     {
+        return $this->classesByStatus($programs, 'submitted');
+    }
+
+    /**
+     * Classes this chairperson already locked — the Grade Approvals page's
+     * "awaiting review" queue drops a class the moment it's locked
+     * (submittedClasses() only matches status='submitted'), so without this
+     * there's no way back to a class once it's official. Mirrors
+     * submittedClasses() exactly but reports the lock, not the submission.
+     */
+    public function lockedClasses(array $programs): array
+    {
+        return $this->classesByStatus($programs, 'locked', 'locked_at');
+    }
+
+    private function classesByStatus(array $programs, string $status, ?string $withTimestamp = null): array
+    {
         if ($programs === []) {
             return [];
         }
 
+        $select = 'g.section_id, g.offering_id, g.subject_code, g.academic_year, s.program, s.year_level, s.section';
+
+        if ($withTimestamp !== null) {
+            $select .= ', g.' . $withTimestamp;
+        }
+
         $rows = $this->db->table('grades g')
-            ->select('g.section_id, g.offering_id, g.subject_code, g.academic_year, s.program, s.year_level, s.section')
+            ->select($select)
             ->join('sections s', 's.section_id = g.section_id')
             ->whereIn('s.program', $programs)
-            ->where('g.status', 'submitted')
+            ->where('g.status', $status)
             ->get()
             ->getResultArray();
 
@@ -392,6 +415,10 @@ class GradeModel extends Model
                     'section'       => $row['section'],
                     'student_count' => 0,
                 ];
+
+                if ($withTimestamp !== null) {
+                    $classes[$key][$withTimestamp] = $row[$withTimestamp];
+                }
             }
 
             $classes[$key]['student_count']++;

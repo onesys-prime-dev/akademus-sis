@@ -4,6 +4,8 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\AssessmentItemModel;
+use App\Models\AcademicYearModel;
+use App\Libraries\StudentDashboardSchedule;
 use App\Models\PaymentProofModel;
 use App\Models\PaymentScheduleModel;
 use App\Models\SectionModel;
@@ -19,32 +21,57 @@ class StudentController extends BaseController
         $account = auth()->user();
         $section = $this->mySection();
 
+        $userId = (int) auth()->id();
+        $activeTerm = (new AcademicYearModel())->activeFormatted();
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
         $enrolledCount = 0;
-        $meetingCount  = 0;
-
-        if ($section !== null) {
-            $enrolledCount = db_connect()->table('enrollments')
-                ->where('user_id', (int) auth()->id())
-                ->where('section_id', $section['section_id'])
-                ->where('status', 'enrolled')
-                ->countAllResults();
-
-            $meetingCount = db_connect()->table('plotted_schedules')
-                ->where('academic_year', $section['academic_year'])
-                ->where('program', $section['program'])
-                ->where('year_level', $section['year_level'])
-                ->where('section', $section['section'])
-                ->countAllResults();
+        $meetings = $publishedGrades = $paymentSchedule = [];
+        $assessment = null;
+        if ($activeTerm !== null) {
+            $enrolledCount = db_connect()->table('enrollments e')
+                ->join('sections s', 's.section_id = e.section_id')
+                ->where('e.user_id', $userId)->where('e.status', 'enrolled')
+                ->where('s.academic_year', $activeTerm)->countAllResults();
+            $meetings = db_connect()->table('enrollments e')
+                ->select('p.day, p.start_time, p.end_time, p.subject_code, p.subject_title, p.room, p.prof, s.section, s.program, s.year_level')
+                ->join('sections s', 's.section_id = e.section_id')
+                ->join('plotted_schedules p', 'p.academic_year = s.academic_year AND p.program = s.program AND p.year_level = s.year_level AND p.section = s.section AND p.subject_code = e.subject_code')
+                ->where('e.user_id', $userId)->where('e.status', 'enrolled')
+                ->where('s.academic_year', $activeTerm)
+                ->orderBy('p.day')->orderBy('p.start_time')->get()->getResultArray();
+            // Only official grades may be shown to students.
+            $publishedGrades = db_connect()->table('grades g')
+                ->select('g.subject_code, g.grade_value, g.remarks, g.locked_at')
+                ->join('enrollments e', 'e.enrollment_id = g.enrollment_id')
+                ->where('e.user_id', $userId)->where('e.status', 'enrolled')
+                ->where('g.user_id', $userId)->where('g.academic_year', $activeTerm)
+                ->where('g.status', 'locked')->orderBy('g.locked_at', 'DESC')->get()->getResultArray();
+            $student = (new StudentModel())->where('user_id', $userId)->first();
+            if ($student !== null) {
+                $assessment = (new TuitionAssessmentModel())->forStudentYear((int) $student['student_id'], $activeTerm);
+                if ($assessment !== null && $assessment['status'] !== 'unassessed') {
+                    $paymentSchedule = (new PaymentScheduleModel())->withBalances((int) $assessment['assessment_id'], (float) $assessment['amount_paid']);
+                }
+            }
         }
+        $week = StudentDashboardSchedule::summarize($meetings, $now);
+        $unpaidInstallments = array_values(array_filter($paymentSchedule, static fn ($row) => (float) $row['balance'] > 0));
+        usort($unpaidInstallments, static fn ($a, $b) => strcmp($a['due_date'] ?: '9999-12-31', $b['due_date'] ?: '9999-12-31'));
 
         return view('student/dashboard', [
             'pageTitle'  => 'Dashboard',
             'activePage' => 'dashboard',
             'account'    => $account,
             'section'    => $section,
+            'activeTerm' => $activeTerm,
+            'now' => $now,
+            'week' => $week,
+            'assessment' => $assessment,
+            'nextPayment' => $unpaidInstallments[0] ?? null,
+            'publishedGrades' => $publishedGrades,
             'stats'      => [
                 'enrolled_subjects' => $enrolledCount,
-                'weekly_meetings'   => $meetingCount,
+                'weekly_meetings'   => count($week['meetings']),
             ],
         ]);
     }

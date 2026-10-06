@@ -11,39 +11,37 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 ?>
 
 <?= $this->section('styles') ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
-<style>
-    .status-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill); }
-    .status-pill.submitted { background: #dff8fb; color: #164e63; }
-    .status-pill.locked { background: var(--color-success-soft); color: #14532d; }
-</style>
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/grade-approvals.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/grade-approvals.css') ?>">
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 
-<div class="ac-page-header">
+<div class="ga-page">
+<a class="ga-back" href="<?= site_url('chairperson/grade-approvals') ?>"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Grade approvals</a>
+<div class="ga-heading">
     <div>
-        <h2 class="ac-page-header__title"><?= esc($context['subject_code']) ?></h2>
-        <p class="ac-page-header__sub"><?= esc($context['program']) ?> <?= esc($context['year_level']) ?>-<?= esc($context['section']) ?></p>
+        <h1><?= esc($context['subject_code']) ?></h1>
+        <p><?= esc($context['program']) ?> &middot; <?= esc($context['year_level']) ?> &middot; Section <?= esc($context['section']) ?></p>
     </div>
 </div>
 
-<div id="feedback" class="flash" style="display:none;"></div>
+<div id="feedback" class="ga-feedback" role="status" aria-live="polite" hidden></div>
 
-<div class="panel">
+<div class="ga-card">
+<div class="ga-review-meta"><strong><?= esc($context['academic_year']) ?></strong><span><?= count($roster) ?> students</span><span>Grade review</span></div>
     <?php if ($offering !== null): ?>
-        <p class="panel-sub">This is a merged class combining multiple sections' rosters (<?= count($roster) ?> students).</p>
+        <p class="ga-policy">This is a merged class combining multiple sections' rosters (<?= count($roster) ?> students).</p>
     <?php endif ?>
 
     <?php if (empty($roster)): ?>
-        <div class="empty-state">
+        <div class="ga-empty">
             <div class="material-symbols-outlined">group_off</div>
             <p>No students are enrolled in this class.</p>
         </div>
     <?php else: ?>
-        <table class="grade-table">
+        <div class="ga-table-scroll"><table class="ga-table">
             <thead>
-                <tr><th>Student</th><th>Grade</th><th>Remarks</th><th>Status</th></tr>
+                <tr><th scope="col">Student</th><th scope="col">Grade</th><th scope="col">Remarks</th><th scope="col">Status</th></tr>
             </thead>
             <tbody>
                 <?php $allSubmitted = true; ?>
@@ -53,15 +51,15 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                         <td><?= esc($row['username']) ?></td>
                         <td><?= $g !== null ? esc($g['grade_value']) : '—' ?></td>
                         <td><?= $g !== null && $g['remarks'] !== null ? esc($g['remarks']) : '—' ?></td>
-                        <td><?= $g !== null ? '<span class="status-pill ' . esc($g['status']) . '">' . esc(ucfirst($g['status'])) . '</span>' : '—' ?></td>
+                        <td><?= $g !== null ? '<span class="ga-status ' . esc($g['status']) . '">' . esc(ucfirst($g['status'])) . '</span>' : '—' ?></td>
                     </tr>
                 <?php endforeach ?>
             </tbody>
-        </table>
+        </table></div>
 
-        <div style="margin-top:16px;">
+        <div class="ga-lock-footer">
             <?php if ($allSubmitted): ?>
-                <button type="button" class="btn btn-primary" onclick="lockClass()">Lock All &amp; Make Official</button>
+                <p>Confirm that every grade is correct. Locking makes these grades official and visible to students.</p><button type="button" class="ga-button ga-button--primary" id="gaLockButton" onclick="lockClass()"><span class="material-symbols-outlined" aria-hidden="true">lock</span>Lock grades</button>
             <?php else: ?>
                 <p class="panel-sub">Not every student has a submitted grade yet — nothing to lock.</p>
             <?php endif ?>
@@ -69,36 +67,41 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     <?php endif ?>
 </div>
 
+</div>
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
 <script>
-    const CONTEXT = <?= json_encode($context) ?>;
+    const CONTEXT = <?= json_encode($context, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
     function showFeedback(message, isError) {
         const el = document.getElementById('feedback');
-        el.style.display = 'block';
-        el.className = 'flash ' + (isError ? 'error' : 'success');
+        el.hidden = false;
+        el.className = 'ga-feedback' + (isError ? ' is-error' : '');
         el.textContent = message;
     }
 
+    let lockBusy = false;
     async function lockClass() {
-        if (!await acConfirm('Lock these grades? Once locked, changes require a formal correction request.')) return;
-
-        const res = await fetch('<?= site_url('chairperson/grade-approvals/lock') ?>', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify(CONTEXT),
-        });
-        const result = await res.json();
-
-        if (!result.ok) {
-            showFeedback(result.error || 'Could not lock.', true);
-            return;
+        if (lockBusy) return;
+        lockBusy = true;
+        const button = document.getElementById('gaLockButton');
+        const label = button.innerHTML;
+        try {
+            if (!await acConfirm('Lock these grades? Once locked, changes require a formal correction request.')) return;
+            button.disabled = true; button.textContent = 'Locking grades...';
+            const res = await fetch('<?= site_url('chairperson/grade-approvals/lock') ?>', {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify(CONTEXT),
+            });
+            const result = await res.json().catch(() => null);
+            if (!res.ok || !result?.ok) throw new Error(result?.error || 'Could not lock grades. Please try again.');
+            showFeedback('Grades locked and now official.', false);
+            button.textContent = 'Grades locked';
+            setTimeout(() => { window.location.href = '<?= site_url('chairperson/grade-approvals') ?>'; }, 800);
+        } catch (error) { showFeedback(error.message, true); }
+        finally {
+            if (button.textContent !== 'Grades locked') { lockBusy = false; button.disabled = false; button.innerHTML = label; }
         }
-
-        showFeedback('Grades locked and now official.', false);
-        setTimeout(() => { window.location.href = '<?= site_url('chairperson/grade-approvals') ?>'; }, 800);
     }
 </script>
 <?= $this->endSection() ?>
