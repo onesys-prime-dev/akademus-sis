@@ -38,13 +38,13 @@ $addedFeesBalance = max(0, $addedFeesTotal - $addedFeesPaid);
 
 <?= $this->section('styles') ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/student-tuition.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/student-tuition.css') ?>">
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 
-<div class="ac-page-header">
-    <div><h2 class="ac-page-header__title">Tuition & Fees</h2></div>
-</div>
+<div class="tf-page">
+<header class="tf-heading"><div><span class="tf-eyebrow">STUDENT FINANCES</span><h1>Tuition &amp; Fees</h1><p>A clear view of your assessment, payments, and balance.</p></div><?php if ($current !== null): ?><span class="tf-term"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><?= esc($current['academic_year']) ?></span><?php endif ?></header>
 
 <?php if (session()->has('message')): ?>
     <div class="ac-notice" style="margin-bottom:16px;">
@@ -77,66 +77,49 @@ $addedFeesBalance = max(0, $addedFeesTotal - $addedFeesPaid);
     </div>
 <?php else: ?>
 
-<div class="panel">
-    <h2><?= esc($current['academic_year']) ?></h2>
-    <table class="grade-table">
-        <tbody>
-            <tr><td>Tuition Fee Balance</td><td><?= number_format($tuitionBalance, 2) ?></td></tr>
-            <tr><td>Added Fees Balance</td><td><?= number_format($addedFeesBalance, 2) ?></td></tr>
-            <tr>
-                <td><strong>Total Balance</strong></td>
-                <td>
-                    <strong><?= number_format((float) $current['balance'], 2) ?></strong>
-                    <?php if ($current['status'] === 'paid'): ?>
-                        <span class="pass-pill pass">Paid</span>
-                    <?php elseif ($current['status'] === 'partial'): ?>
-                        <span class="pass-pill">Partial</span>
-                    <?php else: ?>
-                        <span class="pass-pill fail">Unpaid</span>
-                    <?php endif ?>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+<?php
+$totalAssessment = (float) $current['total_amount'];
+$paidPercent = $totalAssessment > 0 ? min(100, max(0, $amountPaid / $totalAssessment * 100)) : 0;
+$statusLabel = ['paid' => 'Paid in full', 'partial' => 'Partially paid'][$current['status']] ?? 'Unpaid';
+$statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ?? 'unpaid';
+?>
+<section class="tf-summary" aria-label="Account overview">
+    <div class="tf-balance">
+        <div class="tf-balance-top"><span>Outstanding balance</span><span class="tf-status tf-status--<?= $statusClass ?>"><?= esc($statusLabel) ?></span></div>
+        <strong class="tf-amount"><span>₱</span><?= number_format((float) $current['balance'], 2) ?></strong>
+        <p>Remaining balance for this academic term</p>
+        <a class="tf-action" href="#payment-proof"><span class="material-symbols-outlined" aria-hidden="true">upload_file</span>Submit payment proof<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
+    </div>
+    <div class="tf-overview">
+        <div class="tf-metrics"><div><span>Total assessment</span><strong>₱<?= number_format($totalAssessment, 2) ?></strong></div><div><span>Payments recorded</span><strong class="tf-paid">₱<?= number_format($amountPaid, 2) ?></strong></div></div>
+        <div class="tf-progress-label"><span>Payment progress</span><strong><?= number_format($paidPercent, 0) ?>%</strong></div>
+        <progress class="tf-progress" value="<?= $paidPercent ?>" max="100" aria-label="Assessment paid"><?= number_format($paidPercent, 0) ?>%</progress>
+        <dl class="tf-breakdown"><div><dt>Tuition balance</dt><dd>₱<?= number_format($tuitionBalance, 2) ?></dd></div><div><dt>Other fees balance</dt><dd>₱<?= number_format($addedFeesBalance, 2) ?></dd></div></dl>
+    </div>
+</section>
+<div class="tf-layout">
 
-<div class="panel">
-    <h2>Assessment</h2>
-    <table class="grade-table">
-        <thead>
-            <tr><th>Fee Name</th><th style="text-align:right;">Amount</th></tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><strong>Tuition Fee</strong></td>
-                <td style="text-align:right;"><?= number_format($tuitionAmount, 2) ?></td>
-            </tr>
-            <?php foreach (['miscellaneous' => 'Miscellaneous', 'other' => 'Other Fee', 'additional' => 'Additional Fee', 'course' => 'Course Fees'] as $catKey => $catLabel): ?>
-                <?php if (empty($itemsByCategory[$catKey])) continue; ?>
-                <?php $catTotal = array_sum(array_column($itemsByCategory[$catKey], 'amount')); ?>
-                <?php foreach ($itemsByCategory[$catKey] as $i => $item): ?>
-                    <tr>
-                        <td><?= $i === 0 ? '<strong>' . esc($catLabel) . '</strong><br>' : '' ?><?= esc($item['label']) ?></td>
-                        <td style="text-align:right;"><?= number_format((float) $item['amount'], 2) ?></td>
-                    </tr>
-                <?php endforeach ?>
-                <tr>
-                    <td><strong><?= esc($catLabel) ?> Total</strong></td>
-                    <td style="text-align:right;"><strong><?= number_format($catTotal, 2) ?></strong></td>
-                </tr>
-            <?php endforeach ?>
-            <tr>
-                <td><strong>Total Assessment Fee</strong></td>
-                <td style="text-align:right;"><strong><?= number_format((float) $current['total_amount'], 2) ?></strong></td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+<section class="panel tf-assessment" aria-labelledby="assessment-title">
+    <header class="tf-section-heading"><span class="tf-section-icon material-symbols-outlined" aria-hidden="true">receipt_long</span><div><h2 id="assessment-title">Assessment breakdown</h2><p>Explore the fees included in your assessment.</p></div></header>
+    <div class="tf-column-labels"><span>Fee description</span><span>Amount · PHP</span></div>
+    <div class="tf-tuition-line"><div><strong>Tuition fee</strong><span>Academic tuition for this term</span></div><strong>₱<?= number_format($tuitionAmount, 2) ?></strong></div>
+    <?php foreach (['miscellaneous' => 'Miscellaneous fees', 'other' => 'Other fees', 'additional' => 'Additional fees', 'course' => 'Course fees'] as $catKey => $catLabel): ?>
+        <?php if (empty($itemsByCategory[$catKey])) continue; ?>
+        <?php $catTotal = array_sum(array_column($itemsByCategory[$catKey], 'amount')); ?>
+        <details class="tf-fee-group" <?= $catKey === 'miscellaneous' ? 'open' : '' ?>>
+            <summary><span class="material-symbols-outlined tf-chevron" aria-hidden="true">chevron_right</span><span class="tf-category"><strong><?= esc($catLabel) ?></strong><small><?= count($itemsByCategory[$catKey]) ?> <?= count($itemsByCategory[$catKey]) === 1 ? 'fee item' : 'fee items' ?></small></span><strong>₱<?= number_format($catTotal, 2) ?></strong></summary>
+            <dl class="tf-fee-items"><?php foreach ($itemsByCategory[$catKey] as $item): ?><div><dt><?= esc($item['label']) ?></dt><dd>₱<?= number_format((float) $item['amount'], 2) ?></dd></div><?php endforeach ?></dl>
+        </details>
+    <?php endforeach ?>
+    <div class="tf-assessment-total"><span>Total assessment</span><strong>₱<?= number_format($totalAssessment, 2) ?></strong></div>
+    <p class="tf-note"><span class="material-symbols-outlined" aria-hidden="true">info</span>Assessment amounts are before recorded payments.</p>
+</section>
+<div class="tf-side">
 
 <?php if (!empty($schedule)): ?>
 <div class="panel">
-    <h2>Payment Schedule</h2>
-    <table class="grade-table">
+    <header class="tf-section-heading"><span class="tf-section-icon material-symbols-outlined" aria-hidden="true">event</span><div><h2>Payment schedule</h2><p>Your installments and remaining balances.</p></div></header>
+    <div class="tf-table-scroll" role="region" aria-label="Payment details" tabindex="0"><table class="grade-table">
         <thead>
             <tr><th>Payment For</th><th>Due Date</th><th style="text-align:right;">Amount</th><th style="text-align:right;">Balance</th></tr>
         </thead>
@@ -145,23 +128,23 @@ $addedFeesBalance = max(0, $addedFeesTotal - $addedFeesPaid);
                 <tr>
                     <td><?= esc($row['label']) ?></td>
                     <td><?= $row['due_date'] ? esc(date('M j, Y', strtotime($row['due_date']))) : '—' ?></td>
-                    <td style="text-align:right;"><?= number_format((float) $row['amount'], 2) ?></td>
-                    <td style="text-align:right;"><?= number_format((float) $row['balance'], 2) ?></td>
+                    <td class="tf-money">&#8369;<?= number_format((float) $row['amount'], 2) ?></td>
+                    <td class="tf-money">&#8369;<?= number_format((float) $row['balance'], 2) ?></td>
                 </tr>
             <?php endforeach ?>
         </tbody>
-    </table>
+    </table></div>
 </div>
 <?php endif ?>
 
-<div class="panel">
-    <h2>Upload Proof of Payment</h2>
-    <form method="post" action="<?= site_url('student/tuition/proof/upload') ?>" enctype="multipart/form-data" style="display:grid; gap:12px; max-width:520px;">
+<section class="panel tf-upload" id="payment-proof" tabindex="-1">
+    <header class="tf-section-heading"><span class="tf-section-icon material-symbols-outlined" aria-hidden="true">upload_file</span><div><h2>Submit payment proof</h2><p>Already paid? Send your receipt for review.</p></div></header>
+    <form method="post" action="<?= site_url('student/tuition/proof/upload') ?>" enctype="multipart/form-data" class="tf-upload-form">
         <?= csrf_field() ?>
         <?php if (!empty($schedule)): ?>
         <div class="ac-field" style="margin:0;">
-            <label>Payment For</label>
-            <select name="schedule_id" class="ac-input">
+            <label for="tf-schedule">Payment for</label>
+            <select id="tf-schedule" name="schedule_id" class="ac-input">
                 <option value="">General Payment</option>
                 <?php foreach ($schedule as $row): ?>
                     <option value="<?= $row['schedule_id'] ?>"><?= esc($row['label']) ?> (<?= number_format((float) $row['amount'], 2) ?>)</option>
@@ -170,25 +153,27 @@ $addedFeesBalance = max(0, $addedFeesTotal - $addedFeesPaid);
         </div>
         <?php endif ?>
         <div class="ac-field" style="margin:0;">
-            <label>Payment Remarks</label>
-            <textarea name="remarks" class="ac-input" rows="2" required placeholder="e.g. Bank transfer ref. 12345"></textarea>
+            <label for="tf-remarks">Payment reference or remarks</label>
+            <textarea id="tf-remarks" name="remarks" class="ac-input" rows="2" required placeholder="e.g. Bank transfer ref. 12345"></textarea>
         </div>
         <div class="ac-field" style="margin:0;">
-            <label>Proof File (jpg, png, or pdf — max 5MB)</label>
-            <input type="file" name="proof" accept=".jpg,.jpeg,.png,.pdf" required>
+            <label for="tf-proof">Receipt or proof of payment</label>
+            <div class="tf-file-field"><input id="tf-proof" type="file" name="proof" accept=".jpg,.jpeg,.png,.pdf" aria-describedby="tf-file-help" required><small id="tf-file-help">JPG, PNG, or PDF · Maximum 5 MB</small></div>
         </div>
-        <button type="submit" class="ac-btn ac-btn-primary" style="justify-self:start;">Upload Proof of Payment</button>
+        <button type="submit" class="ac-btn ac-btn-primary"><span class="material-symbols-outlined" aria-hidden="true">upload</span>Submit for review</button>
+        <p class="tf-form-help">Your submission will be reviewed by the cashier before it is reflected in your balance.</p>
     </form>
 
     <?php if (!empty($proofs)): ?>
-        <table class="grade-table" style="margin-top:18px;">
+        <h3 class="tf-subheading">Submitted proofs</h3>
+        <div class="tf-table-scroll" role="region" aria-label="Payment details" tabindex="0"><table class="grade-table">
             <thead>
                 <tr><th>File</th><th>Uploaded</th><th>Status</th><th>Cashier Remarks</th></tr>
             </thead>
             <tbody>
                 <?php foreach ($proofs as $p): ?>
                     <tr>
-                        <td><a href="<?= site_url('student/tuition/proof/' . $p['proof_id']) ?>" target="_blank"><?= esc($p['original_filename']) ?></a></td>
+                        <td><a href="<?= site_url('student/tuition/proof/' . $p['proof_id']) ?>" target="_blank" rel="noopener"><?= esc($p['original_filename']) ?></a></td>
                         <td><?= esc(date('M j, Y', strtotime($p['created_at']))) ?></td>
                         <td>
                             <?php if ($p['status'] === 'approved'): ?>
@@ -203,58 +188,60 @@ $addedFeesBalance = max(0, $addedFeesTotal - $addedFeesPaid);
                     </tr>
                 <?php endforeach ?>
             </tbody>
-        </table>
+        </table></div>
     <?php endif ?>
+</section>
 </div>
-
+</div>
 <?php endif ?>
 
 <div class="panel">
-    <h2>Payment History</h2>
+    <header class="tf-section-heading"><span class="tf-section-icon material-symbols-outlined" aria-hidden="true">history</span><div><h2>Payment history</h2><p>A record of payments posted to your account.</p></div></header>
     <?php if (empty($payments)): ?>
         <div class="empty-state">
             <div class="material-symbols-outlined">receipt_long</div>
             <p>No payments recorded yet.</p>
         </div>
     <?php else: ?>
-        <table class="grade-table">
+        <div class="tf-table-scroll" role="region" aria-label="Payment details" tabindex="0"><table class="grade-table">
             <thead>
-                <tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th></tr>
+                <tr><th>Date</th><th class="tf-money">Amount</th><th>Method</th><th>Reference</th></tr>
             </thead>
             <tbody>
                 <?php foreach ($payments as $p): ?>
                     <tr>
                         <td><?= esc(date('M j, Y', strtotime($p['payment_date']))) ?></td>
-                        <td><?= number_format((float) $p['amount'], 2) ?></td>
+                        <td class="tf-money">&#8369;<?= number_format((float) $p['amount'], 2) ?></td>
                         <td><?= esc($p['method']) ?></td>
                         <td><?= $p['reference_no'] !== null ? esc($p['reference_no']) : '—' ?></td>
                     </tr>
                 <?php endforeach ?>
             </tbody>
-        </table>
+        </table></div>
     <?php endif ?>
 </div>
 
 <?php if (count($assessments) > 1): ?>
 <div class="panel">
     <h2>Previous Terms</h2>
-    <table class="grade-table">
+    <div class="tf-table-scroll" role="region" aria-label="Payment details" tabindex="0"><table class="grade-table">
         <thead>
-            <tr><th>Academic Year</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr>
+            <tr><th>Academic Year</th><th class="tf-money">Total</th><th class="tf-money">Paid</th><th class="tf-money">Balance</th><th>Status</th></tr>
         </thead>
         <tbody>
             <?php foreach (array_slice($assessments, 1) as $a): ?>
                 <tr>
                     <td><?= esc($a['academic_year']) ?></td>
-                    <td><?= number_format((float) $a['total_amount'], 2) ?></td>
-                    <td><?= number_format((float) $a['amount_paid'], 2) ?></td>
-                    <td><?= number_format((float) $a['balance'], 2) ?></td>
+                    <td class="tf-money">&#8369;<?= number_format((float) $a['total_amount'], 2) ?></td>
+                    <td class="tf-money">&#8369;<?= number_format((float) $a['amount_paid'], 2) ?></td>
+                    <td class="tf-money">&#8369;<?= number_format((float) $a['balance'], 2) ?></td>
                     <td><?= esc(ucfirst($a['status'])) ?></td>
                 </tr>
             <?php endforeach ?>
         </tbody>
-    </table>
+    </table></div>
 </div>
 <?php endif ?>
 
+</div>
 <?= $this->endSection() ?>

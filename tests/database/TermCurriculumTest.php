@@ -129,12 +129,23 @@ final class TermCurriculumTest extends CIUnitTestCase
         $this->assertSame('3 Units', $term['subjects'][0]['units']);
     }
 
-    public function testDraftCurriculumDoesNotGovernAndCallerFallsBack(): void
+    /**
+     * The draft/published/is_current workflow was removed (see
+     * CurriculumModel::liveFor()) — every program now has exactly one
+     * always-live curriculum, and its legacy `status` column (left on the
+     * table for old data, never meaningfully written to anymore) is no
+     * longer a gate. A row that still says 'draft' from before that change
+     * governs scheduling exactly the same as any other.
+     */
+    public function testLegacyDraftStatusNoLongerBlocksGovernance(): void
     {
         $a = $this->makeSubject('TP101');
         $this->makeCurriculum('draft', [['subject' => $a, 'year' => 1, 'sem' => 1]], false);
 
-        $this->assertNull((new TermCurriculum())->forContext(self::AY, self::PROGRAM_NAME, '1st Year'));
+        $term = (new TermCurriculum())->forContext(self::AY, self::PROGRAM_NAME, '1st Year');
+
+        $this->assertNotNull($term);
+        $this->assertSame(['TP101'], array_column($term['subjects'], 'code'));
     }
 
     public function testEmptyTermIsAuthoritativeNotAFallback(): void

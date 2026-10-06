@@ -1,211 +1,87 @@
 <?= $this->extend('layouts/admin_console') ?>
-
 <?php
-$activeAdmin   = 'schedule';
-$pageTitle     = 'My Schedule';
-$brandSub      = 'Student Portal';
-$userName      = auth()->user()->username;
+$activeAdmin = 'schedule';
+$pageTitle = 'My Schedule';
+$brandSub = 'Student Portal';
+$userName = auth()->user()->username;
 $userRoleLabel = 'Student';
-$navGroups     = [
+$navGroups = [
     '' => [
-        'dashboard' => ['label' => 'Dashboard',   'icon' => 'home',           'url' => 'student/dashboard'],
-        'profile'   => ['label' => 'Profile',     'icon' => 'person',         'url' => 'student/profile'],
-        'tuition'   => ['label' => 'Tuition & Fees', 'icon' => 'payments',    'url' => 'student/tuition'],
-        'schedule'  => ['label' => 'My Schedule', 'icon' => 'calendar_month', 'url' => 'student/schedule'],
-        'grades'    => ['label' => 'My Grades',   'icon' => 'grade',          'url' => 'student/grades'],
+        'dashboard' => ['label' => 'Dashboard', 'icon' => 'home', 'url' => 'student/dashboard'],
+        'profile' => ['label' => 'Profile', 'icon' => 'person', 'url' => 'student/profile'],
+        'tuition' => ['label' => 'Tuition & Fees', 'icon' => 'payments', 'url' => 'student/tuition'],
+        'schedule' => ['label' => 'My Schedule', 'icon' => 'calendar_month', 'url' => 'student/schedule'],
+        'grades' => ['label' => 'My Grades', 'icon' => 'grade', 'url' => 'student/grades'],
     ],
 ];
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
+$dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+$scheduleData = array_map(static fn (array $m) => [
+    'day' => (int) $m['day'], 'code' => $m['subject_code'], 'title' => $m['subject_title'],
+    'start' => substr($m['start_time'], 0, 5), 'end' => substr($m['end_time'], 0, 5),
+    'room' => $m['room'] ?? '', 'faculty' => $m['prof'] ?? '',
+    'term' => $m['academic_year'], 'program' => $m['program'],
+    'year' => $m['year_level'], 'section' => $m['section'],
+], $meetings);
 ?>
-
 <?= $this->section('styles') ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/student-schedule.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/student-schedule.css') ?>">
 <?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
-
-<?php
-$days  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-$byDay = array_fill(0, 6, []);
-
-foreach ($meetings as $meeting) {
-    $byDay[(int) $meeting['day']][] = $meeting;
-}
-
-foreach ($byDay as &$dayMeetings) {
-    usort($dayMeetings, static fn (array $a, array $b) => strcmp($a['start_time'], $b['start_time']));
-}
-unset($dayMeetings);
-
-$colors = [
-    'blue'   => ['bg' => '#e0edff', 'border' => '#0040A6', 'text' => '#00296b'],
-    'purple' => ['bg' => '#f1e6ff', 'border' => '#7c3aed', 'text' => '#4c1d95'],
-    'cyan'   => ['bg' => '#dff8fb', 'border' => '#0891b2', 'text' => '#164e63'],
-    'red'    => ['bg' => '#fee2e2', 'border' => '#dc2626', 'text' => '#7f1d1d'],
-    'green'  => ['bg' => '#dcfce7', 'border' => '#16a34a', 'text' => '#14532d'],
-    'yellow' => ['bg' => '#fef9c3', 'border' => '#ca8a04', 'text' => '#713f12'],
-];
-
-$gridStartMin = 7 * 60;
-$gridEndMin   = 19 * 60;
-$rowMinutes   = 30;
-$totalRows    = (int) (($gridEndMin - $gridStartMin) / $rowMinutes);
-
-$toMinutes = static function (string $hhmm) {
-    [$h, $m] = array_map('intval', explode(':', $hhmm));
-    return $h * 60 + $m;
-};
-?>
-
-<div class="ac-page-header">
-    <div><h2 class="ac-page-header__title">My Schedule</h2></div>
-</div>
-
-<div class="panel">
+<div class="ss-page" id="studentSchedule">
+    <header class="ss-heading"><div><span class="ss-eyebrow">YOUR ACADEMIC WEEK</span><h1>My Schedule</h1><p>Your classes, your week. Everything in one place.</p></div><div class="ss-term" id="ssTermField" hidden><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><label class="ss-sr-only" for="ssTerm">Academic term</label><select id="ssTerm"></select></div></header>
+    <?php if (session()->has('message')): ?><div class="ss-notice" role="status"><?= esc(session('message')) ?></div><?php endif ?>
+    <?php if (session()->has('errors')): ?><div class="ss-notice ss-notice--error" role="alert"><?php foreach ((array) session('errors') as $error): ?><p><?= esc($error) ?></p><?php endforeach ?></div><?php endif ?>
     <?php if ($meetings === []): ?>
-        <div class="empty-state">
-            <div class="material-symbols-outlined">event_busy</div>
-            <p>You're not enrolled in any classes yet.</p>
-        </div>
+        <section class="ss-card ss-empty"><span class="material-symbols-outlined" aria-hidden="true">calendar_today</span><h2>Your week is taking shape</h2><p>No class meetings are scheduled yet. Your timetable will appear here once your enrolled classes have a schedule.</p></section>
     <?php else: ?>
-
-        <div class="view-toggle">
-            <button type="button" class="active" data-view="list">
-                <span class="material-symbols-outlined">view_list</span> List
-            </button>
-            <button type="button" data-view="calendar">
-                <span class="material-symbols-outlined">calendar_month</span> Calendar
-            </button>
-        </div>
-
-        <div class="schedule-view active" data-view="list">
-            <?php foreach ($byDay as $dayIndex => $dayMeetings): ?>
-                <?php if ($dayMeetings === []) continue; ?>
-                <div class="day-heading"><?= esc($days[$dayIndex]) ?></div>
-                <table class="schedule-table">
-                    <thead>
-                        <tr>
-                            <th>Time</th>
-                            <th>Subject</th>
-                            <th>Room</th>
-                            <th>Faculty</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($dayMeetings as $m): ?>
-                            <tr>
-                                <td><?= esc($m['time_label']) ?></td>
-                                <td><?= esc($m['subject_code']) ?> &mdash; <?= esc($m['subject_title']) ?></td>
-                                <td><?= esc($m['room']) ?></td>
-                                <td><?= esc($m['prof'] ?? '—') ?></td>
-                            </tr>
-                        <?php endforeach ?>
-                    </tbody>
-                </table>
-            <?php endforeach ?>
-        </div>
-
-        <div class="schedule-view" data-view="calendar">
-            <div class="grid-wrap">
-                <div class="grid">
-                    <div class="grid-head">
-                        <div class="grid-corner"></div>
-                        <?php foreach (['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as $label): ?>
-                            <div><?= esc($label) ?></div>
-                        <?php endforeach ?>
-                    </div>
-
-                    <div class="time-col">
-                        <?php for ($m = $gridStartMin; $m < $gridEndMin; $m += 60): ?>
-                            <div class="time-slot"><?php
-                                $h12 = $m % 720 === 0 ? 12 : intdiv($m, 60) % 12;
-                                echo $h12 . ($m < 720 ? ' AM' : ' PM');
-                            ?></div>
-                        <?php endfor ?>
-                    </div>
-
-                    <?php for ($day = 0; $day < 6; $day++): ?>
-                        <div class="day-col" style="height:<?= $totalRows * 32 ?>px;">
-                            <?php for ($r = 0; $r < $totalRows / 2; $r++): ?>
-                                <div class="hour-line"></div>
-                            <?php endfor ?>
-
-                            <?php foreach ($blocks as $b): ?>
-                                <?php if ($b['day'] !== $day) continue; ?>
-                                <?php
-                                    $startMin = $toMinutes($b['start']);
-                                    $endMin   = $toMinutes($b['end']);
-                                    $top      = ($startMin - $gridStartMin) / $rowMinutes * 32;
-                                    $height   = max(32, ($endMin - $startMin) / $rowMinutes * 32);
-                                    $c        = $colors[$b['color']] ?? $colors['blue'];
-                                ?>
-                                <div class="block" style="top:<?= $top ?>px; height:<?= $height ?>px; background:<?= $c['bg'] ?>; border-color:<?= $c['border'] ?>; color:<?= $c['text'] ?>;">
-                                    <div class="b-code"><?= esc($b['code']) ?></div>
-                                    <?php if ($height > 46): ?>
-                                        <div class="b-title"><?= esc($b['title']) ?></div>
-                                    <?php endif ?>
-                                    <div class="b-meta"><?= esc($b['time_label']) ?> &middot; <?= esc($b['room']) ?></div>
-                                </div>
-                            <?php endforeach ?>
-                        </div>
-                    <?php endfor ?>
-                </div>
+        <section class="ss-overview" id="ssOverview" aria-label="Weekly overview" hidden>
+            <div class="ss-overview-intro"><span class="ss-overview-icon material-symbols-outlined" aria-hidden="true">date_range</span><div><strong>A week at a glance</strong><span>Your schedule for the selected term</span></div></div>
+            <div class="ss-stat"><strong id="ssSubjectCount"></strong><span>Subjects</span></div><div class="ss-stat"><strong id="ssHours"></strong><span>Hours per week</span></div><div class="ss-stat"><strong id="ssDays"></strong><span>Class days</span></div>
+        </section>
+        <section class="ss-card ss-workspace" aria-labelledby="ssBoardTitle">
+            <header class="ss-board-heading"><div><h2 id="ssBoardTitle">Weekly timetable</h2><p>Select a class to explore its details.</p></div><div class="ss-board-actions"><div class="ss-view-toggle" id="ssViewToggle" role="group" aria-label="Schedule view" hidden><button type="button" data-view="calendar" aria-pressed="true"><span class="material-symbols-outlined" aria-hidden="true">calendar_view_week</span>Week</button><button type="button" data-view="agenda" aria-pressed="false"><span class="material-symbols-outlined" aria-hidden="true">view_agenda</span>Agenda</button></div><button type="button" class="ss-button" id="ssPrint" title="Print the complete schedule for the selected term" hidden><span class="material-symbols-outlined" aria-hidden="true">print</span>Print schedule</button></div></header>
+            <div class="ss-toolbar" id="ssToolbar" hidden>
+                <div class="ss-day-filters" id="ssDayFilters" role="group" aria-label="Filter by day"></div>
+                <div class="ss-subject-filter"><span class="material-symbols-outlined" aria-hidden="true">filter_list</span><label class="ss-sr-only" for="ssSubject">Filter by subject</label><select id="ssSubject"><option value="all">All subjects</option></select></div>
             </div>
-        </div>
-
+            <div class="ss-calendar-scroll" id="ssCalendar" role="region" aria-label="Weekly class calendar" tabindex="0" hidden></div>
+            <div class="ss-agenda" id="ssAgenda">
+                <?php foreach ($dayNames as $day => $label): ?>
+                    <?php $dayMeetings = array_values(array_filter($meetings, static fn ($m) => (int) $m['day'] === $day)); if ($dayMeetings === []) continue; ?>
+                    <h3><?= esc($label) ?></h3>
+                    <?php foreach ($dayMeetings as $m): ?><article class="ss-fallback"><strong><?= esc($m['subject_code']) ?> &middot; <?= esc($m['subject_title']) ?></strong><p><?= esc($m['time_label']) ?> &middot; <?= esc($m['room'] ?: 'Room to be assigned') ?> &middot; <?= esc($m['prof'] ?: 'Instructor to be assigned') ?></p><small><?= esc($m['academic_year']) ?> &middot; <?= esc($m['section']) ?></small></article><?php endforeach ?>
+                <?php endforeach ?>
+            </div>
+            <div class="ss-empty" id="ssFilteredEmpty" hidden><span class="material-symbols-outlined" aria-hidden="true">event_available</span><h3>No classes in this view</h3><p>Choose another day or subject to see more of your week.</p><button type="button" class="ss-button" id="ssReset">Show all classes</button></div>
+            <footer class="ss-board-footer" id="ssFooter" hidden><span id="ssResultCount" role="status" aria-live="polite"></span><span><span class="material-symbols-outlined" aria-hidden="true">touch_app</span>Select any class for full details</span></footer>
+            <noscript><p class="ss-noscript">Enable JavaScript to use the interactive calendar and class details.</p></noscript>
+        </section>
+        <dialog class="ss-dialog" id="ssClassDialog" aria-labelledby="ssDetailTitle" aria-describedby="ssDetailSubtitle">
+            <header class="ss-dialog-header"><span class="ss-eyebrow">CLASS DETAILS</span><button type="button" class="ss-icon-button" id="ssCloseDetails" aria-label="Close class details"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></header>
+            <div class="ss-dialog-body"><span class="ss-detail-code" id="ssDetailCode"></span><h2 id="ssDetailTitle"></h2><p id="ssDetailSubtitle"></p>
+                <div class="ss-selected-meeting"><span class="material-symbols-outlined" aria-hidden="true">event</span><div><strong id="ssDetailDay"></strong><span id="ssDetailTime"></span></div><span id="ssDetailDuration"></span></div>
+                <dl class="ss-detail-facts" id="ssDetailFacts"></dl>
+                <div class="ss-meetings-heading"><h3>Weekly meetings</h3><span id="ssDetailHours"></span></div><div class="ss-detail-meetings" id="ssDetailMeetings"></div>
+                <p class="ss-detail-note">Meeting times follow your academic timetable.</p>
+            </div>
+            <footer class="ss-dialog-footer"><button type="button" class="ss-button ss-button--primary" id="ssShowSubject"><span class="material-symbols-outlined" aria-hidden="true">calendar_view_week</span>Show this class in my schedule</button></footer>
+        </dialog>
+    <?php endif ?>
+    <?php if (!empty($enrolled)): ?>
+        <details class="ss-card ss-enrollments"><summary><span class="material-symbols-outlined" aria-hidden="true">school</span><span>My enrolled subjects<small>Enrollment information and subject management</small></span><span class="ss-enrollment-count"><?= count($enrolled) ?></span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></summary>
+            <div class="ss-enrollment-body"><p>You can drop a subject in the active term until a grade is recorded for it.</p><div class="ss-table-scroll" role="region" aria-label="Enrolled subjects" tabindex="0"><table class="ss-table"><thead><tr><th scope="col">Subject</th><th scope="col">Section</th><th scope="col">Term</th><th scope="col"><span class="ss-sr-only">Actions</span></th></tr></thead><tbody>
+            <?php foreach ($enrolled as $e): ?><tr><td><strong><?= esc($e['subject_code']) ?></strong></td><td><?= esc($e['program']) ?> &middot; <?= esc($e['year_level']) ?> &middot; <?= esc($e['section']) ?></td><td><?= esc($e['academic_year']) ?></td><td>
+                <?php if ($e['can_drop']): ?><form method="post" action="<?= site_url('student/enrollments/drop') ?>" data-drop-code="<?= esc($e['subject_code'], 'attr') ?>"><?= csrf_field() ?><input type="hidden" name="enrollment_id" value="<?= (int) $e['enrollment_id'] ?>"><button type="submit" class="ss-button ss-button--drop">Drop subject</button></form>
+                <?php elseif ((int) $e['grade_count'] > 0): ?><span class="ss-enrollment-status">Graded</span><?php else: ?><span class="ss-enrollment-status">Past term</span><?php endif ?>
+            </td></tr><?php endforeach ?>
+            </tbody></table></div></div>
+        </details>
     <?php endif ?>
 </div>
-
 <?= $this->endSection() ?>
-
-<?php if (! empty($enrolled)): ?>
-<div class="panel" style="margin-top:16px;">
-    <h3 style="margin:0 0 4px; font-size:15px;">My Enrolled Subjects</h3>
-    <p style="font-size:12px; color:var(--color-text-secondary); margin:0 0 12px;">You can drop a subject in the active term until a grade is recorded for it.</p>
-    <table class="schedule-table">
-        <thead><tr><th>Subject</th><th>Section</th><th>Term</th><th></th></tr></thead>
-        <tbody>
-        <?php foreach ($enrolled as $e): ?>
-            <tr>
-                <td><b><?= esc($e['subject_code']) ?></b></td>
-                <td><?= esc($e['program']) ?> &middot; <?= esc($e['year_level']) ?> &middot; <?= esc($e['section']) ?></td>
-                <td><?= esc($e['academic_year']) ?></td>
-                <td style="text-align:right;">
-                    <?php if ($e['can_drop']): ?>
-                        <form method="post" action="<?= site_url('student/enrollments/drop') ?>" onsubmit="return confirm('Drop <?= esc($e['subject_code'], 'js') ?>? You can re-enroll later if a seat is available.');">
-                            <?= csrf_field() ?>
-                            <input type="hidden" name="enrollment_id" value="<?= (int) $e['enrollment_id'] ?>">
-                            <button type="submit" class="ac-btn ac-btn-secondary">Drop</button>
-                        </form>
-                    <?php elseif ((int) $e['grade_count'] > 0): ?>
-                        <span style="font-size:12px; color:var(--color-text-secondary);">Graded</span>
-                    <?php else: ?>
-                        <span style="font-size:12px; color:var(--color-text-secondary);">Past term</span>
-                    <?php endif ?>
-                </td>
-            </tr>
-        <?php endforeach ?>
-        </tbody>
-    </table>
-</div>
-<?php endif ?>
-
 <?= $this->section('scripts') ?>
-<script>
-    (function () {
-        const toggle = document.querySelector('.view-toggle');
-        if (!toggle) return;
-        if (window.acInitSegmented) window.acInitSegmented(toggle);
-        toggle.addEventListener('click', (e) => {
-            const btn = e.target.closest('button[data-view]');
-            if (!btn) return;
-            const view = btn.dataset.view;
-
-            toggle.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
-            document.querySelectorAll('.schedule-view').forEach((el) => {
-                el.classList.toggle('active', el.dataset.view === view);
-            });
-        });
-    })();
-</script>
+<script type="application/json" id="ssConfig"><?= json_encode(['meetings' => $scheduleData], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+<script src="<?= base_url('assets/js/student-schedule.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/student-schedule.js') ?>"></script>
 <?= $this->endSection() ?>
