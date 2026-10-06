@@ -177,10 +177,26 @@ final class CatalogIntegrityHardeningTest extends CIUnitTestCase
 
     // --- Faculty override: catalog validation ----------------------------
 
-    private function seedChairperson(int $id): void
+    private function seedChairperson(int $id, ?int $subDeptId = null): void
     {
         $this->seedUsers($id);
         db_connect()->table('auth_groups_users')->insert(['user_id' => $id, 'group' => 'chairperson', 'created_at' => date('Y-m-d H:i:s')]);
+
+        if ($subDeptId !== null) {
+            db_connect()->table('users')->where('id', $id)->update(['sub_department_id' => $subDeptId]);
+        }
+    }
+
+    /** A fresh college + department, for tests that need the chair to OWN the subject they're overriding. */
+    private function newSubDept(): int
+    {
+        static $seq = 90000;
+        $collegeId = ++$seq;
+        $subDeptId = ++$seq;
+        db_connect()->table('departments')->insert(['dept_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
+        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
+
+        return $subDeptId;
     }
 
     /** CSRF is on globally, so every JSON POST in these tests must carry the header the app itself uses (see layouts/admin_console.php). */
@@ -194,10 +210,11 @@ final class CatalogIntegrityHardeningTest extends CIUnitTestCase
 
     public function testValidFacultyOverrideStillWorks(): void
     {
-        $chairId = 910;
-        $this->seedChairperson($chairId);
+        $chairId  = 910;
+        $subDeptId = $this->newSubDept();
+        $this->seedChairperson($chairId, $subDeptId);
         $this->seedUsers(911);
-        $this->seedSubject('CAT301');
+        $this->seedSubject('CAT301', $subDeptId);
         $this->actingAs(auth()->getProvider()->findById($chairId));
 
         $response = $this->postOverride([

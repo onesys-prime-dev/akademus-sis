@@ -57,6 +57,9 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
     const searchInput = document.getElementById('subjectSearch');
     const searchResults = document.getElementById('subjectSearchResults');
     let searchTimer, searchController, searchSequence = 0, mutationBusy = false;
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    }
     function feedback(message, error = false) {
         const el = document.getElementById('feedback');
         el.hidden = false;

@@ -69,6 +69,12 @@ const CONFIG = Object.assign({
 CONFIG.totalRows = (CONFIG.gridEndMin - CONFIG.gridStartMin) / 30;
 
 const SUBJECTS = BOOT.subjects;
+// SUBJECTS is already scoped server-side to subjects THIS department owns
+// (see ChairpersonController::index()) — a block plotted for any other
+// code is either this section's own curriculum-borrowed class or another
+// department's, and must stay read-only here: only the owning department
+// may move/re-room/reassign/remove it. See renderBlockView().
+const OWNED_CODES = new Set(SUBJECTS.map(s => s.code));
 // Some rooms are stored as "4th Floor" and the server appends " Floor" again.
 const ROOMS    = BOOT.rooms.map(r => Object.assign({}, r, { floor: String(r.floor).replace(/(\s*floor)+$/i, '') + ' Floor' }));
 const WEEK     = BOOT.week;
@@ -529,12 +535,43 @@ function collectIssues() {
 }
 
 // ---------- block rendering ----------
+/**
+ * Two meetings of the same subject, in the same room, back-to-back with no
+ * gap (e.g. a subject split into two 1.5h blocks that landed consecutively
+ * on one day) read as one awkward double card. Mark them as joined so
+ * positionBlock() can close the seam between them and the later one can
+ * fold into a single continuous card instead of repeating its header.
+ */
+function markJoinedMeetings(items) {
+    const own = items.filter(i => i.own);
+
+    own.forEach(item => {
+        item.joinNext = own.find(other => other !== item
+            && other.lane === item.lane
+            && other.startRow === item.endRow
+            && other.b.code === item.b.code
+            && other.b.room === item.b.room) || null;
+    });
+    own.forEach(item => { item.joinPrev = own.find(other => other.joinNext === item) || null; });
+}
+
 function positionBlock(el, item) {
     const zone = item.zone || { split: false, strip: 0 };
     const rows = item.endRow - item.startRow;
 
-    el.style.top = (item.startRow * CONFIG.rowHeight + 1) + 'px';
-    el.style.height = (rows * CONFIG.rowHeight - 2) + 'px';
+    const topPos = item.startRow * CONFIG.rowHeight + (item.joinPrev ? 0 : 1);
+    const bottomPos = item.endRow * CONFIG.rowHeight - (item.joinNext ? 0 : 1);
+    el.style.top = topPos + 'px';
+    el.style.height = (bottomPos - topPos) + 'px';
+
+    if (item.joinPrev) el.classList.add('is-join-top');
+    if (item.joinNext) {
+        el.classList.add('is-join-bottom');
+        let last = item;
+        while (last.joinNext) last = last.joinNext;
+        const timeEl = el.querySelector('.b-time');
+        if (timeEl) timeEl.textContent = blockRange({ start: item.b.start, end: last.b.end });
+    }
 
     if (zone.split && !item.own) {
         const laneW = zone.strip / item.lanes;
@@ -576,15 +613,17 @@ function ownEl(b) {
     const issues = issueMap.get(key) || [];
     const worst = issues.some(i => i.level === 'error') ? 'error' : issues.length ? 'warn' : '';
     const isLab = !!(subject && subject.is_lab);
+    const isOwned = OWNED_CODES.has(b.code);
 
-    const el = mk('div', 'block' + (isLab ? ' is-lab' : ''));
+    const el = mk('div', 'block' + (isLab ? ' is-lab' : '') + (isOwned ? '' : ' is-readonly'));
     el.dataset.key = key;
     el.tabIndex = 0;
     el.setAttribute('role', 'button');
     el.setAttribute('aria-pressed', String(ui.blockKey === key));
     el.setAttribute('aria-label', `${b.code}, ${isLab ? 'laboratory' : 'lecture'}, ${dayName(b.day)} ${blockRange(b)}, ${b.room}, ${b.prof || 'no faculty assigned'}`
-        + (issues.length ? `, ${plural(issues.length, 'issue')}` : ''));
-    el.draggable = true;
+        + (issues.length ? `, ${plural(issues.length, 'issue')}` : '')
+        + (isOwned ? '' : ', managed by another department'));
+    el.draggable = isOwned;
     if (ui.blockKey === key) el.classList.add('is-selected');
     if (worst) el.dataset.issue = worst;
     if (ui.subjectCode && ui.subjectCode !== b.code) el.classList.add('is-dim');
@@ -618,7 +657,7 @@ function ownEl(b) {
             removeBlock(key);
         }
     });
-    attachBlockDrag(el, b);
+    if (isOwned) attachBlockDrag(el, b);
 
     return el;
 }
@@ -660,7 +699,7 @@ function renderBlocks(opts = {}) {
 
             blocks.forEach(b => {
                 if (Number(b.day) !== day) return;
-                items.push({ own: true, startRow: blockStartRow(b), endRow: blockEndRow(b), el: ownEl(b) });
+                items.push({ own: true, startRow: blockStartRow(b), endRow: blockEndRow(b), el: ownEl(b), b });
             });
 
             OTHERS.forEach(b => {
@@ -669,6 +708,7 @@ function renderBlocks(opts = {}) {
             });
 
             layoutColumn(items);
+            markJoinedMeetings(items);
 
             items.forEach(item => {
                 positionBlock(item.el, item);
@@ -747,10 +787,12 @@ function updateBoardSummary() {
 }
 
 // Plotted subjects with no faculty never reach a faculty member's
-// "My Assignments", so call them out and offer a one-click fix.
+// "My Assignments", so call them out and offer a one-click fix — but only
+// for subjects this department owns; another department's unstaffed class
+// isn't something this chairperson can fix from here.
 function subjectsWithoutProf() {
     const codes = [];
-    blocks.forEach(b => { if (!b.prof && !codes.includes(b.code)) codes.push(b.code); });
+    blocks.forEach(b => { if (!b.prof && OWNED_CODES.has(b.code) && !codes.includes(b.code)) codes.push(b.code); });
     return codes.filter(code => !blocks.some(b => b.code === code && b.prof));
 }
 
@@ -1790,6 +1832,10 @@ async function moveBlock(key, day, startRow, endRow) {
 async function removeBlock(key) {
     const b = blocks.find(x => blockKey(x) === key);
     if (!b) return;
+    if (!OWNED_CODES.has(b.code)) {
+        showToast(`${b.code} is owned by another department — only they can remove it from the schedule.`, 'error');
+        return;
+    }
 
     // One meeting is easy to bring back, so this is undoable instead of
     // interrupting the chairperson with a confirmation.
@@ -2275,6 +2321,27 @@ function announce(message) {
             overviewModal.classList.add('open');
             renderRoomOverview();
             requestAnimationFrame(() => document.getElementById('overviewRoomSearch').focus());
+        });
+
+        // Use the same preparation for the toolbar and the browser's Ctrl+P.
+        window.addEventListener('beforeprint', () => {
+            const workspace = document.getElementById('plottingWorkspace');
+            workspace.style.setProperty('--print-rows', CONFIG.totalRows);
+            const gridHeight = CONFIG.totalRows * CONFIG.rowHeight;
+            workspace.querySelectorAll('.block, .lunch-band').forEach(el => {
+                el.style.setProperty('--print-top', `${parseFloat(el.style.top) / gridHeight * 100}%`);
+                el.style.setProperty('--print-height', `${parseFloat(el.style.height) / gridHeight * 100}%`);
+            });
+            const hours = blocks.reduce((sum, b) => sum + blockHours(b), 0);
+            document.getElementById('printScheduleSummary').textContent =
+                `${new Set(blocks.map(b => b.code)).size} subjects · ${blocks.length} meetings · ${round1(hours)} scheduled hours / week`;
+            const date = new Intl.DateTimeFormat('en-PH', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Manila' }).format(new Date());
+            document.getElementById('printScheduleDate').textContent = `Printed ${date}`;
+        });
+
+        document.getElementById('printScheduleBtn')?.addEventListener('click', () => {
+            clearSelection();
+            window.print();
         });
 
         function closeRoomOverview() {
@@ -3076,34 +3143,41 @@ function renderBlockView() {
     const issues = issueMap.get(blockKey(b)) || [];
     const box = inspectorBody;
     const key = blockKey(b);
+    const isOwned = OWNED_CODES.has(b.code);
 
     box.appendChild(insHeader('Plotted class', subject, clearSelection, 'Close details'));
+
+    if (!isOwned) {
+        const notice = mk('p', 'muted');
+        notice.textContent = 'This class is owned by another department — only they can move it, change its room, assign faculty, or remove it. Use Shared Subject Requests if you need a change.';
+        box.appendChild(notice);
+    }
 
     const facts = mk('dl', 'facts');
 
     facts.appendChild(factRow('Schedule',
         mk('span', '', `${dayName(b.day)} · ${blockRange(b)}`),
-        textButton(ui.moveOpen ? 'Cancel' : 'Move', () => {
+        isOwned ? textButton(ui.moveOpen ? 'Cancel' : 'Move', () => {
             ui.moveOpen = !ui.moveOpen;
             ui.draft = { day: Number(b.day), row: blockStartRow(b) };
             renderInspector();
-        })));
+        }) : null));
 
     const roomKind = room ? `${room.is_laboratory ? 'Laboratory' : (room.type || 'Room')}${room.capacity ? ' · ' + room.capacity + ' seats' : ''}` : '';
     const roomValue = mk('span', '', b.room);
     if (roomKind) roomValue.append(mk('span', 'fact__sub', roomKind));
-    facts.appendChild(factRow('Room', roomValue, textButton('Change', () => beginRoomChange(key))));
+    facts.appendChild(factRow('Room', roomValue, isOwned ? textButton('Change', () => beginRoomChange(key)) : null));
 
     facts.appendChild(factRow('Faculty',
         b.prof ? mk('span', '', b.prof) : mk('span', 'is-warn', 'Not assigned'),
-        textButton(b.prof ? 'Change' : 'Assign', () => beginFacultyChange(key))));
+        isOwned ? textButton(b.prof ? 'Change' : 'Assign', () => beginFacultyChange(key)) : null));
 
     facts.appendChild(factRow('Section', document.createTextNode(`${CONTEXT.section} · ${CONTEXT.year_level}`)));
     facts.appendChild(factRow('Units', document.createTextNode(String(parseFloat(subject.units) || 0))));
     facts.appendChild(factRow('This meeting', document.createTextNode(fmtHours(blockHours(b)))));
     box.appendChild(facts);
 
-    if (ui.moveOpen) box.appendChild(moveForm(b, subject));
+    if (isOwned && ui.moveOpen) box.appendChild(moveForm(b, subject));
 
     if (b.faculty_id) {
         const f = cachedFaculty(b.faculty_id);
@@ -3122,16 +3196,18 @@ function renderBlockView() {
 
     const attention = mk('section', 'ins-section');
     attention.appendChild(mk('h4', 'ins-heading', issues.length ? `Needs attention (${issues.length})` : 'Checks'));
-    if (issues.length) attention.appendChild(issueList(issues, b));
+    if (issues.length) attention.appendChild(issueList(issues, isOwned ? b : null));
     else attention.appendChild(mk('p', 'muted', 'No conflicts or warnings for this class.'));
     box.appendChild(attention);
 
-    const actions = mk('div', 'ins-actions');
-    const remove = mk('button', 'btn btn-danger-ghost', 'Remove from schedule');
-    remove.type = 'button';
-    remove.addEventListener('click', () => removeBlock(key));
-    actions.appendChild(remove);
-    box.appendChild(actions);
+    if (isOwned) {
+        const actions = mk('div', 'ins-actions');
+        const remove = mk('button', 'btn btn-danger-ghost', 'Remove from schedule');
+        remove.type = 'button';
+        remove.addEventListener('click', () => removeBlock(key));
+        actions.appendChild(remove);
+        box.appendChild(actions);
+    }
 }
 
 function moveForm(b, subject) {

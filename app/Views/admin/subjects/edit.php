@@ -38,6 +38,17 @@
             <input type="text" id="subject_name" name="subject_name" class="ac-input" value="<?= old('subject_name', $subject['subject_name']) ?>" required>
         </div>
 
+        <div class="ac-field">
+            <label for="sub_department_id">Owning Department</label>
+            <select id="sub_department_id" name="sub_department_id" class="ac-input">
+                <option value="">— Unassigned —</option>
+                <?php foreach ($subDepartments as $deptId => $deptName): ?>
+                    <option value="<?= (int) $deptId ?>" <?= old('sub_department_id', $subject['sub_department_id']) == $deptId ? 'selected' : '' ?>><?= esc($deptName) ?></option>
+                <?php endforeach ?>
+            </select>
+            <p style="font-size:11.5px; color:var(--color-text-secondary); margin-top:4px;">The department whose chairperson manages this subject's catalog entry and scheduling.</p>
+        </div>
+
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
             <div class="ac-field">
                 <label for="units">Units</label>

@@ -210,6 +210,23 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <a href="<?= site_url('chairperson/curriculum') ?>">Curriculum →</a>
             </div>
         </div>
+
+        <div class="kpi-card">
+            <div class="kpi-card__top">
+                <div class="kpi-icon kpi-icon--amber"><span class="material-symbols-outlined">pending_actions</span></div>
+                <?php if ($stats['needs_plotting_count'] > 0): ?>
+                    <span class="kpi-flag kpi-flag--warn">Action Required</span>
+                <?php else: ?>
+                    <span class="kpi-flag kpi-flag--ok">All Clear</span>
+                <?php endif ?>
+            </div>
+            <div class="kpi-value-row"><span class="kpi-value"><?= esc($stats['needs_plotting_count']) ?></span></div>
+            <div class="kpi-label">Classes needing your subjects plotted</div>
+            <div class="kpi-footer">
+                <span>Any department, live demand</span>
+                <a href="<?= site_url('chairperson/offerings') ?>">Plot now →</a>
+            </div>
+        </div>
     </div>
 
     <div class="dash-split">

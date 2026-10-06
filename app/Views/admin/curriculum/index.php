@@ -23,6 +23,17 @@
     </div>
 <?php endif ?>
 
+<?php if (session()->has('errors')): ?>
+    <div class="ac-alert" style="background:var(--color-danger-soft); border-color:var(--color-danger-border); margin-bottom:16px;">
+        <span class="material-symbols-outlined" style="color:var(--color-danger);" aria-hidden="true">error</span>
+        <div class="ac-alert__text" style="color:var(--color-danger);">
+            <?php foreach (session('errors') as $error): ?>
+                <p><?= esc($error) ?></p>
+            <?php endforeach ?>
+        </div>
+    </div>
+<?php endif ?>
+
 <?php if (empty($curriculum)): ?>
     <div class="ac-empty-block">
         <p>No curricula yet.</p>
@@ -59,6 +70,12 @@
                                 <?= csrf_field() ?>
                                 <button type="submit" class="ac-btn-outline" data-confirm="Change curriculum visibility?">
                                     <?= $item['is_active'] ? 'Hide' : 'Show' ?>
+                                </button>
+                            </form>
+                            <form method="post" action="<?= site_url('admin/curriculum/delete/' . $item['curriculum_id']) ?>" style="display:inline;">
+                                <?= csrf_field() ?>
+                                <button type="submit" class="ac-icon-action ac-icon-action--danger" title="Delete <?= esc($item['curriculum_code'], 'attr') ?>" data-confirm="Permanently delete <?= esc($item['curriculum_code'], 'attr') ?>? Its subject assignments are removed too. This cannot be undone.">
+                                    <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
                                 </button>
                             </form>
                         </td>

@@ -19,19 +19,36 @@ class SubjectController extends BaseController
 
     public function index()
     {
-        $subjects = $this->subjectModel->findAll();
+        $subjects = db_connect()->table('subjects s')
+            ->select('s.*, sd.name AS owner_dept_name')
+            ->join('sub_departments sd', 'sd.sub_dept_id = s.sub_department_id', 'left')
+            ->orderBy('s.subject_code')
+            ->get()
+            ->getResultArray();
 
         return view('admin/subjects/index', [
-            'subjects'    => $subjects,
-            'activeAdmin' => 'subjects',
+            'subjects'       => $subjects,
+            'subDepartments' => $this->subDepartments(),
+            'activeAdmin'    => 'subjects',
         ]);
     }
 
     public function create()
     {
         return view('admin/subjects/create', [
-            'activeAdmin' => 'subjects',
+            'subDepartments' => $this->subDepartments(),
+            'activeAdmin'    => 'subjects',
         ]);
+    }
+
+    /** Every department, for the owner picker — alphabetical, id => name. */
+    private function subDepartments(): array
+    {
+        return array_column(
+            db_connect()->table('sub_departments')->select('sub_dept_id, name')->orderBy('name')->get()->getResultArray(),
+            'name',
+            'sub_dept_id'
+        );
     }
 
     public function store()
@@ -65,6 +82,7 @@ class SubjectController extends BaseController
             'laboratory_units'  => $this->request->getPost('laboratory_units') ?: null,
             'meetings_per_week' => $this->request->getPost('meetings_per_week') ?: null,
             'description'       => $this->request->getPost('description'),
+            'sub_department_id' => $this->request->getPost('sub_department_id') ?: null,
         ]);
 
         return redirect()
@@ -84,6 +102,7 @@ class SubjectController extends BaseController
 
         return view('admin/subjects/edit', [
             'subject'          => $subject,
+            'subDepartments'   => $this->subDepartments(),
             'prerequisites'    => $prerequisites->forSubject((int) $id),
             'candidates'       => $prerequisites->candidatesFor((int) $id),
             'activeAdmin'      => 'subjects',
@@ -171,11 +190,95 @@ class SubjectController extends BaseController
             'laboratory_units'  => $this->request->getPost('laboratory_units') ?: null,
             'meetings_per_week' => $this->request->getPost('meetings_per_week') ?: null,
             'description'       => $this->request->getPost('description'),
+            'sub_department_id' => $this->request->getPost('sub_department_id') ?: null,
         ]);
 
         return redirect()
             ->to('/admin/subjects')
             ->with('message', 'Subjects updated successfully.');
+    }
+
+    /**
+     * Quick owner reassignment straight from the list — same field the
+     * Chairperson Subject Ownership page reads/writes
+     * (subjects.sub_department_id), so a change here is visible there
+     * immediately, and a subject a chairperson added shows up here the same
+     * way (both sides read the one `subjects` table — nothing to sync).
+     */
+    public function updateOwner($id)
+    {
+        $subject = $this->subjectModel->find($id);
+
+        if (! $subject) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $this->subjectModel->update($id, [
+            'sub_department_id' => $this->request->getPost('sub_department_id') ?: null,
+        ]);
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['ok' => true]);
+        }
+
+        return redirect()
+            ->to('/admin/subjects')
+            ->with('message', "{$subject['subject_code']} owner updated.");
+    }
+
+    /**
+     * Permanently removes every selected subject that isn't currently in
+     * use. "In use" = plotted anywhere, actively assigned in a curriculum,
+     * or ever enrolled — plotted_schedules/enrollments/faculty_assignments
+     * key off subject_code with no FK, so nothing at the DB level would
+     * stop an in-use subject from being deleted; this check is the only
+     * thing that does. Everything else referencing subject_id (curriculum
+     * mappings, component templates, substitutions, placement requests)
+     * cascades automatically.
+     */
+    public function bulkDestroy()
+    {
+        $ids = array_filter(array_map('intval', (array) $this->request->getPost('ids')));
+
+        if ($ids === []) {
+            return redirect()->to('/admin/subjects')->with('errors', ['Select at least one subject to remove.']);
+        }
+
+        $subjects = $this->subjectModel->whereIn('subject_id', $ids)->findAll();
+        $db       = db_connect();
+
+        $deleted = [];
+        $skipped = [];
+
+        foreach ($subjects as $subject) {
+            $inUse = $db->table('plotted_schedules')->where('subject_code', $subject['subject_code'])->countAllResults() > 0
+                || $db->table('curriculum_subjects')->where('subject_id', $subject['subject_id'])->where('is_active', 1)->countAllResults() > 0
+                || $db->table('enrollments')->where('subject_code', $subject['subject_code'])->countAllResults() > 0;
+
+            if ($inUse) {
+                $skipped[] = $subject;
+
+                continue;
+            }
+
+            $this->subjectModel->delete($subject['subject_id']);
+            $deleted[] = $subject;
+        }
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'ok'      => true,
+                'deleted' => array_map(static fn (array $s) => (int) $s['subject_id'], $deleted),
+                'skipped' => array_map(static fn (array $s) => ['id' => (int) $s['subject_id'], 'code' => $s['subject_code']], $skipped),
+            ]);
+        }
+
+        $deletedCodes = array_column($deleted, 'subject_code');
+        $skippedCodes = array_column($skipped, 'subject_code');
+        $message = $deletedCodes === [] ? '' : count($deletedCodes) . ' subject(s) deleted: ' . implode(', ', $deletedCodes) . '. ';
+        $message .= $skippedCodes === [] ? '' : count($skippedCodes) . ' skipped (still in use — plotted, curriculum-assigned, or enrolled): ' . implode(', ', $skippedCodes) . '.';
+
+        return redirect()->to('/admin/subjects')->with($deleted !== [] ? 'message' : 'errors', $deleted !== [] ? trim($message) : [trim($message)]);
     }
 
     public function addPrerequisite($id)
@@ -202,23 +305,6 @@ class SubjectController extends BaseController
             ->with($removed ? 'message' : 'errors', $removed ? 'Prerequisite removed.' : ['That prerequisite was not set.']);
     }
 
-    // public function delete($id)
-    // {
-    //     $subject = $this->subjectModel->find($id);
-
-    //     if (! $subject) {
-    //         throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
-    //     }
-
-    //     $this->subjectModel->update($id, [
-    //         'is_active' => 0
-    //     ]);
-
-    //     return redirect()
-    //         ->to('/admin/subjects')
-    //         ->with('message', 'Subjects deactivated successfully.');
-    // }
-
     public function toggleStatus($id) {
         $subject = $this->subjectModel->find($id);
 
@@ -228,14 +314,18 @@ class SubjectController extends BaseController
 
         $newStatus = $subject['is_active'] ? 0 : 1;
 
-        $this->subjectModel->update($id, [ 
+        $this->subjectModel->update($id, [
             'is_active' => $newStatus
         ]);
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['ok' => true, 'is_active' => (bool) $newStatus]);
+        }
 
         return redirect()
             ->to('/admin/subjects')
             ->with(
-                'message', 
+                'message',
                 $newStatus
                     ? 'Subject activated.'
                     : 'Subject deactivated.'

@@ -7,6 +7,8 @@ use App\Libraries\ScheduleOverlap;
 use App\Models\AcademicYearModel;
 use App\Libraries\TermCurriculum;
 use App\Libraries\SchedulingAuthorization;
+use App\Libraries\SubjectDemandService;
+use App\Models\CourseOfferingModel;
 use App\Models\DepartmentModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\FacultyAvailabilityModel;
@@ -271,8 +273,14 @@ class ChairpersonController extends BaseController
 
         // Classes plotted for other sections in the same AY: shown as ghost
         // blocks and counted for room/faculty availability. Scoped to this
-        // chairperson's own department — other departments' plots don't leak in.
-        $deptPrograms = $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
+        // chairperson's own programs PLUS any borrowing program using one of
+        // their owned subjects (see borrowingProgramNames()) — otherwise a
+        // subject owner viewing a borrowed section's grid would see no
+        // context for that section's other classes at all.
+        $deptPrograms = array_merge(
+            $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']),
+            $this->borrowingProgramNames()
+        );
 
         $otherBlocks = $this->attachProfs(
             array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section'], $deptPrograms)),
@@ -288,7 +296,25 @@ class ChairpersonController extends BaseController
         // assignment) — empty when this exact (academic_year, program,
         // year_level) hasn't been configured yet, so switching semester
         // never shows another semester's subjects.
-        $subjects = $this->contextSubjects($context['academic_year'], $context['program'], $context['year_level']);
+        //
+        // Filtered to subjects THIS department owns — sync() already
+        // refuses to save a plot for a subject it doesn't own, so showing
+        // one here (as draggable, suggestible, "plot this") would just
+        // invite a failed save. A subject the curriculum needs but this
+        // department doesn't own is handled via Shared Subject Coverage /
+        // Requests instead, not from this catalog rail.
+        $contextSubjects  = $this->contextSubjects($context['academic_year'], $context['program'], $context['year_level']);
+        $ownedSubjectCodes = $contextSubjects === [] ? [] : array_column(
+            (new SubjectModel())
+                ->whereIn('subject_code', array_column($contextSubjects, 'code'))
+                ->whereIn('sub_department_id', (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id()))
+                ->findAll(),
+            'subject_code'
+        );
+        $subjects = array_values(array_filter(
+            $contextSubjects,
+            static fn (array $s) => in_array($s['code'], $ownedSubjectCodes, true)
+        ));
 
         $account = auth()->user();
 
@@ -370,7 +396,10 @@ class ChairpersonController extends BaseController
         [$profMap, $assignments] = $this->assignmentsFor($context['academic_year']);
 
         $subDept      = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-        $deptPrograms = $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
+        $deptPrograms = array_merge(
+            $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']),
+            $this->borrowingProgramNames()
+        );
 
         $blocks = $this->attachProfs(
             array_map([$this, 'rowToBlock'], $schedules->forContext($context['academic_year'], $context['program'], $context['year_level'], $context['section'])),
@@ -432,10 +461,26 @@ class ChairpersonController extends BaseController
             $headcount = (new CapacityPolicyModel())->resolve(['program' => $context['program'], 'year_level' => $context['year_level']])['target'];
         }
 
+        // The Assistant must never suggest (or offer to plot) a subject this
+        // department doesn't own — same rule sync() enforces on save (see
+        // its ownedSubjectCodes check). Filtering it out of the suggestion
+        // pool here, rather than only rejecting it at save time, keeps the
+        // Assistant from ever showing a "Plot this" the chairperson isn't
+        // actually allowed to use.
+        $contextSubjects = $this->contextSubjects($context['academic_year'], $context['program'], $context['year_level']);
+
+        $ownedSubjectCodes = $contextSubjects === [] ? [] : array_column(
+            (new SubjectModel())
+                ->whereIn('subject_code', array_column($contextSubjects, 'code'))
+                ->whereIn('sub_department_id', (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id()))
+                ->findAll(),
+            'subject_code'
+        );
+
         $subjects = array_map(static fn (array $s) => [
             'code' => $s['code'], 'title' => $s['title'], 'units' => (float) $s['units'], 'duration' => (float) $s['duration'],
             'weekly_hours' => (float) $s['weekly_hours'], 'is_lab' => (bool) $s['is_lab'], 'color' => $s['color'],
-        ], $this->contextSubjects($context['academic_year'], $context['program'], $context['year_level']));
+        ], array_values(array_filter($contextSubjects, static fn (array $s) => in_array($s['code'], $ownedSubjectCodes, true))));
 
         $opts = [
             'headcount'       => $headcount,
@@ -1224,6 +1269,23 @@ class ChairpersonController extends BaseController
 
         $subjectsByCode = array_column($this->contextSubjects($context['academic_year'], $context['program'], $context['year_level']), null, 'code');
 
+        // Program ownership generates demand; subject ownership controls
+        // delivery and scheduling (see SchedulingAuthorization::
+        // canManageSubject()). A program may only PLOT a subject directly
+        // here when its own department owns that subject — a subject
+        // borrowed from another department's catalog must go through a
+        // Shared Subject Request instead, so the owning department (who
+        // actually knows its own faculty's availability/load) decides the
+        // placement. Rows already plotted before this rule existed are
+        // grandfathered (left editable/removable) rather than hard-blocked.
+        $ownedSubjectCodes = $subjectsByCode === [] ? [] : array_column(
+            (new SubjectModel())
+                ->whereIn('subject_code', array_keys($subjectsByCode))
+                ->whereIn('sub_department_id', (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id()))
+                ->findAll(),
+            'subject_code'
+        );
+
         // Subjects this section already has plotted. If the curriculum has since
         // moved on (a new published version, a subject moved to another term),
         // these rows become "stale": still stored, but no longer valid. They
@@ -1252,9 +1314,15 @@ class ChairpersonController extends BaseController
         // for anything new is still rejected below.
         $activeRoomNames = array_column($this->rooms(), 'name');
         $storedPlacements = [];
+        // Faculty already assigned to a subject this department does NOT
+        // own (grandfathered/plotted by the actual owner) — preserved
+        // as-is below rather than re-validated against the acting
+        // chairperson's own faculty roster, since it was never theirs to
+        // assign in the first place. See the ownedSubjectCodes guard above.
+        $storedProfByCode = [];
 
         foreach (db_connect()->table('plotted_schedules')
-            ->select('subject_code, day, start_time, room')
+            ->select('subject_code, day, start_time, room, prof')
             ->where([
                 'academic_year' => $context['academic_year'],
                 'program'       => $context['program'],
@@ -1264,6 +1332,7 @@ class ChairpersonController extends BaseController
             ->get()
             ->getResultArray() as $stored) {
             $storedPlacements[$stored['subject_code'] . '|' . $stored['day'] . '|' . substr($stored['start_time'], 0, 5) . '|' . $stored['room']] = true;
+            $storedProfByCode[$stored['subject_code']] = $stored['prof'];
         }
 
         $blocks = [];
@@ -1299,6 +1368,10 @@ class ChairpersonController extends BaseController
 
             $subject = $subjectsByCode[$block['code']];
 
+            if (! in_array($block['code'], $ownedSubjectCodes, true) && ! in_array($block['code'], $alreadyPlotted, true)) {
+                return $this->fail("{$block['code']} is owned by another department — request it through Shared Subject Requests so that department can assign faculty and plot it.");
+            }
+
             $unchangedInRetiredRoom = isset($storedPlacements["{$block['code']}|{$block['day']}|{$block['start']}|{$block['room']}"]);
 
             if (! in_array($block['room'], $activeRoomNames, true) && ! $unchangedInRetiredRoom) {
@@ -1323,12 +1396,18 @@ class ChairpersonController extends BaseController
                 return $this->fail('Invalid faculty_id.');
             }
 
+            $isOwnedCode = in_array($subject['code'], $ownedSubjectCodes, true);
+
             $blocks[] = [
                 'day'        => $block['day'],
                 'code'       => $subject['code'],
                 'title'      => $subject['title'],
-                'prof'       => null, // resolved below, once faculty_id is validated
-                'faculty_id' => $facultyId,
+                // Owned: resolved below once faculty_id is validated against
+                // this department's roster. Grandfathered/not-owned: never
+                // this chairperson's to (re)assign — keep whatever the
+                // actual owner already has on file, untouched.
+                'prof'       => $isOwnedCode ? null : ($storedProfByCode[$subject['code']] ?? null),
+                'faculty_id' => $isOwnedCode ? $facultyId : null,
                 'room'       => $block['room'],
                 'theme'      => $subject['color'],
                 'start'      => $block['start'],
@@ -1339,6 +1418,9 @@ class ChairpersonController extends BaseController
 
         // Faculty is chairperson-assigned per subject, not per meeting — every
         // block for the same code in this save must agree on who's teaching it.
+        // Only ever built from subjects this department owns (see above) — a
+        // grandfathered block's faculty_id is dropped, never validated
+        // against this department's own roster.
         $facultyByCode = [];
 
         foreach ($blocks as $b) {
@@ -1462,6 +1544,31 @@ class ChairpersonController extends BaseController
             }
         }
 
+        // replaceDraft() below replaces this section's ENTIRE stored set with
+        // whatever is submitted — if the client simply omits a block (e.g.
+        // its "Remove from schedule" control was clicked, or it silently
+        // dropped out of a stale local copy of the grid), that block
+        // disappears. For a subject this department doesn't own, that
+        // would let a borrowing chairperson un-plot another department's
+        // class merely by leaving it out of their save — the same
+        // delivery decision sync()'s per-block guard above already refuses
+        // to let them MAKE. Any already-stored, not-owned subject missing
+        // from this submission is restored here, unchanged, before saving.
+        $plottedCodesInSave = array_column($blocks, 'code');
+        $missingNonOwnedCodes = array_values(array_diff($alreadyPlotted, $ownedSubjectCodes, $plottedCodesInSave));
+
+        $preservedRows = $missingNonOwnedCodes === [] ? [] : db_connect()->table('plotted_schedules')
+            ->select('day, start_time, end_time, time_label, subject_code, subject_title, prof, room, theme, status')
+            ->where([
+                'academic_year' => $context['academic_year'],
+                'program'       => $context['program'],
+                'year_level'    => $context['year_level'],
+                'section'       => $context['section'],
+            ])
+            ->whereIn('subject_code', $missingNonOwnedCodes)
+            ->get()
+            ->getResultArray();
+
         $rows = array_map(static fn (array $b) => [
             'academic_year' => $context['academic_year'],
             'program'       => $context['program'],
@@ -1478,6 +1585,25 @@ class ChairpersonController extends BaseController
             'theme'         => $b['theme'],
             'status'        => 'published',
         ], $blocks);
+
+        foreach ($preservedRows as $row) {
+            $rows[] = [
+                'academic_year' => $context['academic_year'],
+                'program'       => $context['program'],
+                'year_level'    => $context['year_level'],
+                'section'       => $context['section'],
+                'day'           => (int) $row['day'],
+                'start_time'    => $row['start_time'],
+                'end_time'      => $row['end_time'],
+                'time_label'    => $row['time_label'],
+                'subject_code'  => $row['subject_code'],
+                'subject_title' => $row['subject_title'],
+                'prof'          => $row['prof'],
+                'room'          => $row['room'],
+                'theme'         => $row['theme'],
+                'status'        => $row['status'],
+            ];
+        }
 
         // One transaction covers the schedule replace, the section anchor,
         // and any faculty assignment upserts — a plot and its assignment
@@ -1590,10 +1716,19 @@ class ChairpersonController extends BaseController
 
         $overrideSubjectCode = (string) $payload['subject_code'];
 
-        $subjectExists = (new SubjectModel())->where('subject_code', $overrideSubjectCode)->where('is_active', 1)->countAllResults() > 0;
+        $overrideSubject = (new SubjectModel())->where('subject_code', $overrideSubjectCode)->where('is_active', 1)->first();
 
-        if (! $subjectExists) {
+        if ($overrideSubject === null) {
             return $this->fail("{$overrideSubjectCode} is not a recognized subject. Please contact the registrar.");
+        }
+
+        // Assigning faculty against an availability/schedule conflict is a
+        // delivery decision — only the subject's owning department (or an
+        // admin/registrar override) may record it.
+        $auth = (new SchedulingAuthorization())->authorizeManageSubject((int) auth()->id(), (int) $overrideSubject['subject_id']);
+
+        if (! $auth['ok']) {
+            return $this->fail("{$overrideSubjectCode} is owned by another department — only that department may assign its faculty.");
         }
 
         (new FacultyOverrideModel())->insert([
@@ -2122,15 +2257,71 @@ class ChairpersonController extends BaseController
         $deptModel = new DepartmentModel();
         $subDept   = $deptModel->subDeptOfUser((int) auth()->id());
 
-        // A chairperson only ever schedules for their own department's
-        // programs. No department assigned = no programs to schedule.
-        $filters['program'] = $subDept === null ? [] : $deptModel->programsOfSubDept((int) $subDept['sub_dept_id']);
+        // A chairperson schedules for their own department's programs...
+        $ownPrograms = $subDept === null ? [] : $deptModel->programsOfSubDept((int) $subDept['sub_dept_id']);
+
+        // ...PLUS any other program whose curriculum needs a subject this
+        // department owns — e.g. General Subjects (no programs of its own)
+        // still needs BSIT to show up here, since it's the only place its
+        // RED101/GEC101/etc. classes can actually get plotted. The Classes
+        // rail itself (see index()'s $subjects filter) still only ever
+        // offers the subjects this department owns, even on a borrowed
+        // program — sync() enforces the same rule on save.
+        $borrowingPrograms = $this->borrowingProgramNames();
+
+        $filters['program'] = array_values(array_unique(array_merge($ownPrograms, $borrowingPrograms)));
 
         // Sections come from what the department actually has, not a fixed
         // list, so a section created on the Sections page is plottable at once.
         $filters['section'] = $this->sectionOptions($filters['program']);
 
         return $filters;
+    }
+
+    /**
+     * Every program (by display name) whose curriculum includes at least
+     * one subject this chairperson's department(s) own, besides their own
+     * programs — the "someone else needs my subject" side of scheduling.
+     * Live, computed from current curriculum_subjects every call, never
+     * cached.
+     *
+     * @return list<string>
+     */
+    private function borrowingProgramNames(): array
+    {
+        $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
+
+        if ($subDeptIds === []) {
+            return [];
+        }
+
+        $programIds = array_column(
+            db_connect()->table('curriculum_subjects cs')
+                ->select('c.program_id')
+                ->distinct()
+                ->join('curriculum c', 'c.curriculum_id = cs.curriculum_id')
+                ->join('subjects s', 's.subject_id = cs.subject_id')
+                ->whereIn('s.sub_department_id', $subDeptIds)
+                ->where('cs.is_active', 1)
+                ->where('s.is_active', 1)
+                ->get()
+                ->getResultArray(),
+            'program_id'
+        );
+
+        $names = [];
+
+        foreach ($programIds as $programId) {
+            $name = DepartmentModel::programNameById((int) $programId);
+
+            if ($name !== null) {
+                $names[] = $name;
+            }
+        }
+
+        sort($names);
+
+        return $names;
     }
 
     /**
@@ -2320,6 +2511,45 @@ class ChairpersonController extends BaseController
             ->where('u.deleted_at', null)
             ->countAllResults();
 
+        // Live count of classes (any department's section) that need one of
+        // MY owned subjects plotted — mirrors
+        // Chairperson\OfferingController::needsPlottingList(), computed
+        // fresh from current demand every time this page loads, never
+        // cached. See Merged Classes -> "Needs Plotting" to act on them.
+        $needsPlottingCount = 0;
+
+        if ($activeYear !== null) {
+            $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
+
+            if ($subDeptIds !== []) {
+                $ownedSubjects = db_connect()->table('subjects')
+                    ->select('subject_id, subject_code')
+                    ->whereIn('sub_department_id', $subDeptIds)
+                    ->where('is_active', 1)
+                    ->get()
+                    ->getResultArray();
+
+                if ($ownedSubjects !== []) {
+                    $demandService = new SubjectDemandService();
+                    $offeringModel = new CourseOfferingModel();
+
+                    foreach ($ownedSubjects as $subject) {
+                        $summary = $demandService->summary((int) $subject['subject_id'], $activeYear);
+
+                        foreach ($summary['by_section'] as $bySection) {
+                            if ($bySection['expected_count'] <= 0 || $bySection['section_id'] === null) {
+                                continue;
+                            }
+
+                            if ($offeringModel->offeringForSection((int) $bySection['section_id'], $subject['subject_code']) === null) {
+                                $needsPlottingCount++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         return view('chairperson/overview', [
             'pageTitle' => 'Dashboard',
             'user' => [
@@ -2330,11 +2560,12 @@ class ChairpersonController extends BaseController
             'activeYear'  => $activeYear,
             'programs'    => $programs,
             'stats' => [
-                'plotted_classes'  => $plottedClasses,
-                'faculty_count'    => $facultyCount,
-                'pending_approvals' => count($this->swapApprovals()),
-                'curriculum_set'   => $curriculumSet,
-                'curriculum_slots' => $curriculumSlots,
+                'plotted_classes'     => $plottedClasses,
+                'faculty_count'       => $facultyCount,
+                'pending_approvals'   => count($this->swapApprovals()),
+                'curriculum_set'      => $curriculumSet,
+                'curriculum_slots'    => $curriculumSlots,
+                'needs_plotting_count' => $needsPlottingCount,
             ],
         ]);
     }

@@ -164,4 +164,36 @@ class CurriculumController extends BaseController
                     : 'curriculum is deactivated successfully'
             );
     }
+
+    /**
+     * Permanently removes a curriculum. curriculum_subjects rows cascade
+     * automatically (see CreateCurriculumSubjects migration); students/
+     * student_curriculum_logs referencing it fall back to NULL (see
+     * AddCurriculumIdToStudents / CreateStudentCurriculumLogs) rather than
+     * blocking the delete at the DB level — but a student currently pinned
+     * to this curriculum is still refused here, so that never happens
+     * silently. Reassign (or remove) those students first.
+     */
+    public function delete($id)
+    {
+        $curriculum = $this->curriculumModel->find($id);
+
+        if (! $curriculum) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $studentCount = db_connect()->table('students')->where('curriculum_id', $id)->countAllResults();
+
+        if ($studentCount > 0) {
+            return redirect()
+                ->to('/admin/curriculum')
+                ->with('errors', ["{$curriculum['curriculum_code']} has {$studentCount} student(s) assigned to it — reassign them to another curriculum first."]);
+        }
+
+        $this->curriculumModel->delete($id);
+
+        return redirect()
+            ->to('/admin/curriculum')
+            ->with('message', "{$curriculum['curriculum_code']} deleted.");
+    }
 }

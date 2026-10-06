@@ -133,11 +133,18 @@ class CourseOfferingModel extends Model
     }
 
     /**
-     * Creates a merged offering for $subjectCode across $sectionIds (2 or
-     * more), then backfills offering_id onto every already-enrolled
-     * student's existing row for that subject in those sections, so a
-     * merge performed after enrollment has already started still produces
-     * one correct combined roster immediately.
+     * Creates an offering for $subjectCode across $sectionIds, then
+     * backfills offering_id onto every already-enrolled student's existing
+     * row for that subject in those sections, so an offering created after
+     * enrollment has already started still produces one correct roster
+     * immediately.
+     *
+     * $minSections defaults to 2 (the "Merge Selected" UI's own meaning —
+     * combining multiple existing sections). The subject-owner "needs
+     * plotting" picker (OfferingController::plotDemand()) passes 1, since a
+     * single borrowing section with no merge partner still needs its own
+     * offering before it can be scheduled — the resulting row is identical
+     * either way, just with one offering_sections entry instead of several.
      *
      * Refuses to merge a section that's already merged into a DIFFERENT
      * offering for the same subject — a section can only belong to one
@@ -151,12 +158,12 @@ class CourseOfferingModel extends Model
      *
      * @return array{ok: bool, error?: string, offering_id?: int, roster_count?: int, over_capacity?: bool}
      */
-    public function createMerge(string $academicYear, string $subjectCode, array $sectionIds, ?int $capacity): array
+    public function createMerge(string $academicYear, string $subjectCode, array $sectionIds, ?int $capacity, int $minSections = 2): array
     {
         $sectionIds = array_values(array_unique(array_map('intval', $sectionIds)));
 
-        if (count($sectionIds) < 2) {
-            return ['ok' => false, 'error' => 'Select at least two sections to merge.'];
+        if (count($sectionIds) < $minSections) {
+            return ['ok' => false, 'error' => $minSections > 1 ? 'Select at least two sections to merge.' : 'Select a section.'];
         }
 
         $subjectMatches = $this->db->table('subjects')

@@ -24,6 +24,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
     .mc-count { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--color-primary-soft); color: var(--color-primary); }
     .mc-count--success { background: var(--color-success-soft); color: #166534; }
+    .mc-count--warn { background: var(--color-warning-soft, #fef3c7); color: var(--color-warning, #92400e); }
 
     .mc-row { padding: 20px 24px; border-bottom: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; transition: background-color var(--transition-fast); }
     .mc-row:last-child { border-bottom: none; }
@@ -97,6 +98,37 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     <div class="panel mc-card">
         <div class="mc-card__head">
             <div class="mc-card__title-row">
+                <h2>Needs Plotting</h2>
+                <span class="mc-count <?= count($needsPlotting) ? 'mc-count--warn' : '' ?>"><?= count($needsPlotting) ?> Waiting</span>
+            </div>
+            <p>Classes from any department that require one of your subjects, with no offering yet — live demand, computed from current sectioning and enrollment. Pick one to create its offering and start plotting it with your own faculty.</p>
+        </div>
+
+        <?php if (empty($needsPlotting)): ?>
+            <div class="empty-state">
+                <div class="material-symbols-outlined">task_alt</div>
+                <p>Nothing is waiting — every class that needs one of your subjects already has an offering.</p>
+            </div>
+        <?php else: ?>
+            <div class="mc-row" style="flex-direction:column; align-items:stretch; gap:14px;">
+                <div class="mc-schedule-form" style="gap:10px;">
+                    <select id="needsPlottingSelect" style="flex:1; min-width:260px; padding:9px 12px; border:1px solid var(--color-border); border-radius:var(--radius-md); font-size:13px;">
+                        <?php foreach ($needsPlotting as $i => $np): ?>
+                            <option value="<?= $i ?>"><?= esc($np['subject_code']) ?> — <?= esc($np['section_label']) ?> (<?= esc($np['expected_count']) ?> student<?= $np['expected_count'] === 1 ? '' : 's' ?>)</option>
+                        <?php endforeach ?>
+                    </select>
+                    <button type="button" class="btn btn-primary" onclick="plotDemand()">
+                        <span class="material-symbols-outlined" style="font-size:18px;">add_task</span>
+                        Create &amp; Plot
+                    </button>
+                </div>
+            </div>
+        <?php endif ?>
+    </div>
+
+    <div class="panel mc-card">
+        <div class="mc-card__head">
+            <div class="mc-card__title-row">
                 <h2>Mergeable Subjects</h2>
                 <span class="mc-count"><?= count($candidates) ?> Available</span>
             </div>
@@ -162,14 +194,21 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                             <span class="mc-merged-card__title"><?= esc($o['subject_code']) ?></span>
                             <span class="mc-active-badge"><span class="mc-active-dot"></span> Active Merged</span>
                             <span class="mc-cap-pill"><?= esc($o['academic_year']) ?></span>
+                            <?php if (! $o['can_manage']): ?>
+                                <span class="mc-cap-pill" title="Only that department can change faculty, schedule, or section membership for this subject.">
+                                    <?= $o['owner_dept_name'] ? 'Managed by ' . esc($o['owner_dept_name']) : 'Managed by another department' ?>
+                                </span>
+                            <?php endif ?>
                         </div>
                         <div class="mc-pills">
                             <?php foreach ($o['sections'] as $s): ?>
                                 <span class="mc-pill">
                                     <?= esc($s['program']) ?> &middot; <?= esc($s['year_level']) ?> &middot; Sec. <?= esc($s['section']) ?>
-                                    <button type="button" title="Remove from merge" onclick="unmergeSection(<?= esc($o['offering_id']) ?>, <?= esc($s['section_id']) ?>, '<?= esc($s['section'], 'js') ?>')">
-                                        <span class="material-symbols-outlined" style="font-size:15px;">close</span>
-                                    </button>
+                                    <?php if ($o['can_manage']): ?>
+                                        <button type="button" title="Remove from merge" onclick="unmergeSection(<?= esc($o['offering_id']) ?>, <?= esc($s['section_id']) ?>, '<?= esc($s['section'], 'js') ?>')">
+                                            <span class="material-symbols-outlined" style="font-size:15px;">close</span>
+                                        </button>
+                                    <?php endif ?>
                                 </span>
                             <?php endforeach ?>
                         </div>
@@ -200,21 +239,23 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                 <?php endforeach ?>
                             <?php endif ?>
 
-                            <form class="mc-schedule-form" onsubmit="return addOfferingMeeting(event, <?= (int) $o['offering_id'] ?>)">
-                                <select name="day" required>
-                                    <option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option>
-                                    <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option>
-                                </select>
-                                <input type="time" name="start" required>
-                                <input type="time" name="end" required>
-                                <select name="room" required>
-                                    <option value="">Room…</option>
-                                    <?php foreach ($rooms as $r): ?>
-                                        <option value="<?= esc($r['name']) ?>"><?= esc($r['name']) ?></option>
-                                    <?php endforeach ?>
-                                </select>
-                                <button type="submit" class="btn btn-primary">Add Meeting</button>
-                            </form>
+                            <?php if ($o['can_manage']): ?>
+                                <form class="mc-schedule-form" onsubmit="return addOfferingMeeting(event, <?= (int) $o['offering_id'] ?>)">
+                                    <select name="day" required>
+                                        <option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option>
+                                        <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option>
+                                    </select>
+                                    <input type="time" name="start" required>
+                                    <input type="time" name="end" required>
+                                    <select name="room" required>
+                                        <option value="">Room…</option>
+                                        <?php foreach ($rooms as $r): ?>
+                                            <option value="<?= esc($r['name']) ?>"><?= esc($r['name']) ?></option>
+                                        <?php endforeach ?>
+                                    </select>
+                                    <button type="submit" class="btn btn-primary">Add Meeting</button>
+                                </form>
+                            <?php endif ?>
                         </div>
 
                         <?php if (! empty($o['components'])): ?>
@@ -233,7 +274,9 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                             <span class="mc-merged-card__title" style="font-size:13px;"><?= esc($c['name'] ?: ('Component #' . $c['id'])) ?></span>
                                             <span class="mc-cap-pill"><?= $c['is_required'] ? 'Required' : 'Optional' ?> · <?= esc($c['roster_mode']) ?></span>
                                             <?php if ($c['required_hours'] !== null): ?><span class="mc-cap-pill"><?= esc($c['required_hours']) ?>h/wk</span><?php endif ?>
-                                            <button type="button" class="ac-btn-outline" onclick="deactivateComponent(<?= (int) $c['id'] ?>)">Deactivate</button>
+                                            <?php if ($o['can_manage']): ?>
+                                                <button type="button" class="ac-btn-outline" onclick="deactivateComponent(<?= (int) $c['id'] ?>)">Deactivate</button>
+                                            <?php endif ?>
                                         </div>
 
                                         <?php if (empty($c['meetings'])): ?>
@@ -248,28 +291,32 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                             <?php endforeach ?>
                                         <?php endif ?>
 
-                                        <form class="mc-schedule-form" onsubmit="return addComponentMeeting(event, <?= (int) $c['id'] ?>)">
-                                            <select name="day" required>
-                                                <option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option>
-                                                <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option>
-                                            </select>
-                                            <input type="time" name="start" required>
-                                            <input type="time" name="end" required>
-                                            <select name="room" required>
-                                                <option value="">Room…</option>
-                                                <?php foreach ($rooms as $r): ?>
-                                                    <option value="<?= esc($r['name']) ?>"><?= esc($r['name']) ?></option>
-                                                <?php endforeach ?>
-                                            </select>
-                                            <button type="submit" class="btn btn-primary">Add Meeting</button>
-                                        </form>
+                                        <?php if ($o['can_manage']): ?>
+                                            <form class="mc-schedule-form" onsubmit="return addComponentMeeting(event, <?= (int) $c['id'] ?>)">
+                                                <select name="day" required>
+                                                    <option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option>
+                                                    <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option>
+                                                </select>
+                                                <input type="time" name="start" required>
+                                                <input type="time" name="end" required>
+                                                <select name="room" required>
+                                                    <option value="">Room…</option>
+                                                    <?php foreach ($rooms as $r): ?>
+                                                        <option value="<?= esc($r['name']) ?>"><?= esc($r['name']) ?></option>
+                                                    <?php endforeach ?>
+                                                </select>
+                                                <button type="submit" class="btn btn-primary">Add Meeting</button>
+                                            </form>
+                                        <?php endif ?>
 
                                         <?php if ($c['roster_mode'] === 'explicit'): ?>
                                             <div class="mc-meta" style="margin:10px 0 4px;">Roster (<?= count($c['members']) ?> students) — enter a user ID to add/remove</div>
-                                            <form class="mc-schedule-form" onsubmit="return addComponentStudent(event, <?= (int) $c['id'] ?>)">
-                                                <input type="number" name="user_id" placeholder="User ID" required>
-                                                <button type="submit" class="btn btn-primary">Add Student</button>
-                                            </form>
+                                            <?php if ($o['can_manage']): ?>
+                                                <form class="mc-schedule-form" onsubmit="return addComponentStudent(event, <?= (int) $c['id'] ?>)">
+                                                    <input type="number" name="user_id" placeholder="User ID" required>
+                                                    <button type="submit" class="btn btn-primary">Add Student</button>
+                                                </form>
+                                            <?php endif ?>
                                         <?php endif ?>
                                     </div>
                                 <?php endforeach ?>
@@ -306,6 +353,27 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     function reloadWithMessage(message) {
         sessionStorage.setItem('offeringsFeedback', message);
         location.reload();
+    }
+
+    const NEEDS_PLOTTING = <?= json_encode(array_values($needsPlotting)) ?>;
+
+    async function plotDemand() {
+        const select = document.getElementById('needsPlottingSelect');
+        const item = NEEDS_PLOTTING[parseInt(select.value, 10)];
+        if (!item) return;
+
+        const result = await postJSON('<?= site_url('chairperson/offerings/plot-demand') ?>', {
+            academic_year: item.academic_year,
+            subject_code: item.subject_code,
+            section_id: item.section_id,
+        });
+
+        if (!result.ok) {
+            showFeedback(result.error || 'Could not create the offering.', true);
+            return;
+        }
+
+        reloadWithMessage(`${item.subject_code} offering created for ${item.section_label} — plot its schedule below.`);
     }
 
     async function mergeCandidate(i, academicYear, subjectCode) {

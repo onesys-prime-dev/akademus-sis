@@ -47,6 +47,9 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
                 <button type="button" class="btn btn-secondary btn-sm" id="changeRequestsBtn" title="Faculty change requests waiting for review">
                     <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>Requests<span class="count-badge zero" id="changeRequestBadge">0</span>
                 </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="printScheduleBtn" title="Print this week's schedule">
+                    <span class="material-symbols-outlined" aria-hidden="true">print</span>Print
+                </button>
                 <button type="button" class="btn btn-secondary btn-sm panel-toggle" id="panelToggle" aria-controls="plPanel" aria-expanded="false">
                     <span class="material-symbols-outlined" aria-hidden="true">right_panel_open</span>Details
                 </button>
@@ -89,6 +92,16 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
             Make it active under Admin &gt; Academic Years, or select the active term above.
         </div>
     <?php endif ?>
+
+    <div class="pl-print-head">
+        <div class="pl-print-brand"><strong>Akademus<span> / Academic scheduling</span></strong><span>WEEKLY TIMETABLE</span></div>
+        <div class="pl-print-title"><h2>Class schedule</h2><strong>Section <?= esc($selected['section']) ?></strong></div>
+        <p>
+            <?= esc($selected['program']) ?> · <?= esc($selected['year_level']) ?> · Section <?= esc($selected['section']) ?>
+            &nbsp;·&nbsp; <?= esc($selected['academic_year']) ?>
+        </p>
+        <div class="pl-print-meta"><span id="printScheduleSummary"></span><span id="printScheduleDate"></span></div>
+    </div>
 
     <div class="pl-workspace" id="plottingWorkspace" data-panel="closed" style="--row-h: <?= (int) $rowHeight ?>px; --days: <?= count($week) ?>;">
 

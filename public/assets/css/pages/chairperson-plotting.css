@@ -433,6 +433,7 @@
 .block[data-issue="warn"] { border-color: var(--color-warning); }
 .block[data-issue="error"] { border-color: var(--color-danger); border-left-color: var(--color-danger); background: var(--color-danger-soft); }
 .block.is-dragging { opacity: .4; }
+.block.is-readonly { cursor: default; }
 
 .b-head { display: flex; align-items: center; gap: 3px; min-width: 0; }
 .b-code { font-size: 12px; font-weight: 650; color: var(--color-text-primary); white-space: nowrap; }
@@ -474,6 +475,15 @@
 .block.is-short.is-other .b-section { display: none; }
 .block.is-strip { padding: 0; border-width: 0 0 0 1px; border-radius: 0; }
 .block.is-strip > * { display: none; }
+
+/* Two contiguous meetings of the same subject in the same room (see
+   markJoinedMeetings() in chairperson-plotting.js) read as one continuous
+   card: the seam between them is closed and the lower half's own header is
+   hidden so the code/room/faculty only appear once. Each half stays its
+   own clickable/draggable element underneath — only the look is merged. */
+.block.is-join-bottom { border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.block.is-join-top { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+.block.is-join-top > * { visibility: hidden; }
 
 .block.is-pending {
     z-index: 5;
@@ -1153,4 +1163,70 @@ body.is-plot-dragging .block.is-other { opacity: .7; }
     .overview-row { grid-template-columns: 1fr; }
     .pl-page .btn, .icon-btn, .chip, .text-btn { min-height: 44px; }
     .pl-page .btn.btn-sm { min-height: 40px; }
+}
+
+/* ---------- print ---------- */
+.pl-print-head { display: none; }
+
+@media print {
+    @page { size: A4 landscape; margin: 10mm 12mm; }
+    /* Layout chrome never belongs on paper — only the grid itself does. */
+    .ac-sidebar, .ac-topbar, .pl-head__tools, .pl-context, .pl-queue, .pl-panel,
+    .panel-toggle, .noprof-banner, .issues-btn, .board-bar__aside,
+    .modal-backdrop, .toast, .debug-toggle, .debug-panel, .pl-banner { display: none !important; }
+
+    html, body.ac-page, .ac-main, .ac-content:has(> .pl-page) {
+        display: block !important; width: 100% !important; height: auto !important;
+        min-height: 0 !important; max-height: none !important; overflow: visible !important;
+        margin: 0 !important; padding: 0 !important; background: #fff !important;
+    }
+    .pl-page { display: block; min-height: 0; color: #223047; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .pl-head, .board-bar { display: none !important; }
+
+    .pl-print-head { display: block; margin: 0 0 4mm; border-top: 1mm solid #233d60; }
+    .pl-print-brand { display: flex; justify-content: space-between; align-items: center; padding-top: 3mm; font-size: 8pt; }
+    .pl-print-brand strong { font-size: 11pt; letter-spacing: -.3px; }
+    .pl-print-brand strong span { font-size: 8pt; font-weight: 400; color: #657287; letter-spacing: 0; }
+    .pl-print-brand > span { font-size: 7pt; letter-spacing: 1.6px; color: #657287; }
+    .pl-print-title { display: flex; align-items: baseline; justify-content: space-between; gap: 6mm; margin-top: 3mm; }
+    .pl-print-head h2 { margin: 0; font-size: 23pt; font-weight: 650; letter-spacing: -1px; line-height: 1.2; }
+    .pl-print-title > strong { font-size: 12pt; font-weight: 600; }
+    .pl-print-head p { margin: 1.5mm 0 0; font-size: 9pt; color: #526075; }
+    .pl-print-meta { display: flex; justify-content: space-between; gap: 4mm; margin-top: 3mm; font-size: 7.5pt; color: #657287; }
+
+    /* One column instead of three, and the grid expands to its full height
+       instead of the on-screen scrollable viewport, so every plotted class
+       prints on the page rather than being clipped by .board-scroll. */
+    .pl-workspace { display: block; --print-grid-height: 128mm; --row-h: calc(var(--print-grid-height) / var(--print-rows, 22)) !important; }
+    .pl-board { display: block; border: 0; border-radius: 0; overflow: visible; box-shadow: none; }
+    .board-scroll { overflow: visible; height: auto !important; }
+    .grid { min-width: 0; grid-template-columns: 13mm repeat(var(--days), minmax(0, 1fr)); break-inside: avoid; border: 1px solid #d1d8e2; }
+    .grid .head { position: static; padding: 2.5mm 1mm; background: #edf1f6; color: #293e59; font-size: 8pt; border-color: #d1d8e2; }
+    .grid .head--corner::after { content: 'Time'; font-size: 7pt; }
+    .head__long { display: inline; }
+    .head__short { display: none; }
+    .time-col { position: relative; background: #fafbfc; }
+    .time-col, .day-col { height: var(--print-grid-height); border-color: #d1d8e2; }
+    .day-col { background: #fff; }
+    .time-col .slot span { font-size: 7pt; color: #617086; right: 2mm; top: 1mm; }
+    .day-col .slot { border-top-color: #e8ecf1; }
+    .day-col .slot.is-hour { border-top-color: #d8dfe8; }
+    .block, .lunch-band { top: var(--print-top) !important; height: var(--print-height) !important; }
+    .block { padding: 1.2mm 1.5mm; gap: .3mm; border: 1px solid #cbd5e3 !important; border-left: 2.5px solid #42638d !important; border-radius: 1mm; background: #f4f7fb !important; box-shadow: none !important; opacity: 1 !important; font-size: 7pt; line-height: 1.2; animation: none !important; }
+    .block.is-lab { border-left-color: #307b70 !important; background: #f0f7f5 !important; }
+    .block.is-other { border: 1px dashed #c5cbd4 !important; background: #fafafa !important; }
+    .block .b-code { font-size: 8pt; color: #24364e; }
+    .block .b-line { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; color: #526075; }
+    .block .b-time { order: -1; font-size: 6.5pt; color: #344c69; }
+    .block .b-noprof { color: #667387; font-weight: 400; }
+    .block.is-short .b-time { display: block; }
+    .block.is-short { padding: .5mm 1mm; font-size: 6.5pt; line-height: 1.1; }
+    .block.is-tiny .b-time { display: block; }
+    .block.is-tiny { padding: 0 1mm; gap: 0; font-size: 6pt; }
+    .block.is-tiny .b-code, .block.is-tiny .b-time { font-size: 6pt; }
+    .block .b-flag, .block.is-pending, .drop-preview, .ai-preview { display: none !important; }
+    .lunch-band { background: #f7f8fa; color: #7c8796; border-color: #dfe4eb; font-size: 6pt; letter-spacing: 1px; }
+    .board-foot { padding: 2.5mm 0 0; border: 0; background: #fff; }
+    .legend { gap: 5mm; font-size: 7pt; color: #657287; }
+    .board-foot::after { content: 'Akademus SIS · Academic planning'; font-size: 7pt; color: #657287; margin-left: auto; }
 }

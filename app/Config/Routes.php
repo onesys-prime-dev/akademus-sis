@@ -68,8 +68,8 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
 
     $routes->get('subjects/edit/(:num)'   , 'Admin\SubjectController::edit/$1');
     $routes->post('subjects/update/(:num)', 'Admin\SubjectController::update/$1');
-
-    // $routes->post('subjects/delete/(:num)', 'Admin\SubjectController::delete/$1');
+    $routes->post('subjects/update-owner/(:num)', 'Admin\SubjectController::updateOwner/$1');
+    $routes->post('subjects/bulk-delete', 'Admin\SubjectController::bulkDestroy');
 
     $routes->post('subjects/toggle-status/(:num)', 'Admin\SubjectController::toggleStatus/$1');
     $routes->post('subjects/(:num)/prerequisites', 'Admin\SubjectController::addPrerequisite/$1');
@@ -91,15 +91,17 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('curriculum/update/(:num)', 'Admin\CurriculumController::update/$1');
 
     $routes->post('curriculum/toggle/(:num)', 'Admin\CurriculumController::toggleStatus/$1');
+    $routes->post('curriculum/delete/(:num)', 'Admin\CurriculumController::delete/$1');
 
-    $routes->get('curriculum-subjects'       , 'Admin\CurriculumSubjectController::index');
-    $routes->get('curriculum-subjects/create', 'Admin\CurriculumSubjectController::create');
-    $routes->post('curriculum-subjects/store', 'Admin\CurriculumSubjectController::store');
-
-    $routes->get('curriculum-subjects/edit/(:num)'    , 'Admin\CurriculumSubjectController::edit/$1');
-    $routes->post('curriculum-subjects/update/(:num)' , 'Admin\CurriculumSubjectController::update/$1');
-    $routes->post('curriculum-subjects/toggle/(:num)' , 'Admin\CurriculumSubjectController::toggleStatus/$1');
-    $routes->post('curriculum-subjects/delete/(:num)' , 'Admin\CurriculumSubjectController::destroy/$1');
+    // Step 1: list every curriculum. Step 2: click one into the
+    // builder-style workspace (year level + semester tabs, add/remove
+    // subjects inline) — mirrors the Chairperson Curriculum Builder's UX.
+    $routes->get('curriculum-subjects'              , 'Admin\CurriculumSubjectController::index');
+    $routes->get('curriculum-subjects/manage/(:num)', 'Admin\CurriculumSubjectController::manage/$1');
+    $routes->get('curriculum-subjects/search'                        , 'Admin\CurriculumSubjectController::searchSubjects');
+    $routes->post('curriculum-subjects/add'                          , 'Admin\CurriculumSubjectController::addSubject');
+    $routes->post('curriculum-subjects/subject/(:num)/remove'        , 'Admin\CurriculumSubjectController::removeSubject/$1');
+    $routes->post('curriculum-subjects/subject/(:num)/classification', 'Admin\CurriculumSubjectController::updateClassification/$1');
 
     // departments (colleges, dean-headed)
     $routes->get('departments'                        , 'Admin\DepartmentController::index');
@@ -298,6 +300,7 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     // section merging (course offerings)
     $routes->get('offerings'                , 'Chairperson\OfferingController::index');
     $routes->post('offerings/create'        , 'Chairperson\OfferingController::create');
+    $routes->post('offerings/plot-demand'   , 'Chairperson\OfferingController::plotDemand');
     $routes->post('offerings/unmerge'       , 'Chairperson\OfferingController::unmergeSection');
     $routes->get('offerings/schedule'       , 'Chairperson\OfferingController::scheduleState');
     $routes->post('offerings/schedule/sync' , 'Chairperson\OfferingController::syncSchedule');
