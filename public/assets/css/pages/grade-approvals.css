@@ -1,4 +1,4 @@
-.ga-page { --ga-ink:#25334a; --ga-muted:#69778c; --ga-line:#e4e9f0; max-width:1320px; margin:0 auto; color:var(--ga-ink); }
+.ga-page { --ga-ink:var(--color-text-primary); --ga-muted:var(--color-text-secondary); --ga-line:var(--color-border); max-width:1320px; margin:0 auto; color:var(--ga-ink); }
 .ga-page [hidden] { display:none !important; }
 .ga-page :is(button,input,select,textarea) { font:inherit; }
 .ga-page :is(button,a,input,select,textarea):focus-visible { outline:3px solid #a4bde7; outline-offset:3px; }
@@ -8,7 +8,7 @@
 .ga-heading p { margin:0; font-size:13px; color:var(--ga-muted); line-height:1.6; }
 .ga-department { display:flex; align-items:center; gap:8px; font-size:11px; color:#61728b; }
 .ga-department .material-symbols-outlined { color:#8b9bb1; }
-.ga-card { border:1px solid var(--ga-line); border-radius:12px; background:#fff; overflow:hidden; box-shadow:0 3px 12px -9px #243b6020; }
+.ga-card { border:1px solid var(--ga-line); border-radius:var(--radius-lg); background:#fff; overflow:hidden; box-shadow:var(--shadow-xs); }
 .ga-tabs { display:flex; gap:28px; padding:0 26px; border-bottom:1px solid var(--ga-line); }
 .ga-tabs button { display:flex; align-items:center; gap:9px; padding:20px 0 17px; background:none; border:0; border-bottom:2px solid transparent; margin-bottom:-1px; font-size:12px; font-weight:550; color:var(--ga-muted); cursor:pointer; }
 .ga-tabs button[aria-selected=true] { border-bottom-color:#345c93; color:#284d7e; }
@@ -66,7 +66,7 @@
 .ga-request-actions { display:flex; align-items:center; gap:8px; }
 .ga-feedback { padding:12px 16px; border:1px solid #cee3d7; border-radius:7px; margin-bottom:18px; background:#f0f8f3; color:#3f7155; font-size:12px; }
 .ga-feedback.is-error { background:#fff5f5; border-color:#edcfd3; color:#9c4955; }
-.ga-dialog { position:fixed; inset:0; margin:auto; width:min(480px,calc(100vw - 28px)); max-height:calc(100dvh - 32px); border:1px solid #dde5ef; border-radius:13px; padding:0; overflow:auto; background:#fff; color:var(--ga-ink); box-shadow:0 24px 90px #192d4f40; }
+.ga-dialog { position:fixed; inset:0; margin:auto; width:min(480px,calc(100vw - 28px)); max-height:calc(100dvh - 32px); border:1px solid #dde5ef; border-radius:var(--radius-lg); padding:0; overflow:auto; background:#fff; color:var(--ga-ink); box-shadow:var(--shadow-lg); }
 .ga-dialog::backdrop { background:#20334f66; backdrop-filter:blur(2px); }
 .ga-dialog-header { padding:24px 26px 18px; border-bottom:1px solid var(--ga-line); }
 .ga-dialog-header h2 { margin:0 0 7px; font-size:20px; font-weight:600; letter-spacing:-.4px; }

@@ -204,9 +204,9 @@ html, .ac-page { height: 100%; }
     max-height: 420px;
     overflow-y: auto;
     background: var(--color-surface);
-    border: 1px solid #e1e4ea;
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    box-shadow: 0 12px 28px rgba(11, 28, 48, .12);
+    box-shadow: var(--shadow-md);
     display: block;
     z-index: 60;
     transform-origin: top right;
@@ -230,7 +230,7 @@ html, .ac-page { height: 100%; }
     border-bottom: 1px solid var(--color-border);
 }
 
-.ac-notif__head strong { font-size: 13px; color: #0b1c30; }
+.ac-notif__head strong { font-size: 13px; color: var(--color-text-primary); }
 
 .ac-notif__head button {
     border: none;
@@ -278,10 +278,10 @@ html, .ac-page { height: 100%; }
     top: calc(100% + 10px);
     right: 0;
     min-width: 200px;
-    background: #fff;
-    border: 1px solid #e1e4ea;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    box-shadow: 0 12px 28px rgba(11, 28, 48, .12);
+    box-shadow: var(--shadow-md);
     padding: 8px;
     display: block;
     z-index: 60;
@@ -299,7 +299,7 @@ html, .ac-page { height: 100%; }
 }
 
 .ac-user-menu__who { padding: 8px 10px 10px; }
-.ac-user-menu__name { font-size: 13px; font-weight: 700; color: #0b1c30; }
+.ac-user-menu__name { font-size: 13px; font-weight: 700; color: var(--color-text-primary); }
 .ac-user-menu__role { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
 
 .ac-user-menu__dropdown hr {
@@ -314,7 +314,7 @@ html, .ac-page { height: 100%; }
     gap: 10px;
     padding: 9px 10px;
     border-radius: var(--radius-sm);
-    color: #0b1c30;
+    color: var(--color-text-primary);
     text-decoration: none;
     font-size: 13px;
     font-weight: 600;
@@ -365,7 +365,7 @@ html, .ac-page { height: 100%; }
 .ac-topbar__links a {
     font-size: 13px;
     font-weight: 500;
-    color: #434655;
+    color: var(--color-text-secondary);
     text-decoration: none;
     transition: color .15s ease;
 }
@@ -449,15 +449,15 @@ html, .ac-page { height: 100%; }
 .ac-search__icon {
     position: absolute;
     left: 12px;
-    color: #747686;
+    color: var(--color-text-tertiary);
     font-size: 20px;
 }
 
 .ac-search__input {
     padding: 8px 16px 8px 40px;
-    background: #fff;
+    background: var(--color-surface);
     border: 1px solid var(--color-border-strong);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     font-size: 13px;
     font-family: inherit;
     width: 256px;
@@ -535,8 +535,8 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .ac-btn-danger:disabled { background: var(--color-danger); }
 
 .ac-btn-secondary {
-    background: #fff;
-    color: #475569;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
     border: 1px solid var(--color-border-control);
 }
 
@@ -571,8 +571,8 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 }
 
 .ac-stat-card {
-    background: #fff;
-    border-radius: 14px;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
     padding: 16px;
     border: 1px solid var(--color-border);
 }
@@ -633,7 +633,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     background: var(--color-info-soft);
     color: var(--color-primary);
     padding: 3px 9px;
-    border-radius: 7px;
+    border-radius: var(--radius-sm);
 }
 
 .ac-dept-name {
@@ -713,8 +713,8 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     font-weight: 600;
     cursor: pointer;
     border: 1px solid var(--color-border-control);
-    background: #fff;
-    color: #475569;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
     text-decoration: none;
 }
 
@@ -806,8 +806,8 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .ac-chip {
     font-size: 11.5px;
     font-weight: 600;
-    background: #f1f5f9;
-    color: #475569;
+    background: var(--color-surface-sunken);
+    color: var(--color-text-secondary);
     padding: 4px 10px;
     border-radius: var(--radius-xl);
 }
@@ -957,13 +957,13 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .ac-input {
     width: 100%;
     padding: 9px 11px;
-    border-radius: 9px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--color-border-control);
     font-size: 13px;
     color: var(--color-text-primary);
     outline: none;
     box-sizing: border-box;
-    background: #fff;
+    background: var(--color-surface);
 }
 
 .ac-input:focus {
@@ -1078,7 +1078,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     gap: 8px;
     align-items: flex-start;
     font-size: 12px;
-    color: #475569;
+    color: var(--color-text-secondary);
 }
 
 /* Segmented control indicator (see acInitSegmented in layouts/admin_console.php).
@@ -1116,7 +1116,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     border-radius: var(--radius-md);
     padding: 11px 14px;
     max-width: 360px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+    box-shadow: var(--shadow-lg);
     border-left: 4px solid var(--color-success);
 }
 
@@ -1248,7 +1248,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     border-radius: var(--radius-md);
     padding: 16px;
     border: 1px solid var(--color-border);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, .05);
+    box-shadow: var(--shadow-xs);
 }
 
 .ac-metric-card__top {
@@ -1318,7 +1318,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     border-radius: var(--radius-lg);
     padding: 24px;
     border: 1px solid var(--color-border);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, .05);
+    box-shadow: var(--shadow-xs);
 }
 
 .ac-bento-card__top {
@@ -1351,7 +1351,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 
 .ac-pill--success { color: var(--color-success); background: rgba(22, 163, 74, .1); }
 .ac-pill--warning { color: var(--color-warning); background: rgba(217, 119, 6, .1); }
-.ac-pill--neutral { color: var(--color-text-secondary); background: #e6e8ea; }
+.ac-pill--neutral { color: var(--color-text-secondary); background: var(--color-border); }
 
 .ac-bento-card__label { font-size: 12.5px; color: var(--color-text-secondary); margin: 0 0 4px; }
 .ac-bento-card__value { font-size: 22px; font-weight: 650; color: var(--color-text-primary); margin: 0; }
@@ -1398,7 +1398,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     background: #fff;
     border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, .05);
+    box-shadow: var(--shadow-xs);
     overflow: hidden;
 }
 
@@ -1434,8 +1434,8 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: #e6e8ea;
-    color: #434655;
+    background: var(--color-border);
+    color: var(--color-text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1444,7 +1444,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 
 .ac-activity-title { font-size: 13px; font-weight: 700; color: var(--color-text-primary); margin: 0; }
 .ac-activity-detail { font-size: 12.5px; color: var(--color-text-secondary); margin: 0; }
-.ac-activity-time { font-size: 12.5px; color: #747686; white-space: nowrap; }
+.ac-activity-time { font-size: 12.5px; color: var(--color-text-tertiary); white-space: nowrap; }
 
 .ac-empty-panel { padding: 40px 24px; text-align: center; color: var(--color-text-secondary); font-size: 13px; }
 
@@ -1471,7 +1471,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     overflow: hidden;
     height: 160px;
     border: 1px solid var(--color-border);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, .05);
+    box-shadow: var(--shadow-xs);
 }
 
 .ac-spotlight img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -1493,7 +1493,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
    ========================================================================== */
 
 .ac-segmented {
-    background: #e6e8ea;
+    background: var(--color-border);
     padding: 2px;
     border-radius: var(--radius-sm);
     display: inline-flex;
@@ -1502,10 +1502,10 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 
 .ac-segmented a {
     padding: 4px 16px;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     font-size: 13px;
     font-weight: 500;
-    color: #434655;
+    color: var(--color-text-secondary);
     text-decoration: none;
     white-space: nowrap;
     transition: all .2s ease;
@@ -1543,7 +1543,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     font-weight: 650;
     letter-spacing: .04em;
     text-transform: uppercase;
-    color: #434655;
+    color: var(--color-text-secondary);
 }
 
 .ac-dtable__row {
@@ -1592,8 +1592,8 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .ac-status-dot--active::before { background: var(--color-success); }
 .ac-status-dot--pending { color: var(--color-text-primary); }
 .ac-status-dot--pending::before { background: var(--color-warning); }
-.ac-status-dot--inactive { color: #747686; }
-.ac-status-dot--inactive::before { background: #747686; }
+.ac-status-dot--inactive { color: var(--color-text-tertiary); }
+.ac-status-dot--inactive::before { background: var(--color-text-tertiary); }
 
 .ac-actions-cell { display: flex; justify-content: flex-end; gap: 8px; }
 
@@ -1602,9 +1602,9 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     font-size: 13px;
     font-weight: 700;
     color: var(--color-primary);
-    background: #fff;
+    background: var(--color-surface);
     border: 1px solid var(--color-border-strong);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     transition: background-color .15s ease;
 }
@@ -1616,9 +1616,9 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .ac-icon-action {
     padding: 6px;
     border: 1px solid var(--color-border-strong);
-    border-radius: 6px;
-    background: #fff;
-    color: #434655;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
     cursor: pointer;
     display: inline-flex;
     transition: background-color .15s ease;
@@ -1650,11 +1650,11 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     border: 1px solid transparent;
 }
 
-.ac-badge--admin       { background: #d8dadc; color: #434655; border-color: rgba(116,118,134,.3); }
+.ac-badge--admin       { background: var(--color-border); color: var(--color-text-secondary); border-color: rgba(116,118,134,.3); }
 .ac-badge--dean        { background: var(--color-primary-soft); color: #6d28d9; border-color: rgba(124,58,237,.2); }
 .ac-badge--chairperson { background: rgba(29,78,216,.1); color: var(--color-primary); border-color: rgba(29,78,216,.2); }
 .ac-badge--faculty     { background: var(--color-primary-soft); color: #0d1c2e; border-color: var(--color-primary-soft); }
-.ac-badge--student     { background: #e6e8ea; color: var(--color-text-primary); border-color: rgba(196,197,215,.3); }
+.ac-badge--student     { background: var(--color-border); color: var(--color-text-primary); border-color: rgba(196,197,215,.3); }
 
 /* ==========================================================================
    Rooms: underline tabs + Apple-Home style floor tiles
@@ -1676,7 +1676,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .ac-tabs__link {
     padding-bottom: 8px;
     font-size: 13px;
-    color: #434655;
+    color: var(--color-text-secondary);
     text-decoration: none;
     white-space: nowrap;
     border-bottom: 2px solid transparent;
@@ -1722,7 +1722,7 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     border-radius: var(--radius-lg);
     padding: 16px;
     border: 1px solid var(--color-border);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, .05);
+    box-shadow: var(--shadow-xs);
     text-decoration: none;
     transition: box-shadow .2s ease, transform .2s ease;
 }
@@ -1916,7 +1916,6 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .ac-table-card, .ac-dtable, .ac-panel { box-shadow: none; }
 .ac-table thead tr, .ac-dtable__head { background: var(--color-surface-secondary); }
 .ac-table tbody tr:hover, .ac-dtable__row:hover { background: #f8fafc; }
-.ac-notif__panel, .ac-user-menu__dropdown { border-radius: var(--radius-md); }
 
 @media (max-width: 1100px) {
     .ac-sidebar {

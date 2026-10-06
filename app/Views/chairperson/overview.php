@@ -15,25 +15,14 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <style>
     /* ===== Welcome hero ===== */
     .dash-hero {
-        background: linear-gradient(135deg, #001849 0%, var(--color-primary-hover) 55%, #1e3a8a 100%);
+        background: var(--color-primary-hover);
         border-radius: var(--radius-xl);
         color: #fff;
-        padding: 28px 32px;
+        padding: 24px 28px;
         margin-bottom: 20px;
         position: relative;
         overflow: hidden;
-        box-shadow: var(--shadow-md);
-    }
-    .dash-hero::before {
-        content: '';
-        position: absolute;
-        right: -60px;
-        bottom: -100px;
-        width: 320px;
-        height: 320px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, .05);
-        pointer-events: none;
+        box-shadow: var(--shadow-xs);
     }
     .dash-hero__inner { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; }
     .dash-hero__main { max-width: 640px; }
@@ -45,7 +34,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     }
     .dash-hero__badge .dot { width: 6px; height: 6px; border-radius: 50%; background: #34d399; }
     .dash-hero__term { font-size: 12px; color: rgba(255, 255, 255, .7); }
-    .dash-hero__title { font-size: 26px; font-weight: 800; letter-spacing: -.02em; margin: 0 0 8px; color: #fff; }
+    .dash-hero__title { font-size: 22px; font-weight: 700; letter-spacing: -.02em; margin: 0 0 8px; color: #fff; }
     .dash-hero__sub { font-size: 13.5px; color: rgba(255, 255, 255, .78); line-height: 1.6; margin: 0; }
 
     .dash-hero__actions { display: flex; flex-direction: column; gap: 8px; flex: none; }
@@ -59,11 +48,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
     .kpi-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); transition: box-shadow var(--transition-fast); }
     .kpi-card:hover { box-shadow: var(--shadow-md); }
-    .kpi-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-    .kpi-icon { width: 38px; height: 38px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; background: var(--color-primary-soft); color: var(--color-primary); flex: none; }
-    .kpi-icon--indigo { background: #eef2ff; color: #4f46e5; }
-    .kpi-icon--amber { background: var(--color-warning-soft); color: var(--color-warning); }
-    .kpi-icon--green { background: var(--color-success-soft); color: #16a34a; }
+    .kpi-card__top { display: flex; align-items: flex-start; justify-content: flex-end; gap: 10px; min-height: 1px; }
     .kpi-flag { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: var(--radius-pill); white-space: nowrap; }
     .kpi-flag--ok { background: var(--color-success-soft); color: #166534; }
     .kpi-flag--warn { background: var(--color-warning-soft); color: #92400e; }
@@ -88,8 +73,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     .dash-panel__head p { margin: 3px 0 0; font-size: 12px; color: var(--color-text-secondary); }
 
     .program-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
-    .program-card { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-secondary); }
-    .program-card__icon { width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--color-primary-soft); color: var(--color-primary); display: flex; align-items: center; justify-content: center; flex: none; }
+    .program-card { display: flex; align-items: center; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-secondary); }
     .program-card__name { font-size: 12.5px; font-weight: 700; color: var(--color-text-primary); line-height: 1.3; }
 
     .tool-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
@@ -107,7 +91,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <div class="ac-page-header">
     <div>
         <h2 class="ac-page-header__title">Dashboard</h2>
-        <p class="ac-page-header__sub">Your department at a glance — scheduling progress, faculty, and pending approvals.</p>
+        <p class="ac-page-header__sub">Department overview — scheduling progress, faculty, and pending approvals.</p>
     </div>
 </div>
 
@@ -159,9 +143,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
     <div class="kpi-grid">
         <div class="kpi-card">
-            <div class="kpi-card__top">
-                <div class="kpi-icon"><span class="material-symbols-outlined">calendar_month</span></div>
-            </div>
             <div class="kpi-value-row"><span class="kpi-value"><?= esc($stats['plotted_classes']) ?></span></div>
             <div class="kpi-label">Classes plotted this term</div>
             <div class="kpi-footer">
@@ -171,9 +152,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         </div>
 
         <div class="kpi-card">
-            <div class="kpi-card__top">
-                <div class="kpi-icon kpi-icon--indigo"><span class="material-symbols-outlined">groups</span></div>
-            </div>
             <div class="kpi-value-row"><span class="kpi-value"><?= esc($stats['faculty_count']) ?></span></div>
             <div class="kpi-label">Faculty in department</div>
             <div class="kpi-footer">
@@ -183,7 +161,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
         <div class="kpi-card">
             <div class="kpi-card__top">
-                <div class="kpi-icon kpi-icon--amber"><span class="material-symbols-outlined">swap_horiz</span></div>
                 <?php if ($stats['pending_approvals'] > 0): ?>
                     <span class="kpi-flag kpi-flag--warn">Action Required</span>
                 <?php else: ?>
@@ -200,7 +177,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
         <div class="kpi-card">
             <div class="kpi-card__top">
-                <div class="kpi-icon kpi-icon--green"><span class="material-symbols-outlined">checklist</span></div>
                 <span class="kpi-flag <?= $curriculumPct >= 100 ? 'kpi-flag--ok' : 'kpi-flag--info' ?>"><?= $curriculumPct ?>% Synced</span>
             </div>
             <div class="kpi-value-row"><span class="kpi-value"><?= esc($stats['curriculum_set']) ?></span><span class="kpi-value-suffix">/ <?= esc($stats['curriculum_slots']) ?></span></div>
@@ -213,7 +189,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
         <div class="kpi-card">
             <div class="kpi-card__top">
-                <div class="kpi-icon kpi-icon--amber"><span class="material-symbols-outlined">pending_actions</span></div>
                 <?php if ($stats['needs_plotting_count'] > 0): ?>
                     <span class="kpi-flag kpi-flag--warn">Action Required</span>
                 <?php else: ?>
@@ -247,7 +222,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     <div class="program-card-grid">
                         <?php foreach ($programs as $program): ?>
                             <div class="program-card">
-                                <div class="program-card__icon"><span class="material-symbols-outlined" style="font-size:18px;">school</span></div>
                                 <div class="program-card__name"><?= esc($program) ?></div>
                             </div>
                         <?php endforeach; ?>

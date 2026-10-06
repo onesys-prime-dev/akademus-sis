@@ -20,7 +20,7 @@ $catalog = array_map(static fn ($s) => [
 <?= $this->section('content') ?>
 <div class="so-page">
     <header class="so-heading">
-        <div><div class="so-eyebrow">ACADEMIC PLANNING / SUBJECTS</div><h2>Subject Ownership<span class="so-heading-dot">.</span></h2><p>Your department’s subjects, organized in one place.</p></div>
+        <div><div class="so-eyebrow">ACADEMIC PLANNING / SUBJECTS</div><h2>Subject Ownership<span class="so-heading-dot">.</span></h2><p>Manage subjects owned by your department.</p></div>
         <?php if ($hasAnyDept): ?><button type="button" class="so-button so-button--primary" data-open-add><span class="material-symbols-outlined" aria-hidden="true">add</span>Add subject</button><?php endif ?>
     </header>
     <div id="soFeedback" class="so-feedback" role="status" aria-live="polite" hidden></div>

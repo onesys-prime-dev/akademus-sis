@@ -23,9 +23,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     .cs-card__title-row h2 { margin: 0; font-size: 16px; font-weight: 800; color: var(--color-text-primary); }
     .cs-card__head p { margin: 6px 0 0; font-size: 12.5px; color: var(--color-text-secondary); }
 
-    .cs-ready-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--color-success-soft); color: #166534; flex: none; }
-    .cs-ready-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); }
-
     .cs-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; padding: 24px; }
     .cs-field label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-secondary); margin-bottom: 6px; }
     .cs-field label .optional { text-transform: none; font-weight: 500; color: var(--color-text-tertiary); }
@@ -63,8 +60,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     .section-card__assign select:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
 
     .section-card__progress { padding: 16px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--color-border); }
-    .section-card__progress .track { flex: 1; max-width: 360px; height: 6px; border-radius: 999px; background: var(--color-surface-sunken); overflow: hidden; }
-    .section-card__progress .fill { height: 100%; background: var(--color-primary); border-radius: 999px; }
+    .section-card__progress .track { flex: 1; max-width: 360px; height: 6px; border-radius: var(--radius-pill); background: var(--color-surface-sunken); overflow: hidden; }
+    .section-card__progress .fill { height: 100%; background: var(--color-primary); border-radius: var(--radius-pill); }
     .section-card__progress .label { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); white-space: nowrap; }
 
     table.roster-table { width: 100%; border-collapse: collapse; }
@@ -109,7 +106,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         <div class="cs-card__head">
             <div class="cs-card__title-row">
                 <h2>Create a Section</h2>
-                <span class="cs-ready-badge"><span class="cs-ready-dot"></span> Ready to Assign</span>
             </div>
             <p>Sections created here are ready for student assignment right away — no schedule needs to be plotted first.</p>
         </div>

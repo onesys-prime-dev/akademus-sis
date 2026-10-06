@@ -46,7 +46,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     .mc-row__actions input[type="number"]:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
 
     .mc-merged { padding: 20px 24px; }
-    .mc-merged-card { border: 1px solid var(--color-primary-soft); background: linear-gradient(90deg, var(--color-primary-soft) 0%, var(--color-surface) 40%); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 16px; }
+    .mc-merged-card { border: 1px solid var(--color-primary-soft); background: var(--color-surface); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 16px; }
     .mc-merged-card:last-child { margin-bottom: 0; }
     .mc-merged-card__top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
     .mc-merged-card__title { font-size: 14.5px; font-weight: 800; color: var(--color-text-primary); }
@@ -64,8 +64,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     .mc-progress-head span:first-child { color: var(--color-text-secondary); }
     .mc-progress-head span:last-child { color: var(--color-primary); }
     .mc-progress-head.is-over span:last-child { color: var(--color-danger); }
-    .mc-track { height: 6px; border-radius: 999px; background: var(--color-surface-sunken); overflow: hidden; }
-    .mc-fill { height: 100%; background: var(--color-primary); border-radius: 999px; }
+    .mc-track { height: 6px; border-radius: var(--radius-pill); background: var(--color-surface-sunken); overflow: hidden; }
+    .mc-fill { height: 100%; background: var(--color-primary); border-radius: var(--radius-pill); }
     .mc-fill.is-over { background: var(--color-danger); }
 
     @media (max-width: 640px) {
@@ -193,7 +193,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                         <div class="mc-merged-card__top">
                             <span class="mc-merged-card__title"><?= esc($o['subject_code']) ?></span>
                             <span class="mc-active-badge"><span class="mc-active-dot"></span> Active Merged</span>
-                            <span class="mc-cap-pill"><?= esc($o['academic_year']) ?></span>
+                            <span class="mc-meta" style="margin:0;"><?= esc($o['academic_year']) ?></span>
                             <?php if (! $o['can_manage']): ?>
                                 <span class="mc-cap-pill" title="Only that department can change faculty, schedule, or section membership for this subject.">
                                     <?= $o['owner_dept_name'] ? 'Managed by ' . esc($o['owner_dept_name']) : 'Managed by another department' ?>
@@ -273,7 +273,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                         <div class="mc-merged-card__top">
                                             <span class="mc-merged-card__title" style="font-size:13px;"><?= esc($c['name'] ?: ('Component #' . $c['id'])) ?></span>
                                             <span class="mc-cap-pill"><?= $c['is_required'] ? 'Required' : 'Optional' ?> · <?= esc($c['roster_mode']) ?></span>
-                                            <?php if ($c['required_hours'] !== null): ?><span class="mc-cap-pill"><?= esc($c['required_hours']) ?>h/wk</span><?php endif ?>
+                                            <?php if ($c['required_hours'] !== null): ?><span class="mc-meta" style="margin:0;"><?= esc($c['required_hours']) ?>h/wk</span><?php endif ?>
                                             <?php if ($o['can_manage']): ?>
                                                 <button type="button" class="ac-btn-outline" onclick="deactivateComponent(<?= (int) $c['id'] ?>)">Deactivate</button>
                                             <?php endif ?>

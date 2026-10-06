@@ -10,7 +10,6 @@
 .ac-nav-item.is-active { font-weight: 600; }
 .ac-nav-item:active { transform: none; }
 .ac-sidebar .ac-nav-label { max-width: none; }
-.ac-topbar { padding: 12px 20px; box-shadow: var(--shadow-xs); border-radius: var(--radius-lg); }
 .ac-topbar__actions { min-width: 0; flex-wrap: wrap; gap: 12px; }
 .ac-topbar__iconbtn { width: 40px; height: 40px; border-radius: var(--radius-sm); text-decoration: none; }
 .ac-topbar__links { flex-wrap: wrap; }
@@ -74,7 +73,11 @@ textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
 .ac-table td, table.grade-table td, table.schedule-table td { padding: 14px 16px; line-height: 1.5; border-color: var(--color-border); }
 .ac-table tbody tr:hover, table.grade-table tbody tr:hover, table.schedule-table tbody tr:hover { background: var(--color-surface-secondary); }
 .ac-dtable__head { font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; }
-.ac-badge, .ac-pill, .ac-role-badge { font-size: 12px; font-weight: 600; letter-spacing: 0; }
+.ac-badge, .ac-pill, .ac-role-badge, .ac-chip, .ac-badge-active, .ac-dept-code {
+    font-size: 12px; font-weight: 600; letter-spacing: 0; padding: 4px 10px; border-radius: var(--radius-pill);
+}
+/* .ac-chair-chip keeps its own asymmetric padding — it wraps an inline remove button. */
+.ac-chair-chip { font-size: 12px; font-weight: 600; letter-spacing: 0; }
 .ac-pagination { flex-wrap: wrap; }
 .ac-pagination__pages { flex-wrap: wrap; }
 .ac-pagination__link { min-width: 36px; height: 36px; }
