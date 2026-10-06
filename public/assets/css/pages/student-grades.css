@@ -1,0 +1,136 @@
+/* Student "My Grades" — filterable term view with a blue-header grade table
+   and a General Weighted Average summary, mirroring the readability of a
+   traditional grade report while staying on the shared portal-shell tokens. */
+
+.sg-page { display: flex; flex-direction: column; gap: 18px; }
+
+.sg-heading h1 { margin: 2px 0 4px; font-size: 22px; font-weight: 700; color: var(--color-text-primary); }
+.sg-heading p { margin: 0; font-size: 13.5px; color: var(--color-text-secondary); }
+.sg-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: var(--color-primary);
+}
+
+.sg-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 20px;
+}
+
+.sg-empty { text-align: center; padding: 48px 20px; color: var(--color-text-secondary); }
+.sg-empty .material-symbols-outlined { font-size: 40px; opacity: .4; margin-bottom: 10px; }
+.sg-empty h2 { margin: 0 0 6px; font-size: 16px; color: var(--color-text-primary); }
+.sg-empty p { margin: 0; font-size: 13px; }
+
+.sg-filters {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 16px 20px;
+}
+
+.sg-filter { display: flex; flex-direction: column; gap: 6px; min-width: 200px; }
+
+.sg-filter label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--color-text-secondary);
+}
+
+.sg-filter select {
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font-family: inherit;
+    font-size: 13.5px;
+    color: var(--color-text-primary);
+}
+
+.sg-filter select:focus { outline: none; box-shadow: var(--focus-ring); border-color: var(--color-primary); }
+
+.sg-table-card { padding: 0; overflow: hidden; }
+.sg-table-scroll { overflow-x: auto; }
+
+.sg-table { width: 100%; border-collapse: collapse; min-width: 920px; }
+
+.sg-table thead th {
+    background: var(--color-primary);
+    color: #fff;
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    padding: 12px 14px;
+    white-space: nowrap;
+}
+
+.sg-table thead th:first-child { border-top-left-radius: var(--radius-lg); }
+.sg-table thead th:last-child { border-top-right-radius: var(--radius-lg); }
+
+.sg-table tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 13.5px;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+}
+
+.sg-table tbody tr:last-child td { border-bottom: none; }
+.sg-table tbody tr:hover td { background: var(--color-surface-sunken); }
+
+.sg-pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    padding: 4px 11px;
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-sunken);
+    color: var(--color-text-secondary);
+}
+
+.sg-pill--pass { background: var(--color-success-soft); color: #0f5132; }
+.sg-pill--fail { background: var(--color-danger-soft); color: #842029; }
+
+.sg-empty-term { text-align: center; padding: 40px 20px; color: var(--color-text-secondary); }
+.sg-empty-term .material-symbols-outlined { font-size: 32px; opacity: .4; margin-bottom: 8px; }
+.sg-empty-term p { margin: 0; font-size: 13px; }
+
+.sg-gwa {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 10px;
+    padding: 18px;
+}
+
+.sg-gwa span { font-size: 15px; color: var(--color-text-secondary); font-weight: 600; }
+.sg-gwa strong { font-size: 26px; font-weight: 700; color: var(--color-text-primary); letter-spacing: -0.02em; }
+
+.sg-legend h3 { margin: 0 0 12px; font-size: 13px; font-weight: 700; color: var(--color-text-primary); }
+
+.sg-legend dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 8px 20px;
+}
+
+.sg-legend dl > div { display: flex; gap: 6px; margin: 0; font-size: 12.5px; color: var(--color-text-secondary); }
+.sg-legend dt { font-weight: 700; color: var(--color-text-primary); }
+.sg-legend dd { margin: 0; }
+
+@media (max-width: 640px) {
+    .sg-filters { flex-direction: column; }
+    .sg-filter { width: 100%; }
+    .sg-gwa { flex-direction: column; text-align: center; }
+}

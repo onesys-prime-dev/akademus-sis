@@ -12,83 +12,18 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
 <?= $this->section('styles') ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
-<style>
-    .icon-btn { border: none; background: none; cursor: pointer; color: var(--color-text-secondary); padding: 4px; border-radius: var(--radius-sm); display: flex; }
-    .icon-btn:hover { background: var(--color-danger-soft); color: var(--color-danger); }
-
-    /* ===== Create Section card ===== */
-    .cs-card { padding: 0; }
-    .cs-card__head { padding: 20px 24px; border-bottom: 1px solid var(--color-border); }
-    .cs-card__title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-    .cs-card__title-row h2 { margin: 0; font-size: 16px; font-weight: 800; color: var(--color-text-primary); }
-    .cs-card__head p { margin: 6px 0 0; font-size: 12.5px; color: var(--color-text-secondary); }
-
-    .cs-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; padding: 24px; }
-    .cs-field label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-secondary); margin-bottom: 6px; }
-    .cs-field label .optional { text-transform: none; font-weight: 500; color: var(--color-text-tertiary); }
-    .cs-field select, .cs-field input { width: 100%; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 13.5px; font-family: inherit; color: var(--color-text-primary); background: var(--color-surface); }
-    .cs-field select:focus, .cs-field input:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
-    .cs-field .unit-hint { position: relative; }
-    .cs-field .unit-hint input { padding-right: 52px; }
-    .cs-field .unit-hint span { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--color-text-tertiary); pointer-events: none; }
-
-    .cs-form-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px 24px; border-top: 1px solid var(--color-border); flex-wrap: wrap; }
-    .cs-form-footer .hint { font-size: 12px; color: var(--color-text-tertiary); }
-
-    /* ===== Section list ===== */
-    .cs-list-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0 16px; }
-    .cs-list-head h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--color-text-primary); }
-
-    .section-card { margin-bottom: 16px; padding: 0; overflow: hidden; }
-    .section-card:last-child { margin-bottom: 0; }
-    .section-card__head { padding: 20px 24px; border-bottom: 1px solid var(--color-border); }
-    .section-card__top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
-    .section-card__title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .section-card__title-row h3 { margin: 0; font-size: 15.5px; font-weight: 800; color: var(--color-text-primary); }
-
-    .cap-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-sm); white-space: nowrap; }
-    .cap-badge--full { background: var(--color-success-soft); color: #166534; }
-    .cap-badge--open { background: var(--color-info-soft); color: var(--color-info); }
-    .cap-badge--unlimited { background: var(--color-surface-sunken); color: var(--color-text-secondary); }
-
-    .section-card__meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--color-text-secondary); margin-top: 4px; }
-    .section-card__meta .dot { color: var(--color-text-tertiary); }
-    .section-card__meta strong { color: var(--color-text-primary); font-weight: 700; }
-
-    .section-card__assign { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .section-card__assign select { min-width: 220px; padding: 9px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-family: inherit; font-size: 12.5px; background: var(--color-surface); color: var(--color-text-primary); }
-    .section-card__assign select:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
-
-    .section-card__progress { padding: 16px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--color-border); }
-    .section-card__progress .track { flex: 1; max-width: 360px; height: 6px; border-radius: var(--radius-pill); background: var(--color-surface-sunken); overflow: hidden; }
-    .section-card__progress .fill { height: 100%; background: var(--color-primary); border-radius: var(--radius-pill); }
-    .section-card__progress .label { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); white-space: nowrap; }
-
-    table.roster-table { width: 100%; border-collapse: collapse; }
-    table.roster-table th { text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-secondary); background: var(--color-surface-secondary); padding: 10px 24px; border-bottom: 1px solid var(--color-border); }
-    table.roster-table td { padding: 10px 24px; font-size: 13px; color: var(--color-text-primary); border-bottom: 1px solid var(--color-border); vertical-align: middle; }
-    table.roster-table tr:last-child td { border-bottom: none; }
-    table.roster-table tbody tr:hover { background: var(--color-surface-secondary); }
-
-    .roster-student { display: flex; align-items: center; gap: 10px; }
-    .roster-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; color: #fff; flex: none; }
-
-    .roster-empty { font-size: 12.5px; color: var(--color-text-secondary); padding: 20px 24px; }
-
-    @media (max-width: 640px) {
-        .section-card__top { flex-direction: column; align-items: stretch; }
-        .section-card__assign select { min-width: 0; flex: 1; }
-    }
-</style>
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/chairperson-sections.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/chairperson-sections.css') ?>">
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 
-<div class="ac-page-header">
+<div class="sc-page">
+<div class="sc-heading">
     <div>
-        <h2 class="ac-page-header__title">Sections</h2>
-        <p class="ac-page-header__sub">Create sections and manage student rosters for your department.</p>
+        <h1>Sections</h1>
+        <p class="sc-subtitle">Manage section capacity, student assignments, and rosters.</p>
     </div>
+    <?php if ($deptName !== null): ?><button type="button" class="btn btn-primary" id="scOpenCreate"><span class="material-symbols-outlined" aria-hidden="true">add</span>Create section</button><?php endif ?>
 </div>
 
 <?php if ($deptName === null): ?>
@@ -100,16 +35,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     </div>
 <?php else: ?>
 
-    <div id="feedback" class="flash" style="display:none;"></div>
+    <div id="feedback" class="flash" role="status" aria-live="polite" style="display:none;"></div>
 
-    <div class="panel cs-card">
-        <div class="cs-card__head">
-            <div class="cs-card__title-row">
-                <h2>Create a Section</h2>
-            </div>
-            <p>Sections created here are ready for student assignment right away — no schedule needs to be plotted first.</p>
-        </div>
-
+    <details class="panel cs-card" id="scCreatePanel">
+        <summary class="sc-tool-summary"><span class="material-symbols-outlined" aria-hidden="true">add_circle_outline</span><span><strong>Create a section</strong><small>Choose a program, term, and capacity.</small></span><span class="material-symbols-outlined sc-chevron" aria-hidden="true">expand_more</span></summary>
         <div class="cs-form-grid">
             <div class="cs-field">
                 <label for="newProgram">Program</label>
@@ -136,11 +65,11 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                         </option>
                     <?php endforeach ?>
                 </select>
-                <span style="display:block; margin-top:6px; font-size:11px; color:var(--color-text-tertiary);">Only the active term and the upcoming one are offered — enrollment/scheduling only ever runs against one term's data, so a section under any other term would have nothing to enroll into.</span>
+                <small class="sc-field-help">Choose the active or upcoming term.</small>
             </div>
             <div class="cs-field">
                 <label for="newSectionName">Section Name</label>
-                <input type="text" id="newSectionName" placeholder="e.g. AIT3 or 1A" maxlength="20">
+                <input type="text" id="newSectionName" required aria-label="Section name, required" placeholder="e.g. AIT3 or 1A" maxlength="20">
             </div>
             <div class="cs-field">
                 <label for="newCapacity">Capacity <span class="optional">(Optional)</span></label>
@@ -152,29 +81,29 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         </div>
 
         <div class="cs-form-footer">
-            <span class="hint">Newly created sections will appear immediately in your roster directory.</span>
+            <span class="hint">The section will be ready for student assignment.</span>
             <button type="button" class="btn btn-primary" onclick="createSection()">
                 <span class="material-symbols-outlined" style="font-size:18px;">add</span>
                 Create Section
             </button>
         </div>
-    </div>
+    </details>
 
     <?php if ($sections === []): ?>
         <div class="panel">
             <div class="empty-state">
                 <div class="material-symbols-outlined">groups</div>
-                <p>No sections yet. Create one above, or plot a schedule and one will appear automatically.</p>
+                <p>No sections yet. Create your first section to begin assigning students.</p>
             </div>
         </div>
     <?php else: ?>
         <div class="cs-list-head">
-            <h2>Active Department Sections</h2>
-            <span class="ac-badge-active"><?= count($sections) ?> Section<?= count($sections) === 1 ? '' : 's' ?></span>
+            <h2>Section directory</h2>
+            <span class="sc-count"><?= count($sections) ?> Section<?= count($sections) === 1 ? '' : 's' ?></span>
         </div>
 
         <?php
-            $avatarColors = ['#2563eb', '#7c3aed', '#d97706', '#0891b2', '#db2777', '#16a34a'];
+            $avatarColors = ['#174ea6', '#0f766e', '#a65b08', '#15803d', '#4f5eb3'];
 
             $groups = [];
             foreach ($sections as $g) {
@@ -182,20 +111,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             }
         ?>
 
-        <div class="panel" style="margin-bottom:16px;">
-            <h3 style="margin:0 0 6px;">Rebalance Sections</h3>
-            <p style="margin:0 0 12px; color:var(--color-text-muted, #64748b); font-size:13px;">
-                Preview how students would be redistributed across a year level's sections. Sections that are locked,
-                finalized, or already have schedules, faculty, enrollments or grades are never moved.
-            </p>
-            <?php foreach ($groups as $g): ?>
-                <button type="button" class="btn btn-secondary" style="margin:0 8px 8px 0;"
-                        onclick='previewRebalance(<?= json_encode(['academic_year' => $g['academic_year'], 'program' => $g['program'], 'year_level' => $g['year_level']], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
-                    <?= esc($g['program']) ?> · <?= esc($g['year_level']) ?> · <?= esc($g['academic_year']) ?>
-                </button>
-            <?php endforeach ?>
+        <details class="panel sc-rebalance" id="scRebalancePanel"><summary class="sc-tool-summary"><span class="material-symbols-outlined" aria-hidden="true">balance</span><span><strong>Rebalance sections</strong><small>Preview student allocation before applying changes.</small></span><span class="material-symbols-outlined sc-chevron" aria-hidden="true">expand_more</span></summary><div class="sc-rebalance-body"><p>Choose a cohort to preview its allocation. Protected sections remain unchanged.</p><div class="sc-rebalance-controls"><label class="sc-sr-only" for="scRebalanceGroup">Cohort to rebalance</label><select id="scRebalanceGroup"><?php foreach ($groups as $g): ?><option value="<?= esc(json_encode(['academic_year' => $g['academic_year'], 'program' => $g['program'], 'year_level' => $g['year_level']]), 'attr') ?>"><?= esc($g['program'] . ' / ' . $g['year_level'] . ' / ' . $g['academic_year']) ?></option><?php endforeach ?></select><button type="button" class="btn btn-secondary" onclick="previewRebalance(JSON.parse(document.getElementById('scRebalanceGroup').value))">Preview allocation</button></div>
             <div id="rebalancePanel" style="display:none; margin-top:12px; border-top:1px solid #e2e8f0; padding-top:12px;"></div>
-        </div>
+        </div></details>
+        <div class="sc-directory-toolbar" id="scDirectoryTools" hidden><label class="sc-search"><span class="material-symbols-outlined" aria-hidden="true">search</span><span class="sc-sr-only">Search sections or students</span><input type="search" id="scSearch" placeholder="Search section or student"></label><div class="sc-filter"><label for="scTerm">Term</label><select id="scTerm"><option value="all">All terms</option><?php foreach (array_unique(array_column($sections, 'academic_year')) as $term): ?><option value="<?= esc($term, 'attr') ?>"><?= esc($term) ?></option><?php endforeach ?></select></div><div class="sc-filter"><label for="scProgram">Program</label><select id="scProgram"><option value="all">All programs</option><?php foreach (array_unique(array_column($sections, 'program')) as $program): ?><option value="<?= esc($program, 'attr') ?>"><?= esc($program) ?></option><?php endforeach ?></select></div></div><p class="sc-directory-result" id="scResults" role="status" aria-live="polite" hidden></p><div class="sc-no-results" id="scNoResults" hidden><strong>No matching sections</strong><p>Try another search or adjust the program and term filters.</p><button type="button" class="btn btn-secondary" id="scClearFilters">Clear filters</button></div>
         <?php foreach ($sections as $sec): ?>
             <?php
                 $roster = $rosterBySection[(int) $sec['section_id']] ?? [];
@@ -216,7 +135,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
                 $pct = ($cap !== null && $cap > 0) ? round($count / $cap * 100) : null;
             ?>
-            <div class="panel section-card">
+            <details class="panel section-card" data-directory-section data-term="<?= esc($sec['academic_year'], 'attr') ?>" data-program="<?= esc($sec['program'], 'attr') ?>"><summary class="sc-section-summary"><span class="sc-section-mark"><?= esc($sec['section']) ?></span><span class="sc-section-name"><strong><?= esc($sec['program']) ?></strong><small><?= esc($sec['year_level']) ?> &middot; <?= esc($sec['academic_year']) ?></small></span><span class="sc-summary-size"><strong><?= $count ?><?= $cap !== null ? ' / ' . (int) $cap : '' ?></strong><small>students<?= $cap === null ? ' / unlimited' : '' ?></small></span><span class="cap-badge <?= $badgeClass ?>"><?= $badgeLabel ?></span><span class="sc-summary-state" data-state="<?= esc($sec['status'], 'attr') ?>"><?= esc(ucfirst($sec['status'])) ?></span><span class="material-symbols-outlined sc-chevron" aria-hidden="true">expand_more</span></summary>
                 <div class="section-card__head">
                     <div class="section-card__top">
                         <div>
@@ -225,16 +144,16 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                 <span class="cap-badge <?= $badgeClass ?>"><?= $badgeLabel ?></span>
                                 <span class="cap-badge cap-badge--unlimited" title="Section status"><?= esc(ucfirst($sec['status'])) ?><?= ($sec['origin'] ?? 'manual') === 'auto' ? ' · auto' : '' ?></span>
                                 <?php $isLocked = $sec['status'] === 'locked'; ?>
-                                <button type="button" class="icon-btn" title="<?= $isLocked ? 'Unlock section' : 'Lock section (stops automatic balancing)' ?>"
+                                <button type="button" class="icon-btn" title="<?= $isLocked ? 'Unlock section' : 'Lock section (stops automatic balancing)' ?>" aria-label="<?= $isLocked ? 'Unlock section' : 'Lock section (stops automatic balancing)' ?>"
                                         onclick="setSectionState(<?= (int) $sec['section_id'] ?>, {status: '<?= $isLocked ? 'open' : 'locked' ?>'})">
                                     <span class="material-symbols-outlined" style="font-size:18px;"><?= $isLocked ? 'lock' : 'lock_open' ?></span>
                                 </button>
                                 <?php if (! empty($sec['auto_balance'])): ?>
-                                    <button type="button" class="icon-btn" title="Automatic balancing on — click to turn off" onclick="setSectionState(<?= (int) $sec['section_id'] ?>, {auto_balance: false})">
+                                    <button type="button" class="icon-btn" title="Automatic balancing on — click to turn off" aria-label="Automatic balancing on — click to turn off" onclick="setSectionState(<?= (int) $sec['section_id'] ?>, {auto_balance: false})">
                                         <span class="material-symbols-outlined" style="font-size:18px;">balance</span>
                                     </button>
                                 <?php else: ?>
-                                    <button type="button" class="icon-btn" title="Automatic balancing off — click to turn on" onclick="setSectionState(<?= (int) $sec['section_id'] ?>, {auto_balance: true})">
+                                    <button type="button" class="icon-btn" title="Automatic balancing off — click to turn on" aria-label="Automatic balancing off — click to turn on" onclick="setSectionState(<?= (int) $sec['section_id'] ?>, {auto_balance: true})">
                                         <span class="material-symbols-outlined" style="font-size:18px; opacity:.4;">block</span>
                                     </button>
                                 <?php endif ?>
@@ -246,7 +165,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                             </div>
                         </div>
                         <div class="section-card__assign">
-                            <select id="assign-<?= esc($sec['section_id']) ?>">
+                            <select id="assign-<?= esc($sec['section_id']) ?>" aria-label="Student to assign to <?= esc($sec['section'], 'attr') ?>">
                                 <option value="">Add a student…</option>
                                 <?php foreach ($students as $s): ?>
                                     <?php if ((int) ($s['section_id'] ?? 0) === (int) $sec['section_id']) continue; ?>
@@ -254,7 +173,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                 <?php endforeach ?>
                             </select>
                             <button type="button" class="btn btn-secondary" onclick="assignStudent(<?= (int) $sec['section_id'] ?>)">Add</button>
-                            <button type="button" class="icon-btn" title="Delete section" onclick='deleteSection(<?= (int) $sec['section_id'] ?>, <?= json_encode($sec['program'] . ' · ' . $sec['year_level'] . ' · Section ' . $sec['section'], JSON_HEX_APOS) ?>)'>
+                            <button type="button" class="icon-btn" title="Delete section" aria-label="Delete section" onclick='deleteSection(<?= (int) $sec['section_id'] ?>, <?= json_encode($sec['program'] . ' · ' . $sec['year_level'] . ' · Section ' . $sec['section'], JSON_HEX_APOS) ?>)'>
                                 <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
                             </button>
                         </div>
@@ -282,8 +201,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     <table class="roster-table">
                         <thead>
                             <tr>
-                                <th>Student</th>
-                                <th style="text-align:right;">Actions</th>
+                                <th scope="col">Student</th>
+                                <th scope="col" style="text-align:right;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -296,7 +215,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                         </div>
                                     </td>
                                     <td style="text-align:right;">
-                                        <button type="button" class="icon-btn" title="Remove from section" onclick="unassignStudent(<?= (int) $r['id'] ?>)">
+                                        <button type="button" class="icon-btn" title="Remove from section" aria-label="Remove from section" onclick="unassignStudent(<?= (int) $r['id'] ?>)">
                                             <span class="material-symbols-outlined" style="font-size:18px;">close</span>
                                         </button>
                                     </td>
@@ -305,15 +224,17 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                         </tbody>
                     </table>
                 <?php endif ?>
-            </div>
+            </details>
         <?php endforeach ?>
     <?php endif ?>
 
 <?php endif ?>
 
+</div>
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
+<script src="<?= base_url('assets/js/chairperson-sections-ui.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/chairperson-sections-ui.js') ?>" defer></script>
 <script>
     function showFeedback(message, isError) {
         const el = document.getElementById('feedback');
@@ -326,12 +247,15 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     }
 
     async function postJSON(url, body) {
+        try {
         const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             body: JSON.stringify(body),
         });
-        return res.json();
+        const result = await res.json().catch(() => null);
+        return result || {ok: false, error: 'Unable to process the request. Please try again.'};
+        } catch (error) { return {ok: false, error: 'Connection failed. Please try again.'}; }
     }
 
     async function createSection() {

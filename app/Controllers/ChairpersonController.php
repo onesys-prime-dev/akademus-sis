@@ -2331,8 +2331,12 @@ class ChairpersonController extends BaseController
      * appears in old plotted rows is not offered.
      *
      * When nothing exists for that exact context (say, a year level with no
-     * sections yet) it offers the department's section names from other year
-     * levels, so a new cohort can still be started. A department with no
+     * sections yet) it offers that same PROGRAM's section names from other
+     * year levels, so a new cohort can still be started — never another
+     * program's sections, even one this chairperson also schedules for.
+     * Only when the requested program has no sections anywhere (or the
+     * request carries no program context at all, e.g. a JSON save) does it
+     * fall back to the full department-wide list. A department with no
      * programs, or no sections at all yet, genuinely has nothing to offer —
      * this returns an empty list rather than any placeholder/fake names, so
      * the UI shows an honest empty state instead of fabricated options.
@@ -2361,17 +2365,30 @@ class ChairpersonController extends BaseController
 
         // Narrow to what is being viewed when the request says so (page
         // loads); JSON saves carry no query string and get the department-wide list.
-        if (is_string($program) && in_array($program, $programs, true) && is_string($year) && in_array($year, self::FILTERS['year_level'], true)) {
-            $scoped = $db->table('sections')->where('program', $program)->where('year_level', $year);
+        if (is_string($program) && in_array($program, $programs, true)) {
+            if (is_string($year) && in_array($year, self::FILTERS['year_level'], true)) {
+                $scoped = $db->table('sections')->where('program', $program)->where('year_level', $year);
 
-            $ayLabel  = $this->request->getGet('ay_label');
-            $semester = $this->request->getGet('semester');
+                $ayLabel  = $this->request->getGet('ay_label');
+                $semester = $this->request->getGet('semester');
 
-            if (is_string($ayLabel) && is_string($semester)) {
-                $scoped->where('academic_year', AcademicYearModel::format($ayLabel, $semester));
+                if (is_string($ayLabel) && is_string($semester)) {
+                    $scoped->where('academic_year', AcademicYearModel::format($ayLabel, $semester));
+                }
+
+                $found = $names($scoped);
+
+                if ($found !== []) {
+                    return $found;
+                }
             }
 
-            $found = $names($scoped);
+            // Nothing for this exact year level/term yet — broaden to other
+            // year levels, but stay within the requested PROGRAM. Falling
+            // through to the full whereIn($programs) below would leak a
+            // different program's section names (e.g. IT1-IT4) into a
+            // program that simply hasn't started a cohort yet.
+            $found = $names($db->table('sections')->where('program', $program));
 
             if ($found !== []) {
                 return $found;

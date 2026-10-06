@@ -484,14 +484,44 @@ class GradeModel extends Model
 
     /**
      * Every locked grade for a student, newest term first — the student's
-     * own read-only "My Grades" view.
+     * own read-only "My Grades" view. Enriched with the subject's title/units
+     * and its class context (program/year/section + weekly meetings, the
+     * same plotted_schedules rows StudentEnrollment::schedule() reads) so the
+     * view can show a schedule/instructor column without a second round
+     * trip per row.
      */
     public function forStudent(int $userId): array
     {
-        return $this->where('user_id', $userId)
-            ->where('status', 'locked')
-            ->orderBy('academic_year', 'DESC')
-            ->orderBy('subject_code', 'ASC')
-            ->findAll();
+        $rows = $this->db->table('grades g')
+            ->select('g.*, subj.subject_name, subj.units, s.program, s.year_level, s.section')
+            ->join('sections s', 's.section_id = g.section_id')
+            ->join('subjects subj', 'subj.subject_code = g.subject_code', 'left')
+            ->where('g.user_id', $userId)
+            ->where('g.status', 'locked')
+            ->orderBy('g.academic_year', 'DESC')
+            ->orderBy('subj.subject_name', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $schedules = new PlottedScheduleModel();
+
+        foreach ($rows as &$row) {
+            $meetings = $schedules
+                ->select('day, start_time, end_time, time_label, room, prof')
+                ->where('academic_year', $row['academic_year'])
+                ->where('program', $row['program'])
+                ->where('year_level', $row['year_level'])
+                ->where('section', $row['section'])
+                ->where('subject_code', $row['subject_code'])
+                ->orderBy('day')
+                ->findAll();
+
+            $row['meetings']   = $meetings;
+            $row['instructor'] = $meetings[0]['prof'] ?? null;
+            $row['room']       = $meetings[0]['room'] ?? null;
+        }
+        unset($row);
+
+        return $rows;
     }
 }

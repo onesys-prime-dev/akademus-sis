@@ -1214,7 +1214,10 @@ body.is-plot-dragging .block.is-other { opacity: .7; }
     .block, .lunch-band { top: var(--print-top) !important; height: var(--print-height) !important; }
     .block { padding: 1.2mm 1.5mm; gap: .3mm; border: 1px solid #cbd5e3 !important; border-left: 2.5px solid #42638d !important; border-radius: 1mm; background: #f4f7fb !important; box-shadow: none !important; opacity: 1 !important; font-size: 7pt; line-height: 1.2; animation: none !important; }
     .block.is-lab { border-left-color: #307b70 !important; background: #f0f7f5 !important; }
-    .block.is-other { border: 1px dashed #c5cbd4 !important; background: #fafafa !important; }
+    /* Ghost blocks (other sections' classes, shown on-screen only for
+       room/conflict awareness while editing) never belong on a printed
+       schedule — it's a document for this section, not a planning view. */
+    .block.is-other { display: none !important; }
     .block .b-code { font-size: 8pt; color: #24364e; }
     .block .b-line { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; color: #526075; }
     .block .b-time { order: -1; font-size: 6.5pt; color: #344c69; }
