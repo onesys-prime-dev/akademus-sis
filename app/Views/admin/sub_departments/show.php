@@ -114,15 +114,33 @@
                     <div class="ac-empty-panel">No faculty members in this department yet.</div>
                 <?php else: ?>
                     <?php foreach ($facultyMembers as $fm): ?>
+                        <?php
+                        $primaryAff   = null;
+                        $secondaryAff = [];
+                        foreach ($fm['affiliations'] as $aff) {
+                            if ($aff['is_primary']) { $primaryAff = $aff; } else { $secondaryAff[] = $aff; }
+                        }
+                        ?>
                         <div class="ac-program-row">
                             <div class="ac-program-row__left">
                                 <div class="ac-avatar ac-avatar--primary"><?= esc(strtoupper(substr($fm['username'], 0, 1))) ?></div>
                                 <div>
                                     <p class="ac-program-title"><?= esc($fm['username']) ?></p>
                                     <p class="ac-program-sub"><?= esc($fm['email']) ?></p>
+                                    <p class="ac-program-sub" style="margin-top:3px;">
+                                        <?php if ($primaryAff): ?>
+                                            <span style="color:var(--color-text-secondary);">Primary: <strong style="color:var(--color-text-primary);"><?= esc($primaryAff['name']) ?></strong></span>
+                                        <?php endif ?>
+                                        <?php if ($secondaryAff !== []): ?>
+                                            <span style="margin-left:8px; color:var(--color-text-secondary);">Also affiliated: <?= esc(implode(', ', array_column($secondaryAff, 'name'))) ?></span>
+                                        <?php endif ?>
+                                    </p>
                                 </div>
                             </div>
                             <div style="display:flex; align-items:center; gap:10px;">
+                                <?php if (!$fm['is_primary_here']): ?>
+                                    <span class="ac-status-dot" style="background:#f3f6fa; color:var(--color-text-secondary);">Affiliated here</span>
+                                <?php endif ?>
                                 <?php if ($fm['employment_status']): ?>
                                     <span class="ac-status-dot" style="background:#eef2ff; color:#4338ca;">
                                         <?= $fm['employment_status'] === 'full_time' ? 'Full-Time' : 'Part-Time' ?>
@@ -131,6 +149,10 @@
                                 <span class="ac-status-dot <?= $fm['active'] ? 'ac-status-dot--active' : 'ac-status-dot--pending' ?>">
                                     <?= $fm['active'] ? 'Active' : 'Invited' ?>
                                 </span>
+                                <button type="button" onclick="acOpenModal('modalAffiliations<?= $fm['id'] ?>')" class="ac-icon-action" title="Manage affiliations">
+                                    <span class="material-symbols-outlined" style="font-size:16px;">account_tree</span>
+                                </button>
+                                <?php if ($fm['is_primary_here']): ?>
                                 <button type="button" onclick="acOpenModal('modalEditFaculty<?= $fm['id'] ?>')" class="ac-icon-action" title="Edit">
                                     <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
                                 </button>
@@ -146,6 +168,66 @@
                                         <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
                                     </button>
                                 </form>
+                                <?php endif ?>
+                            </div>
+                        </div>
+
+                        <!-- Manage affiliations modal -->
+                        <div class="ac-modal" id="modalAffiliations<?= $fm['id'] ?>">
+                            <div class="ac-modal__panel">
+                                <div class="ac-modal__header">
+                                    <div>
+                                        <div class="ac-modal__title">Faculty Affiliations</div>
+                                        <div class="ac-modal__subtitle"><?= esc($fm['username']) ?></div>
+                                    </div>
+                                    <button type="button" onclick="acCloseModal('modalAffiliations<?= $fm['id'] ?>')" class="ac-modal__close">
+                                        <span class="material-symbols-outlined" style="font-size:18px;">close</span>
+                                    </button>
+                                </div>
+                                <div class="ac-modal__body">
+                                    <?php foreach ($fm['affiliations'] as $aff): ?>
+                                        <div class="ac-cred-row">
+                                            <div>
+                                                <div class="ac-cred-row__value" style="text-align:left;"><?= esc($aff['name']) ?></div>
+                                                <div class="ac-cred-row__label" style="text-transform:none; font-weight:500;"><?= $aff['is_primary'] ? 'Primary' : 'Secondary' ?></div>
+                                            </div>
+                                            <div style="display:flex; gap:6px;">
+                                                <?php if (!$aff['is_primary']): ?>
+                                                    <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/faculty/' . $fm['id'] . '/affiliations/set-primary') ?>">
+                                                        <?= csrf_field() ?>
+                                                        <input type="hidden" name="target_sub_dept_id" value="<?= (int) $aff['sub_dept_id'] ?>">
+                                                        <button type="submit" class="ac-btn-outline" data-confirm="Make <?= esc($aff['name'], 'attr') ?> the primary department for <?= esc($fm['username'], 'attr') ?>?">Set primary</button>
+                                                    </form>
+                                                    <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/faculty/' . $fm['id'] . '/affiliations/remove') ?>">
+                                                        <?= csrf_field() ?>
+                                                        <input type="hidden" name="target_sub_dept_id" value="<?= (int) $aff['sub_dept_id'] ?>">
+                                                        <button type="submit" class="ac-icon-action ac-icon-action--danger" title="Remove" data-confirm="Remove <?= esc($aff['name'], 'attr') ?> as an affiliation for <?= esc($fm['username'], 'attr') ?>?">
+                                                            <span class="material-symbols-outlined" style="font-size:16px;">close</span>
+                                                        </button>
+                                                    </form>
+                                                <?php endif ?>
+                                            </div>
+                                        </div>
+                                    <?php endforeach ?>
+
+                                    <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/faculty/' . $fm['id'] . '/affiliations/add') ?>" style="margin-top:14px; display:flex; gap:8px;">
+                                        <?= csrf_field() ?>
+                                        <select name="target_sub_dept_id" class="ac-input" required>
+                                            <option value="">Add department…</option>
+                                            <?php
+                                            $affiliatedIds = array_column($fm['affiliations'], 'sub_dept_id');
+                                            foreach ($allDepartments as $d):
+                                                if (in_array((int) $d['sub_dept_id'], $affiliatedIds, true)) continue;
+                                            ?>
+                                                <option value="<?= (int) $d['sub_dept_id'] ?>"><?= esc($d['name']) ?></option>
+                                            <?php endforeach ?>
+                                        </select>
+                                        <button type="submit" class="ac-btn ac-btn-secondary">Add</button>
+                                    </form>
+                                </div>
+                                <div class="ac-modal__actions">
+                                    <button type="button" onclick="acCloseModal('modalAffiliations<?= $fm['id'] ?>')" class="ac-btn ac-btn-secondary">Close</button>
+                                </div>
                             </div>
                         </div>
 
@@ -223,6 +305,52 @@
                                         <span class="material-symbols-outlined" style="font-size:16px;"><?= $program['is_active'] ? 'visibility_off' : 'visibility' ?></span>
                                     </button>
                                 </form>
+                                <button type="button" onclick="acOpenModal('modalTransferProgram<?= $program['program_id'] ?>')" class="ac-icon-action" title="Transfer to another department">
+                                    <span class="material-symbols-outlined" style="font-size:16px;">swap_horiz</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Transfer program modal -->
+                        <div class="ac-modal" id="modalTransferProgram<?= $program['program_id'] ?>">
+                            <div class="ac-modal__panel">
+                                <div class="ac-modal__header">
+                                    <div>
+                                        <div class="ac-modal__title">Transfer Program</div>
+                                        <div class="ac-modal__subtitle">Move <?= esc($program['program_name']) ?> to a different department.</div>
+                                    </div>
+                                    <button type="button" onclick="acCloseModal('modalTransferProgram<?= $program['program_id'] ?>')" class="ac-modal__close">
+                                        <span class="material-symbols-outlined" style="font-size:18px;">close</span>
+                                    </button>
+                                </div>
+                                <form method="post" action="<?= site_url('admin/programs/' . $program['program_id'] . '/transfer') ?>" id="formTransferProgram<?= $program['program_id'] ?>" data-preview-url="<?= site_url('admin/programs/' . $program['program_id'] . '/transfer/preview') ?>" data-target-field="sub_department_id">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="return" value="<?= esc(current_url(), 'attr') ?>">
+                                    <div class="ac-modal__body">
+                                        <div class="ac-field">
+                                            <label>Target Department</label>
+                                            <select name="sub_department_id" class="ac-input" required>
+                                                <?php foreach ($allDepartments as $d): ?>
+                                                    <option value="<?= (int) $d['sub_dept_id'] ?>" <?= (int) $d['sub_dept_id'] === (int) $program['sub_department_id'] ? 'selected' : '' ?>><?= esc($d['name']) ?></option>
+                                                <?php endforeach ?>
+                                            </select>
+                                        </div>
+                                        <div class="ac-field">
+                                            <label>Reason <span>Required</span></label>
+                                            <textarea name="reason" class="ac-input" rows="2" placeholder="Why is this program moving departments?" required></textarea>
+                                        </div>
+                                        <div class="ac-notice">
+                                            <span class="material-symbols-outlined" style="font-size:14px; color:var(--color-info); margin-top:1px;">info</span>
+                                            <span class="ac-notice__text">Curriculum, students, sections, and enrollments stay exactly as they are — they follow the program, not the department. Subject ownership is also unaffected.</span>
+                                        </div>
+                                        <div id="formTransferProgram<?= $program['program_id'] ?>Preview" hidden></div>
+                                    </div>
+                                    <div class="ac-modal__actions">
+                                        <button type="button" onclick="acCloseModal('modalTransferProgram<?= $program['program_id'] ?>')" class="ac-btn ac-btn-secondary">Cancel</button>
+                                        <button type="button" class="ac-btn ac-btn-secondary" data-preview-btn>Preview transfer</button>
+                                        <button type="submit" class="ac-btn ac-btn-primary" data-confirm-btn hidden>Confirm transfer</button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     <?php endforeach ?>
@@ -277,7 +405,7 @@
             </button>
         </div>
 
-        <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/transfer') ?>">
+        <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/transfer') ?>" id="formTransferDept" data-preview-url="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/transfer/preview') ?>" data-target-field="college_id">
             <?= csrf_field() ?>
             <div class="ac-modal__body">
                 <div class="ac-field">
@@ -290,14 +418,20 @@
                         <?php endforeach ?>
                     </select>
                 </div>
+                <div class="ac-field">
+                    <label>Reason <span>Required</span></label>
+                    <textarea name="reason" class="ac-input" rows="2" placeholder="Why is this department moving colleges?" required></textarea>
+                </div>
                 <div class="ac-notice">
                     <span class="material-symbols-outlined" style="font-size:14px; color:var(--color-info); margin-top:1px;">info</span>
                     <span class="ac-notice__text">Currently under <?= esc($college['name']) ?>. Transferring moves this department (and its chairperson/faculty scheduling scope) to the selected college.</span>
                 </div>
+                <div id="formTransferDeptPreview" hidden></div>
             </div>
             <div class="ac-modal__actions">
                 <button type="button" onclick="acCloseModal('modalTransfer')" class="ac-btn ac-btn-secondary">Cancel</button>
-                <button type="submit" class="ac-btn ac-btn-primary">Transfer</button>
+                <button type="button" class="ac-btn ac-btn-secondary" data-preview-btn>Preview transfer</button>
+                <button type="submit" class="ac-btn ac-btn-primary" data-confirm-btn hidden>Confirm transfer</button>
             </div>
         </form>
     </div>
@@ -385,24 +519,50 @@
         <div class="ac-modal__header">
             <div>
                 <div class="ac-modal__title">Add Faculty Member</div>
-                <div class="ac-modal__subtitle">Creates a Faculty account scoped to <?= esc($department['name']) ?>.</div>
+                <div class="ac-modal__subtitle">Adds a faculty member to <?= esc($department['name']) ?>.</div>
             </div>
             <button type="button" onclick="acCloseModal('modalAddFaculty')" class="ac-modal__close">
                 <span class="material-symbols-outlined" style="font-size:18px;">close</span>
             </button>
         </div>
 
-        <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/faculty') ?>">
+        <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/faculty') ?>" id="formAddFaculty">
             <?= csrf_field() ?>
             <div class="ac-modal__body">
                 <div class="ac-field">
-                    <label>Full Name</label>
-                    <input type="text" name="username" class="ac-input" placeholder="Prof. Roy Consulta" value="<?= old('username') ?>" required>
+                    <div style="display:flex; gap:16px; margin-bottom:4px;">
+                        <label style="display:flex; align-items:center; gap:6px; font-weight:400; text-transform:none;">
+                            <input type="radio" name="faculty_mode" value="existing" checked onchange="acToggleFacultyMode(this)"> Existing user
+                        </label>
+                        <label style="display:flex; align-items:center; gap:6px; font-weight:400; text-transform:none;">
+                            <input type="radio" name="faculty_mode" value="new" onchange="acToggleFacultyMode(this)"> New account
+                        </label>
+                    </div>
                 </div>
-                <div class="ac-field">
-                    <label>Email</label>
-                    <input type="email" name="email" class="ac-input" placeholder="rconsulta@spum.edu.ph" value="<?= old('email') ?>" required>
+
+                <div class="ac-field" id="facultyExistingField">
+                    <label>User</label>
+                    <select name="existing_user_id" class="ac-input" id="facultyExistingSelect" required>
+                        <option value="">Choose a user…</option>
+                        <?php foreach ($assignableUsers as $u): ?>
+                            <option value="<?= (int) $u['id'] ?>">
+                                <?= esc($u['username']) ?><?= $u['email'] ? ' — ' . esc($u['email']) : '' ?><?= $u['groups'] !== [] ? ' (' . esc(implode(', ', $u['groups'])) . ')' : '' ?>
+                            </option>
+                        <?php endforeach ?>
+                    </select>
                 </div>
+
+                <div id="facultyNewFields" style="display:none;">
+                    <div class="ac-field">
+                        <label>Full Name</label>
+                        <input type="text" name="username" class="ac-input" placeholder="Prof. Roy Consulta" value="<?= old('username') ?>">
+                    </div>
+                    <div class="ac-field">
+                        <label>Email</label>
+                        <input type="email" name="email" class="ac-input" placeholder="rconsulta@spum.edu.ph" value="<?= old('email') ?>">
+                    </div>
+                </div>
+
                 <div class="ac-field">
                     <label>Employment Status</label>
                     <select name="employment_status" class="ac-input">
@@ -411,12 +571,32 @@
                         <option value="part_time" <?= old('employment_status') === 'part_time' ? 'selected' : '' ?>>Part-Time</option>
                     </select>
                 </div>
+
+                <div class="ac-notice">
+                    <span class="material-symbols-outlined" style="font-size:14px; color:var(--color-info); margin-top:1px;">info</span>
+                    <span class="ac-notice__text">An existing user keeps their other roles — this adds faculty access scoped to <?= esc($department['name']) ?> and moves them here if they belonged to another department.</span>
+                </div>
             </div>
             <div class="ac-modal__actions">
                 <button type="button" onclick="acCloseModal('modalAddFaculty')" class="ac-btn ac-btn-secondary">Cancel</button>
-                <button type="submit" class="ac-btn ac-btn-primary">Add &amp; Invite</button>
+                <button type="submit" class="ac-btn ac-btn-primary" id="facultySubmitBtn">Add faculty</button>
             </div>
         </form>
+        <script>
+            function acToggleFacultyMode(radio) {
+                const existing = radio.form.querySelector('#facultyExistingField');
+                const existingSelect = radio.form.querySelector('#facultyExistingSelect');
+                const newFields = radio.form.querySelector('#facultyNewFields');
+                const newInputs = newFields.querySelectorAll('input');
+                const submitBtn = radio.form.querySelector('#facultySubmitBtn');
+                const isExisting = radio.value === 'existing';
+                existing.style.display = isExisting ? '' : 'none';
+                newFields.style.display = isExisting ? 'none' : '';
+                existingSelect.required = isExisting;
+                newInputs.forEach(input => { input.required = !isExisting; });
+                submitBtn.textContent = isExisting ? 'Add faculty' : 'Add & invite';
+            }
+        </script>
     </div>
 </div>
 
@@ -462,9 +642,103 @@
         document.getElementById('modalAddProgram').classList.add('is-open');
     <?php elseif (old('username') || old('email')): ?>
         document.getElementById('modalAddFaculty').classList.add('is-open');
+        // Validation failed on the "new account" path — restore that radio
+        // (the modal defaults to "existing") so the admin sees the
+        // partially-filled fields old() just repopulated, not an empty
+        // existing-user dropdown.
+        (function () {
+            var form = document.getElementById('formAddFaculty');
+            var newRadio = form.querySelector('input[name="faculty_mode"][value="new"]');
+            newRadio.checked = true;
+            acToggleFacultyMode(newRadio);
+        })();
     <?php else: ?>
         document.getElementById('modalEditDetails').classList.add('is-open');
     <?php endif ?>
 </script>
 <?php endif ?>
+
+<script>
+// Shared "Preview transfer" step for both the department-transfer and each
+// program-transfer modal (data-preview-url + data-target-field on the
+// <form>, a matching #{form.id}Preview container, and [data-preview-btn] /
+// [data-confirm-btn] buttons). One handler, reused for every transfer form
+// on this page instead of duplicating the fetch/render logic per modal.
+(function () {
+    function labelize(key) {
+        return key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+    }
+
+    function renderPreview(container, data) {
+        if (!data.ok) {
+            container.innerHTML = '<div class="ac-notice" style="border-color:var(--color-danger-border); background:var(--color-danger-soft);"><span class="ac-notice__text">' + escapeHtml(data.error || 'Could not load preview.') + '</span></div>';
+            container.hidden = false;
+            return;
+        }
+
+        if (data.same_as_current) {
+            container.innerHTML = '<div class="ac-notice"><span class="ac-notice__text">Already set to this target — nothing would change.</span></div>';
+            container.hidden = false;
+            return;
+        }
+
+        var rows = Object.keys(data.affected).map(function (key) {
+            return '<div class="ac-cred-row"><span class="ac-cred-row__label">' + escapeHtml(labelize(key)) + '</span><span class="ac-cred-row__value">' + escapeHtml(data.affected[key]) + '</span></div>';
+        }).join('');
+
+        container.innerHTML =
+            '<div class="ac-field"><label>Affected</label>' +
+            '<div class="ac-cred-row"><span class="ac-cred-row__label">From</span><span class="ac-cred-row__value">' + escapeHtml(data.from) + '</span></div>' +
+            '<div class="ac-cred-row"><span class="ac-cred-row__label">To</span><span class="ac-cred-row__value">' + escapeHtml(data.to) + '</span></div>' +
+            rows +
+            '</div>';
+        container.hidden = false;
+    }
+
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-preview-btn]');
+        if (!btn) return;
+
+        var form = btn.closest('form[data-preview-url]');
+        if (!form) return;
+
+        var targetField = form.querySelector('[name="' + form.dataset.targetField + '"]');
+        var container = document.getElementById(form.id + 'Preview');
+        var confirmBtn = form.querySelector('[data-confirm-btn]');
+
+        if (!targetField || !container) return;
+
+        var body = new URLSearchParams();
+        body.set(form.dataset.targetField, targetField.value);
+
+        btn.disabled = true;
+
+        fetch(form.dataset.previewUrl, { method: 'POST', body: body })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                renderPreview(container, data);
+                if (data.ok && !data.same_as_current && confirmBtn) {
+                    confirmBtn.hidden = false;
+                }
+            })
+            .catch(function () {
+                container.innerHTML = '<div class="ac-notice"><span class="ac-notice__text">Could not load preview. Please try again.</span></div>';
+                container.hidden = false;
+            })
+            .finally(function () { btn.disabled = false; });
+    });
+
+    // Changing the target after a preview was shown invalidates it — hide
+    // the confirm button again until the admin previews the new target.
+    document.addEventListener('change', function (e) {
+        var form = e.target.closest('form[data-preview-url]');
+        if (!form || e.target.name !== form.dataset.targetField) return;
+
+        var confirmBtn = form.querySelector('[data-confirm-btn]');
+        var container = document.getElementById(form.id + 'Preview');
+        if (confirmBtn) confirmBtn.hidden = true;
+        if (container) container.hidden = true;
+    });
+})();
+</script>
 <?= $this->endSection() ?>

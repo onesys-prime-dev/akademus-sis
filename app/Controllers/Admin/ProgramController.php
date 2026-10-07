@@ -3,7 +3,10 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Models\AuditLogModel;
+use App\Models\DepartmentModel;
 use App\Models\ProgramModel;
+use App\Models\SubDepartmentModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class ProgramController extends BaseController
@@ -164,5 +167,88 @@ class ProgramController extends BaseController
                     ? 'program activated.'
                     : 'program deactivated.'
             );
+    }
+
+    /**
+     * JSON: what Transfer Program (to a different Department) would affect —
+     * read-only preview for the confirmation modal.
+     */
+    public function transferPreview($id)
+    {
+        $program = $this->programModel->find($id);
+
+        if (! $program) {
+            return $this->response->setStatusCode(404)->setJSON(['ok' => false, 'error' => 'Program not found.']);
+        }
+
+        $targetSubDeptId = (int) $this->request->getPost('sub_department_id');
+        $targetDept       = (new SubDepartmentModel())->find($targetSubDeptId);
+
+        if (! $targetDept) {
+            return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => 'Department not found.']);
+        }
+
+        $currentDept = $program['sub_department_id'] !== null ? (new SubDepartmentModel())->find((int) $program['sub_department_id']) : null;
+
+        return $this->response->setJSON([
+            'ok'              => true,
+            'from'            => $currentDept['name'] ?? '— (unassigned)',
+            'to'              => $targetDept['name'],
+            'same_as_current' => $targetSubDeptId === (int) ($program['sub_department_id'] ?? 0),
+            'affected'        => (new DepartmentModel())->programTransferImpact((int) $id),
+        ]);
+    }
+
+    /**
+     * Moves a Program to a different Department. Curriculum/students/
+     * sections/enrollments are untouched by design — they key off program_id
+     * (or the program's own display name for the legacy section-matching
+     * path), never off the department, so nothing needs to be rewritten;
+     * chairperson/scheduling authorization for this program re-evaluates
+     * automatically the next time it's checked (SchedulingAuthorization
+     * reads live from programs.sub_department_id, nothing to resync).
+     */
+    public function transfer($id)
+    {
+        $program = $this->programModel->find($id);
+
+        if (! $program) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $targetSubDeptId = (int) $this->request->getPost('sub_department_id');
+        $targetDept       = (new SubDepartmentModel())->find($targetSubDeptId);
+        $reason           = trim((string) $this->request->getPost('reason'));
+
+        if (! $targetDept) {
+            return redirect()->back()->with('errors', ['Department not found.']);
+        }
+
+        if ($reason === '') {
+            return redirect()->back()->withInput()->with('errors', ['reason' => 'A reason is required for a transfer.']);
+        }
+
+        $oldSubDeptId = $program['sub_department_id'] !== null ? (int) $program['sub_department_id'] : null;
+
+        if ($targetSubDeptId === $oldSubDeptId) {
+            return redirect()->to($this->returnUrl())->with('message', "{$program['program_name']} is already under {$targetDept['name']}.");
+        }
+
+        $this->programModel->update($id, ['sub_department_id' => $targetSubDeptId]);
+
+        (new AuditLogModel())->record(
+            'program.transferred',
+            'program',
+            $id,
+            ['sub_department_id' => $oldSubDeptId],
+            ['sub_department_id' => $targetSubDeptId],
+            $reason,
+            (int) auth()->id(),
+            'admin'
+        );
+
+        return redirect()
+            ->to($this->returnUrl())
+            ->with('message', "{$program['program_name']} transferred to {$targetDept['name']}.");
     }
 }

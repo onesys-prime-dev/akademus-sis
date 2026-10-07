@@ -118,4 +118,90 @@ class DepartmentModel extends Model
 
         return $row;
     }
+
+    /**
+     * What a Department transfer (to a different College) would touch —
+     * used by Admin\SubDepartmentController::transferPreview() so the admin
+     * sees real counts before confirming. Nothing here is written; this is
+     * read-only. Programs/faculty/subjects/chairpersons+delegates all key
+     * off sub_dept_id directly, so a college change never touches them —
+     * they're reported purely for visibility, not because they'd change.
+     *
+     * @return array{programs: int, faculty: int, subjects: int, chairpersons: int, students: int, sections: int}
+     */
+    public function departmentTransferImpact(int $subDeptId): array
+    {
+        $db = db_connect();
+
+        $programIds = array_column(
+            $db->table('programs')->select('program_id')->where('sub_department_id', $subDeptId)->get()->getResultArray(),
+            'program_id'
+        );
+
+        $students = $programIds === [] ? 0 : $db->table('students')->whereIn('program_id', $programIds)->countAllResults();
+
+        $programNames = $this->programsOfSubDept($subDeptId);
+        $sections = $programNames === [] ? 0 : $db->table('sections')->whereIn('program', $programNames)->countAllResults();
+
+        $chairpersonIds = array_column(
+            $db->table('users u')->select('u.id')
+                ->join('auth_groups_users g', 'g.user_id = u.id')
+                ->where('g.group', 'chairperson')
+                ->where('u.sub_department_id', $subDeptId)
+                ->get()->getResultArray(),
+            'id'
+        );
+        $delegateIds = array_column(
+            $db->table('sub_department_schedulers')->select('user_id')->where('sub_dept_id', $subDeptId)->get()->getResultArray(),
+            'user_id'
+        );
+
+        return [
+            'programs'     => count($programIds),
+            'faculty'      => $db->table('faculty_departments')->where('sub_dept_id', $subDeptId)->where('status', 'active')->countAllResults(),
+            'subjects'     => $db->table('subjects')->where('sub_department_id', $subDeptId)->countAllResults(),
+            'chairpersons' => count(array_unique(array_map('intval', array_merge($chairpersonIds, $delegateIds)))),
+            'students'     => $students,
+            'sections'     => $sections,
+        ];
+    }
+
+    /**
+     * What a Program transfer (to a different Department) would touch — see
+     * ProgramController::transferPreview(). Curriculum/subject ownership are
+     * deliberately NOT in this list — they're unaffected (curriculum stays
+     * keyed to the same program_id; subjects keep whichever department
+     * already owns them, independent of which department the program
+     * itself belongs to) and the preview UI says so explicitly rather than
+     * implying they move too.
+     *
+     * @return array{curricula: int, students: int, sections: int, enrollments: int}
+     */
+    public function programTransferImpact(int $programId): array
+    {
+        $db = db_connect();
+
+        $students = $db->table('students')->where('program_id', $programId)->countAllResults();
+        $curricula = $db->table('curriculum')->where('program_id', $programId)->countAllResults();
+
+        $programName = self::programNameById($programId);
+        $sections = 0;
+        $enrollments = 0;
+
+        if ($programName !== null) {
+            $sections = $db->table('sections')->where('program', $programName)->countAllResults();
+
+            $enrollments = $db->table('enrollments e')
+                ->join('sections s', 's.section_id = e.section_id')
+                ->where('s.program', $programName)
+                ->countAllResults();
+        }
+
+        return [
+            'curricula'   => $curricula,
+            'students'    => $students,
+            'sections'    => $sections,
+            'enrollments' => $enrollments,
+        ];
+    }
 }

@@ -3,7 +3,9 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Models\AuditLogModel;
 use App\Models\DepartmentModel;
+use App\Models\FacultyDepartmentModel;
 use App\Models\ProgramModel;
 use App\Models\SubDepartmentModel;
 use CodeIgniter\Shield\Entities\User;
@@ -38,6 +40,9 @@ class SubDepartmentController extends BaseController
             ->findAll();
 
         $colleges = (new DepartmentModel())->orderBy('name')->findAll();
+        $facultyMembers = $this->facultyMembersOf($id);
+
+        $allDepartments = $this->subDeptModel->orderBy('name')->findAll();
 
         return view('admin/sub_departments/show', [
             'pageTitle'      => $department['name'],
@@ -46,8 +51,13 @@ class SubDepartmentController extends BaseController
             'department'     => $department,
             'programs'       => $programs,
             'colleges'       => $colleges,
-            'facultyMembers' => $this->facultyMembersOf($id),
-            'facultyCount'   => $this->countInGroup($id, 'faculty'),
+            'allDepartments' => $allDepartments,
+            'facultyMembers' => $facultyMembers,
+            // Affiliated count (primary + secondary), matching the list
+            // below it — previously this was a separate primary-only query,
+            // which would have silently disagreed with the roster once
+            // secondary affiliations existed.
+            'facultyCount'   => count($facultyMembers),
             'studentCount'   => $this->countInGroup($id, 'student'),
             'assignableUsers' => $this->assignableUsers(),
         ]);
@@ -306,6 +316,34 @@ class SubDepartmentController extends BaseController
             ->with('message', "{$user->username} removed as chairperson of {$department['name']}.");
     }
 
+    /**
+     * JSON: what Transfer Department would affect, for the confirmation
+     * modal's preview step — read-only, nothing is written here.
+     */
+    public function transferPreview($id)
+    {
+        $department = $this->subDeptModel->find($id);
+
+        if (! $department) {
+            return $this->response->setStatusCode(404)->setJSON(['ok' => false, 'error' => 'Department not found.']);
+        }
+
+        $targetCollegeId = (int) $this->request->getPost('college_id');
+        $targetCollege   = (new DepartmentModel())->find($targetCollegeId);
+
+        if (! $targetCollege) {
+            return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => 'College not found.']);
+        }
+
+        return $this->response->setJSON([
+            'ok'             => true,
+            'from'           => (new DepartmentModel())->find((int) $department['college_id'])['name'] ?? '—',
+            'to'             => $targetCollege['name'],
+            'same_as_current' => $targetCollegeId === (int) $department['college_id'],
+            'affected'       => (new DepartmentModel())->departmentTransferImpact((int) $id),
+        ]);
+    }
+
     public function transfer($id)
     {
         $department = $this->subDeptModel->find($id);
@@ -316,9 +354,14 @@ class SubDepartmentController extends BaseController
 
         $targetCollegeId = (int) $this->request->getPost('college_id');
         $targetCollege    = (new DepartmentModel())->find($targetCollegeId);
+        $reason           = trim((string) $this->request->getPost('reason'));
 
         if (! $targetCollege) {
             return redirect()->back()->with('errors', ['College not found.']);
+        }
+
+        if ($reason === '') {
+            return redirect()->back()->withInput()->with('errors', ['reason' => 'A reason is required for a transfer.']);
         }
 
         if ($targetCollegeId === (int) $department['college_id']) {
@@ -327,6 +370,8 @@ class SubDepartmentController extends BaseController
                 ->with('message', "{$department['name']} is already under {$targetCollege['name']}.");
         }
 
+        $oldCollegeId = (int) $department['college_id'];
+
         $this->subDeptModel->update($id, ['college_id' => $targetCollegeId]);
 
         // Keep every chairperson/faculty already scoped to this department in sync
@@ -334,6 +379,17 @@ class SubDepartmentController extends BaseController
         db_connect()->table('users')
             ->where('sub_department_id', $id)
             ->update(['department_id' => $targetCollegeId]);
+
+        (new AuditLogModel())->record(
+            'department.transferred',
+            'sub_department',
+            $id,
+            ['college_id' => $oldCollegeId],
+            ['college_id' => $targetCollegeId],
+            $reason,
+            (int) auth()->id(),
+            'admin'
+        );
 
         return redirect()
             ->to("/admin/sub-departments/{$id}")
@@ -420,6 +476,12 @@ class SubDepartmentController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
+        $existingUserId = (int) ($this->request->getPost('existing_user_id') ?? 0);
+
+        if ($this->request->getPost('faculty_mode') === 'existing' || $existingUserId > 0) {
+            return $this->assignExistingFaculty($id, $department, $existingUserId);
+        }
+
         $rules = [
             'username'          => 'required|max_length[100]',
             'email'             => 'required|valid_email',
@@ -475,6 +537,116 @@ class SubDepartmentController extends BaseController
         return redirect()
             ->to("/admin/sub-departments/{$id}")
             ->with('message', "{$username} added to {$department['name']}. Temporary password: {$tempPassword} (share this with them — it won't be shown again).");
+    }
+
+    /**
+     * Adds an ALREADY-EXISTING user as faculty AFFILIATED with this
+     * department — no new account, no temp password, and (important) no
+     * longer silently MOVES them here if they already belong elsewhere.
+     * That used to be the behavior (a flat, single sub_department_id
+     * overwrite) and it's exactly what accidentally relocated real faculty
+     * out of their home department during testing. FacultyDepartmentModel::
+     * addAffiliation() makes this their first-ever primary only if they
+     * have none yet; otherwise it adds this department as a SECONDARY
+     * affiliation and leaves their existing primary untouched. Promoting
+     * someone to primary here is a separate, explicit action (see
+     * setPrimaryAffiliation()), never an implicit side effect of "add."
+     */
+    private function assignExistingFaculty(int $id, array $department, int $userId)
+    {
+        $users = auth()->getProvider();
+        $user  = $users->findById($userId);
+
+        if ($user === null) {
+            return redirect()->back()->with('errors', ['Selected user not found.']);
+        }
+
+        if (! $user->inGroup('faculty')) {
+            $user->addGroup('faculty');
+        }
+
+        $employmentStatus = $this->request->getPost('employment_status');
+
+        if ($employmentStatus !== null && $employmentStatus !== '' && ! in_array($employmentStatus, ['full_time', 'part_time'], true)) {
+            return redirect()->back()->with('errors', ['employment_status' => 'Invalid employment status.']);
+        }
+
+        $result = (new FacultyDepartmentModel())->addAffiliation($userId, $id, false, (int) auth()->id(), 'admin');
+
+        if (! $result['ok']) {
+            return redirect()->back()->with('errors', [$result['error']]);
+        }
+
+        if ($employmentStatus !== null && $employmentStatus !== '') {
+            db_connect()->table('users')->where('id', $user->id)->update(['employment_status' => $employmentStatus]);
+        }
+
+        return redirect()
+            ->to("/admin/sub-departments/{$id}")
+            ->with('message', "{$user->username} added to {$department['name']} as faculty.");
+    }
+
+    /**
+     * Adds a secondary affiliation for a faculty member already visible on
+     * this (or any) department page — the "Manage Affiliations" action.
+     * $targetSubDeptId is the department to affiliate with, which may be
+     * unrelated to $id (the page the admin is currently viewing from).
+     */
+    public function addAffiliation($id, $userId)
+    {
+        $targetSubDeptId = (int) $this->request->getPost('target_sub_dept_id');
+
+        if ($targetSubDeptId <= 0) {
+            return redirect()->back()->with('errors', ['Choose a department.']);
+        }
+
+        $result = (new FacultyDepartmentModel())->addAffiliation((int) $userId, $targetSubDeptId, false, (int) auth()->id(), 'admin');
+
+        if (! $result['ok']) {
+            return redirect()->back()->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to("/admin/sub-departments/{$id}")->with('message', 'Affiliation added.');
+    }
+
+    /**
+     * Removes a SECONDARY affiliation (the model itself refuses to remove a
+     * primary — see FacultyDepartmentModel::removeAffiliation()).
+     */
+    public function removeAffiliation($id, $userId)
+    {
+        $targetSubDeptId = (int) $this->request->getPost('target_sub_dept_id');
+
+        $result = (new FacultyDepartmentModel())->removeAffiliation((int) $userId, $targetSubDeptId, (int) auth()->id(), 'admin');
+
+        if (! $result['ok']) {
+            return redirect()->back()->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to("/admin/sub-departments/{$id}")->with('message', 'Affiliation removed.');
+    }
+
+    /**
+     * Promotes an existing (primary or secondary) affiliation to primary —
+     * demotes whichever department currently holds that slot and syncs
+     * users.sub_department_id, transactionally, via
+     * FacultyDepartmentModel::setPrimaryDepartment().
+     */
+    public function setPrimaryAffiliation($id, $userId)
+    {
+        $targetSubDeptId = (int) $this->request->getPost('target_sub_dept_id');
+
+        if ($targetSubDeptId <= 0) {
+            return redirect()->back()->with('errors', ['Choose a department.']);
+        }
+
+        $result = (new FacultyDepartmentModel())->setPrimaryDepartment((int) $userId, $targetSubDeptId, (int) auth()->id(), 'admin', 'Changed via admin department page');
+
+        if (! $result['ok']) {
+            return redirect()->back()->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to("/admin/sub-departments/{$id}")->with('message', 'Primary department updated.');
     }
 
     public function updateFaculty($id, $userId)
@@ -665,18 +837,56 @@ class SubDepartmentController extends BaseController
         return $all;
     }
 
+    /**
+     * Every faculty member AFFILIATED with this department (primary or
+     * secondary) — previously this only matched u.sub_department_id
+     * (primary-only), so a faculty member teaching here as a secondary
+     * affiliation was invisible on the department they actually teach for.
+     * Each row carries is_primary_here (is THIS department their home) plus
+     * their full affiliation list, so the view can show e.g. "Theo Abella —
+     * Primary: IT, Affiliated here: CS" instead of implying a move.
+     *
+     * Batched: one query for the department roster, one for every row's
+     * full affiliation set — never one affiliation query per faculty row.
+     */
     private function facultyMembersOf(int $subDeptId): array
     {
-        return db_connect()->table('users u')
+        $affiliations = new FacultyDepartmentModel();
+        $userIds      = $affiliations->userIdsForDepartment($subDeptId);
+
+        if ($userIds === []) {
+            return [];
+        }
+
+        $rows = db_connect()->table('users u')
             ->select('u.id, u.username, u.active, u.employment_status, i.secret as email')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
             ->where('g.group', 'faculty')
-            ->where('u.sub_department_id', $subDeptId)
+            ->whereIn('u.id', $userIds)
             ->where('u.deleted_at', null)
             ->orderBy('u.username')
             ->get()
             ->getResultArray();
+
+        $allAffiliationsByUser = $affiliations->departmentsForFacultyBatch(array_map(static fn (array $r) => (int) $r['id'], $rows));
+
+        foreach ($rows as &$row) {
+            $userId = (int) $row['id'];
+            $own    = $allAffiliationsByUser[$userId] ?? [];
+
+            $row['is_primary_here'] = false;
+            $row['affiliations']    = $own;
+
+            foreach ($own as $aff) {
+                if ($aff['sub_dept_id'] === $subDeptId && $aff['is_primary']) {
+                    $row['is_primary_here'] = true;
+                }
+            }
+        }
+        unset($row);
+
+        return $rows;
     }
 
     private function countInGroup(int $subDeptId, string $group): int

@@ -61,6 +61,10 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
 
     $routes->post('programs/toggle-status/(:num)' , 'Admin\ProgramController::toggleStatus/$1');
 
+    // transfer a program to a different department
+    $routes->post('programs/(:num)/transfer/preview', 'Admin\ProgramController::transferPreview/$1');
+    $routes->post('programs/(:num)/transfer'        , 'Admin\ProgramController::transfer/$1');
+
     // create subjects
     $routes->get('subjects'               , 'Admin\SubjectController::index');
     $routes->get('subjects/create'        , 'Admin\SubjectController::create');
@@ -119,6 +123,7 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('sub-departments/(:num)/update'      , 'Admin\SubDepartmentController::update/$1');
     $routes->post('sub-departments/(:num)/store-chair' , 'Admin\SubDepartmentController::storeChair/$1');
     $routes->post('sub-departments/(:num)/chair/(:num)/remove', 'Admin\SubDepartmentController::removeChair/$1/$2');
+    $routes->post('sub-departments/(:num)/transfer/preview', 'Admin\SubDepartmentController::transferPreview/$1');
     $routes->post('sub-departments/(:num)/transfer'    , 'Admin\SubDepartmentController::transfer/$1');
     $routes->post('sub-departments/(:num)/programs'    , 'Admin\SubDepartmentController::addProgram/$1');
     $routes->post('sub-departments/(:num)/toggle-status', 'Admin\SubDepartmentController::toggleStatus/$1');
@@ -129,6 +134,12 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('sub-departments/(:num)/faculty/(:num)/update'         , 'Admin\SubDepartmentController::updateFaculty/$1/$2');
     $routes->post('sub-departments/(:num)/faculty/(:num)/toggle-status'  , 'Admin\SubDepartmentController::toggleFacultyStatus/$1/$2');
     $routes->post('sub-departments/(:num)/faculty/(:num)/delete'         , 'Admin\SubDepartmentController::deleteFaculty/$1/$2');
+
+    // faculty <-> department affiliations (many-to-many; a faculty member may
+    // be affiliated with departments beyond their primary/home one)
+    $routes->post('sub-departments/(:num)/faculty/(:num)/affiliations/add'         , 'Admin\SubDepartmentController::addAffiliation/$1/$2');
+    $routes->post('sub-departments/(:num)/faculty/(:num)/affiliations/remove'      , 'Admin\SubDepartmentController::removeAffiliation/$1/$2');
+    $routes->post('sub-departments/(:num)/faculty/(:num)/affiliations/set-primary' , 'Admin\SubDepartmentController::setPrimaryAffiliation/$1/$2');
 
     // rooms
     $routes->get('rooms'                    , 'Admin\RoomController::index');

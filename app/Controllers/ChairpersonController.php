@@ -13,6 +13,7 @@ use App\Models\DepartmentModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\FacultyAvailabilityModel;
 use App\Models\FacultyChangeRequestModel;
+use App\Models\FacultyDepartmentModel;
 use App\Models\FacultyOverrideModel;
 use App\Models\FacultySubjectPreferenceModel;
 use App\Models\NotificationModel;
@@ -575,11 +576,21 @@ class ChairpersonController extends BaseController
 
         $db = db_connect();
 
+        // Affiliated faculty (primary or secondary), not just this
+        // department's own primary roster — a faculty member whose home
+        // department is elsewhere but who's also affiliated here is a
+        // legitimate assistant-suggestion candidate.
+        $affiliatedIds = (new FacultyDepartmentModel())->userIdsForDepartment((int) $subDept['sub_dept_id']);
+
+        if ($affiliatedIds === []) {
+            return [];
+        }
+
         $faculty = $db->table('users u')
             ->select('u.id, u.username, u.employment_status')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'faculty')
-            ->where('u.sub_department_id', (int) $subDept['sub_dept_id'])
+            ->whereIn('u.id', $affiliatedIds)
             ->where('u.deleted_at', null)
             ->orderBy('u.username')
             ->get()->getResultArray();
@@ -1047,11 +1058,19 @@ class ChairpersonController extends BaseController
             return $this->response->setJSON(['faculty' => []]);
         }
 
+        // Affiliated faculty (primary or secondary) — see
+        // facultyForSuggestions() for the same reasoning.
+        $affiliatedIds = (new FacultyDepartmentModel())->userIdsForDepartment((int) $subDept['sub_dept_id']);
+
+        if ($affiliatedIds === []) {
+            return $this->response->setJSON(['faculty' => []]);
+        }
+
         $faculty = db_connect()->table('users u')
             ->select('u.id, u.username, u.employment_status')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'faculty')
-            ->where('u.sub_department_id', (int) $subDept['sub_dept_id'])
+            ->whereIn('u.id', $affiliatedIds)
             ->where('u.deleted_at', null)
             ->orderBy('u.username')
             ->get()
@@ -1438,22 +1457,44 @@ class ChairpersonController extends BaseController
         $usernameById = [];
 
         if ($facultyByCode !== []) {
-            $subDeptForFaculty = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+            $facultyIds = array_values(array_unique($facultyByCode));
 
-            $deptFaculty = db_connect()->table('users u')
+            $facultyRows = db_connect()->table('users u')
                 ->select('u.id, u.username')
                 ->join('auth_groups_users g', 'g.user_id = u.id')
                 ->where('g.group', 'faculty')
-                ->where('u.sub_department_id', $subDeptForFaculty === null ? -1 : (int) $subDeptForFaculty['sub_dept_id'])
+                ->whereIn('u.id', $facultyIds)
                 ->where('u.deleted_at', null)
                 ->get()
                 ->getResultArray();
 
-            $usernameById = array_column($deptFaculty, 'username', 'id');
+            $usernameById = array_column($facultyRows, 'username', 'id');
+
+            // Faculty eligibility is now affiliation-based (faculty_departments:
+            // primary OR secondary), not "must be this chairperson's own home
+            // department" — a faculty member whose primary department is
+            // elsewhere can still be assigned here as long as they're
+            // affiliated with the department that actually OWNS this subject.
+            // $ownedSubjectCodes (above) already proved the chairperson
+            // themselves is authorized to manage that subject; this only
+            // answers "is this specific faculty member eligible to teach it."
+            $ownerDeptBySubject = array_column(
+                (new SubjectModel())->whereIn('subject_code', array_keys($facultyByCode))->findAll(),
+                'sub_department_id',
+                'subject_code'
+            );
+
+            $affiliations = new FacultyDepartmentModel();
 
             foreach ($facultyByCode as $code => $facultyId) {
                 if (! isset($usernameById[$facultyId])) {
-                    return $this->fail("Selected faculty for {$code} is not a member of your department.");
+                    return $this->fail("Selected faculty for {$code} is not a valid faculty member.");
+                }
+
+                $ownerDeptId = $ownerDeptBySubject[$code] ?? null;
+
+                if ($ownerDeptId !== null && ! $affiliations->isAffiliatedWith((int) $facultyId, (int) $ownerDeptId)) {
+                    return $this->fail("{$usernameById[$facultyId]} is not affiliated with the department that owns {$code}.");
                 }
             }
 
