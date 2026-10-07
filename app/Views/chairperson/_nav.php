@@ -22,6 +22,7 @@ return [
         'placement-requests'      => ['label' => 'Shared Subject Requests', 'icon' => 'forward_to_inbox',  'url' => 'chairperson/placement-requests'],
         'offerings'               => ['label' => 'Merged Classes',          'icon' => 'merge_type',         'url' => 'chairperson/offerings'],
         'sections'                => ['label' => 'Sections',                'icon' => 'groups',             'url' => 'chairperson/sections'],
+        'student-progress'        => ['label' => 'Student Progress',        'icon' => 'school',              'url' => 'chairperson/student-progress'],
         'grade-approvals'         => ['label' => 'Grade Approvals',         'icon' => 'grade',              'url' => 'chairperson/grade-approvals'],
     ],
 ];

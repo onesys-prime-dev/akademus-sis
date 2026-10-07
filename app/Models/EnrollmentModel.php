@@ -490,9 +490,14 @@ class EnrollmentModel extends Model
      * Subject row yet), the check is skipped rather than blocking enrollment
      * on a data gap that isn't the student's fault.
      *
+     * Public: also used by App\Libraries\StudentProgressService to surface
+     * "why can't this student start this subject yet" on the chairperson's
+     * student-progress detail view, reusing this exact rule rather than
+     * re-deriving it.
+     *
      * @return string[]
      */
-    private function unmetPrerequisites(int $userId, string $subjectCode): array
+    public function unmetPrerequisites(int $userId, string $subjectCode): array
     {
         $subject = (new SubjectModel())->where('subject_code', $subjectCode)->first();
 

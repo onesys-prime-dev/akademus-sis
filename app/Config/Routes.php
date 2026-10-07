@@ -334,6 +334,10 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('grade-approvals/lock'                , 'Chairperson\GradeApprovalController::lock');
     $routes->post('grade-approvals/change-requests/approve', 'Chairperson\GradeApprovalController::approveChange');
     $routes->post('grade-approvals/change-requests/reject'  , 'Chairperson\GradeApprovalController::rejectChange');
+
+    // student academic progress monitoring + graduation candidate review (one page, filtered by "view")
+    $routes->get('student-progress'        , 'Chairperson\StudentProgressController::index');
+    $routes->get('student-progress/detail' , 'Chairperson\StudentProgressController::detail');
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);
