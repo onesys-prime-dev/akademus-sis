@@ -210,7 +210,7 @@ class PlottedScheduleModel extends Model
             return ['ok' => false, 'error' => 'You are not authorized to schedule this offering.'];
         }
 
-        $subject = db_connect()->table('subjects')->select('subject_code, subject_name')->where('subject_id', $subjectId)->get()->getRowArray();
+        $subject = db_connect()->table('subjects')->select('subject_code, subject_name, units')->where('subject_id', $subjectId)->get()->getRowArray();
 
         if ($subject === null) {
             return ['ok' => false, 'error' => 'Linked subject not found.'];
@@ -239,6 +239,12 @@ class PlottedScheduleModel extends Model
             return ['ok' => false, 'error' => ucfirst($first['type']) . " conflict: {$first['detail']}", 'conflicts' => $roomFaculty['conflicts']];
         }
 
+        $loadError = $this->checkFacultyLoadCap($preparedBlocks, (string) $offering['academic_year'], $offeringId, (float) $subject['units']);
+
+        if ($loadError !== null) {
+            return ['ok' => false, 'error' => $loadError];
+        }
+
         $rows = array_map(static fn (array $b) => [
             'offering_id'           => $offeringId,
             'offering_component_id' => null,
@@ -265,6 +271,8 @@ class PlottedScheduleModel extends Model
         if ($rows !== []) {
             $this->insertBatch($rows);
         }
+
+        $this->syncFacultyAssignments($offeringId, null, (string) $offering['academic_year'], $subject['subject_code'], $preparedBlocks);
 
         $this->db->transComplete();
 
@@ -322,7 +330,7 @@ class PlottedScheduleModel extends Model
             return ['ok' => false, 'error' => 'You are not authorized to schedule this component.'];
         }
 
-        $subject = db_connect()->table('subjects')->select('subject_code, subject_name')->where('subject_id', $subjectId)->get()->getRowArray();
+        $subject = db_connect()->table('subjects')->select('subject_code, subject_name, units')->where('subject_id', $subjectId)->get()->getRowArray();
 
         if ($subject === null) {
             return ['ok' => false, 'error' => 'Linked subject not found.'];
@@ -360,6 +368,12 @@ class PlottedScheduleModel extends Model
             return ['ok' => false, 'error' => ucfirst($first['type']) . " conflict: {$first['detail']}", 'conflicts' => $roomFaculty['conflicts']];
         }
 
+        $loadError = $this->checkFacultyLoadCap($preparedBlocks, (string) $offering['academic_year'], (int) $component['offering_id'], (float) $subject['units']);
+
+        if ($loadError !== null) {
+            return ['ok' => false, 'error' => $loadError];
+        }
+
         $titleSuffix = $component['name'] !== null && $component['name'] !== '' ? ' · ' . $component['name'] : '';
 
         $rows = array_map(static fn (array $b) => [
@@ -388,6 +402,8 @@ class PlottedScheduleModel extends Model
         if ($rows !== []) {
             $this->insertBatch($rows);
         }
+
+        $this->syncFacultyAssignments((int) $component['offering_id'], $offeringComponentId, (string) $offering['academic_year'], $subject['subject_code'], $preparedBlocks);
 
         $this->db->transComplete();
 
@@ -455,5 +471,75 @@ class PlottedScheduleModel extends Model
 
             return $b;
         }, $blocks);
+    }
+
+    /**
+     * Faculty unit-load cap, mirroring the check ChairpersonController::
+     * sync() runs for legacy section plotting — previously this offering
+     * path had no cap check at all, so a chairperson could plot a faculty
+     * member here past the limit the legacy plotter would have refused.
+     * Every distinct faculty member in $blocks gains this offering's whole
+     * subject once (not per block — a 3-unit offering taught across 3
+     * meetings is still 3 units), on top of their total load from
+     * everything else (FacultyAssignmentModel::totalLoadUnits(), which
+     * already excludes this same offering so a re-save of its own schedule
+     * doesn't double-count the load it's about to replace).
+     *
+     * @param list<array{faculty_id: ?int, prof: ?string}> $preparedBlocks
+     */
+    private function checkFacultyLoadCap(array $preparedBlocks, string $academicYear, int $offeringId, float $subjectUnits): ?string
+    {
+        $facultyIds = array_values(array_unique(array_filter(array_column($preparedBlocks, 'faculty_id'))));
+
+        if ($facultyIds === []) {
+            return null;
+        }
+
+        $cap         = (float) (setting('Academic.maxFacultyUnits') ?? 24);
+        $assignments = new FacultyAssignmentModel();
+
+        foreach ($facultyIds as $facultyId) {
+            $base = $assignments->totalLoadUnits((int) $facultyId, $academicYear, null, $offeringId);
+
+            if ($base + $subjectUnits > $cap) {
+                $username = db_connect()->table('users')->select('username')->where('id', $facultyId)->get()->getRowArray()['username'] ?? "faculty #{$facultyId}";
+
+                return "{$username} would exceed the {$cap}-unit faculty load limit.";
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Keeps faculty_assignments in sync with a just-saved offering/component
+     * schedule — previously this offering path only wrote `prof` (a display
+     * username) into plotted_schedules and never touched faculty_assignments
+     * at all, so offering-plotted faculty never showed up in teaching-load
+     * totals or the faculty-facing load board. Mirrors
+     * ChairpersonController::sync()'s upsert-then-drop-stale pattern: every
+     * faculty member still present in the saved blocks gets an upserted row,
+     * and anyone no longer present (reassigned or unassigned) has their row
+     * for this exact offering/component removed.
+     *
+     * @param list<array{faculty_id: ?int}> $preparedBlocks
+     */
+    private function syncFacultyAssignments(int $offeringId, ?int $offeringComponentId, string $academicYear, string $subjectCode, array $preparedBlocks): void
+    {
+        $assignments = new FacultyAssignmentModel();
+        $facultyIds  = array_values(array_unique(array_filter(array_column($preparedBlocks, 'faculty_id'))));
+
+        foreach ($facultyIds as $facultyId) {
+            $assignments->upsertForOffering($offeringId, $offeringComponentId, $academicYear, $subjectCode, (int) $facultyId);
+        }
+
+        $stale = $assignments->where('offering_id', $offeringId);
+        $stale = $offeringComponentId === null ? $stale->where('offering_component_id IS NULL') : $stale->where('offering_component_id', $offeringComponentId);
+
+        if ($facultyIds !== []) {
+            $stale->whereNotIn('user_id', $facultyIds);
+        }
+
+        $stale->delete();
     }
 }

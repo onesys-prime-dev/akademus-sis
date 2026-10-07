@@ -131,14 +131,74 @@ class FacultyAssignmentModel extends Model
      */
     public function currentOfferingLoadUnits(int $userId): float
     {
-        $rows = $this->db->table('faculty_assignments fa')
+        return $this->offeringLoadUnits($userId);
+    }
+
+    /**
+     * This faculty member's total current teaching load for one academic
+     * year, combining BOTH assignment identities (legacy section-tuple rows
+     * and offering-based rows) into one number. Previously these were two
+     * separate totals that never saw each other — ChairpersonController::
+     * sync()'s cap check only summed legacy rows, and nothing summed
+     * offering rows at all — so a faculty member could be at the cap on one
+     * path and still take on more load via the other. Offering-based rows
+     * are deduplicated per (offering_id, subject_code), the same rule
+     * currentOfferingLoadUnits() already applies.
+     *
+     * @param array{program: string, year_level: string, section: string}|null $excludeLegacyContext
+     *        Exclude one legacy (program, year_level, section) tuple's rows —
+     *        used when re-saving that same context's own schedule, since
+     *        this save replaces its prior assignment rather than adding to it.
+     * @param int|null $excludeOfferingId Exclude one offering's rows
+     *        entirely — used when re-saving that same offering's/component's
+     *        schedule, for the same reason.
+     */
+    public function totalLoadUnits(int $userId, string $academicYear, ?array $excludeLegacyContext = null, ?int $excludeOfferingId = null): float
+    {
+        $legacyQuery = $this->db->table('faculty_assignments fa')
+            ->select('COALESCE(SUM(s.units), 0) AS total')
+            ->join('subjects s', 's.subject_code = fa.subject_code')
+            ->where('fa.user_id', $userId)
+            ->where('fa.academic_year', $academicYear)
+            ->where('fa.offering_id IS NULL');
+
+        if ($excludeLegacyContext !== null) {
+            $legacyQuery->groupStart()
+                ->where('fa.program !=', $excludeLegacyContext['program'])
+                ->orWhere('fa.year_level !=', $excludeLegacyContext['year_level'])
+                ->orWhere('fa.section !=', $excludeLegacyContext['section'])
+            ->groupEnd();
+        }
+
+        $legacyUnits = (float) ($legacyQuery->get()->getRowArray()['total'] ?? 0);
+
+        return $legacyUnits + $this->offeringLoadUnits($userId, $academicYear, $excludeOfferingId);
+    }
+
+    /**
+     * Shared offering-row aggregation behind currentOfferingLoadUnits() and
+     * totalLoadUnits() — one DISTINCT (offering_id, subject_code) counts
+     * once regardless of how many components this faculty member teaches
+     * within it.
+     */
+    private function offeringLoadUnits(int $userId, ?string $academicYear = null, ?int $excludeOfferingId = null): float
+    {
+        $query = $this->db->table('faculty_assignments fa')
             ->distinct()
             ->select('fa.offering_id, fa.subject_code, s.units')
             ->join('subjects s', 's.subject_code = fa.subject_code', 'left')
             ->where('fa.user_id', $userId)
-            ->where('fa.offering_id IS NOT NULL')
-            ->get()
-            ->getResultArray();
+            ->where('fa.offering_id IS NOT NULL');
+
+        if ($academicYear !== null) {
+            $query->where('fa.academic_year', $academicYear);
+        }
+
+        if ($excludeOfferingId !== null) {
+            $query->where('fa.offering_id !=', $excludeOfferingId);
+        }
+
+        $rows = $query->get()->getResultArray();
 
         $units = 0.0;
 

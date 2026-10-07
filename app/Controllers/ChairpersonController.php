@@ -1461,6 +1461,10 @@ class ChairpersonController extends BaseController
             // anyone over the configured maximum, counting their OTHER
             // current assignments in this AY — this section's own prior
             // assignment (if any) is excluded, since this save replaces it.
+            // totalLoadUnits() counts BOTH legacy section-tuple assignments
+            // AND offering-based ones, so a faculty member already loaded up
+            // via the offering/component scheduling path (OfferingController)
+            // can't be silently pushed over the cap from this path too.
             $cap = (float) (setting('Academic.maxFacultyUnits') ?? 24);
 
             $subjectUnitsByCode = array_column(
@@ -1475,19 +1479,14 @@ class ChairpersonController extends BaseController
                 $gainByFaculty[$facultyId] = ($gainByFaculty[$facultyId] ?? 0.0) + (float) ($subjectUnitsByCode[$code] ?? 0);
             }
 
+            $assignments = new FacultyAssignmentModel();
+
             foreach ($gainByFaculty as $facultyId => $gain) {
-                $existingUnits = (float) (db_connect()->table('faculty_assignments fa')
-                    ->select('COALESCE(SUM(s.units), 0) as total')
-                    ->join('subjects s', 's.subject_code = fa.subject_code')
-                    ->where('fa.user_id', $facultyId)
-                    ->where('fa.academic_year', $context['academic_year'])
-                    ->groupStart()
-                        ->where('fa.program !=', $context['program'])
-                        ->orWhere('fa.year_level !=', $context['year_level'])
-                        ->orWhere('fa.section !=', $context['section'])
-                    ->groupEnd()
-                    ->get()
-                    ->getRowArray()['total'] ?? 0);
+                $existingUnits = $assignments->totalLoadUnits((int) $facultyId, $context['academic_year'], [
+                    'program'    => $context['program'],
+                    'year_level' => $context['year_level'],
+                    'section'    => $context['section'],
+                ]);
 
                 if ($existingUnits + $gain > $cap) {
                     return $this->fail("{$usernameById[$facultyId]} would exceed the {$cap}-unit faculty load limit.");

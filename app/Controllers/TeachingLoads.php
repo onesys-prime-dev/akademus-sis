@@ -28,8 +28,17 @@ class TeachingLoads extends BaseController
         'yellow' => 'gold',
     ];
 
-    /** Maximum teaching load per faculty, in units. */
-    private const MAX_UNITS = 24;
+    /**
+     * Maximum teaching load per faculty, in units. Reads the same
+     * Academic.maxFacultyUnits setting ChairpersonController::sync() enforces
+     * at plot time (Admin\AcademicSettingsController is where it's edited) —
+     * previously this was a separate hardcoded 24 here, so a chairperson
+     * raising/lowering the cap in Settings silently didn't affect swaps.
+     */
+    private function maxUnits(): float
+    {
+        return (float) (setting('Academic.maxFacultyUnits') ?? 24);
+    }
 
     public function index()
     {
@@ -49,7 +58,7 @@ class TeachingLoads extends BaseController
             // the faculty management phase.
             'specializations' => ['Programming', 'Database', 'Networking', 'Web-design'],
 
-            'max_units' => self::MAX_UNITS,
+            'max_units' => $this->maxUnits(),
             'state'     => $state,
         ];
 
@@ -224,8 +233,10 @@ class TeachingLoads extends BaseController
         $excluded    = $requested !== null ? [(int) $requested['assignment_id']] : [];
         $agg         = $this->userAggregate($userId, $excluded, $groups);
 
-        if ($agg['units'] + $offeredInfo['units'] > self::MAX_UNITS) {
-            return $this->fail('Accepting would exceed your ' . self::MAX_UNITS . '-unit load limit.');
+        $maxUnits = $this->maxUnits();
+
+        if ($agg['units'] + $offeredInfo['units'] > $maxUnits) {
+            return $this->fail('Accepting would exceed your ' . $maxUnits . '-unit load limit.');
         }
 
         if (ScheduleOverlap::anyClash($offeredInfo['meetings'], $agg['meetings'])) {
