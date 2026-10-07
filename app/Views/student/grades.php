@@ -57,12 +57,15 @@ foreach ($byYear as $term => $rows) {
 <?= $this->section('content') ?>
 
 <div class="sg-page" id="studentGrades">
-    <header class="sg-heading">
-        <div>
-            <span class="sg-eyebrow">ACADEMIC RECORD</span>
-            <h1>My Grades</h1>
-            <p>View your official grades for a specific school year and semester.</p>
+    <header class="sg-hero">
+        <div class="sg-hero__content">
+            <div>
+                <span class="sg-eyebrow">ACADEMIC RECORD</span>
+                <h1>My Grades</h1>
+                <p>Review your official grades, class details, and weighted average by term.</p>
+            </div>
         </div>
+        <span class="sg-official">Official student record</span>
     </header>
 
     <?php if (empty($byYear)): ?>
@@ -73,31 +76,43 @@ foreach ($byYear as $term => $rows) {
         </section>
     <?php else: ?>
         <section class="sg-card sg-filters">
-            <div class="sg-filter">
-                <label for="sgYear">School Year</label>
-                <select id="sgYear"></select>
+            <div class="sg-filters__intro">
+                <div><strong>View academic term</strong><span>Choose a school year and semester.</span></div>
             </div>
-            <div class="sg-filter">
-                <label for="sgSemester">Semester</label>
-                <select id="sgSemester"></select>
+            <div class="sg-filters__controls">
+                <div class="sg-filter">
+                    <label for="sgYear">School Year</label>
+                    <select id="sgYear"></select>
+                </div>
+                <div class="sg-filter">
+                    <label for="sgSemester">Semester</label>
+                    <select id="sgSemester"></select>
+                </div>
             </div>
         </section>
 
         <section class="sg-card sg-table-card">
+            <header class="sg-table-head">
+                <div>
+                    <span class="sg-section-label">Selected term</span>
+                    <h2 id="sgTermTitle">Official grades</h2>
+                    <p>Locked grades submitted for your enrolled classes.</p>
+                </div>
+                <div class="sg-table-metrics" aria-live="polite">
+                    <span><strong id="sgCourseCount">0</strong> courses</span>
+                    <span><strong id="sgUnitCount">0</strong> units</span>
+                </div>
+            </header>
             <div class="sg-table-scroll" role="region" aria-label="Grades for the selected term" tabindex="0">
                 <table class="sg-table">
                     <thead>
                         <tr>
-                            <th scope="col">Course Code</th>
-                            <th scope="col">Descriptive Title</th>
-                            <th scope="col">Unit</th>
-                            <th scope="col">Schedule</th>
-                            <th scope="col">Instructor</th>
-                            <th scope="col">Program</th>
-                            <th scope="col">Yr.</th>
-                            <th scope="col">Section</th>
+                            <th scope="col">Course</th>
+                            <th scope="col">Class Details</th>
+                            <th scope="col">Enrollment</th>
+                            <th scope="col">Units</th>
                             <th scope="col">Final Grade</th>
-                            <th scope="col">Final Grade Remarks</th>
+                            <th scope="col">Result</th>
                         </tr>
                     </thead>
                     <tbody id="sgTableBody"></tbody>
@@ -110,12 +125,18 @@ foreach ($byYear as $term => $rows) {
         </section>
 
         <section class="sg-gwa" id="sgGwa">
-            <span>General Weighted Average</span>
+            <div class="sg-gwa__copy">
+                <span>General Weighted Average</span>
+                <small id="sgGwaMeta">Based on posted numeric grades for this term</small>
+            </div>
             <strong id="sgGwaValue">&mdash;</strong>
         </section>
 
-        <section class="sg-card sg-legend">
-            <h3>Student Markings</h3>
+        <details class="sg-card sg-legend">
+            <summary>
+                <span>Grade markings reference</span>
+                <span class="material-symbols-outlined sg-legend__chevron" aria-hidden="true">expand_more</span>
+            </summary>
             <dl>
                 <div><dt>I</dt><dd>Incomplete</dd></div>
                 <div><dt>IP</dt><dd>In Progress</dd></div>
@@ -128,7 +149,7 @@ foreach ($byYear as $term => $rows) {
                 <div><dt>Failed</dt><dd>Failed</dd></div>
                 <div><dt>CE</dt><dd>Currently Enrolled</dd></div>
             </dl>
-        </section>
+        </details>
     <?php endif ?>
 </div>
 
