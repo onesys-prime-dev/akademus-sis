@@ -41,7 +41,7 @@ class StudentController extends BaseController
                 ->orderBy('p.day')->orderBy('p.start_time')->get()->getResultArray();
             // Only official grades may be shown to students.
             $publishedGrades = db_connect()->table('grades g')
-                ->select('g.subject_code, g.grade_value, g.remarks, g.locked_at')
+                ->select('g.subject_code, g.grade_value, g.remarks, g.is_passing, g.locked_at')
                 ->join('enrollments e', 'e.enrollment_id = g.enrollment_id')
                 ->where('e.user_id', $userId)->where('e.status', 'enrolled')
                 ->where('g.user_id', $userId)->where('g.academic_year', $activeTerm)

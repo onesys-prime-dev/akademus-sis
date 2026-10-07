@@ -30,21 +30,21 @@ $scheduleData = array_map(static fn (array $m) => [
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <div class="ss-page" id="studentSchedule">
-    <header class="ss-heading"><div><span class="ss-eyebrow">YOUR ACADEMIC WEEK</span><h1>My Schedule</h1><p>Your classes, your week. Everything in one place.</p></div><div class="ss-term" id="ssTermField" hidden><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><label class="ss-sr-only" for="ssTerm">Academic term</label><select id="ssTerm"></select></div></header>
+    <header class="ss-heading"><div><span class="ss-eyebrow">ACADEMIC SCHEDULE</span><h1>My Schedule</h1><p>Review your weekly classes, meeting times, rooms, and instructors.</p></div><div class="ss-term" id="ssTermField" hidden><span>Academic term</span><label class="ss-sr-only" for="ssTerm">Academic term</label><select id="ssTerm"></select></div></header>
     <?php if (session()->has('message')): ?><div class="ss-notice" role="status"><?= esc(session('message')) ?></div><?php endif ?>
     <?php if (session()->has('errors')): ?><div class="ss-notice ss-notice--error" role="alert"><?php foreach ((array) session('errors') as $error): ?><p><?= esc($error) ?></p><?php endforeach ?></div><?php endif ?>
     <?php if ($meetings === []): ?>
         <section class="ss-card ss-empty"><span class="material-symbols-outlined" aria-hidden="true">calendar_today</span><h2>Your week is taking shape</h2><p>No class meetings are scheduled yet. Your timetable will appear here once your enrolled classes have a schedule.</p></section>
     <?php else: ?>
         <section class="ss-overview" id="ssOverview" aria-label="Weekly overview" hidden>
-            <div class="ss-overview-intro"><span class="ss-overview-icon material-symbols-outlined" aria-hidden="true">date_range</span><div><strong>A week at a glance</strong><span>Your schedule for the selected term</span></div></div>
+            <div class="ss-overview-intro"><div><span>Selected schedule</span><strong>Weekly overview</strong></div></div>
             <div class="ss-stat"><strong id="ssSubjectCount"></strong><span>Subjects</span></div><div class="ss-stat"><strong id="ssHours"></strong><span>Hours per week</span></div><div class="ss-stat"><strong id="ssDays"></strong><span>Class days</span></div>
         </section>
         <section class="ss-card ss-workspace" aria-labelledby="ssBoardTitle">
-            <header class="ss-board-heading"><div><h2 id="ssBoardTitle">Weekly timetable</h2><p>Select a class to explore its details.</p></div><div class="ss-board-actions"><div class="ss-view-toggle" id="ssViewToggle" role="group" aria-label="Schedule view" hidden><button type="button" data-view="calendar" aria-pressed="true"><span class="material-symbols-outlined" aria-hidden="true">calendar_view_week</span>Week</button><button type="button" data-view="agenda" aria-pressed="false"><span class="material-symbols-outlined" aria-hidden="true">view_agenda</span>Agenda</button></div><button type="button" class="ss-button" id="ssPrint" title="Print the complete schedule for the selected term" hidden><span class="material-symbols-outlined" aria-hidden="true">print</span>Print schedule</button></div></header>
+            <header class="ss-board-heading"><div><h2 id="ssBoardTitle">Weekly timetable</h2><p>Select a class to view its full schedule and details.</p></div><div class="ss-board-actions"><div class="ss-view-toggle" id="ssViewToggle" role="group" aria-label="Schedule view" hidden><button type="button" data-view="calendar" aria-pressed="true">Week</button><button type="button" data-view="agenda" aria-pressed="false">Agenda</button></div><button type="button" class="ss-button" id="ssPrint" title="Print the complete schedule for the selected term" hidden><span class="material-symbols-outlined" aria-hidden="true">print</span>Print</button></div></header>
             <div class="ss-toolbar" id="ssToolbar" hidden>
                 <div class="ss-day-filters" id="ssDayFilters" role="group" aria-label="Filter by day"></div>
-                <div class="ss-subject-filter"><span class="material-symbols-outlined" aria-hidden="true">filter_list</span><label class="ss-sr-only" for="ssSubject">Filter by subject</label><select id="ssSubject"><option value="all">All subjects</option></select></div>
+                <div class="ss-subject-filter"><label class="ss-sr-only" for="ssSubject">Filter by subject</label><select id="ssSubject"><option value="all">All subjects</option></select></div>
             </div>
             <div class="ss-calendar-scroll" id="ssCalendar" role="region" aria-label="Weekly class calendar" tabindex="0" hidden></div>
             <div class="ss-agenda" id="ssAgenda">
@@ -55,7 +55,7 @@ $scheduleData = array_map(static fn (array $m) => [
                 <?php endforeach ?>
             </div>
             <div class="ss-empty" id="ssFilteredEmpty" hidden><span class="material-symbols-outlined" aria-hidden="true">event_available</span><h3>No classes in this view</h3><p>Choose another day or subject to see more of your week.</p><button type="button" class="ss-button" id="ssReset">Show all classes</button></div>
-            <footer class="ss-board-footer" id="ssFooter" hidden><span id="ssResultCount" role="status" aria-live="polite"></span><span><span class="material-symbols-outlined" aria-hidden="true">touch_app</span>Select any class for full details</span></footer>
+            <footer class="ss-board-footer" id="ssFooter" hidden><span id="ssResultCount" role="status" aria-live="polite"></span><span>Select any class for full details</span></footer>
             <noscript><p class="ss-noscript">Enable JavaScript to use the interactive calendar and class details.</p></noscript>
         </section>
         <dialog class="ss-dialog" id="ssClassDialog" aria-labelledby="ssDetailTitle" aria-describedby="ssDetailSubtitle">

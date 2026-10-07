@@ -44,7 +44,16 @@ $addedFeesBalance = max(0, $addedFeesTotal - $addedFeesPaid);
 <?= $this->section('content') ?>
 
 <div class="tf-page">
-<header class="tf-heading"><div><span class="tf-eyebrow">STUDENT FINANCES</span><h1>Tuition &amp; Fees</h1><p>A clear view of your assessment, payments, and balance.</p></div><?php if ($current !== null): ?><span class="tf-term"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><?= esc($current['academic_year']) ?></span><?php endif ?></header>
+<header class="tf-heading">
+    <div>
+        <span class="tf-eyebrow">STUDENT FINANCES</span>
+        <h1>Tuition &amp; Fees</h1>
+        <p>Review your assessment, payment schedule, and account activity.</p>
+    </div>
+    <?php if ($current !== null): ?>
+        <span class="tf-term"><span>Current term</span><?= esc($current['academic_year']) ?></span>
+    <?php endif ?>
+</header>
 
 <?php if (session()->has('message')): ?>
     <div class="ac-notice" style="margin-bottom:16px;">
@@ -85,22 +94,23 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
 ?>
 <section class="tf-summary" aria-label="Account overview">
     <div class="tf-balance">
-        <div class="tf-balance-top"><span>Outstanding balance</span><span class="tf-status tf-status--<?= $statusClass ?>"><?= esc($statusLabel) ?></span></div>
+        <div class="tf-balance-top"><span>Amount due</span><span class="tf-status tf-status--<?= $statusClass ?>"><?= esc($statusLabel) ?></span></div>
         <strong class="tf-amount"><span>₱</span><?= number_format((float) $current['balance'], 2) ?></strong>
-        <p>Remaining balance for this academic term</p>
-        <a class="tf-action" href="#payment-proof"><span class="material-symbols-outlined" aria-hidden="true">upload_file</span>Submit payment proof<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
+        <p>Outstanding balance for <?= esc($current['academic_year']) ?></p>
+        <a class="tf-action" href="#payment-proof">Submit payment proof<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
     </div>
     <div class="tf-overview">
-        <div class="tf-metrics"><div><span>Total assessment</span><strong>₱<?= number_format($totalAssessment, 2) ?></strong></div><div><span>Payments recorded</span><strong class="tf-paid">₱<?= number_format($amountPaid, 2) ?></strong></div></div>
+        <div class="tf-overview-label">Account summary</div>
+        <div class="tf-metrics"><div><span>Total assessment</span><strong>₱<?= number_format($totalAssessment, 2) ?></strong></div><div><span>Payments received</span><strong class="tf-paid">₱<?= number_format($amountPaid, 2) ?></strong></div></div>
         <div class="tf-progress-label"><span>Payment progress</span><strong><?= number_format($paidPercent, 0) ?>%</strong></div>
         <progress class="tf-progress" value="<?= $paidPercent ?>" max="100" aria-label="Assessment paid"><?= number_format($paidPercent, 0) ?>%</progress>
-        <dl class="tf-breakdown"><div><dt>Tuition balance</dt><dd>₱<?= number_format($tuitionBalance, 2) ?></dd></div><div><dt>Other fees balance</dt><dd>₱<?= number_format($addedFeesBalance, 2) ?></dd></div></dl>
+        <dl class="tf-breakdown"><div><dt>Tuition</dt><dd>₱<?= number_format($tuitionBalance, 2) ?> remaining</dd></div><div><dt>Other fees</dt><dd>₱<?= number_format($addedFeesBalance, 2) ?> remaining</dd></div></dl>
     </div>
 </section>
 <div class="tf-layout">
 
 <section class="panel tf-assessment" aria-labelledby="assessment-title">
-    <header class="tf-section-heading"><span class="tf-section-icon material-symbols-outlined" aria-hidden="true">receipt_long</span><div><h2 id="assessment-title">Assessment breakdown</h2><p>Explore the fees included in your assessment.</p></div></header>
+    <header class="tf-section-heading"><div><h2 id="assessment-title">Assessment breakdown</h2><p>An itemized statement of charges for this term.</p></div></header>
     <div class="tf-column-labels"><span>Fee description</span><span>Amount · PHP</span></div>
     <div class="tf-tuition-line"><div><strong>Tuition fee</strong><span>Academic tuition for this term</span></div><strong>₱<?= number_format($tuitionAmount, 2) ?></strong></div>
     <?php foreach (['miscellaneous' => 'Miscellaneous fees', 'other' => 'Other fees', 'additional' => 'Additional fees', 'course' => 'Course fees'] as $catKey => $catLabel): ?>
@@ -117,19 +127,26 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
 <div class="tf-side">
 
 <?php if (!empty($schedule)): ?>
-<div class="panel">
-    <header class="tf-section-heading"><span class="tf-section-icon material-symbols-outlined" aria-hidden="true">event</span><div><h2>Payment schedule</h2><p>Your installments and remaining balances.</p></div></header>
+<div class="panel tf-schedule">
+    <header class="tf-section-heading"><div><h2>Payment schedule</h2><p>Installment amounts and their current status.</p></div></header>
     <div class="tf-table-scroll" role="region" aria-label="Payment details" tabindex="0"><table class="grade-table">
         <thead>
-            <tr><th>Payment For</th><th>Due Date</th><th style="text-align:right;">Amount</th><th style="text-align:right;">Balance</th></tr>
+            <tr><th>Installment</th><th>Due date</th><th class="tf-money">Amount</th><th class="tf-money">Remaining</th><th>Status</th></tr>
         </thead>
         <tbody>
             <?php foreach ($schedule as $row): ?>
+                <?php
+                $installmentAmount = (float) $row['amount'];
+                $installmentBalance = (float) $row['balance'];
+                $installmentStatus = $installmentBalance <= 0 ? 'Paid' : ($installmentBalance < $installmentAmount ? 'Partial' : 'Due');
+                $installmentClass = strtolower($installmentStatus);
+                ?>
                 <tr>
-                    <td><?= esc($row['label']) ?></td>
-                    <td><?= $row['due_date'] ? esc(date('M j, Y', strtotime($row['due_date']))) : '—' ?></td>
-                    <td class="tf-money">&#8369;<?= number_format((float) $row['amount'], 2) ?></td>
-                    <td class="tf-money">&#8369;<?= number_format((float) $row['balance'], 2) ?></td>
+                    <td data-label="Installment"><strong><?= esc($row['label']) ?></strong></td>
+                    <td data-label="Due date"><?= $row['due_date'] ? esc(date('M j, Y', strtotime($row['due_date']))) : 'Not set' ?></td>
+                    <td data-label="Amount" class="tf-money">&#8369;<?= number_format($installmentAmount, 2) ?></td>
+                    <td data-label="Remaining" class="tf-money"><strong>&#8369;<?= number_format($installmentBalance, 2) ?></strong></td>
+                    <td data-label="Status"><span class="tf-installment-status tf-installment-status--<?= $installmentClass ?>"><?= $installmentStatus ?></span></td>
                 </tr>
             <?php endforeach ?>
         </tbody>
@@ -138,7 +155,7 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
 <?php endif ?>
 
 <section class="panel tf-upload" id="payment-proof" tabindex="-1">
-    <header class="tf-section-heading"><span class="tf-section-icon material-symbols-outlined" aria-hidden="true">upload_file</span><div><h2>Submit payment proof</h2><p>Already paid? Send your receipt for review.</p></div></header>
+    <header class="tf-section-heading"><div><h2>Submit payment proof</h2><p>Send a receipt after completing a payment.</p></div></header>
     <form method="post" action="<?= site_url('student/tuition/proof/upload') ?>" enctype="multipart/form-data" class="tf-upload-form">
         <?= csrf_field() ?>
         <?php if (!empty($schedule)): ?>
@@ -196,7 +213,7 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
 <?php endif ?>
 
 <div class="panel">
-    <header class="tf-section-heading"><span class="tf-section-icon material-symbols-outlined" aria-hidden="true">history</span><div><h2>Payment history</h2><p>A record of payments posted to your account.</p></div></header>
+    <header class="tf-section-heading"><div><h2>Payment history</h2><p>Payments posted to your student account.</p></div></header>
     <?php if (empty($payments)): ?>
         <div class="empty-state">
             <div class="material-symbols-outlined">receipt_long</div>
