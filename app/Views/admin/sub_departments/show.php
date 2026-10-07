@@ -209,9 +209,21 @@
                                     <p class="ac-program-sub"><?= esc($program['program_code']) ?></p>
                                 </div>
                             </div>
-                            <span class="ac-status-dot <?= $program['is_active'] ? 'ac-status-dot--active' : 'ac-status-dot--inactive' ?>">
-                                <?= $program['is_active'] ? 'Active' : 'Inactive' ?>
-                            </span>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span class="ac-status-dot <?= $program['is_active'] ? 'ac-status-dot--active' : 'ac-status-dot--inactive' ?>">
+                                    <?= $program['is_active'] ? 'Active' : 'Inactive' ?>
+                                </span>
+                                <a href="<?= site_url('admin/programs/edit/' . $program['program_id']) . '?return=' . urlencode(current_url()) ?>" class="ac-icon-action" title="Edit">
+                                    <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
+                                </a>
+                                <form method="post" action="<?= site_url('admin/programs/toggle-status/' . $program['program_id']) ?>">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="return" value="<?= esc(current_url(), 'attr') ?>">
+                                    <button type="submit" class="ac-icon-action" title="<?= $program['is_active'] ? 'Deactivate' : 'Activate' ?>" data-confirm="<?= $program['is_active'] ? 'Deactivate' : 'Activate' ?> <?= esc($program['program_name'], 'attr') ?>?">
+                                        <span class="material-symbols-outlined" style="font-size:16px;"><?= $program['is_active'] ? 'visibility_off' : 'visibility' ?></span>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     <?php endforeach ?>
                 <?php endif ?>

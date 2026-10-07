@@ -68,6 +68,7 @@ class ProgramController extends BaseController
         return view('admin/programs/edit', [
             'program'     => $program,
             'activeAdmin' => 'programs',
+            'return'      => (string) $this->request->getGet('return'),
         ]);
     }
 
@@ -99,8 +100,30 @@ class ProgramController extends BaseController
         ]);
 
         return redirect()
-            ->to('/admin/programs')
+            ->to($this->returnUrl())
             ->with('message', 'Programs updated successfully.');
+    }
+
+    /**
+     * This program editor is reachable both from the standalone Programs
+     * list and from a department's detail page (Admin\SubDepartmentController
+     * — the "Programs" panel on a department shows the same edit/toggle
+     * actions). A `return` field (carried through edit()'s view and
+     * toggleStatus()'s form) sends the admin back to whichever one they came
+     * from instead of always bouncing to the generic list.
+     */
+    private function returnUrl(): string
+    {
+        $return = (string) $this->request->getPost('return');
+
+        // Only ever redirect back into this same app — a bare hidden field
+        // reflected straight into redirect()->to() would otherwise be an
+        // open-redirect if someone crafted the POST themselves.
+        if ($return !== '' && str_starts_with($return, site_url())) {
+            return $return;
+        }
+
+        return '/admin/programs';
     }
 
     // public function delete($id)
@@ -134,7 +157,7 @@ class ProgramController extends BaseController
         ]);
 
         return redirect()
-            ->to('/admin/programs')
+            ->to($this->returnUrl())
             ->with(
                 'message',
                 $newStatus

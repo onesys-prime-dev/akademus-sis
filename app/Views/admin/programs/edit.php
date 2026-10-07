@@ -27,6 +27,7 @@
 <div class="ac-card" style="max-width:560px;">
     <form method="post" action="<?= site_url('admin/programs/update/' . $program['program_id']) ?>">
         <?= csrf_field() ?>
+        <?php if (! empty($return)): ?><input type="hidden" name="return" value="<?= esc($return, 'attr') ?>"><?php endif ?>
 
         <div class="ac-field">
             <label for="program_code">Program Code</label>
@@ -44,7 +45,7 @@
         </div>
 
         <div style="display:flex; gap:10px; margin-top:8px;">
-            <a href="<?= site_url('admin/programs') ?>" class="ac-btn ac-btn-secondary">Cancel</a>
+            <a href="<?= ! empty($return) ? esc($return, 'attr') : site_url('admin/programs') ?>" class="ac-btn ac-btn-secondary">Cancel</a>
             <button type="submit" class="ac-btn ac-btn-primary">Update Program</button>
         </div>
     </form>

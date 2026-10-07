@@ -221,6 +221,10 @@
 .ga-record-history-item header > div { display:flex; align-items:center; gap:10px; }
 .ga-record-history-item header strong { color:#243b5d; font-size:15px; font-variant-numeric:tabular-nums; font-weight:700; }
 .ga-record-history-item time { color:#7b8799; font-size:9px; white-space:nowrap; }
+.ga-record-audit { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:13px 0 0; padding:12px; border-radius:6px; background:#f6f8fb; }
+.ga-record-audit > div { display:grid; gap:4px; min-width:0; }
+.ga-record-audit dt { color:#78859a; font-size:8px; font-weight:650; letter-spacing:.3px; text-transform:uppercase; }
+.ga-record-audit dd { margin:0; color:#34465f; font-size:10px; font-weight:600; line-height:1.5; overflow-wrap:anywhere; }
 .ga-record-history-item > p { margin:12px 0 0; color:#485971; font-size:11px; line-height:1.65; white-space:pre-wrap; }
 .ga-record-history-item footer { display:grid; gap:4px; margin-top:12px; padding-top:11px; border-top:1px solid #e8edf3; color:#52637b; font-size:10px; line-height:1.55; }
 .ga-record-history-item footer span { color:#7b8799; font-size:8px; font-weight:650; letter-spacing:.3px; text-transform:uppercase; }
@@ -250,4 +254,5 @@
     .ga-record-summary > div + div { border-top:1px solid var(--ga-line); border-left:0; }
     .ga-record-summary > div { padding:13px 15px; }
     .ga-record-history-item header { align-items:flex-start; flex-direction:column; gap:7px; }
+    .ga-record-audit { grid-template-columns:1fr; }
 }

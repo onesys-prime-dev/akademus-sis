@@ -24,6 +24,8 @@ $studentRecords = array_map(static function (array $row): array {
             'requested'    => $request['requested_value'],
             'reason'       => $request['reason'],
             'status'       => $request['status'],
+            'requested_by' => $request['requested_by_username'] ?? 'Unknown user',
+            'reviewed_by'  => $request['reviewed_by_username'] ?? null,
             'review_notes' => $request['review_notes'] ?? null,
             'created_at'   => $request['created_at'] ?? null,
             'reviewed_at'  => $request['reviewed_at'] ?? null,
@@ -163,7 +165,23 @@ $studentRecords = array_map(static function (array $row): array {
                 }
                 const reason = document.createElement('p');
                 reason.textContent = item.reason;
-                entry.append(header, reason);
+                const audit = document.createElement('dl');
+                audit.className = 'ga-record-audit';
+                const requested = document.createElement('div');
+                const requestedLabel = document.createElement('dt');
+                requestedLabel.textContent = 'Requested';
+                const requestedValue = document.createElement('dd');
+                requestedValue.textContent = `${item.requested_by} · ${formatRecordDate(item.created_at) || 'Date unavailable'}`;
+                requested.append(requestedLabel, requestedValue);
+                audit.append(requested);
+                const reviewed = document.createElement('div');
+                const reviewedLabel = document.createElement('dt');
+                reviewedLabel.textContent = item.status === 'approved' ? 'Approved and applied' : item.status === 'rejected' ? 'Rejected' : 'Review';
+                const reviewedValue = document.createElement('dd');
+                reviewedValue.textContent = item.reviewed_at ? `${item.reviewed_by || 'Unknown reviewer'} · ${formatRecordDate(item.reviewed_at)}` : 'Awaiting review';
+                reviewed.append(reviewedLabel, reviewedValue);
+                audit.append(reviewed);
+                entry.append(header, audit, reason);
                 if (item.review_notes) {
                     const footer = document.createElement('footer');
                     const label = document.createElement('span');

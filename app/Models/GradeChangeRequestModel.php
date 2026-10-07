@@ -55,7 +55,15 @@ class GradeChangeRequestModel extends Model
 
         $byGrade = [];
 
-        foreach ($this->whereIn('grade_id', $gradeIds)->orderBy('created_at', 'DESC')->findAll() as $row) {
+        $rows = $this
+            ->select('grade_change_requests.*, requester.username AS requested_by_username, reviewer.username AS reviewed_by_username')
+            ->join('users requester', 'requester.id = grade_change_requests.requested_by')
+            ->join('users reviewer', 'reviewer.id = grade_change_requests.reviewed_by', 'left')
+            ->whereIn('grade_change_requests.grade_id', $gradeIds)
+            ->orderBy('grade_change_requests.created_at', 'DESC')
+            ->findAll();
+
+        foreach ($rows as $row) {
             $byGrade[(int) $row['grade_id']][] = $row;
         }
 
