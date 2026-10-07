@@ -5,12 +5,13 @@
     if (!root || !$('gaTabs')) return;
     const config = JSON.parse($('gaConfig').textContent);
     const tabs = [...root.querySelectorAll('[data-tab]')];
-    function activate(tab) {
+    function activate(tab, updateUrl = true) {
         tabs.forEach(button => {
             const active = button === tab;
             button.setAttribute('aria-selected', String(active)); button.tabIndex = active ? 0 : -1;
             $(button.dataset.tab).hidden = !active;
         });
+        if (updateUrl) history.replaceState(null, '', `#${tab.dataset.tab}`);
     }
     tabs.forEach((tab, index) => {
         const panel = $(tab.dataset.tab);
@@ -33,7 +34,9 @@
     }
     root.querySelectorAll('[data-search]').forEach(input => input.addEventListener('input', () => filter($(input.dataset.search))));
     root.querySelectorAll('[data-search-control]').forEach(label => { label.hidden = false; });
-    $('gaTabs').hidden = false; activate(tabs[0]);
+    $('gaTabs').hidden = false;
+    const requestedTab = tabs.find(tab => `#${tab.dataset.tab}` === location.hash);
+    activate(requestedTab || tabs[0], false);
 
     const dialog = $('gaDecisionDialog');
     let pending = null, busy = false, returnFocus = null;

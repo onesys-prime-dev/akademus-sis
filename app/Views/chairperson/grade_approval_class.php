@@ -8,6 +8,28 @@ $userName      = $user['name'];
 $userRoleLabel = $user['role'];
 $navGroups     = require __DIR__ . '/_nav.php';
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
+
+$studentRecords = array_map(static function (array $row): array {
+    $grade = $row['grade'];
+
+    return [
+        'username' => $row['username'],
+        'grade'    => $grade === null ? null : [
+            'value'   => $grade['grade_value'],
+            'remarks' => $grade['remarks'],
+            'status'  => $grade['status'],
+        ],
+        'history'  => array_map(static fn (array $request): array => [
+            'current'      => $request['current_value'],
+            'requested'    => $request['requested_value'],
+            'reason'       => $request['reason'],
+            'status'       => $request['status'],
+            'review_notes' => $request['review_notes'] ?? null,
+            'created_at'   => $request['created_at'] ?? null,
+            'reviewed_at'  => $request['reviewed_at'] ?? null,
+        ], $row['change_requests'] ?? []),
+    ];
+}, $roster);
 ?>
 
 <?= $this->section('styles') ?>
@@ -20,6 +42,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <a class="ga-back" href="<?= site_url('chairperson/grade-approvals') ?>"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Grade approvals</a>
 <div class="ga-heading">
     <div>
+        <span class="ga-eyebrow">GRADE REVIEW</span>
         <h1><?= esc($context['subject_code']) ?></h1>
         <p><?= esc($context['program']) ?> &middot; <?= esc($context['year_level']) ?> &middot; Section <?= esc($context['section']) ?></p>
     </div>
@@ -27,8 +50,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
 <div id="feedback" class="ga-feedback" role="status" aria-live="polite" hidden></div>
 
-<div class="ga-card">
-<div class="ga-review-meta"><strong><?= esc($context['academic_year']) ?></strong><span><?= count($roster) ?> students</span><span>Grade review</span></div>
+<div class="ga-card ga-review-card">
+<div class="ga-review-meta"><div><span>Academic term</span><strong><?= esc($context['academic_year']) ?></strong></div><div><span>Class roster</span><strong><?= count($roster) ?> <?= count($roster) === 1 ? 'student' : 'students' ?></strong></div><div><span>Workflow</span><strong>Grade review</strong></div></div>
     <?php if ($offering !== null): ?>
         <p class="ga-policy">This is a merged class combining multiple sections' rosters (<?= count($roster) ?> students).</p>
     <?php endif ?>
@@ -41,35 +64,24 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     <?php else: ?>
         <div class="ga-table-scroll"><table class="ga-table">
             <thead>
-                <tr><th scope="col">Student</th><th scope="col">Grade</th><th scope="col">Remarks</th><th scope="col">Status</th></tr>
+                <tr><th scope="col">Student</th><th scope="col">Grade</th><th scope="col">Remarks</th><th scope="col">Status</th><th scope="col"><span class="ga-sr-only">Student record</span></th></tr>
             </thead>
             <tbody>
-                <?php $allSubmitted = true; ?>
-                <?php foreach ($roster as $row): ?>
+                <?php $allSubmitted = true; $allLocked = true; ?>
+                <?php foreach ($roster as $recordIndex => $row): ?>
                     <?php
                         $g = $row['grade'];
                         if ($g === null || $g['status'] !== 'submitted') { $allSubmitted = false; }
-                        $history = $row['change_requests'] ?? [];
+                        if ($g === null || $g['status'] !== 'locked') { $allLocked = false; }
                     ?>
                     <tr>
-                        <td><?= esc($row['username']) ?></td>
-                        <td><?= $g !== null ? esc($g['grade_value']) : '—' ?></td>
-                        <td><?= $g !== null && $g['remarks'] !== null ? esc($g['remarks']) : '—' ?></td>
-                        <td>
+                        <td data-label="Student"><button type="button" class="ga-student-button" data-student-record="<?= $recordIndex ?>"><?= esc($row['username']) ?><span>View grade record</span></button></td>
+                        <td data-label="Grade" class="ga-grade-value"><?= $g !== null ? esc($g['grade_value']) : '—' ?></td>
+                        <td data-label="Remarks"><?= $g !== null && $g['remarks'] !== null ? esc($g['remarks']) : '—' ?></td>
+                        <td data-label="Status">
                             <?= $g !== null ? '<span class="ga-status ' . esc($g['status']) . '">' . esc(ucfirst($g['status'])) . '</span>' : '—' ?>
-                            <?php if ($history !== []): ?>
-                                <details class="ga-history">
-                                    <summary>History</summary>
-                                    <?php foreach ($history as $h): ?>
-                                        <div class="ga-history-item">
-                                            <strong><?= esc($h['current_value']) ?></strong> &rarr; <strong><?= esc($h['requested_value']) ?></strong>
-                                            <span class="ga-status <?= esc($h['status']) ?>"><?= esc(ucfirst($h['status'])) ?></span>
-                                            <div><?= esc($h['reason']) ?></div>
-                                        </div>
-                                    <?php endforeach ?>
-                                </details>
-                            <?php endif ?>
                         </td>
+                        <td class="ga-row-action"><button type="button" class="ga-button ga-record-button" data-student-record="<?= $recordIndex ?>">View record<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button></td>
                     </tr>
                 <?php endforeach ?>
             </tbody>
@@ -78,6 +90,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         <div class="ga-lock-footer">
             <?php if ($allSubmitted): ?>
                 <p>Confirm that every grade is correct. Locking makes these grades official and visible to students.</p><button type="button" class="ga-button ga-button--primary" id="gaLockButton" onclick="lockClass()"><span class="material-symbols-outlined" aria-hidden="true">lock</span>Lock grades</button>
+            <?php elseif ($allLocked): ?>
+                <p class="ga-official-note"><span class="material-symbols-outlined" aria-hidden="true">verified</span>All grades in this class are locked, official, and visible to students.</p>
             <?php else: ?>
                 <p class="panel-sub">Not every student has a submitted grade yet — nothing to lock.</p>
             <?php endif ?>
@@ -85,12 +99,94 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     <?php endif ?>
 </div>
 
+<dialog class="ga-dialog ga-record-dialog" id="gaStudentDialog" aria-labelledby="gaStudentDialogTitle">
+    <header class="ga-record-header"><div><span class="ga-eyebrow">STUDENT GRADE RECORD</span><h2 id="gaStudentDialogTitle"></h2><p><?= esc($context['subject_code']) ?> &middot; <?= esc($context['academic_year']) ?></p></div><button type="button" class="ga-record-close" id="gaCloseStudentDialog" aria-label="Close student record"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></header>
+    <div class="ga-record-body">
+        <section class="ga-record-summary" aria-label="Current grade"><div><span>Official grade</span><strong id="gaRecordGrade"></strong></div><div><span>Remarks</span><strong id="gaRecordRemarks"></strong></div><div><span>Status</span><strong id="gaRecordStatus"></strong></div></section>
+        <div class="ga-record-history-heading"><div><h3>Change history</h3><p>Every correction request recorded for this grade.</p></div><span id="gaRecordHistoryCount"></span></div>
+        <div class="ga-record-history" id="gaRecordHistory"></div>
+    </div>
+    <footer class="ga-dialog-footer"><button type="button" class="ga-button" id="gaCloseStudentDialogFooter">Close</button></footer>
+</dialog>
+
 </div>
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
 <script>
     const CONTEXT = <?= json_encode($context, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const STUDENT_RECORDS = <?= json_encode($studentRecords, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+
+    const studentDialog = document.getElementById('gaStudentDialog');
+    let studentDialogReturnFocus = null;
+    const formatRecordDate = value => {
+        if (!value) return '';
+        const date = new Date(value.replace(' ', 'T'));
+        return Number.isNaN(date.valueOf()) ? value : new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium' }).format(date);
+    };
+    const titleCase = value => value ? value.charAt(0).toUpperCase() + value.slice(1) : 'Not available';
+
+    function openStudentRecord(index, trigger) {
+        const record = STUDENT_RECORDS[index];
+        if (!record) return;
+        studentDialogReturnFocus = trigger;
+        document.getElementById('gaStudentDialogTitle').textContent = record.username;
+        document.getElementById('gaRecordGrade').textContent = record.grade?.value ?? 'Not submitted';
+        document.getElementById('gaRecordRemarks').textContent = record.grade?.remarks || 'No remarks';
+        document.getElementById('gaRecordStatus').textContent = titleCase(record.grade?.status);
+        document.getElementById('gaRecordHistoryCount').textContent = `${record.history.length} ${record.history.length === 1 ? 'request' : 'requests'}`;
+        const history = document.getElementById('gaRecordHistory');
+        history.replaceChildren();
+        if (!record.history.length) {
+            const empty = document.createElement('div');
+            empty.className = 'ga-record-history-empty';
+            empty.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">verified</span><div><strong>No grade changes</strong><p>This grade has no correction requests on record.</p></div>';
+            history.append(empty);
+        } else {
+            record.history.forEach(item => {
+                const entry = document.createElement('article');
+                entry.className = 'ga-record-history-item';
+                const date = formatRecordDate(item.reviewed_at || item.created_at);
+                const header = document.createElement('header');
+                const change = document.createElement('div');
+                const values = document.createElement('strong');
+                values.textContent = `${item.current} → ${item.requested}`;
+                const status = document.createElement('span');
+                status.className = `ga-status ${item.status}`;
+                status.textContent = titleCase(item.status);
+                change.append(values, status);
+                header.append(change);
+                if (date) {
+                    const time = document.createElement('time');
+                    time.textContent = date;
+                    header.append(time);
+                }
+                const reason = document.createElement('p');
+                reason.textContent = item.reason;
+                entry.append(header, reason);
+                if (item.review_notes) {
+                    const footer = document.createElement('footer');
+                    const label = document.createElement('span');
+                    label.textContent = 'Review note';
+                    footer.append(label, document.createTextNode(item.review_notes));
+                    entry.append(footer);
+                }
+                history.append(entry);
+            });
+        }
+        studentDialog.showModal();
+        document.getElementById('gaCloseStudentDialog').focus();
+    }
+
+    document.querySelectorAll('[data-student-record]').forEach(button => button.addEventListener('click', () => openStudentRecord(Number(button.dataset.studentRecord), button)));
+    document.getElementById('gaCloseStudentDialog').addEventListener('click', () => studentDialog.close());
+    document.getElementById('gaCloseStudentDialogFooter').addEventListener('click', () => studentDialog.close());
+    studentDialog.addEventListener('click', event => {
+        if (event.target !== studentDialog) return;
+        const bounds = studentDialog.getBoundingClientRect();
+        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) studentDialog.close();
+    });
+    studentDialog.addEventListener('close', () => studentDialogReturnFocus?.isConnected && studentDialogReturnFocus.focus());
 
     function showFeedback(message, isError) {
         const el = document.getElementById('feedback');
