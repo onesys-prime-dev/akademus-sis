@@ -319,13 +319,38 @@ class ChairpersonController extends BaseController
 
         $account = auth()->user();
 
+        // filters()/sectionOptions() independently re-derive program/year
+        // level from the raw query string, which on a bare first-login
+        // (no query string at all) can't see the smart-jumped year level
+        // $context already resolved above via contextFromRequest() — so
+        // the section list it returns could be scoped to the WRONG year
+        // level (e.g. the default 1st Year) even while the page displays
+        // the smart-jumped 2nd Year as selected. Overriding it here with a
+        // direct, authoritative query against $context's own already-
+        // resolved program/year_level/academic_year guarantees the section
+        // list shown always matches what's actually selected.
+        $filters = $this->filters();
+        $filters['section'] = array_values(array_unique(array_filter(array_map(
+            'trim',
+            array_column(
+                db_connect()->table('sections')
+                    ->select('section')
+                    ->where('program', $context['program'])
+                    ->where('year_level', $context['year_level'])
+                    ->where('academic_year', $context['academic_year'])
+                    ->get()
+                    ->getResultArray(),
+                'section'
+            )
+        ), static fn ($n) => $n !== '')));
+
         $data = [
             'user' => [
                 'name' => $account->username ?? 'Chairperson',
                 'role' => ($subDept !== null ? $subDept['name'] . ' - ' : '') . 'Chairperson',
             ],
 
-            'filters'        => $this->filters(),
+            'filters'        => $filters,
             'selected'       => $context,
             // Plotting is allowed for any term, not just the active one —
             // chairpersons need to build out future/non-active terms ahead
@@ -1412,6 +1437,31 @@ class ChairpersonController extends BaseController
             }
 
             if (! isset($payload['context'][$key]) || ! in_array($payload['context'][$key], $allowed, true)) {
+                // 'section' failing with nothing valid to offer almost
+                // always means exactly one thing: no section exists yet
+                // for this program/year level/term — a setup gap, not a
+                // bug. Say that plainly instead of a bare "invalid
+                // context" toast that gives no clue what to actually do.
+                if ($key === 'section' && $allowed === []) {
+                    // Only the program's OWNING department may create a
+                    // section for it (see createSection()'s own
+                    // programsOfSubDept() check) — a borrowing
+                    // chairperson plotting a subject their department
+                    // owns, for a program they don't, can't be told to
+                    // "create one" themselves; they'd just hit a second
+                    // rejection. Route them to the right workflow instead.
+                    $subDept     = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+                    $ownPrograms = $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
+                    $owns        = in_array($context['program'], $ownPrograms, true);
+
+                    $message = "No section exists yet for {$context['program']}, {$context['year_level']} "
+                        . "({$context['academic_year']}). ";
+                    $message .= $owns
+                        ? 'Create one on the Sections page before plotting.'
+                        : "That program's own chairperson needs to create it — submit a request via Shared Subject Requests.";
+
+                    return $this->fail($message);
+                }
                 return $this->fail("Invalid or missing context: {$key}");
             }
             $context[$key] = $payload['context'][$key];
@@ -1965,6 +2015,12 @@ class ChairpersonController extends BaseController
                 : $filters[$key];
 
             if (! in_array($payload[$key], $allowed, true)) {
+                if ($key === 'section' && $allowed === []) {
+                    return $this->fail(
+                        "No section exists yet for {$payload['program']}, {$payload['year_level']} "
+                        . "({$payload['academic_year']})."
+                    );
+                }
                 return $this->fail("Invalid or missing context: {$key}");
             }
         }
@@ -2584,18 +2640,22 @@ class ChairpersonController extends BaseController
                     $scoped->where('academic_year', $academicYear);
                 }
 
-                $found = $names($scoped);
-
-                if ($found !== []) {
-                    return $found;
-                }
+                // A specific year level IS known/targeted here — whatever
+                // sections exist for it (even none) is the honest answer.
+                // Previously this fell through to other year levels' names
+                // when empty, silently presenting a DIFFERENT year's
+                // section as if it were valid for this one — the chair
+                // would pick it, and the save would then correctly reject
+                // it as invalid, with no clue why. An empty list instead
+                // lets the view show a plain "No section created yet" —
+                // the real, immediate problem — not a disguised one.
+                return $names($scoped);
             }
 
-            // Nothing for this exact year level/term yet — broaden to other
-            // year levels, but stay within the requested PROGRAM. Falling
-            // through to the full whereIn($programs) below would leak a
-            // different program's section names (e.g. IT1-IT4) into a
-            // program that simply hasn't started a cohort yet.
+            // Year level itself isn't known/resolved at all — nothing
+            // honest to scope to, so offer this PROGRAM's section names
+            // from any year level purely as a starting reference point
+            // (never another program's).
             $found = $names($db->table('sections')->where('program', $program));
 
             if ($found !== []) {

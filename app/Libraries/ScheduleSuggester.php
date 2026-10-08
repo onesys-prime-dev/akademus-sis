@@ -554,7 +554,12 @@ class ScheduleSuggester
             }
         }
 
-        $eligible = array_values(array_filter($rooms, static fn ($r) => $s['is_lab'] ? ! empty($r['is_laboratory']) : true));
+        // A lab subject needs a lab room; a non-lab (lecture) subject needs
+        // a NON-lab room — it must not be left unrestricted, or lecture
+        // subjects end up competing for (and frequently winning) the same
+        // scarce lab rooms a real lab subject needs, instead of using the
+        // much larger pool of plain lecture rooms meant for them.
+        $eligible = array_values(array_filter($rooms, static fn ($r) => $s['is_lab'] ? ! empty($r['is_laboratory']) : empty($r['is_laboratory'])));
 
         $roomPool = $ctx['headcount'] > 0
             ? array_values(array_filter($eligible, static fn ($r) => (int) $r['capacity'] >= $ctx['headcount']))
@@ -569,6 +574,17 @@ class ScheduleSuggester
 
         foreach ($everything as $b) {
             $roomBlocks[$b['room']][] = $b;
+        }
+
+        // How many of THIS SECTION's own already-plotted classes (across
+        // every subject, not just this one) already sit in each room.
+        // Without this, same-capacity rooms score identically (nothing
+        // else differentiates them when headcount is low/unknown), so the
+        // sort always lands on the same one — every subject piles into a
+        // single room instead of spreading across the available pool.
+        $myRoomUsage = [];
+        foreach ($mine as $b) {
+            $myRoomUsage[$b['room']] = ($myRoomUsage[$b['room']] ?? 0) + 1;
         }
 
         $dayLoad = array_fill(0, 6, 0);
@@ -593,7 +609,11 @@ class ScheduleSuggester
                 continue;
             }
 
-            // Soft: days like Mon/Wed or Tue/Thu read as a normal weekly rhythm.
+            // Soft: an "every other day" rhythm (Mon+Wed, Tue+Thu, Wed+Fri,
+            // Thu+Sat, ...) reads as a normal weekly pattern AND spreads
+            // subjects across the full week instead of clustering everyone
+            // onto just Mon-Thu — any genuine 2-day gap counts, not only
+            // the two most common examples.
             $dayBonus   = 0.0;
             $dayReasons = [];
 
@@ -601,7 +621,7 @@ class ScheduleSuggester
                 $distances = array_map(static fn ($d) => abs($d - $day), array_keys($sameSubjectDays));
 
                 if (in_array(2, $distances, true)) {
-                    $dayBonus    = 8.0;
+                    $dayBonus     = 8.0;
                     $dayReasons[] = 'spaced from its other meeting (' . self::DAY_NAMES[$day] . ' pairs well)';
                 } elseif (in_array(1, $distances, true)) {
                     $dayBonus = -6.0;
@@ -685,7 +705,14 @@ class ScheduleSuggester
                     $reasonsBase[] = 'leaves a ' . round($gap / 60, 1) . 'h gap';
                 }
 
-                $score -= $dayLoad[$day] / 60 * 2.5;
+                // Prefer a day the student is ALREADY on campus for (this
+                // section's other classes already plotted there), packing
+                // more into fewer days instead of spreading classes across
+                // more distinct days than necessary — fewer, fuller days
+                // beats more, thinner ones, so campus time isn't wasted.
+                // Capped so a genuinely better day for other reasons (room
+                // fit, faculty availability) can still win.
+                $score += min(10, $dayLoad[$day] / 60 * 3);
 
                 foreach ($roomPool as $room) {
                     if ($this->overlapsAny($roomBlocks[$room['name']] ?? [], $day, $start, $end)) {
@@ -698,6 +725,14 @@ class ScheduleSuggester
                     if ($sameSubjectRoom !== null && $room['name'] === $sameSubjectRoom) {
                         $roomScore += 8;
                         $reasons[]  = 'same room as its other meeting';
+                    } elseif (($myRoomUsage[$room['name']] ?? 0) > 0) {
+                        // Mild, escalating nudge toward spreading DIFFERENT
+                        // subjects across different rooms — never strong
+                        // enough to override a genuinely better slot/room,
+                        // just enough to break ties that would otherwise
+                        // always resolve the same way.
+                        $roomScore -= min(6, $myRoomUsage[$room['name']] * 2);
+                        $reasons[]  = "already used by {$myRoomUsage[$room['name']]} other class(es) for this section";
                     }
 
                     if ($ctx['headcount'] > 0) {
@@ -752,7 +787,7 @@ class ScheduleSuggester
             return 'No laboratory room exists to hold a laboratory subject.';
         }
 
-        $pool = $s['is_lab'] ? $labRooms : $rooms;
+        $pool = $s['is_lab'] ? $labRooms : array_filter($rooms, static fn ($r) => empty($r['is_laboratory']));
 
         if ($ctx['headcount'] > 0 && array_filter($pool, static fn ($r) => (int) $r['capacity'] >= $ctx['headcount']) === []) {
             return "No suitable room seats this section's {$ctx['headcount']} students.";
