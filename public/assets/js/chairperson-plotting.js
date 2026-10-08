@@ -4202,13 +4202,31 @@ document.querySelectorAll('#contextForm .context-select').forEach(select => {
     select.dataset.previous = select.value;
     select.addEventListener('change', () => {
         const form = select.form;
+        const submitNow = () => {
+            // Switching PROGRAM leaves year_level/section behind at
+            // whatever they previously held — stale values that may not
+            // even exist for the new program (see the "A" section leak,
+            // and RED101/RED103 needing a year-level jump the server
+            // can't make if a year_level param is already present). Drop
+            // both so the server picks fresh defaults for the new
+            // program, including its smart borrowed-subject year-level
+            // jump (see ChairpersonController::bestYearLevelForBorrowedSubject()).
+            if (select.id === 'plot-program') {
+                const yearSelect = document.getElementById('plot-year_level');
+                const sectionSelect = document.getElementById('plot-section');
+                if (yearSelect) yearSelect.removeAttribute('name');
+                if (sectionSelect) sectionSelect.removeAttribute('name');
+            }
+            form.submit();
+        };
+
         if (window.UnsavedChanges && window.UnsavedChanges.isDirty()) {
             window.UnsavedChanges.confirmLeave().then(leave => {
-                if (leave) form.submit();
+                if (leave) submitNow();
                 else select.value = select.dataset.previous;
             });
         } else {
-            form.submit();
+            submitNow();
         }
     });
 });

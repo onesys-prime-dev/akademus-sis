@@ -2480,6 +2480,7 @@ class ChairpersonController extends BaseController
         // sections all just store this one string).
         $ayLabel    = $this->request->getGet('ay_label');
         $aySemester = $this->request->getGet('semester');
+        $yearLevelRequested = $this->request->getGet('year_level');
 
         $context               = [];
         $requestedComboMissing = false;
@@ -2525,7 +2526,77 @@ class ChairpersonController extends BaseController
             }
         }
 
+        // Smart default for a BORROWED program (one that needs this
+        // department's subject but isn't owned by it — see
+        // borrowingProgramNames()): when the chairperson didn't explicitly
+        // pick a year level, jump straight to whichever year level actually
+        // has this department's subject in that program's curriculum this
+        // semester, instead of defaulting to 1st Year and making them click
+        // through every year level hoping to find where the work is.
+        if ($yearLevelRequested === null) {
+            $smartYearLevel = $this->bestYearLevelForBorrowedSubject($context['program'], $context['academic_year']);
+            if ($smartYearLevel !== null) {
+                $context['year_level'] = $smartYearLevel;
+            }
+        }
+
         return $context;
+    }
+
+    /**
+     * The lowest year level, for the given program and term, whose
+     * curriculum requires a subject owned by this chairperson's
+     * authorized department(s). Null if the program isn't a borrowing
+     * program, or has no such requirement this semester.
+     */
+    private function bestYearLevelForBorrowedSubject(string $program, string $academicYear): ?string
+    {
+        $deptModel = new DepartmentModel();
+        $subDept   = $deptModel->subDeptOfUser((int) auth()->id());
+
+        // Only apply to a BORROWED program (not owned by this chairperson's
+        // own department) — their own program keeps the normal "1st Year"
+        // default, since jumping around would be surprising for the
+        // day-to-day case this wasn't designed for.
+        $ownPrograms = $subDept === null ? [] : $deptModel->programsOfSubDept((int) $subDept['sub_dept_id']);
+        if (in_array($program, $ownPrograms, true)) {
+            return null;
+        }
+
+        $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
+        if ($subDeptIds === []) {
+            return null;
+        }
+
+        $programId = DepartmentModel::programIdOfName($program);
+        if ($programId === null) {
+            return null;
+        }
+
+        $semester = TermCurriculum::semesterOf($academicYear);
+        if ($semester === null) {
+            return null;
+        }
+
+        $yearLevel = db_connect()->table('curriculum_subjects cs')
+            ->select('cs.year_level')
+            ->join('curriculum cu', 'cu.curriculum_id = cs.curriculum_id')
+            ->join('subjects s', 's.subject_id = cs.subject_id')
+            ->where('cu.program_id', $programId)
+            ->where('cs.semester', $semester)
+            ->where('cs.is_active', 1)
+            ->where('s.is_active', 1)
+            ->whereIn('s.sub_department_id', $subDeptIds)
+            ->orderBy('cs.year_level', 'ASC')
+            ->get(1)
+            ->getRow('year_level');
+
+        if ($yearLevel === null) {
+            return null;
+        }
+
+        $labels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+        return $labels[((int) $yearLevel) - 1] ?? null;
     }
 
     private function rowToBlock(array $row): array
