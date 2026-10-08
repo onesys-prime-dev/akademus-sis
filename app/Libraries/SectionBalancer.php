@@ -4,6 +4,7 @@ namespace App\Libraries;
 
 use App\Models\AuditLogModel;
 use App\Models\CapacityPolicyModel;
+use App\Models\DepartmentModel;
 use App\Models\SectionModel;
 
 /**
@@ -379,6 +380,7 @@ class SectionBalancer
                 $ok = $model->insert([
                     'academic_year' => $academicYear,
                     'program'       => $program,
+                    'program_id'    => DepartmentModel::programIdOfName($program),
                     'year_level'    => $yearLevel,
                     'section'       => $name,
                     'status'        => 'proposed',

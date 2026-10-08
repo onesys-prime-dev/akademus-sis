@@ -78,6 +78,31 @@ class SchedulingAuthorization
             return ['section' => null, 'sub_dept_id' => null];
         }
 
+        // Preferred path: section.program_id -> programs.sub_department_id,
+        // a single direct lookup instead of looping every authorized
+        // sub-department and re-deriving its program name list just to
+        // string-compare. This is also what makes a Program rename or a
+        // Program transfer to a different department resolve correctly
+        // automatically — the FK is the identity, not the text.
+        if ($section['program_id'] !== null) {
+            $ownerSubDeptId = db_connect()->table('programs')
+                ->select('sub_department_id')
+                ->where('program_id', $section['program_id'])
+                ->get()->getRowArray()['sub_department_id'] ?? null;
+
+            if ($ownerSubDeptId === null) {
+                return ['section' => null, 'sub_dept_id' => null];
+            }
+
+            $ownerSubDeptId = (int) $ownerSubDeptId;
+
+            return in_array($ownerSubDeptId, $subDeptIds, true)
+                ? ['section' => $section, 'sub_dept_id' => $ownerSubDeptId]
+                : ['section' => null, 'sub_dept_id' => null];
+        }
+
+        // Legacy fallback — only reached for a section never backfilled
+        // with program_id (pre-dating the FK hardening migration).
         $departmentModel = new DepartmentModel();
 
         foreach ($subDeptIds as $subDeptId) {

@@ -30,16 +30,25 @@ class ProgramController extends BaseController
     public function create()
     {
         return view('admin/programs/create', [
-            'activeAdmin' => 'programs',
+            'activeAdmin'   => 'programs',
+            'departments'   => (new SubDepartmentModel())->orderBy('name')->findAll(),
         ]);
     }
 
     public function store()
     {
         $rules = [
-            'program_code' => 'required|max_length[20]',
-            'program_name' => 'required|max_length[255]',
-            'description'  => 'permit_empty',
+            // Previously this path had no uniqueness check at all — a
+            // program created here (as opposed to via a Department's own
+            // Add Program action, which does check) could silently
+            // duplicate an existing code. Also previously had no Department
+            // field whatsoever, which is how a Program like BSHM ended up
+            // permanently orphaned (sub_department_id NULL) the moment it
+            // was created through this form instead of a Department page.
+            'program_code'      => 'required|max_length[20]|is_unique[programs.program_code]',
+            'program_name'      => 'required|max_length[255]',
+            'description'       => 'permit_empty',
+            'sub_department_id' => 'required|is_natural_no_zero',
         ];
 
         if (! $this->validate($rules)) {
@@ -49,10 +58,24 @@ class ProgramController extends BaseController
                 ->with('errors', $this->validator->getErrors());
         }
 
+        $subDeptId = (int) $this->request->getPost('sub_department_id');
+
+        if ((new SubDepartmentModel())->find($subDeptId) === null) {
+            return redirect()->back()->withInput()->with('errors', ['sub_department_id' => 'Department not found.']);
+        }
+
+        $name = trim($this->request->getPost('program_name'));
+        $nameTaken = $this->programModel->where('sub_department_id', $subDeptId)->where('program_name', $name)->countAllResults() > 0;
+
+        if ($nameTaken) {
+            return redirect()->back()->withInput()->with('errors', ['program_name' => "A Program named \"{$name}\" already exists in this Department."]);
+        }
+
         $this->programModel->insert([
-            'program_code' => $this->request->getPost('program_code'),
-            'program_name' => $this->request->getPost('program_name'),
-            'description'  => $this->request->getPost('description'),
+            'program_code'      => strtoupper($this->request->getPost('program_code')),
+            'program_name'      => $name,
+            'description'       => $this->request->getPost('description'),
+            'sub_department_id' => $subDeptId,
         ]);
 
         return redirect()
@@ -96,11 +119,28 @@ class ProgramController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
-        $this->programModel->update($id, [
+        $newValues = [
             'program_code' => $this->request->getPost('program_code'),
             'program_name' => $this->request->getPost('program_name'),
             'description'  => $this->request->getPost('description'),
-        ]);
+        ];
+
+        $this->programModel->update($id, $newValues);
+
+        // A rename is safe by construction now that sections resolve by
+        // program_id (see SchedulingAuthorization::matchSection(),
+        // SectionModel::forSubDepartment()) rather than matching this text
+        // — nothing downstream needs to change, only the audit trail.
+        (new AuditLogModel())->record(
+            'program.updated',
+            'program',
+            $id,
+            ['program_code' => $program['program_code'], 'program_name' => $program['program_name']],
+            $newValues,
+            null,
+            (int) auth()->id(),
+            'admin'
+        );
 
         return redirect()
             ->to($this->returnUrl())
@@ -158,6 +198,17 @@ class ProgramController extends BaseController
         $this->programModel->update($id, [
             'is_active' => $newStatus
         ]);
+
+        (new AuditLogModel())->record(
+            'program.status_changed',
+            'program',
+            $id,
+            ['is_active' => (int) $program['is_active']],
+            ['is_active' => $newStatus],
+            null,
+            (int) auth()->id(),
+            'admin'
+        );
 
         return redirect()
             ->to($this->returnUrl())

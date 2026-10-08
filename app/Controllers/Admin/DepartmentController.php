@@ -261,10 +261,29 @@ class DepartmentController extends BaseController
                 ->with('errors', $this->validator->getErrors());
         }
 
+        $code = strtoupper(trim($this->request->getPost('dept_code')));
+        $name = trim($this->request->getPost('dept_name'));
+
+        // Scoped to this college, not global — is_unique[] alone can't
+        // express "unique within college_id", so this is a plain manual
+        // check (previously there was no uniqueness check on department
+        // code at all).
+        $codeTaken = (new SubDepartmentModel())->where('college_id', $id)->where('code', $code)->countAllResults() > 0;
+
+        if ($codeTaken) {
+            return redirect()->back()->withInput()->with('errors', ['dept_code' => "Department code \"{$code}\" is already used in this College."]);
+        }
+
+        $nameTaken = (new SubDepartmentModel())->where('college_id', $id)->where('name', $name)->countAllResults() > 0;
+
+        if ($nameTaken) {
+            return redirect()->back()->withInput()->with('errors', ['dept_name' => "A Department named \"{$name}\" already exists in this College."]);
+        }
+
         (new SubDepartmentModel())->insert([
             'college_id' => $id,
-            'code'       => strtoupper($this->request->getPost('dept_code')),
-            'name'       => $this->request->getPost('dept_name'),
+            'code'       => $code,
+            'name'       => $name,
         ]);
 
         return redirect()

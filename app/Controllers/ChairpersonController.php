@@ -1978,6 +1978,7 @@ class ChairpersonController extends BaseController
         $sections->insert([
             'academic_year' => $payload['academic_year'],
             'program'       => $payload['program'],
+            'program_id'    => DepartmentModel::programIdOfName($payload['program']),
             'year_level'    => $payload['year_level'],
             'section'       => $sectionName,
             'capacity'      => $capacity,

@@ -110,6 +110,7 @@ $navGroups = $navGroups ?? [
         'academic-settings'    => ['label' => 'Scheduling Rules', 'icon' => 'tune',          'url' => 'admin/academic-settings'],
         'roles'                => ['label' => 'Roles',           'icon' => 'admin_panel_settings', 'url' => 'admin/roles'],
         'audit-logs'           => ['label' => 'Audit Logs',      'icon' => 'history',        'url' => 'admin/audit-logs'],
+        'academic-health'      => ['label' => 'Academic Health', 'icon' => 'health_and_safety', 'url' => 'admin/academic-health'],
     ],
 ];
 $active        = $activeAdmin ?? '';

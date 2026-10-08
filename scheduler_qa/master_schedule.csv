@@ -1,0 +1,68 @@
+Course ID,Course Name,Department,Professor Name,Day,Start Time,End Time,Room ID,Building
+CS101,Intro to Programming,Computer Science,Dr. C. Cruz,Mon,08:00,09:00,LEC-A,North Hall
+BUS102,Financial Accounting,Business,Dr. K. Castillo,Mon,09:00,10:00,LEC-A,North Hall
+CS101,Intro to Programming,Computer Science,Dr. C. Cruz,Mon,09:00,10:00,LEC-B,North Hall
+CS350,Computer Networks,Computer Science,Dr. J. Rivera,Mon,09:00,10:00,LEC-E,South Wing
+CS350L,Computer Networks Lab,Computer Science,Dr. O. Navarro,Mon,10:00,11:00,LAB-C,East Annex
+MATH301,Probability & Statistics,Mathematics,Dr. F. Ramos,Mon,10:00,11:00,LEC-E,South Wing
+CS101L,Intro to Programming Lab,Computer Science,Dr. E. Gonzales,Mon,11:00,12:00,LAB-A,East Annex
+CS301,Databases,Computer Science,Dr. O. Navarro,Mon,11:00,12:00,LEC-D,South Wing
+CS350,Computer Networks,Computer Science,Dr. J. Rivera,Mon,11:00,12:00,LEC-E,South Wing
+CS301L,Databases Lab,Computer Science,Dr. E. Gonzales,Mon,12:00,13:00,LAB-B,East Annex
+ENGR210,Circuit Analysis,Engineering,Dr. K. Castillo,Mon,13:00,14:00,LEC-D,South Wing
+MATH401,Abstract Algebra,Mathematics,Dr. F. Ramos,Mon,13:00,14:00,SEM-B,East Annex
+CS301,Databases,Computer Science,Dr. O. Navarro,Mon,14:00,15:00,LEC-D,South Wing
+BUS350,Strategic Management Seminar,Business,Dr. D. Bautista,Mon,14:00,15:00,SEM-A,South Wing
+MATH210,Discrete Mathematics,Mathematics,Dr. F. Ramos,Mon,15:00,16:00,LEC-D,South Wing
+ENGR401,Robotics,Engineering,Dr. H. Torres,Mon,15:00,16:00,LEC-E,South Wing
+MATH102,Calculus II,Mathematics,Dr. K. Castillo,Tue,08:00,09:00,LEC-A,North Hall
+MATH301,Probability & Statistics,Mathematics,Dr. F. Ramos,Tue,08:00,09:00,LEC-E,South Wing
+BUS201,Marketing Fundamentals,Business,Dr. D. Bautista,Tue,09:00,10:00,LEC-C,North Hall
+BUS101,Principles of Management,Business,Dr. C. Cruz,Tue,10:00,11:00,LEC-B,North Hall
+CS401,Artificial Intelligence,Computer Science,Dr. E. Gonzales,Tue,10:00,11:00,LEC-E,South Wing
+MATH350,Numerical Methods,Mathematics,Dr. A. Santos,Tue,11:00,12:00,SEM-A,South Wing
+CS201,Algorithms,Computer Science,Dr. O. Navarro,Tue,13:00,14:00,LEC-C,North Hall
+ENGR401,Robotics,Engineering,Dr. H. Torres,Tue,13:00,14:00,LEC-E,South Wing
+ENGR350,Engineering Design Seminar,Engineering,Dr. M. Aquino,Tue,15:00,16:00,SEM-A,South Wing
+BUS102,Financial Accounting,Business,Dr. K. Castillo,Tue,16:00,17:00,LEC-A,North Hall
+CS102L,Data Structures Lab,Computer Science,Dr. J. Rivera,Wed,08:00,09:00,LAB-A,East Annex
+ENGR101,Engineering Mechanics,Engineering,Dr. C. Cruz,Wed,08:00,09:00,LEC-C,North Hall
+ENGR101L,Engineering Mechanics Lab,Engineering,Dr. M. Aquino,Wed,09:00,10:00,LAB-C,East Annex
+CS102,Data Structures,Computer Science,Dr. K. Castillo,Wed,09:00,10:00,LEC-A,North Hall
+BUS301,Business Statistics,Business,Dr. N. Delacruz,Wed,09:00,10:00,LEC-E,South Wing
+CS102,Data Structures,Computer Science,Dr. K. Castillo,Wed,10:00,11:00,LEC-B,North Hall
+ENGR301,Materials Science,Engineering,Dr. M. Aquino,Wed,10:00,11:00,LEC-E,South Wing
+PHYS101,General Physics I,Physics,Dr. C. Cruz,Wed,11:00,12:00,LEC-A,North Hall
+MATH210,Discrete Mathematics,Mathematics,Dr. F. Ramos,Wed,11:00,12:00,LEC-D,South Wing
+PHYS101L,General Physics I Lab,Physics,Dr. B. Reyes,Wed,12:00,13:00,LAB-A,East Annex
+CS401,Artificial Intelligence,Computer Science,Dr. E. Gonzales,Wed,12:00,13:00,LEC-E,South Wing
+PHYS102L,General Physics II Lab,Physics,Dr. G. Mendoza,Wed,13:00,14:00,LAB-B,East Annex
+PHYS101,General Physics I,Physics,Dr. C. Cruz,Wed,13:00,14:00,LEC-B,North Hall
+PHYS301,Quantum Mechanics,Physics,Dr. B. Reyes,Wed,13:00,14:00,LEC-E,South Wing
+PHYS102,General Physics II,Physics,Dr. K. Castillo,Wed,14:00,15:00,LEC-C,North Hall
+PHYS301,Quantum Mechanics,Physics,Dr. B. Reyes,Wed,15:00,16:00,LEC-E,South Wing
+MATH102,Calculus II,Mathematics,Dr. K. Castillo,Wed,16:00,17:00,LEC-B,North Hall
+PHYS210,Thermodynamics,Physics,Dr. L. Villanueva,Thu,08:00,09:00,LEC-E,South Wing
+ENGR210L,Circuit Analysis Lab,Engineering,Dr. H. Torres,Thu,09:00,10:00,LAB-C,East Annex
+PHYS210,Thermodynamics,Physics,Dr. L. Villanueva,Thu,09:00,10:00,LEC-E,South Wing
+MATH101,Calculus I,Mathematics,Dr. C. Cruz,Thu,10:00,11:00,LEC-B,North Hall
+ENGR210,Circuit Analysis,Engineering,Dr. K. Castillo,Thu,10:00,11:00,LEC-D,South Wing
+BUS301,Business Statistics,Business,Dr. N. Delacruz,Thu,10:00,11:00,LEC-E,South Wing
+BUS210,Microeconomics,Business,Dr. I. Flores,Thu,12:00,13:00,LEC-D,South Wing
+MATH101,Calculus I,Mathematics,Dr. C. Cruz,Thu,14:00,15:00,LEC-B,North Hall
+CS201,Algorithms,Computer Science,Dr. O. Navarro,Thu,14:00,15:00,LEC-C,North Hall
+BUS101,Principles of Management,Business,Dr. C. Cruz,Thu,15:00,16:00,LEC-B,North Hall
+MATH201,Linear Algebra,Mathematics,Dr. A. Santos,Thu,15:00,16:00,LEC-C,North Hall
+ENGR101,Engineering Mechanics,Engineering,Dr. C. Cruz,Thu,16:00,17:00,LEC-C,North Hall
+BUS401,Entrepreneurship,Business,Dr. I. Flores,Thu,16:00,17:00,SEM-A,South Wing
+ENGR301,Materials Science,Engineering,Dr. M. Aquino,Fri,09:00,10:00,LEC-E,South Wing
+MATH102,Calculus II,Mathematics,Dr. K. Castillo,Fri,10:00,11:00,LEC-A,North Hall
+BUS201,Marketing Fundamentals,Business,Dr. D. Bautista,Fri,12:00,13:00,LEC-C,North Hall
+BUS210,Microeconomics,Business,Dr. I. Flores,Fri,12:00,13:00,LEC-D,South Wing
+MATH201,Linear Algebra,Mathematics,Dr. A. Santos,Fri,13:00,14:00,LEC-C,North Hall
+MATH101,Calculus I,Mathematics,Dr. C. Cruz,Fri,14:00,15:00,LEC-B,North Hall
+CS210,Operating Systems,Computer Science,Dr. E. Gonzales,Fri,14:00,15:00,LEC-D,South Wing
+CS210L,Operating Systems Lab,Computer Science,Dr. J. Rivera,Fri,15:00,16:00,LAB-B,East Annex
+PHYS102,General Physics II,Physics,Dr. K. Castillo,Fri,16:00,17:00,LEC-C,North Hall
+CS210,Operating Systems,Computer Science,Dr. E. Gonzales,Fri,16:00,17:00,LEC-D,South Wing
+CS450,Capstone Seminar,Computer Science,Dr. J. Rivera,Fri,16:00,17:00,SEM-B,East Annex

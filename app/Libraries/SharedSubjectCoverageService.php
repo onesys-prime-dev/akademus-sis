@@ -41,21 +41,32 @@ class SharedSubjectCoverageService
         $deptModel = new DepartmentModel();
 
         $myProgramNames = [];
+        $myProgramIds   = [];
 
         foreach ($subDeptIds as $subDeptId) {
             foreach ($deptModel->programsOfSubDept($subDeptId) as $name) {
                 $myProgramNames[$name] = true;
             }
+            foreach ($deptModel->programIdsOfSubDept($subDeptId) as $programId) {
+                $myProgramIds[$programId] = true;
+            }
         }
 
         $myProgramNames = array_keys($myProgramNames);
+        $myProgramIds   = array_keys($myProgramIds);
 
-        if ($myProgramNames === []) {
+        if ($myProgramNames === [] && $myProgramIds === []) {
             return $empty;
         }
 
+        // Prefer the FK (program_id); OR in the legacy text match so a
+        // section not yet backfilled doesn't silently drop out of its
+        // owner's coverage view during the transition.
         $mySections = $db->table('sections')
-            ->whereIn('program', $myProgramNames)
+            ->groupStart()
+                ->whereIn('program_id', $myProgramIds === [] ? [0] : $myProgramIds)
+                ->orWhereIn('program', $myProgramNames === [] ? [''] : $myProgramNames)
+            ->groupEnd()
             ->where('academic_year', $academicYear)
             ->get()
             ->getResultArray();

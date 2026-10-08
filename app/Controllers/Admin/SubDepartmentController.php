@@ -416,10 +416,22 @@ class SubDepartmentController extends BaseController
                 ->with('errors', $this->validator->getErrors());
         }
 
+        $name = trim($this->request->getPost('program_name'));
+
+        // program_code is already globally unique (is_unique rule above);
+        // program_name never was — scoped to this department, since a name
+        // collision across two unrelated departments isn't necessarily
+        // wrong, but one within the same department almost certainly is.
+        $nameTaken = (new ProgramModel())->where('sub_department_id', $id)->where('program_name', $name)->countAllResults() > 0;
+
+        if ($nameTaken) {
+            return redirect()->back()->withInput()->with('errors', ['program_name' => "A Program named \"{$name}\" already exists in this Department."]);
+        }
+
         (new ProgramModel())->insert([
             'sub_department_id' => $id,
             'program_code'      => strtoupper($this->request->getPost('program_code')),
-            'program_name'      => $this->request->getPost('program_name'),
+            'program_name'      => $name,
         ]);
 
         return redirect()
@@ -442,6 +454,17 @@ class SubDepartmentController extends BaseController
             ->with('message', $department['is_active'] ? 'Department deactivated.' : 'Department activated.');
     }
 
+    /**
+     * Hard delete, blocked whenever anything still depends on this
+     * department — previously this silently detached programs (NULLing
+     * sub_department_id, immediately re-creating the exact "orphaned
+     * program" problem Academic Health now flags) and never checked
+     * subjects, faculty affiliations, chairpersons, or scheduler
+     * delegations at all; faculty_departments/sub_department_schedulers
+     * rows would have been silently CASCADE-deleted by their own FKs.
+     * Deactivate (toggleStatus) is the supported way to retire a
+     * department that still has history attached.
+     */
     public function delete($id)
     {
         $department = $this->subDeptModel->find($id);
@@ -453,12 +476,55 @@ class SubDepartmentController extends BaseController
         $collegeId = $department['college_id'];
         $db        = db_connect();
 
-        // Detach rather than cascade-delete: chairpersons/faculty keep their
-        // college link, programs are left unlinked for reassignment later.
-        $db->table('users')->where('sub_department_id', $id)->update(['sub_department_id' => null]);
-        $db->table('programs')->where('sub_department_id', $id)->update(['sub_department_id' => null]);
+        $blockers = [];
+
+        $programCount = $db->table('programs')->where('sub_department_id', $id)->countAllResults();
+        if ($programCount > 0) {
+            $blockers[] = "{$programCount} program(s)";
+        }
+
+        $subjectCount = $db->table('subjects')->where('sub_department_id', $id)->countAllResults();
+        if ($subjectCount > 0) {
+            $blockers[] = "{$subjectCount} owned subject(s)";
+        }
+
+        $facultyCount = $db->table('faculty_departments')->where('sub_dept_id', $id)->where('status', 'active')->countAllResults();
+        if ($facultyCount > 0) {
+            $blockers[] = "{$facultyCount} faculty affiliation(s)";
+        }
+
+        $chairCount = $db->table('users u')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'chairperson')
+            ->where('u.sub_department_id', $id)
+            ->countAllResults();
+        if ($chairCount > 0) {
+            $blockers[] = 'a chairperson';
+        }
+
+        $delegationCount = $db->table('sub_department_schedulers')->where('sub_dept_id', $id)->countAllResults();
+        if ($delegationCount > 0) {
+            $blockers[] = "{$delegationCount} scheduler delegation(s)";
+        }
+
+        if ($blockers !== []) {
+            return redirect()
+                ->to("/admin/sub-departments/{$id}")
+                ->with('errors', ["Cannot delete {$department['name']} — it still has " . implode(', ', $blockers) . '. Transfer or remove those first, or deactivate the department instead.']);
+        }
 
         $this->subDeptModel->delete($id);
+
+        (new AuditLogModel())->record(
+            'department.deleted',
+            'sub_department',
+            $id,
+            $department,
+            null,
+            null,
+            (int) auth()->id(),
+            'admin'
+        );
 
         return redirect()
             ->to("/admin/departments/{$collegeId}")

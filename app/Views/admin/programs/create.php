@@ -39,6 +39,19 @@
         </div>
 
         <div class="ac-field">
+            <label for="sub_department_id">Department</label>
+            <select id="sub_department_id" name="sub_department_id" class="ac-input" required>
+                <option value="">Choose a department…</option>
+                <?php foreach ($departments as $d): ?>
+                    <option value="<?= (int) $d['sub_dept_id'] ?>" <?= old('sub_department_id') == $d['sub_dept_id'] ? 'selected' : '' ?>><?= esc($d['name']) ?></option>
+                <?php endforeach ?>
+            </select>
+            <?php if (empty($departments)): ?>
+                <small style="color:var(--color-danger);">No departments exist yet — create one first from Colleges.</small>
+            <?php endif ?>
+        </div>
+
+        <div class="ac-field">
             <label for="description">Description</label>
             <textarea id="description" name="description" class="ac-input" rows="3"><?= old('description') ?></textarea>
         </div>

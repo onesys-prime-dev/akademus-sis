@@ -1,0 +1,992 @@
+{
+  "metadata": {
+    "description": "Synthetic university course timetabling stress-test dataset.",
+    "seed": 42,
+    "num_rooms": 10,
+    "num_professors": 15,
+    "num_courses": 40,
+    "num_timeslots": 45,
+    "notes": [
+      "Only 3 of 10 rooms are type 'Lab' (capacities 30/24/20); 9 of 40 courses require 'Lab'. Raw room-hour supply isn't the bottleneck here - the bind is that most Lab courses share a professor pool overlapping with the two overloaded professors below, and Lab capacities (20-30) are tight against several Lab courses' enrollment (e.g. CS101L=28, CS102L=29), so capacity-respecting placements are a small subset of all room/time combinations.",
+      "Professors P03 and P11 are each assigned 5 courses (one per department) AND carry 13-14 unavailable timeslots (vs. 3-6 for other professors) - the sharpest real bottleneck: each has under 70% of the week's 45 slots even theoretically free, and needs non-overlapping windows for 5 different courses (2 sessions/week each for 4 of them).",
+      "Only LEC-A and LEC-B have capacity >= 150; four courses (CS101, MATH101, PHYS101, BUS101 - all enrollment >= 130) require 'Lecture' and must each get 2-3 sessions/week, competing for the same 2 rooms.",
+      "10 corequisite relationships must never have overlapping sessions across any pair - including one cross-listed non-lab pair (MATH101/MATH201) as an edge case your algorithm shouldn't assume is always a lecture+lab pair.",
+      "Courses with sessions_per_week > 1 require that many NON-overlapping (day,time) sessions in the output schedule, each a separate entry sharing the same course_id."
+    ]
+  },
+  "rooms": [
+    {
+      "id": "LEC-A",
+      "name": "Grand Lecture Hall A",
+      "type": "Lecture",
+      "capacity": 150,
+      "building": "North Hall"
+    },
+    {
+      "id": "LEC-B",
+      "name": "Grand Lecture Hall B",
+      "type": "Lecture",
+      "capacity": 150,
+      "building": "North Hall"
+    },
+    {
+      "id": "LEC-C",
+      "name": "Lecture Room C",
+      "type": "Lecture",
+      "capacity": 100,
+      "building": "North Hall"
+    },
+    {
+      "id": "LEC-D",
+      "name": "Lecture Room D",
+      "type": "Lecture",
+      "capacity": 80,
+      "building": "South Wing"
+    },
+    {
+      "id": "LEC-E",
+      "name": "Lecture Room E",
+      "type": "Lecture",
+      "capacity": 60,
+      "building": "South Wing"
+    },
+    {
+      "id": "SEM-A",
+      "name": "Seminar Room A",
+      "type": "Seminar",
+      "capacity": 35,
+      "building": "South Wing"
+    },
+    {
+      "id": "SEM-B",
+      "name": "Seminar Room B",
+      "type": "Seminar",
+      "capacity": 25,
+      "building": "East Annex"
+    },
+    {
+      "id": "LAB-A",
+      "name": "Computer Lab A",
+      "type": "Lab",
+      "capacity": 30,
+      "building": "East Annex"
+    },
+    {
+      "id": "LAB-B",
+      "name": "Computer Lab B",
+      "type": "Lab",
+      "capacity": 24,
+      "building": "East Annex"
+    },
+    {
+      "id": "LAB-C",
+      "name": "Engineering Lab C",
+      "type": "Lab",
+      "capacity": 20,
+      "building": "East Annex"
+    }
+  ],
+  "professors": [
+    {
+      "id": "P01",
+      "name": "Dr. A. Santos",
+      "department": "Mathematics",
+      "unavailable_timeslots": [
+        "Mon-09:00",
+        "Tue-14:00",
+        "Tue-16:00"
+      ]
+    },
+    {
+      "id": "P02",
+      "name": "Dr. B. Reyes",
+      "department": "Physics",
+      "unavailable_timeslots": [
+        "Fri-15:00",
+        "Mon-14:00",
+        "Mon-16:00",
+        "Thu-15:00"
+      ]
+    },
+    {
+      "id": "P03",
+      "name": "Dr. C. Cruz",
+      "department": "Engineering",
+      "unavailable_timeslots": [
+        "Fri-09:00",
+        "Mon-10:00",
+        "Mon-11:00",
+        "Mon-12:00",
+        "Mon-13:00",
+        "Mon-14:00",
+        "Mon-15:00",
+        "Mon-16:00",
+        "Thu-08:00",
+        "Wed-09:00",
+        "Wed-14:00",
+        "Wed-15:00",
+        "Wed-16:00"
+      ]
+    },
+    {
+      "id": "P04",
+      "name": "Dr. D. Bautista",
+      "department": "Business",
+      "unavailable_timeslots": [
+        "Mon-13:00",
+        "Tue-12:00",
+        "Tue-13:00"
+      ]
+    },
+    {
+      "id": "P05",
+      "name": "Dr. E. Gonzales",
+      "department": "Computer Science",
+      "unavailable_timeslots": [
+        "Fri-13:00",
+        "Thu-16:00",
+        "Tue-11:00"
+      ]
+    },
+    {
+      "id": "P06",
+      "name": "Dr. F. Ramos",
+      "department": "Mathematics",
+      "unavailable_timeslots": [
+        "Fri-09:00",
+        "Mon-08:00",
+        "Thu-09:00",
+        "Tue-09:00",
+        "Tue-13:00",
+        "Tue-16:00"
+      ]
+    },
+    {
+      "id": "P07",
+      "name": "Dr. G. Mendoza",
+      "department": "Physics",
+      "unavailable_timeslots": [
+        "Fri-16:00",
+        "Mon-14:00",
+        "Tue-08:00",
+        "Tue-12:00",
+        "Tue-16:00",
+        "Wed-11:00"
+      ]
+    },
+    {
+      "id": "P08",
+      "name": "Dr. H. Torres",
+      "department": "Engineering",
+      "unavailable_timeslots": [
+        "Mon-14:00",
+        "Wed-12:00",
+        "Wed-14:00"
+      ]
+    },
+    {
+      "id": "P09",
+      "name": "Dr. I. Flores",
+      "department": "Business",
+      "unavailable_timeslots": [
+        "Fri-10:00",
+        "Mon-10:00",
+        "Thu-10:00",
+        "Thu-15:00",
+        "Tue-15:00"
+      ]
+    },
+    {
+      "id": "P10",
+      "name": "Dr. J. Rivera",
+      "department": "Computer Science",
+      "unavailable_timeslots": [
+        "Mon-13:00",
+        "Thu-16:00",
+        "Wed-14:00"
+      ]
+    },
+    {
+      "id": "P11",
+      "name": "Dr. K. Castillo",
+      "department": "Mathematics",
+      "unavailable_timeslots": [
+        "Fri-08:00",
+        "Fri-11:00",
+        "Fri-12:00",
+        "Thu-11:00",
+        "Thu-12:00",
+        "Thu-14:00",
+        "Thu-16:00",
+        "Tue-09:00",
+        "Tue-11:00",
+        "Tue-12:00",
+        "Tue-13:00",
+        "Tue-14:00",
+        "Tue-15:00",
+        "Wed-13:00"
+      ]
+    },
+    {
+      "id": "P12",
+      "name": "Dr. L. Villanueva",
+      "department": "Physics",
+      "unavailable_timeslots": [
+        "Fri-14:00",
+        "Mon-10:00",
+        "Tue-13:00"
+      ]
+    },
+    {
+      "id": "P13",
+      "name": "Dr. M. Aquino",
+      "department": "Engineering",
+      "unavailable_timeslots": [
+        "Mon-13:00",
+        "Mon-14:00",
+        "Tue-13:00",
+        "Tue-16:00",
+        "Wed-14:00"
+      ]
+    },
+    {
+      "id": "P14",
+      "name": "Dr. N. Delacruz",
+      "department": "Business",
+      "unavailable_timeslots": [
+        "Fri-12:00",
+        "Fri-15:00",
+        "Tue-09:00",
+        "Tue-12:00",
+        "Wed-12:00",
+        "Wed-13:00"
+      ]
+    },
+    {
+      "id": "P15",
+      "name": "Dr. O. Navarro",
+      "department": "Computer Science",
+      "unavailable_timeslots": [
+        "Fri-10:00",
+        "Fri-13:00",
+        "Fri-15:00",
+        "Fri-16:00",
+        "Mon-12:00"
+      ]
+    }
+  ],
+  "courses": [
+    {
+      "id": "CS101",
+      "name": "Intro to Programming",
+      "department": "Computer Science",
+      "expected_enrollment": 145,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P03",
+      "corequisite_courses": [
+        "CS101L"
+      ]
+    },
+    {
+      "id": "CS101L",
+      "name": "Intro to Programming Lab",
+      "department": "Computer Science",
+      "expected_enrollment": 28,
+      "required_room_type": "Lab",
+      "sessions_per_week": 1,
+      "assigned_professor": "P05",
+      "corequisite_courses": [
+        "CS101"
+      ]
+    },
+    {
+      "id": "CS102",
+      "name": "Data Structures",
+      "department": "Computer Science",
+      "expected_enrollment": 110,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P11",
+      "corequisite_courses": [
+        "CS102L"
+      ]
+    },
+    {
+      "id": "CS102L",
+      "name": "Data Structures Lab",
+      "department": "Computer Science",
+      "expected_enrollment": 29,
+      "required_room_type": "Lab",
+      "sessions_per_week": 1,
+      "assigned_professor": "P10",
+      "corequisite_courses": [
+        "CS102"
+      ]
+    },
+    {
+      "id": "CS201",
+      "name": "Algorithms",
+      "department": "Computer Science",
+      "expected_enrollment": 90,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P15",
+      "corequisite_courses": []
+    },
+    {
+      "id": "CS210",
+      "name": "Operating Systems",
+      "department": "Computer Science",
+      "expected_enrollment": 70,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P05",
+      "corequisite_courses": [
+        "CS210L"
+      ]
+    },
+    {
+      "id": "CS210L",
+      "name": "Operating Systems Lab",
+      "department": "Computer Science",
+      "expected_enrollment": 23,
+      "required_room_type": "Lab",
+      "sessions_per_week": 1,
+      "assigned_professor": "P10",
+      "corequisite_courses": [
+        "CS210"
+      ]
+    },
+    {
+      "id": "CS301",
+      "name": "Databases",
+      "department": "Computer Science",
+      "expected_enrollment": 65,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P15",
+      "corequisite_courses": [
+        "CS301L"
+      ]
+    },
+    {
+      "id": "CS301L",
+      "name": "Databases Lab",
+      "department": "Computer Science",
+      "expected_enrollment": 24,
+      "required_room_type": "Lab",
+      "sessions_per_week": 1,
+      "assigned_professor": "P05",
+      "corequisite_courses": [
+        "CS301"
+      ]
+    },
+    {
+      "id": "CS350",
+      "name": "Computer Networks",
+      "department": "Computer Science",
+      "expected_enrollment": 55,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P10",
+      "corequisite_courses": [
+        "CS350L"
+      ]
+    },
+    {
+      "id": "CS350L",
+      "name": "Computer Networks Lab",
+      "department": "Computer Science",
+      "expected_enrollment": 19,
+      "required_room_type": "Lab",
+      "sessions_per_week": 1,
+      "assigned_professor": "P15",
+      "corequisite_courses": [
+        "CS350"
+      ]
+    },
+    {
+      "id": "CS401",
+      "name": "Artificial Intelligence",
+      "department": "Computer Science",
+      "expected_enrollment": 48,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P05",
+      "corequisite_courses": []
+    },
+    {
+      "id": "CS450",
+      "name": "Capstone Seminar",
+      "department": "Computer Science",
+      "expected_enrollment": 22,
+      "required_room_type": "Seminar",
+      "sessions_per_week": 1,
+      "assigned_professor": "P10",
+      "corequisite_courses": []
+    },
+    {
+      "id": "MATH101",
+      "name": "Calculus I",
+      "department": "Mathematics",
+      "expected_enrollment": 150,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 3,
+      "assigned_professor": "P03",
+      "corequisite_courses": [
+        "MATH201"
+      ]
+    },
+    {
+      "id": "MATH102",
+      "name": "Calculus II",
+      "department": "Mathematics",
+      "expected_enrollment": 120,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 3,
+      "assigned_professor": "P11",
+      "corequisite_courses": []
+    },
+    {
+      "id": "MATH201",
+      "name": "Linear Algebra",
+      "department": "Mathematics",
+      "expected_enrollment": 85,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P01",
+      "corequisite_courses": [
+        "MATH101"
+      ]
+    },
+    {
+      "id": "MATH210",
+      "name": "Discrete Mathematics",
+      "department": "Mathematics",
+      "expected_enrollment": 75,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P06",
+      "corequisite_courses": []
+    },
+    {
+      "id": "MATH301",
+      "name": "Probability & Statistics",
+      "department": "Mathematics",
+      "expected_enrollment": 60,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P06",
+      "corequisite_courses": []
+    },
+    {
+      "id": "MATH350",
+      "name": "Numerical Methods",
+      "department": "Mathematics",
+      "expected_enrollment": 30,
+      "required_room_type": "Seminar",
+      "sessions_per_week": 1,
+      "assigned_professor": "P01",
+      "corequisite_courses": []
+    },
+    {
+      "id": "PHYS101",
+      "name": "General Physics I",
+      "department": "Physics",
+      "expected_enrollment": 130,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P03",
+      "corequisite_courses": [
+        "PHYS101L"
+      ]
+    },
+    {
+      "id": "PHYS101L",
+      "name": "General Physics I Lab",
+      "department": "Physics",
+      "expected_enrollment": 25,
+      "required_room_type": "Lab",
+      "sessions_per_week": 1,
+      "assigned_professor": "P02",
+      "corequisite_courses": [
+        "PHYS101"
+      ]
+    },
+    {
+      "id": "PHYS102",
+      "name": "General Physics II",
+      "department": "Physics",
+      "expected_enrollment": 95,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P11",
+      "corequisite_courses": [
+        "PHYS102L"
+      ]
+    },
+    {
+      "id": "PHYS102L",
+      "name": "General Physics II Lab",
+      "department": "Physics",
+      "expected_enrollment": 22,
+      "required_room_type": "Lab",
+      "sessions_per_week": 1,
+      "assigned_professor": "P07",
+      "corequisite_courses": [
+        "PHYS102"
+      ]
+    },
+    {
+      "id": "PHYS210",
+      "name": "Thermodynamics",
+      "department": "Physics",
+      "expected_enrollment": 50,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P12",
+      "corequisite_courses": []
+    },
+    {
+      "id": "ENGR101",
+      "name": "Engineering Mechanics",
+      "department": "Engineering",
+      "expected_enrollment": 100,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P03",
+      "corequisite_courses": [
+        "ENGR101L"
+      ]
+    },
+    {
+      "id": "ENGR101L",
+      "name": "Engineering Mechanics Lab",
+      "department": "Engineering",
+      "expected_enrollment": 20,
+      "required_room_type": "Lab",
+      "sessions_per_week": 1,
+      "assigned_professor": "P13",
+      "corequisite_courses": [
+        "ENGR101"
+      ]
+    },
+    {
+      "id": "ENGR210",
+      "name": "Circuit Analysis",
+      "department": "Engineering",
+      "expected_enrollment": 65,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P11",
+      "corequisite_courses": [
+        "ENGR210L"
+      ]
+    },
+    {
+      "id": "ENGR210L",
+      "name": "Circuit Analysis Lab",
+      "department": "Engineering",
+      "expected_enrollment": 18,
+      "required_room_type": "Lab",
+      "sessions_per_week": 1,
+      "assigned_professor": "P08",
+      "corequisite_courses": [
+        "ENGR210"
+      ]
+    },
+    {
+      "id": "ENGR301",
+      "name": "Materials Science",
+      "department": "Engineering",
+      "expected_enrollment": 45,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P13",
+      "corequisite_courses": []
+    },
+    {
+      "id": "ENGR350",
+      "name": "Engineering Design Seminar",
+      "department": "Engineering",
+      "expected_enrollment": 28,
+      "required_room_type": "Seminar",
+      "sessions_per_week": 1,
+      "assigned_professor": "P13",
+      "corequisite_courses": []
+    },
+    {
+      "id": "BUS101",
+      "name": "Principles of Management",
+      "department": "Business",
+      "expected_enrollment": 140,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P03",
+      "corequisite_courses": []
+    },
+    {
+      "id": "BUS102",
+      "name": "Financial Accounting",
+      "department": "Business",
+      "expected_enrollment": 115,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P11",
+      "corequisite_courses": []
+    },
+    {
+      "id": "BUS201",
+      "name": "Marketing Fundamentals",
+      "department": "Business",
+      "expected_enrollment": 90,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P04",
+      "corequisite_courses": []
+    },
+    {
+      "id": "BUS210",
+      "name": "Microeconomics",
+      "department": "Business",
+      "expected_enrollment": 80,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P09",
+      "corequisite_courses": []
+    },
+    {
+      "id": "BUS301",
+      "name": "Business Statistics",
+      "department": "Business",
+      "expected_enrollment": 58,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P14",
+      "corequisite_courses": []
+    },
+    {
+      "id": "BUS350",
+      "name": "Strategic Management Seminar",
+      "department": "Business",
+      "expected_enrollment": 32,
+      "required_room_type": "Seminar",
+      "sessions_per_week": 1,
+      "assigned_professor": "P04",
+      "corequisite_courses": []
+    },
+    {
+      "id": "BUS401",
+      "name": "Entrepreneurship",
+      "department": "Business",
+      "expected_enrollment": 26,
+      "required_room_type": "Seminar",
+      "sessions_per_week": 1,
+      "assigned_professor": "P09",
+      "corequisite_courses": []
+    },
+    {
+      "id": "MATH401",
+      "name": "Abstract Algebra",
+      "department": "Mathematics",
+      "expected_enrollment": 20,
+      "required_room_type": "Seminar",
+      "sessions_per_week": 1,
+      "assigned_professor": "P06",
+      "corequisite_courses": []
+    },
+    {
+      "id": "PHYS301",
+      "name": "Quantum Mechanics",
+      "department": "Physics",
+      "expected_enrollment": 40,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P02",
+      "corequisite_courses": []
+    },
+    {
+      "id": "ENGR401",
+      "name": "Robotics",
+      "department": "Engineering",
+      "expected_enrollment": 35,
+      "required_room_type": "Lecture",
+      "sessions_per_week": 2,
+      "assigned_professor": "P08",
+      "corequisite_courses": []
+    }
+  ],
+  "timeslots": [
+    {
+      "id": "Mon-08:00",
+      "day": "Mon",
+      "start_time": "08:00",
+      "end_time": "09:00"
+    },
+    {
+      "id": "Mon-09:00",
+      "day": "Mon",
+      "start_time": "09:00",
+      "end_time": "10:00"
+    },
+    {
+      "id": "Mon-10:00",
+      "day": "Mon",
+      "start_time": "10:00",
+      "end_time": "11:00"
+    },
+    {
+      "id": "Mon-11:00",
+      "day": "Mon",
+      "start_time": "11:00",
+      "end_time": "12:00"
+    },
+    {
+      "id": "Mon-12:00",
+      "day": "Mon",
+      "start_time": "12:00",
+      "end_time": "13:00"
+    },
+    {
+      "id": "Mon-13:00",
+      "day": "Mon",
+      "start_time": "13:00",
+      "end_time": "14:00"
+    },
+    {
+      "id": "Mon-14:00",
+      "day": "Mon",
+      "start_time": "14:00",
+      "end_time": "15:00"
+    },
+    {
+      "id": "Mon-15:00",
+      "day": "Mon",
+      "start_time": "15:00",
+      "end_time": "16:00"
+    },
+    {
+      "id": "Mon-16:00",
+      "day": "Mon",
+      "start_time": "16:00",
+      "end_time": "17:00"
+    },
+    {
+      "id": "Tue-08:00",
+      "day": "Tue",
+      "start_time": "08:00",
+      "end_time": "09:00"
+    },
+    {
+      "id": "Tue-09:00",
+      "day": "Tue",
+      "start_time": "09:00",
+      "end_time": "10:00"
+    },
+    {
+      "id": "Tue-10:00",
+      "day": "Tue",
+      "start_time": "10:00",
+      "end_time": "11:00"
+    },
+    {
+      "id": "Tue-11:00",
+      "day": "Tue",
+      "start_time": "11:00",
+      "end_time": "12:00"
+    },
+    {
+      "id": "Tue-12:00",
+      "day": "Tue",
+      "start_time": "12:00",
+      "end_time": "13:00"
+    },
+    {
+      "id": "Tue-13:00",
+      "day": "Tue",
+      "start_time": "13:00",
+      "end_time": "14:00"
+    },
+    {
+      "id": "Tue-14:00",
+      "day": "Tue",
+      "start_time": "14:00",
+      "end_time": "15:00"
+    },
+    {
+      "id": "Tue-15:00",
+      "day": "Tue",
+      "start_time": "15:00",
+      "end_time": "16:00"
+    },
+    {
+      "id": "Tue-16:00",
+      "day": "Tue",
+      "start_time": "16:00",
+      "end_time": "17:00"
+    },
+    {
+      "id": "Wed-08:00",
+      "day": "Wed",
+      "start_time": "08:00",
+      "end_time": "09:00"
+    },
+    {
+      "id": "Wed-09:00",
+      "day": "Wed",
+      "start_time": "09:00",
+      "end_time": "10:00"
+    },
+    {
+      "id": "Wed-10:00",
+      "day": "Wed",
+      "start_time": "10:00",
+      "end_time": "11:00"
+    },
+    {
+      "id": "Wed-11:00",
+      "day": "Wed",
+      "start_time": "11:00",
+      "end_time": "12:00"
+    },
+    {
+      "id": "Wed-12:00",
+      "day": "Wed",
+      "start_time": "12:00",
+      "end_time": "13:00"
+    },
+    {
+      "id": "Wed-13:00",
+      "day": "Wed",
+      "start_time": "13:00",
+      "end_time": "14:00"
+    },
+    {
+      "id": "Wed-14:00",
+      "day": "Wed",
+      "start_time": "14:00",
+      "end_time": "15:00"
+    },
+    {
+      "id": "Wed-15:00",
+      "day": "Wed",
+      "start_time": "15:00",
+      "end_time": "16:00"
+    },
+    {
+      "id": "Wed-16:00",
+      "day": "Wed",
+      "start_time": "16:00",
+      "end_time": "17:00"
+    },
+    {
+      "id": "Thu-08:00",
+      "day": "Thu",
+      "start_time": "08:00",
+      "end_time": "09:00"
+    },
+    {
+      "id": "Thu-09:00",
+      "day": "Thu",
+      "start_time": "09:00",
+      "end_time": "10:00"
+    },
+    {
+      "id": "Thu-10:00",
+      "day": "Thu",
+      "start_time": "10:00",
+      "end_time": "11:00"
+    },
+    {
+      "id": "Thu-11:00",
+      "day": "Thu",
+      "start_time": "11:00",
+      "end_time": "12:00"
+    },
+    {
+      "id": "Thu-12:00",
+      "day": "Thu",
+      "start_time": "12:00",
+      "end_time": "13:00"
+    },
+    {
+      "id": "Thu-13:00",
+      "day": "Thu",
+      "start_time": "13:00",
+      "end_time": "14:00"
+    },
+    {
+      "id": "Thu-14:00",
+      "day": "Thu",
+      "start_time": "14:00",
+      "end_time": "15:00"
+    },
+    {
+      "id": "Thu-15:00",
+      "day": "Thu",
+      "start_time": "15:00",
+      "end_time": "16:00"
+    },
+    {
+      "id": "Thu-16:00",
+      "day": "Thu",
+      "start_time": "16:00",
+      "end_time": "17:00"
+    },
+    {
+      "id": "Fri-08:00",
+      "day": "Fri",
+      "start_time": "08:00",
+      "end_time": "09:00"
+    },
+    {
+      "id": "Fri-09:00",
+      "day": "Fri",
+      "start_time": "09:00",
+      "end_time": "10:00"
+    },
+    {
+      "id": "Fri-10:00",
+      "day": "Fri",
+      "start_time": "10:00",
+      "end_time": "11:00"
+    },
+    {
+      "id": "Fri-11:00",
+      "day": "Fri",
+      "start_time": "11:00",
+      "end_time": "12:00"
+    },
+    {
+      "id": "Fri-12:00",
+      "day": "Fri",
+      "start_time": "12:00",
+      "end_time": "13:00"
+    },
+    {
+      "id": "Fri-13:00",
+      "day": "Fri",
+      "start_time": "13:00",
+      "end_time": "14:00"
+    },
+    {
+      "id": "Fri-14:00",
+      "day": "Fri",
+      "start_time": "14:00",
+      "end_time": "15:00"
+    },
+    {
+      "id": "Fri-15:00",
+      "day": "Fri",
+      "start_time": "15:00",
+      "end_time": "16:00"
+    },
+    {
+      "id": "Fri-16:00",
+      "day": "Fri",
+      "start_time": "16:00",
+      "end_time": "17:00"
+    }
+  ]
+}

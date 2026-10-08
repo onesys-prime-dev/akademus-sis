@@ -1,0 +1,404 @@
+[
+  {
+    "course_id": "BUS101",
+    "day": "Thu",
+    "start_time": "15:00",
+    "room_id": "LEC-B"
+  },
+  {
+    "course_id": "BUS101",
+    "day": "Tue",
+    "start_time": "10:00",
+    "room_id": "LEC-B"
+  },
+  {
+    "course_id": "BUS102",
+    "day": "Mon",
+    "start_time": "09:00",
+    "room_id": "LEC-A"
+  },
+  {
+    "course_id": "BUS102",
+    "day": "Tue",
+    "start_time": "16:00",
+    "room_id": "LEC-A"
+  },
+  {
+    "course_id": "BUS201",
+    "day": "Fri",
+    "start_time": "12:00",
+    "room_id": "LEC-C"
+  },
+  {
+    "course_id": "BUS201",
+    "day": "Tue",
+    "start_time": "09:00",
+    "room_id": "LEC-C"
+  },
+  {
+    "course_id": "BUS210",
+    "day": "Fri",
+    "start_time": "12:00",
+    "room_id": "LEC-D"
+  },
+  {
+    "course_id": "BUS210",
+    "day": "Thu",
+    "start_time": "12:00",
+    "room_id": "LEC-D"
+  },
+  {
+    "course_id": "BUS301",
+    "day": "Thu",
+    "start_time": "10:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "BUS301",
+    "day": "Wed",
+    "start_time": "09:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "BUS350",
+    "day": "Mon",
+    "start_time": "14:00",
+    "room_id": "SEM-A"
+  },
+  {
+    "course_id": "BUS401",
+    "day": "Thu",
+    "start_time": "16:00",
+    "room_id": "SEM-A"
+  },
+  {
+    "course_id": "CS101",
+    "day": "Mon",
+    "start_time": "08:00",
+    "room_id": "LEC-A"
+  },
+  {
+    "course_id": "CS101",
+    "day": "Mon",
+    "start_time": "09:00",
+    "room_id": "LEC-B"
+  },
+  {
+    "course_id": "CS101L",
+    "day": "Mon",
+    "start_time": "11:00",
+    "room_id": "LAB-A"
+  },
+  {
+    "course_id": "CS102",
+    "day": "Wed",
+    "start_time": "09:00",
+    "room_id": "LEC-A"
+  },
+  {
+    "course_id": "CS102",
+    "day": "Wed",
+    "start_time": "10:00",
+    "room_id": "LEC-B"
+  },
+  {
+    "course_id": "CS102L",
+    "day": "Wed",
+    "start_time": "08:00",
+    "room_id": "LAB-A"
+  },
+  {
+    "course_id": "CS201",
+    "day": "Thu",
+    "start_time": "14:00",
+    "room_id": "LEC-C"
+  },
+  {
+    "course_id": "CS201",
+    "day": "Tue",
+    "start_time": "13:00",
+    "room_id": "LEC-C"
+  },
+  {
+    "course_id": "CS210",
+    "day": "Fri",
+    "start_time": "14:00",
+    "room_id": "LEC-D"
+  },
+  {
+    "course_id": "CS210",
+    "day": "Fri",
+    "start_time": "16:00",
+    "room_id": "LEC-D"
+  },
+  {
+    "course_id": "CS210L",
+    "day": "Fri",
+    "start_time": "15:00",
+    "room_id": "LAB-B"
+  },
+  {
+    "course_id": "CS301",
+    "day": "Mon",
+    "start_time": "11:00",
+    "room_id": "LEC-D"
+  },
+  {
+    "course_id": "CS301",
+    "day": "Mon",
+    "start_time": "14:00",
+    "room_id": "LEC-D"
+  },
+  {
+    "course_id": "CS301L",
+    "day": "Mon",
+    "start_time": "12:00",
+    "room_id": "LAB-B"
+  },
+  {
+    "course_id": "CS350",
+    "day": "Mon",
+    "start_time": "09:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "CS350",
+    "day": "Mon",
+    "start_time": "11:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "CS350L",
+    "day": "Mon",
+    "start_time": "10:00",
+    "room_id": "LAB-C"
+  },
+  {
+    "course_id": "CS401",
+    "day": "Tue",
+    "start_time": "10:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "CS401",
+    "day": "Wed",
+    "start_time": "12:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "CS450",
+    "day": "Fri",
+    "start_time": "16:00",
+    "room_id": "SEM-B"
+  },
+  {
+    "course_id": "ENGR101",
+    "day": "Thu",
+    "start_time": "16:00",
+    "room_id": "LEC-C"
+  },
+  {
+    "course_id": "ENGR101",
+    "day": "Wed",
+    "start_time": "08:00",
+    "room_id": "LEC-C"
+  },
+  {
+    "course_id": "ENGR101L",
+    "day": "Wed",
+    "start_time": "09:00",
+    "room_id": "LAB-C"
+  },
+  {
+    "course_id": "ENGR210",
+    "day": "Mon",
+    "start_time": "13:00",
+    "room_id": "LEC-D"
+  },
+  {
+    "course_id": "ENGR210",
+    "day": "Thu",
+    "start_time": "10:00",
+    "room_id": "LEC-D"
+  },
+  {
+    "course_id": "ENGR210L",
+    "day": "Thu",
+    "start_time": "09:00",
+    "room_id": "LAB-C"
+  },
+  {
+    "course_id": "ENGR301",
+    "day": "Fri",
+    "start_time": "09:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "ENGR301",
+    "day": "Wed",
+    "start_time": "10:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "ENGR350",
+    "day": "Tue",
+    "start_time": "15:00",
+    "room_id": "SEM-A"
+  },
+  {
+    "course_id": "ENGR401",
+    "day": "Mon",
+    "start_time": "15:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "ENGR401",
+    "day": "Tue",
+    "start_time": "13:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "MATH101",
+    "day": "Fri",
+    "start_time": "14:00",
+    "room_id": "LEC-B"
+  },
+  {
+    "course_id": "MATH101",
+    "day": "Thu",
+    "start_time": "10:00",
+    "room_id": "LEC-B"
+  },
+  {
+    "course_id": "MATH101",
+    "day": "Thu",
+    "start_time": "14:00",
+    "room_id": "LEC-B"
+  },
+  {
+    "course_id": "MATH102",
+    "day": "Fri",
+    "start_time": "10:00",
+    "room_id": "LEC-A"
+  },
+  {
+    "course_id": "MATH102",
+    "day": "Tue",
+    "start_time": "08:00",
+    "room_id": "LEC-A"
+  },
+  {
+    "course_id": "MATH102",
+    "day": "Wed",
+    "start_time": "16:00",
+    "room_id": "LEC-B"
+  },
+  {
+    "course_id": "MATH201",
+    "day": "Fri",
+    "start_time": "13:00",
+    "room_id": "LEC-C"
+  },
+  {
+    "course_id": "MATH201",
+    "day": "Thu",
+    "start_time": "15:00",
+    "room_id": "LEC-C"
+  },
+  {
+    "course_id": "MATH210",
+    "day": "Mon",
+    "start_time": "15:00",
+    "room_id": "LEC-D"
+  },
+  {
+    "course_id": "MATH210",
+    "day": "Wed",
+    "start_time": "11:00",
+    "room_id": "LEC-D"
+  },
+  {
+    "course_id": "MATH301",
+    "day": "Mon",
+    "start_time": "10:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "MATH301",
+    "day": "Tue",
+    "start_time": "08:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "MATH350",
+    "day": "Tue",
+    "start_time": "11:00",
+    "room_id": "SEM-A"
+  },
+  {
+    "course_id": "MATH401",
+    "day": "Mon",
+    "start_time": "13:00",
+    "room_id": "SEM-B"
+  },
+  {
+    "course_id": "PHYS101",
+    "day": "Wed",
+    "start_time": "11:00",
+    "room_id": "LEC-A"
+  },
+  {
+    "course_id": "PHYS101",
+    "day": "Wed",
+    "start_time": "13:00",
+    "room_id": "LEC-B"
+  },
+  {
+    "course_id": "PHYS101L",
+    "day": "Wed",
+    "start_time": "12:00",
+    "room_id": "LAB-A"
+  },
+  {
+    "course_id": "PHYS102",
+    "day": "Fri",
+    "start_time": "16:00",
+    "room_id": "LEC-C"
+  },
+  {
+    "course_id": "PHYS102",
+    "day": "Wed",
+    "start_time": "14:00",
+    "room_id": "LEC-C"
+  },
+  {
+    "course_id": "PHYS102L",
+    "day": "Wed",
+    "start_time": "13:00",
+    "room_id": "LAB-B"
+  },
+  {
+    "course_id": "PHYS210",
+    "day": "Thu",
+    "start_time": "08:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "PHYS210",
+    "day": "Thu",
+    "start_time": "09:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "PHYS301",
+    "day": "Wed",
+    "start_time": "13:00",
+    "room_id": "LEC-E"
+  },
+  {
+    "course_id": "PHYS301",
+    "day": "Wed",
+    "start_time": "15:00",
+    "room_id": "LEC-E"
+  }
+]

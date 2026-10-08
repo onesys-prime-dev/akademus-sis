@@ -25,6 +25,14 @@ class DepartmentModel extends Model
     ];
 
     /**
+     * @return array<string, string> program_code => legacy display name
+     */
+    public static function legacyProgramNames(): array
+    {
+        return self::LEGACY_PROGRAM_NAMES;
+    }
+
+    /**
      * Sub-department (the chairperson-headed "Department" in the UI) that a
      * user belongs to, or null when they have none.
      */
@@ -63,6 +71,23 @@ class DepartmentModel extends Model
             static fn (array $r) => self::LEGACY_PROGRAM_NAMES[$r['program_code']] ?? $r['program_name'],
             $rows
         );
+    }
+
+    /**
+     * Active program_ids belonging to a sub-department — the ID-based
+     * counterpart to programsOfSubDept(), used wherever a section's
+     * department needs resolving through sections.program_id rather than
+     * free-text name matching (SchedulingAuthorization::matchSection(),
+     * SharedSubjectCoverageService, SectionModel::forSubDepartment()).
+     *
+     * @return list<int>
+     */
+    public function programIdsOfSubDept(int $subDeptId): array
+    {
+        return array_map('intval', array_column(
+            db_connect()->table('programs')->select('program_id')->where('sub_department_id', $subDeptId)->where('is_active', 1)->get()->getResultArray(),
+            'program_id'
+        ));
     }
 
     /**
