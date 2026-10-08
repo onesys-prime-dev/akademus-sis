@@ -2455,7 +2455,16 @@ class ChairpersonController extends BaseController
             }
         }
 
-        return $names($db->table('sections')->whereIn('program', $programs));
+        // No program in the query string at all (e.g. a bare first-login
+        // page load, before any filter has been explicitly picked) — scope
+        // to just the program that will actually end up as the default
+        // (the same $allowed[0] fallback contextFromRequest() uses for the
+        // 'program' key), not every program the department owns. Mixing
+        // sections across ALL programs here leaked another program's
+        // section name (e.g. BSCS's "A") into a different program's
+        // dropdown, since both ended up listed together while only one
+        // program was actually being displayed.
+        return $names($db->table('sections')->where('program', $programs[0]));
     }
 
     /**
