@@ -1,0 +1,30 @@
+name: Python QA Suite
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  qa-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies (if any)
+        run: |
+          if [ -f requirements.txt ] && [ -s requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            echo "No (non-empty) requirements.txt found — QA suite currently has no third-party dependencies, skipping install."
+          fi
+
+      # main.py's own exit code (0 = all 4 modules passed, 1 = any failure)
+      # is what gates this job — no separate pass/fail check needed.
+      - name: Run QA suite (main.py)
+        run: python main.py

@@ -80,3 +80,9 @@
 # email.fromEmail =
 # email.fromName = "Akademus SIS"
 # email.mailType = html
+
+#--------------------------------------------------------------------
+# PYTHON SCHEDULING ENGINE (FastAPI bridge)
+#--------------------------------------------------------------------
+
+# PYTHON_ENGINE_URL = http://localhost:8000
