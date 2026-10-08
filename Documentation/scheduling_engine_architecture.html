@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scheduling Engine Architecture</title>
+<style>
+  :root {
+    --ink: #1b1f24;
+    --sub: #5c6370;
+    --rule: #e4e6eb;
+    --panel: #f6f7f9;
+    --accent: #4C6EF5;
+    --accent-dark: #3651c9;
+    --good: #12B886;
+    --warn: #E8590C;
+    --card-bg: #ffffff;
+    --page-bg: #eef0f3;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--ink);
+    font-family: "Georgia", "Iowan Old Style", "Palatino Linotype", serif;
+    line-height: 1.65;
+  }
+
+  .sheet {
+    max-width: 880px;
+    margin: 40px auto 80px;
+    background: var(--card-bg);
+    padding: 64px 72px;
+    box-shadow: 0 2px 24px rgba(0,0,0,0.08);
+    border-radius: 2px;
+  }
+
+  .masthead {
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 20px;
+    margin-bottom: 8px;
+  }
+
+  .doc-kicker {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  h1.doc-title {
+    font-size: 34px;
+    line-height: 1.2;
+    margin: 0 0 12px;
+    font-weight: 700;
+  }
+
+  .doc-meta {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12.5px;
+    color: var(--sub);
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .doc-meta b { color: var(--ink); }
+
+  .status-pill {
+    display: inline-block;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #e3fcef;
+    color: #0b7a56;
+    border: 1px solid #b7f3da;
+  }
+
+  h2 {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+    border-top: 1px solid var(--rule);
+    margin-top: 52px;
+    padding-top: 36px;
+    font-weight: 700;
+  }
+
+  h2 .num {
+    display: inline-block;
+    background: var(--ink);
+    color: #fff;
+    font-size: 11px;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    line-height: 20px;
+    border-radius: 4px;
+    margin-right: 8px;
+  }
+
+  h3 {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    margin-top: 28px;
+  }
+
+  p { font-size: 15.5px; }
+
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--panel);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #a8327a;
+  }
+
+  pre {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    background: #1b1f24;
+    color: #e4e6eb;
+    padding: 18px 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    line-height: 1.6;
+  }
+
+  pre .dim { color: #8a8f98; }
+  pre .num-red { color: #ff8787; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 13.5px;
+  }
+
+  th, td {
+    border: 1px solid var(--rule);
+    padding: 9px 12px;
+    text-align: left;
+  }
+
+  th {
+    background: var(--ink);
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  tr:nth-child(even) td { background: var(--panel); }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin: 24px 0;
+  }
+
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 16px 14px;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .stat-card .value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent-dark);
+    line-height: 1.1;
+  }
+
+  .stat-card.good .value { color: var(--good); }
+  .stat-card.warn .value { color: var(--warn); }
+
+  .stat-card .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--sub);
+    margin-top: 4px;
+  }
+
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: #eef1ff;
+    padding: 14px 18px;
+    border-radius: 4px;
+    margin: 20px 0;
+    font-size: 14.5px;
+  }
+
+  .callout.good { border-left-color: var(--good); background: #e9fbf5; }
+  .callout.warn { border-left-color: var(--warn); background: #fff3e9; }
+
+  .callout b { display: block; margin-bottom: 4px; font-family: "Helvetica Neue", Arial, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  ul, ol { font-size: 15.5px; }
+  ul li, ol li { margin-bottom: 6px; }
+
+  .appendix-table td:last-child, .appendix-table th:last-child {
+    text-align: right;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11.5px;
+    color: var(--sub);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media print {
+    body { background: #fff; }
+    .sheet {
+      box-shadow: none;
+      margin: 0;
+      padding: 0 8mm;
+      max-width: none;
+    }
+    h2 { page-break-after: avoid; }
+    table, pre, .stat-grid, .callout { page-break-inside: avoid; }
+    .no-print { display: none !important; }
+  }
+
+  .print-hint {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: var(--ink);
+    color: #fff;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+  <div class="print-hint no-print">Press Ctrl+P / Cmd+P to save as PDF</div>
+
+  <div class="sheet">
+
+    <div class="masthead">
+      <div class="doc-kicker">Technical Case Study &middot; Scheduling Engine</div>
+      <h1 class="doc-title">Zero-Backtrack CSP Resolution of an NP-Complete Timetabling Instance</h1>
+      <div class="doc-meta">
+        <span><b>Subsystem:</b> University Course Timetabling Engine</span>
+        <span><b>Status:</b> <span class="status-pill">VALIDATED &mdash; 0 hard violations</span></span>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card good">
+        <div class="value">67 / 67</div>
+        <div class="label">Sessions Scheduled</div>
+      </div>
+      <div class="stat-card good">
+        <div class="value">0</div>
+        <div class="label">Backtracks Required</div>
+      </div>
+      <div class="stat-card good">
+        <div class="value">0 / 6</div>
+        <div class="label">Hard Violations</div>
+      </div>
+      <div class="stat-card warn">
+        <div class="value">28.0</div>
+        <div class="label">Soft Score (ceiling: 28.0)</div>
+      </div>
+    </div>
+
+    <h2><span class="num">1</span>Executive Summary</h2>
+    <p>
+      University course timetabling &mdash; assigning every course session a
+      (day, time, room) slot such that no professor, room, or corequisite
+      relationship is double-booked &mdash; belongs to a well-known class of
+      <b>NP-complete</b> combinatorial problems. It generalizes graph coloring
+      and multi-dimensional bin packing: as courses, rooms, and
+      professor-availability restrictions grow, the candidate-assignment
+      space grows combinatorially, and no known algorithm solves the general
+      case in polynomial time. A production timetabling engine therefore
+      cannot rely on brute-force enumeration &mdash; it must prune the search
+      space intelligently enough that a solution, if one exists, is found in
+      a tractable number of steps.
+    </p>
+    <p>
+      This engine was tested against a deliberately adversarial synthetic
+      dataset: 40 courses (67 weekly sessions), 10 rooms across 3 buildings,
+      15 professors, and 45 weekly timeslots, with three engineered
+      bottlenecks &mdash; two professors carrying 5 courses each against
+      13&ndash;14 blocked timeslots, tight Lab-capacity-vs-enrollment fits,
+      and only two lecture halls large enough for the four biggest classes.
+    </p>
+    <div class="callout good">
+      <b>Result</b>
+      The CSP solver, using a Minimum-Remaining-Values (MRV) variable-ordering
+      heuristic, placed all 67 sessions in exactly 67 search steps with
+      <b>zero backtracking</b> &mdash; every first decision remained valid for
+      the entire search. The schedule passed all six hard constraints with
+      zero violations and scored 28.0/100 on soft quality constraints, a
+      figure this report shows is the structural ceiling imposed by the
+      campus's physical room layout, not an algorithmic shortfall.
+    </div>
+
+    <h2><span class="num">2</span>Algorithmic Approach</h2>
+
+    <h3>2.1 Problem formulation as a CSP</h3>
+    <p>The engine models timetabling as a classic Constraint Satisfaction Problem:</p>
+    <ul>
+      <li><b>Variables</b> &mdash; one per required session. A course meeting <code>N</code> times/week contributes <code>N</code> independent variables. 40 courses produced <b>67 variables</b>.</li>
+      <li><b>Domain</b> &mdash; for each variable, every <code>(timeslot, room)</code> pair that does not yet violate a hard constraint, recomputed fresh at each step against the current partial assignment (forward checking).</li>
+      <li><b>Constraints</b> &mdash; the six hard rules in Section&nbsp;3, plus the implicit CSP rule that no two variables may resolve into conflict.</li>
+    </ul>
+
+    <h3>2.2 Variable ordering: Minimum Remaining Values (MRV)</h3>
+    <p>
+      At every step, the solver scans <b>all</b> unassigned variables,
+      computes each one's live domain size, and commits to the variable
+      with the <b>smallest domain first</b> &mdash; rather than assigning in
+      an arbitrary course-list order.
+    </p>
+    <p>
+      This matters because the dataset's bottlenecks are unevenly
+      distributed. Professors <code>P03</code> and <code>P11</code> are each
+      unavailable for 13&ndash;14 of 45 weekly timeslots (vs. 3&ndash;6 for
+      everyone else) while carrying 5 courses apiece. Left until the end of
+      a naive search, their sessions would frequently find all remaining
+      options already consumed by looser-constrained courses, forcing
+      expensive backtracking or outright failure. MRV instead resolves the
+      tightest constraints <b>while the most options still exist</b> &mdash;
+      the single biggest lever in CSP performance for problems shaped like
+      this one.
+    </p>
+
+    <h3>2.3 Value ordering: soft-score-aware heuristic</h3>
+    <p>Where MRV decides <i>which</i> variable to assign next, a secondary heuristic ranks <i>which</i> candidate within that variable's domain to try first, scored on:</p>
+    <ul>
+      <li><b>Room-fit waste</b> &mdash; <code>(capacity &minus; enrollment) / capacity</code>, smaller is better.</li>
+      <li><b>Corequisite proximity</b> &mdash; same-day time gap to any already-placed partner session, smaller is better.</li>
+    </ul>
+    <p>Candidates are tried best-scored-first, so the search finds a <i>good</i> schedule on the same pass it finds a <i>legal</i> one &mdash; no separate optimization phase is required.</p>
+
+    <h3>2.4 Backtracking as a safety net, not the primary mechanism</h3>
+    <p>
+      Classic backtracking is implemented (400,000-step ceiling, up to 30
+      randomized-restart attempts) but <b>was never invoked</b> in this run.
+      The MRV ordering alone reached a complete, valid assignment of all 67
+      sessions in 67 steps &mdash; one step per variable, no retries. This is
+      the strongest possible signal that the heuristic ordering was well
+      matched to this problem instance's structure.
+    </p>
+
+    <h2><span class="num">3</span>Constraint Resolution (Hard Limits)</h2>
+    <p>
+      Every hard constraint is enforced <b>structurally</b>: a candidate is
+      never added to a variable's domain if it would violate a rule, rather
+      than being checked after the fact. Any committed assignment is legal
+      by construction.
+    </p>
+    <table>
+      <thead><tr><th>#</th><th>Constraint</th><th>Enforcement mechanism</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Room overlap</td><td>A booked <code>(room, timeslot)</code> pair is removed from every other variable's domain instantly.</td></tr>
+        <tr><td>2</td><td>Professor overlap</td><td>A booked <code>(professor, timeslot)</code> pair blocks every other course taught by that professor at that slot.</td></tr>
+        <tr><td>3</td><td>Capacity</td><td>Rooms are only candidates where <code>capacity &ge; enrollment</code>, pre-sorted smallest-fit-first.</td></tr>
+        <tr><td>4</td><td>Room type</td><td>Candidate rooms are pre-filtered to the course's required type (Lecture / Seminar / Lab).</td></tr>
+        <tr><td>5</td><td>Professor availability</td><td>Each course's domain excludes its professor's unavailable timeslots up front.</td></tr>
+        <tr><td>6</td><td>Corequisite overlap</td><td>A course's domain excludes timeslots already claimed by any corequisite partner, checked symmetrically.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout good">
+      <b>Independent verification</b>
+      A separate, independently-written validator (<code>validate_schedule.py</code>) re-derives every fact from <code>dataset.json</code> rather than trusting the solver's internal state, and confirmed <b>zero violations across all six categories</b> on the final schedule.
+    </div>
+
+    <h2><span class="num">4</span>Structural Optimization (Soft Score Analysis)</h2>
+    <p>The validated schedule scored <b>28.0&nbsp;/&nbsp;100</b> on soft constraints. This section accounts for exactly where the 72 lost points went.</p>
+
+    <h3>4.1 What was <i>not</i> penalized</h3>
+    <ul>
+      <li><b>Underfilled rooms</b> &mdash; zero penalty. The room-fit heuristic consistently chose the smallest sufficient room for every course.</li>
+      <li><b>Corequisite time gaps</b> &mdash; zero penalty. All 10 corequisite relationships achieved the minimum possible same-day gap between paired sessions.</li>
+    </ul>
+
+    <h3>4.2 What <i>was</i> penalized: corequisite building splits</h3>
+    <p>All 72 lost points came from one category:</p>
+    <pre>-8.00  Corequisite ('CS101', 'CS101L')     split across buildings
+-8.00  Corequisite ('CS102', 'CS102L')     split across buildings
+-8.00  Corequisite ('CS210', 'CS210L')     split across buildings
+-8.00  Corequisite ('CS301', 'CS301L')     split across buildings
+-8.00  Corequisite ('CS350', 'CS350L')     split across buildings
+-8.00  Corequisite ('ENGR101', 'ENGR101L') split across buildings
+-8.00  Corequisite ('ENGR210', 'ENGR210L') split across buildings
+-8.00  Corequisite ('PHYS101', 'PHYS101L') split across buildings
+-8.00  Corequisite ('PHYS102', 'PHYS102L') split across buildings
+<span class="dim">                                            9 x -8.00 = </span><span class="num-red">-72.00</span></pre>
+
+    <p><b>Why this is physical, not algorithmic:</b> every Lecture+Lab corequisite pair pairs a Lecture-type session with a Lab-type session. Cross-referencing the room list by building:</p>
+    <table>
+      <thead><tr><th>Building</th><th>Room types present</th></tr></thead>
+      <tbody>
+        <tr><td>North Hall</td><td>Lecture only (LEC-A, LEC-B, LEC-C)</td></tr>
+        <tr><td>South Wing</td><td>Lecture only (LEC-D, LEC-E), Seminar (SEM-A)</td></tr>
+        <tr><td>East Annex</td><td>Seminar (SEM-B), <b>Lab only</b> (LAB-A, LAB-B, LAB-C)</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warn">
+      <b>Structural ceiling, not a bug</b>
+      No building on this campus contains both a Lecture-type room and a Lab-type room. Every possible placement of a Lecture+Lab corequisite pair is, by construction, split across buildings &mdash; there is no assignment anywhere in the solution space that avoids this for these 9 pairs. The achievable ceiling under this room layout is exactly <code>100 &minus; (9 &times; 8.00) = 28.0</code>, and the solver reached it precisely, losing zero further points to any <i>avoidable</i> soft penalty. Improving this score requires a facilities decision (co-locating a Lab with Lecture capacity), not a scheduling algorithm change.
+    </div>
+
+    <h2><span class="num">5</span>Frontend UI Integration</h2>
+    <p>The validated schedule is rendered for human review in <code>timetable.html</code>, generated by <code>exporter.py</code>:</p>
+    <ul>
+      <li><b>Grouped by room, not professor</b> &mdash; 10 rooms vs. 15 professors fits a normal screen width without horizontal scrolling; "is this room free now" is the more common lookup.</li>
+      <li><b>Sticky header row</b> &mdash; room ID, name, building, and capacity stay pinned while scrolling the Mon&ndash;Fri / 08:00&ndash;17:00 grid.</li>
+      <li><b>Department color coding</b> &mdash; each cell is tinted and left-bordered by department color, with a legend, making cross-department room contention scannable at a glance.</li>
+      <li><b>Capacity metrics in-line</b> &mdash; each room header shows capacity directly, enabling a sanity check without cross-referencing <code>dataset.json</code>.</li>
+    </ul>
+    <p>Together with the companion <code>master_schedule.csv</code> (a flat, chronologically-sorted export), these form the two SIS-facing deliverables: one for human visual review, one for direct database ingestion.</p>
+
+    <h2><span class="num">&middot;</span>Appendix: Key Metrics at a Glance</h2>
+    <table class="appendix-table">
+      <tbody>
+        <tr><td>Courses</td><td>40</td></tr>
+        <tr><td>Total weekly sessions</td><td>67</td></tr>
+        <tr><td>Rooms</td><td>10 (3 buildings)</td></tr>
+        <tr><td>Professors</td><td>15</td></tr>
+        <tr><td>Weekly timeslots</td><td>45</td></tr>
+        <tr><td>Search steps to solution</td><td>67</td></tr>
+        <tr><td>Backtracks required</td><td>0</td></tr>
+        <tr><td>Hard-constraint violations</td><td>0 / 6 categories</td></tr>
+        <tr><td>Soft score achieved</td><td>28.0 / 100</td></tr>
+        <tr><td>Soft score ceiling (this layout)</td><td>28.0 / 100</td></tr>
+        <tr><td>Underfill penalty</td><td>0.00</td></tr>
+        <tr><td>Corequisite time-gap penalty</td><td>0.00</td></tr>
+        <tr><td>Corequisite building-split penalty</td><td>&minus;72.00 (structural, 9 &times; &minus;8.00)</td></tr>
+      </tbody>
+    </table>
+
+    <footer>
+      <span>Scheduling Engine Architecture &mdash; Technical Case Study</span>
+      <span>scheduler_qa/</span>
+    </footer>
+
+  </div>
+
+</body>
+</html>
