@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Integrated Pipeline Architecture</title>
+<style>
+  :root {
+    --ink: #1b1f24;
+    --sub: #5c6370;
+    --rule: #e4e6eb;
+    --panel: #f6f7f9;
+    --accent: #7048E8;
+    --accent-dark: #5a35c4;
+    --good: #12B886;
+    --warn: #E8590C;
+    --card-bg: #ffffff;
+    --page-bg: #eef0f3;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--ink);
+    font-family: "Georgia", "Iowan Old Style", "Palatino Linotype", serif;
+    line-height: 1.65;
+  }
+
+  .sheet {
+    max-width: 880px;
+    margin: 40px auto 80px;
+    background: var(--card-bg);
+    padding: 64px 72px;
+    box-shadow: 0 2px 24px rgba(0,0,0,0.08);
+    border-radius: 2px;
+  }
+
+  .masthead {
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 20px;
+    margin-bottom: 8px;
+  }
+
+  .doc-kicker {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  h1.doc-title {
+    font-size: 32px;
+    line-height: 1.2;
+    margin: 0 0 12px;
+    font-weight: 700;
+  }
+
+  .doc-meta {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12.5px;
+    color: var(--sub);
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .doc-meta b { color: var(--ink); }
+
+  .status-pill {
+    display: inline-block;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #e3fcef;
+    color: #0b7a56;
+    border: 1px solid #b7f3da;
+  }
+
+  h2 {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+    border-top: 1px solid var(--rule);
+    margin-top: 52px;
+    padding-top: 36px;
+    font-weight: 700;
+  }
+
+  h2 .num {
+    display: inline-block;
+    background: var(--ink);
+    color: #fff;
+    font-size: 11px;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    line-height: 20px;
+    border-radius: 4px;
+    margin-right: 8px;
+  }
+
+  h3 {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    margin-top: 28px;
+  }
+
+  p { font-size: 15.5px; }
+
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--panel);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #5a35c4;
+  }
+
+  pre {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    background: #1b1f24;
+    color: #e4e6eb;
+    padding: 18px 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    line-height: 1.55;
+    white-space: pre;
+  }
+
+  pre .dim { color: #8a8f98; }
+  pre .num-green { color: #63e6be; }
+  pre .num-red { color: #ff8787; }
+
+  .flow {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.5;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 13.5px;
+  }
+
+  th, td {
+    border: 1px solid var(--rule);
+    padding: 9px 12px;
+    text-align: left;
+  }
+
+  th {
+    background: var(--ink);
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  tr:nth-child(even) td { background: var(--panel); }
+  .pass-cell { color: var(--good); font-weight: 700; font-family: "Helvetica Neue", Arial, sans-serif; }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin: 24px 0;
+  }
+
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 16px 14px;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .stat-card .value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent-dark);
+    line-height: 1.1;
+  }
+
+  .stat-card.good .value { color: var(--good); }
+  .stat-card.warn .value { color: var(--warn); }
+
+  .stat-card .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--sub);
+    margin-top: 4px;
+  }
+
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: #f3eefd;
+    padding: 14px 18px;
+    border-radius: 4px;
+    margin: 20px 0;
+    font-size: 14.5px;
+  }
+
+  .callout.good { border-left-color: var(--good); background: #e9fbf5; }
+  .callout.warn { border-left-color: var(--warn); background: #fff3e9; }
+
+  .callout b { display: block; margin-bottom: 4px; font-family: "Helvetica Neue", Arial, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  ul, ol { font-size: 15.5px; }
+  ul li, ol li { margin-bottom: 6px; }
+
+  footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11.5px;
+    color: var(--sub);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media print {
+    body { background: #fff; }
+    .sheet { box-shadow: none; margin: 0; padding: 0 8mm; max-width: none; }
+    h2 { page-break-after: avoid; }
+    table, pre, .flow, .stat-grid, .callout { page-break-inside: avoid; }
+    .no-print { display: none !important; }
+  }
+
+  .print-hint {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: var(--ink);
+    color: #fff;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+  <div class="print-hint no-print">Press Ctrl+P / Cmd+P to save as PDF</div>
+
+  <div class="sheet">
+
+    <div class="masthead">
+      <div class="doc-kicker">Technical Case Study &middot; Integrated 2-Stage Pipeline</div>
+      <h1 class="doc-title">Sectioning &rarr; Scheduling: A Decoupled Pipeline Architecture</h1>
+      <div class="doc-meta">
+        <span><b>Subsystem:</b> Integrated Pipeline (Load Balancer &rarr; CSP Scheduler)</span>
+        <span><b>Status:</b> <span class="status-pill">VALIDATED &mdash; Stage 1 &amp; Stage 2 PASS</span></span>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card good"><div class="value">7</div><div class="label">Sections (Stage 1 Output)</div></div>
+      <div class="stat-card good"><div class="value">12 / 12</div><div class="label">Sessions Scheduled</div></div>
+      <div class="stat-card good"><div class="value">0</div><div class="label">Backtracks (Stage 2)</div></div>
+      <div class="stat-card good"><div class="value">PASS / PASS</div><div class="label">Stage 1 / Stage 2</div></div>
+    </div>
+
+    <h2><span class="num">1</span>Executive Architecture</h2>
+    <p>
+      This pipeline composes two previously-validated, independently-tested
+      engines &mdash; <b>Section Load Balancing</b> and <b>CSP Timetable
+      Scheduling</b> &mdash; into a single, ordered, two-stage system,
+      structured deliberately like a microservice pipeline rather than one
+      monolithic solver.
+    </p>
+    <div class="flow"> raw enrollment demand               Stage 1 output                  final timetable
+&#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9452;   Stage 1   &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9452;  Stage 2   &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9452;
+&#9474; pipeline_dataset   &#9474; &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9664; &#9474; discrete, sized     &#9474; &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9664; &#9474; integrated_schedule &#9474;
+&#9474; (courses, N        &#9474;  Section   &#9474; SECTION objects     &#9474;  CSP       &#9474; (sections + sessions&#9474;
+&#9474;  students, rooms,  &#9474;  Load      &#9474; (SEC1, SEC2, ...    &#9474;  Timetable &#9474;  + rooms + days +   &#9474;
+&#9474;  professors)       &#9474;  Balancer  &#9474;  each pre-sized &amp;    &#9474;  Scheduler &#9474;  times, validated)  &#9474;
+&#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;             &#9474;  coreq-paired)      &#9474;             &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;
+                                  &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;</div>
+    <p>
+      Each stage has a single, narrow responsibility and a clean,
+      serializable hand-off object between them &mdash; a list of section
+      dictionaries, each fully self-describing. Stage 2 has <b>zero
+      knowledge of student enrollment counts or room capacity math</b>
+      &mdash; those questions were already answered by Stage 1. Section 3
+      shows this separation is what keeps Stage 2's search tractable.
+    </p>
+
+    <h2><span class="num">2</span>Data Flow Model</h2>
+
+    <h3>2.1 Input: raw course enrollment</h3>
+    <p><code>pipeline_dataset.json</code> describes courses purely in real-world terms: enrollment count, room capacity, required room type, professor, and corequisite relationships. Nothing is pre-partitioned or schedule-aware.</p>
+
+    <h3>2.2 Stage 1: enrollment &rarr; k balanced section entities</h3>
+    <pre>k = ceil(N / C)
+base, remainder = divmod(N, k)
+sizes = [base+1]*remainder + [base]*(k-remainder)</pre>
+    <p>This yields concrete objects like <code>ITS101-SEC1</code> (7 students) and <code>ITS101-SEC2</code> (7 students) &mdash; no longer "a course," but k independent, schedulable units.</p>
+    <p><b>Corequisite resolution happens here too.</b> The dataset declares corequisites at the course level, but Stage 2 needs to know which <i>sections</i> must not overlap. Stage 1 pairs each course's generated sections positionally (1st with 1st, 2nd with 2nd) and stamps the result as <code>corequisite_section_id</code> &mdash; Stage 2 never reasons about course-level relationships at all.</p>
+
+    <h3>2.3 Stage 2: sections &rarr; mapped room/time slots</h3>
+    <p>Stage 2 ingests the Stage 1 section list as its entire input. Each section contributes one CSP variable per required weekly session, and the same MRV-ordered backtracking search validated in the standalone scheduling engine assigns each one a (day, time, room) triple.</p>
+
+    <h3>2.4 Output: the fully resolved, nested schedule</h3>
+    <p><code>integrated_schedule.json</code> nests each section's Stage 1 result (roster) with its Stage 2 result (sessions), so the artifact documents the full pipeline's work on that unit in one record.</p>
+
+    <h2><span class="num">3</span>Algorithmic Convergence</h2>
+
+    <h3>3.1 Why decoupling prevents state-space explosion</h3>
+    <p>
+      A CSP search's cost is driven by its branching factor per variable
+      and its variable count. Without Stage 1, Stage 2 would have to
+      either reason about one variable per <i>student</i> (combinatorially
+      larger) or treat a whole course as one variable &mdash; which is
+      simply unsolvable once N exceeds any single room's capacity.
+    </p>
+    <p>Stage 1's O(1) partitioning resolves this <i>before</i> search begins &mdash; pure arithmetic, not search &mdash; producing exactly k well-formed variables per course, the true minimum needed:</p>
+    <ul>
+      <li><b>Stage 2's variable count is bounded by sections &times; sessions/week, not by student count.</b> This dataset's 103 enrolled students produced only <b>12 CSP variables</b> across 7 sections.</li>
+      <li><b>Students are invisible to Stage 2's search</b> &mdash; they are payload Stage 1 already finalized.</li>
+    </ul>
+
+    <h3>3.2 Empirical result: zero backtracking at the seam</h3>
+    <pre>=== STAGE 1: Section Load Balancer ===
+  ITS101-SEC1: 7 students ... coreq -&gt; ITS101L-SEC1
+  ITS101-SEC2: 7 students ... coreq -&gt; ITS101L-SEC2
+  ITS101L-SEC1: 7 students ... coreq -&gt; ITS101-SEC1
+  ITS101L-SEC2: 7 students ... coreq -&gt; ITS101-SEC2
+  CS101-SEC1: 28 students ... coreq -&gt; None
+  CS101-SEC2: 27 students ... coreq -&gt; None
+  MATH201-SEC1: 20 students ... coreq -&gt; None
+
+=== STAGE 2: CSP Timetable Scheduler ===
+  Stage 2 attempt 1/30 (backtracking search)...
+  Solved in <span class="num-green">12</span> search step(s), 0 of which backtracked past the first try.</pre>
+    <p>12 variables, 12 steps, zero backtracking &mdash; the MRV heuristic found a fully consistent assignment on the first attempt, the observable proof of the convergence argument above.</p>
+
+    <h2><span class="num">4</span>Diagnostic &amp; Validation Report</h2>
+
+    <h3>4.1 Stage 1 audit (independent re-derivation)</h3>
+    <table>
+      <thead><tr><th>Course</th><th>N</th><th>Capacity</th><th>Req. k</th><th>Produced</th><th>Sizes</th><th>Penalty</th><th>Min</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>ITS101</td><td>14</td><td>13</td><td>2</td><td>2</td><td>[7, 7]</td><td>0</td><td>0</td><td class="pass-cell">PASS</td></tr>
+        <tr><td>ITS101L</td><td>14</td><td>8</td><td>2</td><td>2</td><td>[7, 7]</td><td>0</td><td>0</td><td class="pass-cell">PASS</td></tr>
+        <tr><td>CS101</td><td>55</td><td>30</td><td>2</td><td>2</td><td>[28, 27]</td><td>1</td><td>1</td><td class="pass-cell">PASS</td></tr>
+        <tr><td>MATH201</td><td>20</td><td>25</td><td>1</td><td>1</td><td>[20]</td><td>0</td><td>0</td><td class="pass-cell">PASS</td></tr>
+      </tbody>
+    </table>
+    <p>Every course's variance penalty exactly equals its achievable minimum. CS101's penalty of 1 is not a defect &mdash; 55 split 2 ways has no evenly-divisible answer, and [28, 27] is provably the best possible split.</p>
+
+    <h3>4.2 Stage 2 audit</h3>
+    <pre>[OK] Stage 2: zero room collisions, zero professor double-bookings,
+     100% capacity/type fit, zero corequisite overlaps.</pre>
+
+    <h3>4.3 Diagnostic engine self-test (proof the validator can fail)</h3>
+    <p>A room collision was deliberately forced (copying CS101-SEC1's Monday 13:00 session onto MATH201-SEC1) and re-validated:</p>
+    <pre>[FAIL] Stage 2: Room 'LEC-A' at Mon-13:00 is double-booked by
+       ['CS101-SEC1', 'MATH201-SEC1'].
+[RECOMMENDED FIX] Move one of ['CS101-SEC1', 'MATH201-SEC1'] to a
+                  different room or timeslot.
+
+STAGE 1: PASS   |   STAGE 2: <span class="num-red">FAIL</span>
+OVERALL RESULT: <span class="num-red">FAIL</span>   (exit code 1)</pre>
+    <div class="callout warn">
+      <b>Confirmed</b>
+      The validator correctly isolated the fault to Stage 2 specifically &mdash; Stage 1's audit remained PASS since sectioning was never touched &mdash; named the exact room/timeslot/sections involved, and issued an actionable fix. This confirms the diagnostic engine discriminates real failures rather than passing everything unconditionally.
+    </div>
+
+    <h3>4.4 Final verdict</h3>
+    <pre>STAGE 1: PASS   |   STAGE 2: PASS
+OVERALL RESULT: <span class="num-green">PASS</span></pre>
+    <div class="callout good">
+      <b>Conclusion</b>
+      The integrated pipeline, run end-to-end, produces a fully valid, optimally-balanced, fully-scheduled timetable &mdash; with the Stage 1 &rarr; Stage 2 hand-off object proven sufficient and self-contained for Stage 2 to work from without reopening any sectioning questions.
+    </div>
+
+    <footer>
+      <span>Integrated 2-Stage Pipeline &mdash; Technical Case Study</span>
+      <span>integrated_pipeline_qa/</span>
+    </footer>
+
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,228 @@
+[
+  {
+    "section_id": "CS101-SEC1",
+    "course_id": "CS101",
+    "professor": "P03",
+    "students": [
+      "CS101-S001",
+      "CS101-S002",
+      "CS101-S003",
+      "CS101-S004",
+      "CS101-S005",
+      "CS101-S006",
+      "CS101-S007",
+      "CS101-S008",
+      "CS101-S009",
+      "CS101-S010",
+      "CS101-S011",
+      "CS101-S012",
+      "CS101-S013",
+      "CS101-S014",
+      "CS101-S015",
+      "CS101-S016",
+      "CS101-S017",
+      "CS101-S018",
+      "CS101-S019",
+      "CS101-S020",
+      "CS101-S021",
+      "CS101-S022",
+      "CS101-S023",
+      "CS101-S024",
+      "CS101-S025",
+      "CS101-S026",
+      "CS101-S027",
+      "CS101-S028"
+    ],
+    "sessions": [
+      {
+        "day": "Mon",
+        "start_time": "13:00",
+        "room_id": "LEC-A"
+      },
+      {
+        "day": "Tue",
+        "start_time": "08:00",
+        "room_id": "LEC-A"
+      }
+    ]
+  },
+  {
+    "section_id": "CS101-SEC2",
+    "course_id": "CS101",
+    "professor": "P03",
+    "students": [
+      "CS101-S029",
+      "CS101-S030",
+      "CS101-S031",
+      "CS101-S032",
+      "CS101-S033",
+      "CS101-S034",
+      "CS101-S035",
+      "CS101-S036",
+      "CS101-S037",
+      "CS101-S038",
+      "CS101-S039",
+      "CS101-S040",
+      "CS101-S041",
+      "CS101-S042",
+      "CS101-S043",
+      "CS101-S044",
+      "CS101-S045",
+      "CS101-S046",
+      "CS101-S047",
+      "CS101-S048",
+      "CS101-S049",
+      "CS101-S050",
+      "CS101-S051",
+      "CS101-S052",
+      "CS101-S053",
+      "CS101-S054",
+      "CS101-S055"
+    ],
+    "sessions": [
+      {
+        "day": "Fri",
+        "start_time": "10:00",
+        "room_id": "LEC-A"
+      },
+      {
+        "day": "Wed",
+        "start_time": "13:00",
+        "room_id": "LEC-A"
+      }
+    ]
+  },
+  {
+    "section_id": "ITS101-SEC1",
+    "course_id": "ITS101",
+    "professor": "P01",
+    "students": [
+      "ITS101-S001",
+      "ITS101-S002",
+      "ITS101-S003",
+      "ITS101-S004",
+      "ITS101-S005",
+      "ITS101-S006",
+      "ITS101-S007"
+    ],
+    "sessions": [
+      {
+        "day": "Tue",
+        "start_time": "11:00",
+        "room_id": "LEC-C"
+      },
+      {
+        "day": "Tue",
+        "start_time": "13:00",
+        "room_id": "LEC-C"
+      }
+    ]
+  },
+  {
+    "section_id": "ITS101-SEC2",
+    "course_id": "ITS101",
+    "professor": "P01",
+    "students": [
+      "ITS101-S008",
+      "ITS101-S009",
+      "ITS101-S010",
+      "ITS101-S011",
+      "ITS101-S012",
+      "ITS101-S013",
+      "ITS101-S014"
+    ],
+    "sessions": [
+      {
+        "day": "Thu",
+        "start_time": "10:00",
+        "room_id": "LEC-C"
+      },
+      {
+        "day": "Thu",
+        "start_time": "12:00",
+        "room_id": "LEC-C"
+      }
+    ]
+  },
+  {
+    "section_id": "ITS101L-SEC1",
+    "course_id": "ITS101L",
+    "professor": "P02",
+    "students": [
+      "ITS101L-S001",
+      "ITS101L-S002",
+      "ITS101L-S003",
+      "ITS101L-S004",
+      "ITS101L-S005",
+      "ITS101L-S006",
+      "ITS101L-S007"
+    ],
+    "sessions": [
+      {
+        "day": "Tue",
+        "start_time": "12:00",
+        "room_id": "LAB-A"
+      }
+    ]
+  },
+  {
+    "section_id": "ITS101L-SEC2",
+    "course_id": "ITS101L",
+    "professor": "P02",
+    "students": [
+      "ITS101L-S008",
+      "ITS101L-S009",
+      "ITS101L-S010",
+      "ITS101L-S011",
+      "ITS101L-S012",
+      "ITS101L-S013",
+      "ITS101L-S014"
+    ],
+    "sessions": [
+      {
+        "day": "Thu",
+        "start_time": "11:00",
+        "room_id": "LAB-A"
+      }
+    ]
+  },
+  {
+    "section_id": "MATH201-SEC1",
+    "course_id": "MATH201",
+    "professor": "P04",
+    "students": [
+      "MATH201-S001",
+      "MATH201-S002",
+      "MATH201-S003",
+      "MATH201-S004",
+      "MATH201-S005",
+      "MATH201-S006",
+      "MATH201-S007",
+      "MATH201-S008",
+      "MATH201-S009",
+      "MATH201-S010",
+      "MATH201-S011",
+      "MATH201-S012",
+      "MATH201-S013",
+      "MATH201-S014",
+      "MATH201-S015",
+      "MATH201-S016",
+      "MATH201-S017",
+      "MATH201-S018",
+      "MATH201-S019",
+      "MATH201-S020"
+    ],
+    "sessions": [
+      {
+        "day": "Mon",
+        "start_time": "10:00",
+        "room_id": "LEC-C"
+      },
+      {
+        "day": "Wed",
+        "start_time": "16:00",
+        "room_id": "LEC-C"
+      }
+    ]
+  }
+]

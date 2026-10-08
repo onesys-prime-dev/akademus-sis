@@ -1,0 +1,505 @@
+{
+  "metadata": {
+    "description": "Integrated 2-Stage Pipeline test dataset: Stage 1 (Section Load Balancing) feeds Stage 2 (CSP Timetable Scheduling).",
+    "notes": [
+      "ITS101 (14 students, cap 13) forces 2 sections [7,7]; corequisite ITS101L (14 students, cap 8) also forces 2 sections [7,7] -- paired positionally (SEC1<->SEC1, SEC2<->SEC2) for non-overlap enforcement in Stage 2.",
+      "CS101 (55 students, cap 30) forces 2 sections [28,27] -- only LEC-A/LEC-B (cap 30) can legally host the 28-student section.",
+      "MATH201 (20 students, cap 25) fits in a single section [20].",
+      "No building contains both Lecture and Lab room types (North Hall = Lecture only, East Annex = Lab only), mirroring the campus-layout constraint from the standalone scheduling engine test."
+    ]
+  },
+  "courses": [
+    {
+      "course_id": "ITS101",
+      "department": "Information Technology",
+      "students": [
+        "ITS101-S001",
+        "ITS101-S002",
+        "ITS101-S003",
+        "ITS101-S004",
+        "ITS101-S005",
+        "ITS101-S006",
+        "ITS101-S007",
+        "ITS101-S008",
+        "ITS101-S009",
+        "ITS101-S010",
+        "ITS101-S011",
+        "ITS101-S012",
+        "ITS101-S013",
+        "ITS101-S014"
+      ],
+      "max_capacity": 13,
+      "required_room_type": "Lecture",
+      "assigned_professor": "P01",
+      "sessions_per_week": 2,
+      "corequisite_course": "ITS101L"
+    },
+    {
+      "course_id": "ITS101L",
+      "department": "Information Technology",
+      "students": [
+        "ITS101L-S001",
+        "ITS101L-S002",
+        "ITS101L-S003",
+        "ITS101L-S004",
+        "ITS101L-S005",
+        "ITS101L-S006",
+        "ITS101L-S007",
+        "ITS101L-S008",
+        "ITS101L-S009",
+        "ITS101L-S010",
+        "ITS101L-S011",
+        "ITS101L-S012",
+        "ITS101L-S013",
+        "ITS101L-S014"
+      ],
+      "max_capacity": 8,
+      "required_room_type": "Lab",
+      "assigned_professor": "P02",
+      "sessions_per_week": 1,
+      "corequisite_course": "ITS101"
+    },
+    {
+      "course_id": "CS101",
+      "department": "Computer Science",
+      "students": [
+        "CS101-S001",
+        "CS101-S002",
+        "CS101-S003",
+        "CS101-S004",
+        "CS101-S005",
+        "CS101-S006",
+        "CS101-S007",
+        "CS101-S008",
+        "CS101-S009",
+        "CS101-S010",
+        "CS101-S011",
+        "CS101-S012",
+        "CS101-S013",
+        "CS101-S014",
+        "CS101-S015",
+        "CS101-S016",
+        "CS101-S017",
+        "CS101-S018",
+        "CS101-S019",
+        "CS101-S020",
+        "CS101-S021",
+        "CS101-S022",
+        "CS101-S023",
+        "CS101-S024",
+        "CS101-S025",
+        "CS101-S026",
+        "CS101-S027",
+        "CS101-S028",
+        "CS101-S029",
+        "CS101-S030",
+        "CS101-S031",
+        "CS101-S032",
+        "CS101-S033",
+        "CS101-S034",
+        "CS101-S035",
+        "CS101-S036",
+        "CS101-S037",
+        "CS101-S038",
+        "CS101-S039",
+        "CS101-S040",
+        "CS101-S041",
+        "CS101-S042",
+        "CS101-S043",
+        "CS101-S044",
+        "CS101-S045",
+        "CS101-S046",
+        "CS101-S047",
+        "CS101-S048",
+        "CS101-S049",
+        "CS101-S050",
+        "CS101-S051",
+        "CS101-S052",
+        "CS101-S053",
+        "CS101-S054",
+        "CS101-S055"
+      ],
+      "max_capacity": 30,
+      "required_room_type": "Lecture",
+      "assigned_professor": "P03",
+      "sessions_per_week": 2,
+      "corequisite_course": null
+    },
+    {
+      "course_id": "MATH201",
+      "department": "Mathematics",
+      "students": [
+        "MATH201-S001",
+        "MATH201-S002",
+        "MATH201-S003",
+        "MATH201-S004",
+        "MATH201-S005",
+        "MATH201-S006",
+        "MATH201-S007",
+        "MATH201-S008",
+        "MATH201-S009",
+        "MATH201-S010",
+        "MATH201-S011",
+        "MATH201-S012",
+        "MATH201-S013",
+        "MATH201-S014",
+        "MATH201-S015",
+        "MATH201-S016",
+        "MATH201-S017",
+        "MATH201-S018",
+        "MATH201-S019",
+        "MATH201-S020"
+      ],
+      "max_capacity": 25,
+      "required_room_type": "Lecture",
+      "assigned_professor": "P04",
+      "sessions_per_week": 2,
+      "corequisite_course": null
+    }
+  ],
+  "corequisite_pairs": [
+    [
+      "ITS101",
+      "ITS101L"
+    ]
+  ],
+  "rooms": [
+    {
+      "id": "LEC-A",
+      "name": "Lecture Hall A",
+      "type": "Lecture",
+      "capacity": 30,
+      "building": "North Hall"
+    },
+    {
+      "id": "LEC-B",
+      "name": "Lecture Hall B",
+      "type": "Lecture",
+      "capacity": 30,
+      "building": "North Hall"
+    },
+    {
+      "id": "LEC-C",
+      "name": "Lecture Room C",
+      "type": "Lecture",
+      "capacity": 25,
+      "building": "North Hall"
+    },
+    {
+      "id": "LAB-A",
+      "name": "Computer Lab A",
+      "type": "Lab",
+      "capacity": 8,
+      "building": "East Annex"
+    }
+  ],
+  "professors": [
+    {
+      "id": "P01",
+      "name": "Dr. A. Santos",
+      "unavailable_timeslots": [
+        "Mon-10:00",
+        "Tue-14:00",
+        "Fri-09:00"
+      ]
+    },
+    {
+      "id": "P02",
+      "name": "Dr. B. Reyes",
+      "unavailable_timeslots": [
+        "Wed-11:00",
+        "Thu-15:00"
+      ]
+    },
+    {
+      "id": "P03",
+      "name": "Dr. C. Cruz",
+      "unavailable_timeslots": [
+        "Mon-09:00",
+        "Mon-10:00",
+        "Tue-13:00",
+        "Wed-08:00"
+      ]
+    },
+    {
+      "id": "P04",
+      "name": "Dr. D. Bautista",
+      "unavailable_timeslots": [
+        "Fri-12:00",
+        "Thu-10:00"
+      ]
+    }
+  ],
+  "timeslots": [
+    {
+      "id": "Mon-08:00",
+      "day": "Mon",
+      "start_time": "08:00",
+      "end_time": "09:00"
+    },
+    {
+      "id": "Mon-09:00",
+      "day": "Mon",
+      "start_time": "09:00",
+      "end_time": "10:00"
+    },
+    {
+      "id": "Mon-10:00",
+      "day": "Mon",
+      "start_time": "10:00",
+      "end_time": "11:00"
+    },
+    {
+      "id": "Mon-11:00",
+      "day": "Mon",
+      "start_time": "11:00",
+      "end_time": "12:00"
+    },
+    {
+      "id": "Mon-12:00",
+      "day": "Mon",
+      "start_time": "12:00",
+      "end_time": "13:00"
+    },
+    {
+      "id": "Mon-13:00",
+      "day": "Mon",
+      "start_time": "13:00",
+      "end_time": "14:00"
+    },
+    {
+      "id": "Mon-14:00",
+      "day": "Mon",
+      "start_time": "14:00",
+      "end_time": "15:00"
+    },
+    {
+      "id": "Mon-15:00",
+      "day": "Mon",
+      "start_time": "15:00",
+      "end_time": "16:00"
+    },
+    {
+      "id": "Mon-16:00",
+      "day": "Mon",
+      "start_time": "16:00",
+      "end_time": "17:00"
+    },
+    {
+      "id": "Tue-08:00",
+      "day": "Tue",
+      "start_time": "08:00",
+      "end_time": "09:00"
+    },
+    {
+      "id": "Tue-09:00",
+      "day": "Tue",
+      "start_time": "09:00",
+      "end_time": "10:00"
+    },
+    {
+      "id": "Tue-10:00",
+      "day": "Tue",
+      "start_time": "10:00",
+      "end_time": "11:00"
+    },
+    {
+      "id": "Tue-11:00",
+      "day": "Tue",
+      "start_time": "11:00",
+      "end_time": "12:00"
+    },
+    {
+      "id": "Tue-12:00",
+      "day": "Tue",
+      "start_time": "12:00",
+      "end_time": "13:00"
+    },
+    {
+      "id": "Tue-13:00",
+      "day": "Tue",
+      "start_time": "13:00",
+      "end_time": "14:00"
+    },
+    {
+      "id": "Tue-14:00",
+      "day": "Tue",
+      "start_time": "14:00",
+      "end_time": "15:00"
+    },
+    {
+      "id": "Tue-15:00",
+      "day": "Tue",
+      "start_time": "15:00",
+      "end_time": "16:00"
+    },
+    {
+      "id": "Tue-16:00",
+      "day": "Tue",
+      "start_time": "16:00",
+      "end_time": "17:00"
+    },
+    {
+      "id": "Wed-08:00",
+      "day": "Wed",
+      "start_time": "08:00",
+      "end_time": "09:00"
+    },
+    {
+      "id": "Wed-09:00",
+      "day": "Wed",
+      "start_time": "09:00",
+      "end_time": "10:00"
+    },
+    {
+      "id": "Wed-10:00",
+      "day": "Wed",
+      "start_time": "10:00",
+      "end_time": "11:00"
+    },
+    {
+      "id": "Wed-11:00",
+      "day": "Wed",
+      "start_time": "11:00",
+      "end_time": "12:00"
+    },
+    {
+      "id": "Wed-12:00",
+      "day": "Wed",
+      "start_time": "12:00",
+      "end_time": "13:00"
+    },
+    {
+      "id": "Wed-13:00",
+      "day": "Wed",
+      "start_time": "13:00",
+      "end_time": "14:00"
+    },
+    {
+      "id": "Wed-14:00",
+      "day": "Wed",
+      "start_time": "14:00",
+      "end_time": "15:00"
+    },
+    {
+      "id": "Wed-15:00",
+      "day": "Wed",
+      "start_time": "15:00",
+      "end_time": "16:00"
+    },
+    {
+      "id": "Wed-16:00",
+      "day": "Wed",
+      "start_time": "16:00",
+      "end_time": "17:00"
+    },
+    {
+      "id": "Thu-08:00",
+      "day": "Thu",
+      "start_time": "08:00",
+      "end_time": "09:00"
+    },
+    {
+      "id": "Thu-09:00",
+      "day": "Thu",
+      "start_time": "09:00",
+      "end_time": "10:00"
+    },
+    {
+      "id": "Thu-10:00",
+      "day": "Thu",
+      "start_time": "10:00",
+      "end_time": "11:00"
+    },
+    {
+      "id": "Thu-11:00",
+      "day": "Thu",
+      "start_time": "11:00",
+      "end_time": "12:00"
+    },
+    {
+      "id": "Thu-12:00",
+      "day": "Thu",
+      "start_time": "12:00",
+      "end_time": "13:00"
+    },
+    {
+      "id": "Thu-13:00",
+      "day": "Thu",
+      "start_time": "13:00",
+      "end_time": "14:00"
+    },
+    {
+      "id": "Thu-14:00",
+      "day": "Thu",
+      "start_time": "14:00",
+      "end_time": "15:00"
+    },
+    {
+      "id": "Thu-15:00",
+      "day": "Thu",
+      "start_time": "15:00",
+      "end_time": "16:00"
+    },
+    {
+      "id": "Thu-16:00",
+      "day": "Thu",
+      "start_time": "16:00",
+      "end_time": "17:00"
+    },
+    {
+      "id": "Fri-08:00",
+      "day": "Fri",
+      "start_time": "08:00",
+      "end_time": "09:00"
+    },
+    {
+      "id": "Fri-09:00",
+      "day": "Fri",
+      "start_time": "09:00",
+      "end_time": "10:00"
+    },
+    {
+      "id": "Fri-10:00",
+      "day": "Fri",
+      "start_time": "10:00",
+      "end_time": "11:00"
+    },
+    {
+      "id": "Fri-11:00",
+      "day": "Fri",
+      "start_time": "11:00",
+      "end_time": "12:00"
+    },
+    {
+      "id": "Fri-12:00",
+      "day": "Fri",
+      "start_time": "12:00",
+      "end_time": "13:00"
+    },
+    {
+      "id": "Fri-13:00",
+      "day": "Fri",
+      "start_time": "13:00",
+      "end_time": "14:00"
+    },
+    {
+      "id": "Fri-14:00",
+      "day": "Fri",
+      "start_time": "14:00",
+      "end_time": "15:00"
+    },
+    {
+      "id": "Fri-15:00",
+      "day": "Fri",
+      "start_time": "15:00",
+      "end_time": "16:00"
+    },
+    {
+      "id": "Fri-16:00",
+      "day": "Fri",
+      "start_time": "16:00",
+      "end_time": "17:00"
+    }
+  ]
+}
