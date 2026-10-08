@@ -357,9 +357,97 @@ class ChairpersonController extends BaseController
             'swap_approvals'   => $this->swapApprovals(),
             'change_requests'  => $this->changeRequestApprovals(),
             'unread_notifications' => (new NotificationModel())->unreadCount((int) auth()->id()),
+
+            // Which Year Level options (for the currently selected program
+            // + term) still have a department-owned subject pending —
+            // annotated in the dropdown so switching to the lowest one
+            // (see bestYearLevelForBorrowedSubject()) doesn't hide that
+            // another year level also needs attention.
+            'year_levels_needing_attention' => $this->yearLevelsNeedingAttention($context['program'], $context['academic_year']),
         ];
 
         return view('chairperson/schedule_plotting', $data);
+    }
+
+    /**
+     * For the given program + term, how many of this chairperson's
+     * authorized department's required subjects are NOT YET plotted
+     * anywhere for that year level — keyed by year level label, used to
+     * badge the Year Level dropdown (e.g. "2nd Year — 2 to plot") so a
+     * pending requirement in a year level OTHER than the one just jumped
+     * to isn't missed. Unlike bestYearLevelForBorrowedSubject(), this
+     * covers ALL year levels, not just the lowest, and applies to the
+     * chairperson's own program too (not just borrowed ones) since "still
+     * unplotted" is a useful signal either way. A year level with
+     * everything already plotted is omitted entirely (count 0).
+     *
+     * @return array<string, int> e.g. ['1st Year' => 3, '2nd Year' => 1]
+     */
+    private function yearLevelsNeedingAttention(string $program, string $academicYear): array
+    {
+        $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
+        if ($subDeptIds === []) {
+            return [];
+        }
+
+        $programId = DepartmentModel::programIdOfName($program);
+        if ($programId === null) {
+            return [];
+        }
+
+        $semester = TermCurriculum::semesterOf($academicYear);
+        if ($semester === null) {
+            return [];
+        }
+
+        $required = db_connect()->table('curriculum_subjects cs')
+            ->select('cs.year_level, s.subject_code')
+            ->distinct()
+            ->join('curriculum cu', 'cu.curriculum_id = cs.curriculum_id')
+            ->join('subjects s', 's.subject_id = cs.subject_id')
+            ->where('cu.program_id', $programId)
+            ->where('cs.semester', $semester)
+            ->where('cs.is_active', 1)
+            ->where('s.is_active', 1)
+            ->whereIn('s.sub_department_id', $subDeptIds)
+            ->get()
+            ->getResultArray();
+
+        if ($required === []) {
+            return [];
+        }
+
+        $labels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+
+        $plottedSubjectsByYear = [];
+        foreach (array_unique(array_column($required, 'year_level')) as $yl) {
+            $plottedSubjectsByYear[$yl] = array_column(
+                db_connect()->table('plotted_schedules')
+                    ->select('subject_code')
+                    ->distinct()
+                    ->where('program', $program)
+                    ->where('year_level', $labels[((int) $yl) - 1] ?? '')
+                    ->where('academic_year', $academicYear)
+                    ->get()
+                    ->getResultArray(),
+                'subject_code'
+            );
+        }
+
+        $counts = [];
+        foreach ($required as $row) {
+            $yl    = (int) $row['year_level'];
+            $label = $labels[$yl - 1] ?? null;
+            if ($label === null) {
+                continue;
+            }
+            if (in_array($row['subject_code'], $plottedSubjectsByYear[$yl] ?? [], true)) {
+                continue; // already plotted somewhere for this year level — not pending
+            }
+            $counts[$label] = ($counts[$label] ?? 0) + 1;
+        }
+
+        return $counts;
     }
 
     /**
@@ -1298,6 +1386,31 @@ class ChairpersonController extends BaseController
                 continue; // view-only data, not a real context key (see contextFromRequest())
             }
 
+            // 'section' depends on program + year_level, which a generic,
+            // GET-query-string-based $filters['section'] can't know for a
+            // JSON POST (no query string at all here) — sectionOptions()
+            // has to guess a default in that case, and the save's actual
+            // program/year_level don't necessarily match that guess (e.g.
+            // a borrowing chairperson's own program isn't first in the
+            // list). Validate directly against sections for THIS payload's
+            // already-resolved program/year_level/academic_year instead of
+            // the precomputed, guessed list.
+            if ($key === 'section') {
+                $allowed = array_values(array_unique(array_filter(array_map(
+                    'trim',
+                    array_column(
+                        db_connect()->table('sections')
+                            ->select('section')
+                            ->where('program', $context['program'])
+                            ->where('year_level', $context['year_level'])
+                            ->where('academic_year', $context['academic_year'])
+                            ->get()
+                            ->getResultArray(),
+                        'section'
+                    )
+                ), static fn ($n) => $n !== '')));
+            }
+
             if (! isset($payload['context'][$key]) || ! in_array($payload['context'][$key], $allowed, true)) {
                 return $this->fail("Invalid or missing context: {$key}");
             }
@@ -1830,7 +1943,28 @@ class ChairpersonController extends BaseController
         $filters = $this->filters();
 
         foreach (['academic_year', 'program', 'year_level', 'section'] as $key) {
-            if (! in_array($payload[$key], $filters[$key], true)) {
+            // Same reasoning as sync(): $filters['section'] is a generic,
+            // GET-query-string-guessed list that doesn't necessarily match
+            // THIS payload's actual program/year_level for a JSON POST —
+            // validate it directly against the real sections for the
+            // payload's own program/year_level/academic_year instead.
+            $allowed = $key === 'section'
+                ? array_values(array_unique(array_filter(array_map(
+                    'trim',
+                    array_column(
+                        db_connect()->table('sections')
+                            ->select('section')
+                            ->where('program', $payload['program'])
+                            ->where('year_level', $payload['year_level'])
+                            ->where('academic_year', $payload['academic_year'])
+                            ->get()
+                            ->getResultArray(),
+                        'section'
+                    )
+                ), static fn ($n) => $n !== '')))
+                : $filters[$key];
+
+            if (! in_array($payload[$key], $allowed, true)) {
                 return $this->fail("Invalid or missing context: {$key}");
             }
         }
@@ -2419,9 +2553,26 @@ class ChairpersonController extends BaseController
             return array_values($rows);
         };
 
-        $db      = db_connect();
-        $program = $this->request->getGet('program');
-        $year    = $this->request->getGet('year_level');
+        $db       = db_connect();
+        $program  = $this->request->getGet('program');
+        $year     = $this->request->getGet('year_level');
+        $ayLabel  = $this->request->getGet('ay_label');
+        $semester = $this->request->getGet('semester');
+        $academicYear = (is_string($ayLabel) && is_string($semester))
+            ? AcademicYearModel::format($ayLabel, $semester)
+            : null;
+
+        // The year_level param is absent exactly when contextFromRequest()
+        // is about to smart-jump to a borrowed-subject year level (see
+        // bestYearLevelForBorrowedSubject() — the Program switch's client
+        // side deliberately strips year_level/section so that jump can
+        // happen). Without this, sectionOptions() wouldn't know which year
+        // level contextFromRequest() is about to land on, and would
+        // broaden to every year level's sections instead (e.g. leaking
+        // IT2/IT3/IT4 into a 1st-Year-only view).
+        if ($year === null && is_string($program) && $academicYear !== null) {
+            $year = $this->bestYearLevelForBorrowedSubject($program, $academicYear);
+        }
 
         // Narrow to what is being viewed when the request says so (page
         // loads); JSON saves carry no query string and get the department-wide list.
@@ -2429,11 +2580,8 @@ class ChairpersonController extends BaseController
             if (is_string($year) && in_array($year, self::FILTERS['year_level'], true)) {
                 $scoped = $db->table('sections')->where('program', $program)->where('year_level', $year);
 
-                $ayLabel  = $this->request->getGet('ay_label');
-                $semester = $this->request->getGet('semester');
-
-                if (is_string($ayLabel) && is_string($semester)) {
-                    $scoped->where('academic_year', AcademicYearModel::format($ayLabel, $semester));
+                if ($academicYear !== null) {
+                    $scoped->where('academic_year', $academicYear);
                 }
 
                 $found = $names($scoped);
@@ -2457,14 +2605,25 @@ class ChairpersonController extends BaseController
 
         // No program in the query string at all (e.g. a bare first-login
         // page load, before any filter has been explicitly picked) — scope
-        // to just the program that will actually end up as the default
-        // (the same $allowed[0] fallback contextFromRequest() uses for the
-        // 'program' key), not every program the department owns. Mixing
-        // sections across ALL programs here leaked another program's
-        // section name (e.g. BSCS's "A") into a different program's
-        // dropdown, since both ended up listed together while only one
-        // program was actually being displayed.
-        return $names($db->table('sections')->where('program', $programs[0]));
+        // to just the program AND year level that will actually end up as
+        // the default (the same $allowed[0] fallback contextFromRequest()
+        // uses for 'program', and self::FILTERS['year_level'][0] for
+        // 'year_level'), not every program/year the department owns.
+        // Leaving year_level unfiltered here leaked every year level's
+        // section names together (e.g. IT1-IT4 all showing under a
+        // 1st-Year-only view) the same way leaving program unfiltered
+        // leaked another program's section name across programs.
+        $defaultProgram   = $programs[0];
+        $defaultYearLevel = self::FILTERS['year_level'][0] ?? null;
+
+        if ($defaultYearLevel !== null) {
+            $found = $names($db->table('sections')->where('program', $defaultProgram)->where('year_level', $defaultYearLevel));
+            if ($found !== []) {
+                return $found;
+            }
+        }
+
+        return $names($db->table('sections')->where('program', $defaultProgram));
     }
 
     /**

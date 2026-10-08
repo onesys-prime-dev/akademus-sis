@@ -72,7 +72,8 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
                 <label for="<?= esc($id, 'attr') ?>"><?= esc($label) ?></label>
                 <select name="<?= esc($name, 'attr') ?>" class="context-select" id="<?= esc($id, 'attr') ?>">
                     <?php foreach ($options as $option): ?>
-                        <option <?= $option === $current ? 'selected' : '' ?>><?= esc($option) ?></option>
+                        <?php $pendingCount = $name === 'year_level' ? ($year_levels_needing_attention[$option] ?? 0) : 0; ?>
+                        <option value="<?= esc($option, 'attr') ?>" <?= $option === $current ? 'selected' : '' ?>><?= esc($option) ?><?= $pendingCount > 0 ? ' — ' . $pendingCount . ' to plot' : '' ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
