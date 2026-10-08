@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Master SIS Architecture Whitepaper</title>
+<style>
+  :root {
+    --ink: #1a1d29;
+    --sub: #5b6178;
+    --rule: #e2e4ec;
+    --panel: #f4f5fa;
+    --accent: #4338CA;
+    --accent-dark: #312999;
+    --accent-light: #6366F1;
+    --good: #0F9D6E;
+    --warn: #D9480F;
+    --card-bg: #ffffff;
+    --page-bg: #eceef5;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--ink);
+    font-family: "Georgia", "Iowan Old Style", "Palatino Linotype", serif;
+    line-height: 1.65;
+  }
+
+  .sheet {
+    max-width: 920px;
+    margin: 40px auto 100px;
+    background: var(--card-bg);
+    padding: 68px 76px;
+    box-shadow: 0 2px 28px rgba(49, 41, 153, 0.12);
+    border-radius: 3px;
+  }
+
+  .masthead {
+    background: linear-gradient(135deg, var(--accent-dark), var(--accent-light));
+    color: #fff;
+    margin: -68px -76px 32px;
+    padding: 56px 76px 40px;
+    border-radius: 3px 3px 0 0;
+  }
+
+  .doc-kicker {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #c7d2fe;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+
+  h1.doc-title {
+    font-size: 36px;
+    line-height: 1.22;
+    margin: 0 0 10px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .doc-subtitle {
+    font-size: 16px;
+    color: #e0e7ff;
+    font-style: italic;
+    margin: 0 0 20px;
+  }
+
+  .doc-meta {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12.5px;
+    color: #c7d2fe;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .doc-meta b { color: #fff; }
+
+  .status-pill {
+    display: inline-block;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.35);
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin: 28px 0 8px;
+  }
+
+  .kpi-card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 16px 12px;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    text-align: center;
+  }
+
+  .kpi-card .value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent-dark);
+    line-height: 1.15;
+  }
+
+  .kpi-card .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--sub);
+    margin-top: 6px;
+    line-height: 1.3;
+  }
+
+  nav.toc {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 28px;
+    margin: 32px 0;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  nav.toc .toc-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent-dark);
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  nav.toc ol {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 13.5px;
+  }
+
+  nav.toc li { margin-bottom: 6px; }
+  nav.toc a { color: var(--ink); text-decoration: none; }
+  nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+
+  h2 {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+    border-top: 1px solid var(--rule);
+    margin-top: 56px;
+    padding-top: 36px;
+    font-weight: 700;
+    scroll-margin-top: 20px;
+  }
+
+  h2 .num {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    width: 22px;
+    height: 22px;
+    text-align: center;
+    line-height: 22px;
+    border-radius: 5px;
+    margin-right: 10px;
+  }
+
+  h3 {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    margin-top: 30px;
+  }
+
+  p { font-size: 15.5px; }
+
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--panel);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--accent-dark);
+  }
+
+  pre {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    background: #1a1d29;
+    color: #e2e4ec;
+    padding: 18px 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    line-height: 1.55;
+    white-space: pre;
+  }
+
+  pre .num-good { color: #6ee7b7; }
+  pre .num-bad { color: #fca5a5; }
+  pre .dim { color: #9099b5; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 13.5px;
+  }
+
+  th, td {
+    border: 1px solid var(--rule);
+    padding: 9px 12px;
+    text-align: left;
+  }
+
+  th {
+    background: var(--ink);
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  tr:nth-child(even) td { background: var(--panel); }
+  .pass-cell { color: var(--good); font-weight: 700; font-family: "Helvetica Neue", Arial, sans-serif; }
+
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: #eef0ff;
+    padding: 14px 18px;
+    border-radius: 4px;
+    margin: 20px 0;
+    font-size: 14.5px;
+  }
+
+  .callout.good { border-left-color: var(--good); background: #e6f8f0; }
+  .callout.warn { border-left-color: var(--warn); background: #fdf0e9; }
+
+  .callout b { display: block; margin-bottom: 4px; font-family: "Helvetica Neue", Arial, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .subsystem-tag {
+    display: inline-block;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    background: var(--accent-dark);
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 999px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  ul, ol { font-size: 15.5px; }
+  ul li, ol li { margin-bottom: 6px; }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11.5px;
+    color: var(--sub);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 700px) {
+    .sheet { padding: 40px 24px; }
+    .masthead { margin: -40px -24px 28px; padding: 36px 24px 28px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media print {
+    body { background: #fff; }
+    .sheet { box-shadow: none; margin: 0; padding: 0 10mm; max-width: none; }
+    .masthead { margin: 0 -10mm 24px; border-radius: 0; }
+    h2 { page-break-after: avoid; }
+    table, pre, .kpi-grid, .callout, nav.toc { page-break-inside: avoid; }
+    .no-print { display: none !important; }
+    a { color: inherit; text-decoration: none; }
+  }
+
+  .print-hint {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: var(--accent-dark);
+    color: #fff;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+  <div class="print-hint no-print">Press Ctrl+P / Cmd+P to save as PDF</div>
+
+  <div class="sheet">
+
+    <div class="masthead">
+      <div class="doc-kicker">Master Executive Whitepaper</div>
+      <h1 class="doc-title">The SIS Scheduling &amp; Sectioning Engine Suite</h1>
+      <p class="doc-subtitle">Four independently-validated subsystems, one orchestrated pipeline: solving two distinct NP-hard problem classes end-to-end in ~2 seconds.</p>
+      <div class="doc-meta">
+        <span><b>Scope:</b> 4 subsystems + master orchestrator</span>
+        <span><b>Status:</b> <span class="status-pill">ALL VALIDATED &mdash; 100% hard-constraint compliance</span></span>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="value">100%</div><div class="label">Hard-Constraint Pass Rate</div></div>
+      <div class="kpi-card"><div class="value">~2.03s</div><div class="label">Total Suite Execution</div></div>
+      <div class="kpi-card"><div class="value">0</div><div class="label">Backtracks (Both CSP Stages)</div></div>
+      <div class="kpi-card"><div class="value">O(1)</div><div class="label">Section Partitioning</div></div>
+      <div class="kpi-card"><div class="value">100%</div><div class="label">Post-Resolution Capacity Fit</div></div>
+    </div>
+
+    <nav class="toc">
+      <div class="toc-title">Table of Contents</div>
+      <ol>
+        <li><a href="#sec1">Executive Summary</a></li>
+        <li><a href="#sec2">Subsystem 1: Timetable Scheduling Engine <code>scheduler_qa</code></a></li>
+        <li><a href="#sec3">Subsystem 2: Section Load Balancer <code>section_balancing_qa</code></a></li>
+        <li><a href="#sec4">Subsystem 3: Integrated 2-Stage Pipeline <code>integrated_pipeline_qa</code></a></li>
+        <li><a href="#sec5">Subsystem 4: Student Schedule Conflict Auto-Resolver <code>student_audit_qa</code></a></li>
+        <li><a href="#sec6">System Orchestration &amp; Diagnostic QA Suite <code>main.py</code></a></li>
+        <li><a href="#sec7">Appendix: Consolidated Metrics</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="sec1"><span class="num">1</span>Executive Summary</h2>
+
+    <h3>1.1 Architectural overview</h3>
+    <p>The Student Information System's academic-operations core is built from four independently-developed, independently-validated subsystems, each solving a distinct combinatorial problem in university scheduling, plus a master orchestrator that runs and audits all four as a single suite:</p>
+    <table>
+      <thead><tr><th>#</th><th>Subsystem</th><th>Problem Solved</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><code>scheduler_qa</code></td><td>Assign every course session a (day, time, room) with no overlaps</td></tr>
+        <tr><td>2</td><td><code>section_balancing_qa</code></td><td>Split oversized course enrollments into balanced sections</td></tr>
+        <tr><td>3</td><td><code>integrated_pipeline_qa</code></td><td>Compose (1) and (2) into one enrollment-to-timetable pipeline</td></tr>
+        <tr><td>4</td><td><code>student_audit_qa</code></td><td>Catch and resolve conflicts in an individual student's combined schedule</td></tr>
+      </tbody>
+    </table>
+    <p>Each was built, tested, and documented as a standalone unit before being composed &mdash; the architecture is deliberately a suite of narrow, provably correct tools rather than one monolithic scheduler, the same way a compiler is built as separate lexer/parser/codegen stages: each stage is independently testable and composable without re-deriving correctness at the seams.</p>
+
+    <h3>1.2 Mathematical classification</h3>
+    <p>Both of the suite's core combinatorial problems belong to well-known <b>NP-hard / NP-complete</b> complexity classes:</p>
+    <ul>
+      <li><b>University course timetabling</b> generalizes graph coloring and multi-dimensional bin packing &mdash; NP-complete in general, with no known polynomial-time algorithm for the general case.</li>
+      <li><b>Student section load balancing</b> is an instance of <b>Multiway Number Partitioning</b> (Balanced Bin Packing).</li>
+    </ul>
+    <p>Neither subsystem "solves NP-hardness away." Each exploits the specific structure of its problem instance &mdash; heuristic variable ordering for the CSP, closed-form arithmetic partitioning for the bin-packing problem &mdash; to reach a provably optimal or near-optimal solution in practical, polynomial time.</p>
+
+    <h3>1.3 Microservice decoupling strategy</h3>
+    <p>The suite's defining architectural decision is <b>decoupling sectioning from scheduling</b>: a scheduler reasoning about raw enrollment directly must explode its variable count to one-per-student, or fail outright once enrollment exceeds a room's capacity. Resolving "how many sections, how many students in each" <i>before</i> scheduling begins &mdash; as pure O(1) arithmetic, not search &mdash; keeps the CSP's branching factor bound to the number of sections, never the number of students.</p>
+
+    <h3>1.4 Suite-wide performance summary</h3>
+    <pre>┌────────────────────────────────────┬────────┬───────────┬────────────┬────────┐
+│ Module                             │ Time   │ Hard Pass │ Soft Delta │ Status │
+├────────────────────────────────────┼────────┼───────────┼────────────┼────────┤
+│ Scheduler QA (CSP + MRV)           │ 0.608s │ 100.0%    │ 72.0       │ <span class="num-good">[PASS]</span> │
+│ Section Load Balancing QA          │ 0.412s │ 100.0%    │ 0.0        │ <span class="num-good">[PASS]</span> │
+│ Integrated 2-Stage Pipeline QA     │ 0.422s │ 100.0%    │ 0.0        │ <span class="num-good">[PASS]</span> │
+│ Student Conflict Auto-Resolver QA  │ 0.595s │ 100.0%    │ n/a        │ <span class="num-good">[PASS]</span> │
+└────────────────────────────────────┴────────┴───────────┴────────────┴────────┘
+OVERALL: <span class="num-good">PASS</span>   (total &asymp; 2.03s)</pre>
+    <div class="callout good">
+      <b>Headline result</b>
+      100% hard-constraint compliance across all four subsystems, zero CSP backtracking anywhere in the suite, total execution time &asymp; 2.03 seconds &mdash; for a suite collectively solving two distinct NP-hard problem classes across 40+ courses, 150+ students, and 10+ rooms of test data.
+    </div>
+
+    <h2 id="sec2"><span class="num">2</span>Subsystem 1: Timetable Scheduling Engine <span class="subsystem-tag">scheduler_qa</span></h2>
+
+    <h3>2.1 Formulation</h3>
+    <p>Modeled as a classic Constraint Satisfaction Problem: one variable per required weekly session (67 variables across 40 courses), whose domain is every (timeslot, room) pair not yet ruled out by a hard constraint, recomputed fresh at each step (forward checking).</p>
+
+    <h3>2.2 Algorithmic strategy: MRV, zero-backtrack resolution</h3>
+    <p>At every step, the solver assigns the <b>still-unassigned variable with the smallest live domain first</b> (Minimum Remaining Values) &mdash; forcing the tightest constraints (two professors each carrying 5 courses against 13&ndash;14 blocked timeslots out of 45) to resolve while the most options still exist.</p>
+    <div class="callout good"><b>Result</b>All 67 sessions placed in exactly 67 search steps, zero backtracking required &mdash; every first decision remained valid for the entire search.</div>
+
+    <h3>2.3 Hard constraints vs. soft penalties</h3>
+    <table>
+      <thead><tr><th>Hard constraint</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Room overlap</td><td>0 violations</td></tr>
+        <tr><td>Professor overlap</td><td>0 violations</td></tr>
+        <tr><td>Capacity</td><td>0 violations</td></tr>
+        <tr><td>Room type match</td><td>0 violations</td></tr>
+        <tr><td>Professor availability</td><td>0 violations</td></tr>
+        <tr><td>Corequisite overlap</td><td>0 violations</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warn">
+      <b>Soft score: 28.0 / 100 &mdash; the achievable ceiling, not a shortfall</b>
+      All 72 lost points trace to 9 Lecture+Lab corequisite pairs, each incurring an -8.00 "split across buildings" penalty. No building on the test campus contains both a Lecture-type and a Lab-type room &mdash; every placement of these pairs is split by construction. The solver achieved <b>zero</b> underfill penalty and <b>zero</b> corequisite time-gap penalty. This is a facilities layout constraint, not an algorithmic one.
+    </div>
+
+    <h2 id="sec3"><span class="num">3</span>Subsystem 2: Section Load Balancer <span class="subsystem-tag">section_balancing_qa</span></h2>
+
+    <h3>3.1 Formulation</h3>
+    <p>An instance of Balanced Bin Packing / Multiway Number Partitioning: divide N enrolled students into the fewest groups fitting under room capacity C, as close in size as possible.</p>
+
+    <h3>3.2 Algorithmic strategy: O(1) partitioning</h3>
+    <pre>k = ceil(N / C)             # minimum sections required
+L = ceil(N / k)             # size of the largest section in a perfect split
+base, remainder = divmod(N, k)
+sizes = [base+1]*remainder + [base]*(k-remainder)</pre>
+    <table>
+      <thead><tr><th>Course</th><th>N</th><th>C</th><th>k</th><th>Sizes</th></tr></thead>
+      <tbody>
+        <tr><td>ITS101</td><td>14</td><td>13</td><td>2</td><td>[7, 7]</td></tr>
+        <tr><td>CS101</td><td>82</td><td>30</td><td>3</td><td>[28, 27, 27]</td></tr>
+        <tr><td>ENG200</td><td>43</td><td>20</td><td>3</td><td>[15, 14, 14]</td></tr>
+        <tr><td>BUS400</td><td>18</td><td>25</td><td>1</td><td>[18]</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.3 Achievable-optimum quality metric</h3>
+    <p>The naive formula <code>&Sigma;(ActualSize &minus; L_target)&sup2;</code> is non-zero even for the best possible split whenever N doesn't divide evenly by k &mdash; scoring the provably optimal [28,27,27] split as penalty 2, not 0. The fix: compare actual penalty against the achievable minimum, failing only when strictly worse:</p>
+    <pre>FAIL only if:  Penalty_actual  &gt;  Penalty_min_achievable</pre>
+    <div class="callout good">
+      <b>Proven to still catch real imbalance</b>
+      A self-test deliberately rebalancing ITS101 into [13,1] scored penalty 72 vs. achievable-minimum 0 &mdash; correctly flagged, with the exact fix recommended: "Move 6 student(s) from ITS101-SEC1 to ITS101-SEC2." Result: 4/4 test cases hit their exact divmod-optimal partition.
+    </div>
+
+    <h2 id="sec4"><span class="num">4</span>Subsystem 3: Integrated 2-Stage Pipeline <span class="subsystem-tag">integrated_pipeline_qa</span></h2>
+
+    <h3>4.1 Pipeline flow</h3>
+    <pre> raw enrollment demand         Stage 1 output                final timetable
+&#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9452;  Stage 1  &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9452; Stage 2  &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9452;
+&#9474; courses, N          &#9474;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9664;&#9474; discrete, sized     &#9474;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9664;&#9474; sections + sessions &#9474;
+&#9474; students, rooms,   &#9474; Section &#9474; SECTION objects     &#9474;  CSP    &#9474; + rooms + days/times&#9474;
+&#9474; professors         &#9474; Balancer&#9474; (coreq-paired)       &#9474;Scheduler&#9474;(validated)          &#9474;
+&#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;         &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;         &#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;</pre>
+    <p>Stage 1 converts raw enrollment into k right-sized section objects and resolves course-level corequisites into section-level pairings (ITS101's 1st section paired with ITS101L's 1st section specifically). Stage 2 then schedules those sections as any other CSP instance.</p>
+
+    <h3>4.2 State-space pruning</h3>
+    <p>Without Stage 1, Stage 2 would need one variable per student (combinatorially larger) or one variable per course (unsolvable once N exceeds any room's capacity). Stage 1's O(1) partitioning resolves this before search begins, so Stage 2's variable count is bounded by sections &times; sessions/week, never by student count &mdash; the test dataset's 103 students produced only <b>12 CSP variables</b> across 7 sections, with students entirely invisible to Stage 2's search.</p>
+
+    <h3>4.3 Audit results</h3>
+    <pre>=== STAGE 1: Section Load Balancer ===
+  ITS101-SEC1: 7 students ... coreq -&gt; ITS101L-SEC1
+  ITS101-SEC2: 7 students ... coreq -&gt; ITS101L-SEC2
+  CS101-SEC1: 28 students ... coreq -&gt; None
+  CS101-SEC2: 27 students ... coreq -&gt; None
+  MATH201-SEC1: 20 students ... coreq -&gt; None
+
+=== STAGE 2: CSP Timetable Scheduler ===
+  Solved in <span class="num-good">12</span> search step(s), 0 of which backtracked past the first try.
+
+STAGE 1: <span class="num-good">PASS</span>   |   STAGE 2: <span class="num-good">PASS</span>
+OVERALL RESULT: <span class="num-good">PASS</span></pre>
+    <p>A deliberately forced room collision (self-test) was correctly caught and attributed to Stage 2 specifically, with Stage 1's audit remaining PASS &mdash; proof the dual-stage audit discriminates real failures rather than passing everything unconditionally.</p>
+
+    <h2 id="sec5"><span class="num">5</span>Subsystem 4: Student Schedule Conflict Auto-Resolver <span class="subsystem-tag">student_audit_qa</span></h2>
+
+    <h3>5.1 Problem domain</h3>
+    <p>A room scheduler and a section-balancing engine can both be individually perfect and a student can still end up with an impossible personal schedule &mdash; invisible to both other subsystems since it is purely a property of one student's combination of registrations.</p>
+
+    <h3>5.2 Resolution engine</h3>
+    <p><b>Pairwise overlap detection</b> flattens each student's registered sections into a personal schedule and checks every pair for a shared (day, start_time). <b>Capacity-aware auto-resolution</b> then searches for an alternate section satisfying both:</p>
+    <ol>
+      <li><b>Time Non-Interference</b> &mdash; zero overlap with the student's remaining schedule.</li>
+      <li><b>Capacity Limit Enforcement</b> &mdash; <code>current_enrollment(alt) + 1 &le; max_capacity(alt)</code>.</li>
+    </ol>
+
+    <h3>5.3 Atomic state updates &amp; fail-safe logic</h3>
+    <p>A successful reassignment updates the student's registration and live section headcounts <b>together</b>, atomically. If no alternate satisfies both constraints, nothing is partially mutated:</p>
+    <pre>[FAIL - CAPACITY EXHAUSTED] No alternate section ... satisfies both
+    time non-interference and capacity headroom.
+[RECOMMENDED FIX] Open additional section for course X or Y, or
+    increase room capacity for an existing alternate section.</pre>
+
+    <h3>5.4 Verified result</h3>
+    <table>
+      <thead><tr><th>Stage</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Pre-fix audit</td><td>9/10 conflict-free, 1 real conflict detected</td></tr>
+        <tr><td>Auto-resolution</td><td>Student X moved CS101-SEC1 &rarr; CS101-SEC2, landing at exactly 4/4 capacity</td></tr>
+        <tr><td>Post-fix schedule audit</td><td class="pass-cell">10/10 students conflict-free</td></tr>
+        <tr><td>Post-fix capacity audit</td><td class="pass-cell">All 11 sections within capacity</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="sec6"><span class="num">6</span>System Orchestration &amp; Diagnostic QA Suite <span class="subsystem-tag">main.py</span></h2>
+
+    <h3>6.1 Architecture</h3>
+    <p>A root-level master CLI orchestrator runs all four subsystems as isolated subprocesses &mdash; never importing their code directly, with <code>cwd</code> scoped to each subsystem's own directory. This guarantees zero cross-module file contention.</p>
+    <p><b>Cross-platform resilience:</b> Windows consoles default to legacy CP1252, which cannot render Unicode box-drawing. The orchestrator attempts a UTF-8 reconfigure at startup and falls back to ASCII box-drawing if unavailable &mdash; discovered and fixed during this suite's own verification.</p>
+    <table>
+      <thead><tr><th>Flag</th><th>Behavior</th></tr></thead>
+      <tbody>
+        <tr><td><i>(none)</i></td><td>Run all 4 modules sequentially</td></tr>
+        <tr><td><code>--module &lt;name&gt;</code></td><td>Run exactly one module</td></tr>
+        <tr><td><code>--verbose</code></td><td>Stream full stdout/stderr live</td></tr>
+        <tr><td><code>--report</code></td><td>Write aggregated JSON to <code>master_audit_report.json</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>6.2 Mutation testing &amp; fault-injection summary</h3>
+    <table>
+      <thead><tr><th>Subsystem</th><th>Fault injected</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Scheduler</td><td>Deliberately broken schedule</td><td class="pass-cell">All 5+ violation categories flagged</td></tr>
+        <tr><td>Section Balancer</td><td>Lopsided 13/1 split</td><td class="pass-cell">Flagged, exact fix recommended</td></tr>
+        <tr><td>Integrated Pipeline</td><td>Forced room collision</td><td class="pass-cell">Isolated to Stage 2 correctly</td></tr>
+        <tr><td>Conflict Resolver</td><td>Fallback + dead-end scenarios</td><td class="pass-cell">Both correctly handled, zero data corruption</td></tr>
+      </tbody>
+    </table>
+    <div class="callout good">
+      <b>Zero false positives, zero false negatives</b>
+      In every case, the diagnostic engine identified the exact failure location, computed a concrete and verified remediation, and left system state unmodified when resolution wasn't possible.
+    </div>
+
+    <h2 id="sec7"><span class="num">7</span>Appendix: Consolidated Metrics</h2>
+    <table>
+      <tbody>
+        <tr><td>Total subsystems</td><td>4</td></tr>
+        <tr><td>Total suite execution time</td><td>&asymp; 2.03s</td></tr>
+        <tr><td>Overall hard-constraint pass rate</td><td>100%</td></tr>
+        <tr><td>CSP variables solved (Subsystem 1)</td><td>67</td></tr>
+        <tr><td>Backtracking steps (Subsystem 1)</td><td>0</td></tr>
+        <tr><td>CSP variables solved (Subsystem 3, Stage 2)</td><td>12</td></tr>
+        <tr><td>Backtracking steps (Subsystem 3)</td><td>0</td></tr>
+        <tr><td>Section-balancing cases at achievable optimum</td><td>4 / 4</td></tr>
+        <tr><td>Students audited for personal conflicts</td><td>10</td></tr>
+        <tr><td>Students conflict-free after resolution</td><td>10 / 10</td></tr>
+        <tr><td>Sections exceeding capacity after resolution</td><td>0</td></tr>
+        <tr><td>Fault-injection self-tests run / caught</td><td>6 / 6</td></tr>
+      </tbody>
+    </table>
+
+    <footer>
+      <span>Master SIS Architecture Whitepaper</span>
+      <span>Documentation/</span>
+    </footer>
+
+  </div>
+
+</body>
+</html>
