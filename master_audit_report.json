@@ -1,0 +1,127 @@
+{
+  "modules": [
+    {
+      "module": "scheduler",
+      "display": "Scheduler QA (CSP + MRV)",
+      "ok": true,
+      "elapsed_seconds": 0.608,
+      "hard_pass_rate": 100.0,
+      "soft_delta": 72.0,
+      "soft_label": "score 28.0/100",
+      "recommendations": [],
+      "steps": {
+        "solve": {
+          "command": "solver.py dataset.json schedule.json",
+          "returncode": 0,
+          "stdout": "Attempt 1/30 (backtracking search)...\nSolved in 67 search steps. Wrote 67 sessions to schedule.json.\n",
+          "stderr": "",
+          "ok": true,
+          "error": null
+        },
+        "validate": {
+          "command": "validate_schedule.py dataset.json schedule.json",
+          "returncode": 0,
+          "stdout": "======================================================================\nHARD CONSTRAINTS\n======================================================================\nPASS \u2014 zero hard-constraint violations.\n\n\n======================================================================\nSOFT CONSTRAINT SCORE\n======================================================================\n  -  8.00  Corequisite ('CS350', 'CS350L') split across buildings\n  -  8.00  Corequisite ('PHYS102', 'PHYS102L') split across buildings\n  -  8.00  Corequisite ('CS301', 'CS301L') split across buildings\n  -  8.00  Corequisite ('PHYS101', 'PHYS101L') split across buildings\n  -  8.00  Corequisite ('ENGR101', 'ENGR101L') split across buildings\n  -  8.00  Corequisite ('ENGR210', 'ENGR210L') split across buildings\n  -  8.00  Corequisite ('CS210', 'CS210L') split across buildings\n  -  8.00  Corequisite ('CS101', 'CS101L') split across buildings\n  -  8.00  Corequisite ('CS102', 'CS102L') split across buildings\n\nSOFT SCORE: 28.0 / 100\n\n======================================================================\nRESULT: PASS (hard constraints) | Soft score: 28.0/100\n======================================================================\n",
+          "stderr": "",
+          "ok": true,
+          "error": null
+        }
+      }
+    },
+    {
+      "module": "balancing",
+      "display": "Section Load Balancing QA",
+      "ok": true,
+      "elapsed_seconds": 0.412,
+      "hard_pass_rate": 100.0,
+      "soft_delta": 0.0,
+      "soft_label": "4 course(s)/section(s) checked",
+      "recommendations": [],
+      "steps": {
+        "solve": {
+          "command": "balancing_solver.py enrollment_dataset.json balanced_sections.json",
+          "returncode": 0,
+          "stdout": "ITS101: 14 students, capacity 13 -> 2 section(s), sizes [7, 7]\nCS101: 82 students, capacity 30 -> 3 section(s), sizes [28, 27, 27]\nENG200: 43 students, capacity 20 -> 3 section(s), sizes [15, 14, 14]\nBUS400: 18 students, capacity 25 -> 1 section(s), sizes [18]\nWrote 9 sections to balanced_sections.json.\n",
+          "stderr": "",
+          "ok": true,
+          "error": null
+        },
+        "validate": {
+          "command": "validate_balancing.py enrollment_dataset.json balanced_sections.json",
+          "returncode": 0,
+          "stdout": "==============================================================================\nSTUDENT SECTION LOAD BALANCING \u2014 VALIDATION REPORT\n==============================================================================\n\n--- ITS101 (14 students, capacity 13) ---\n[OK] Course ITS101: 2 section(s), sizes [7, 7] (target [7, 7]), variance penalty 0 (achievable minimum 0).\n\n--- CS101 (82 students, capacity 30) ---\n[OK] Course CS101: 3 section(s), sizes [28, 27, 27] (target [28, 27, 27]), variance penalty 2 (achievable minimum 2).\n\n--- ENG200 (43 students, capacity 20) ---\n[OK] Course ENG200: 3 section(s), sizes [15, 14, 14] (target [15, 14, 14]), variance penalty 2 (achievable minimum 2).\n\n--- BUS400 (18 students, capacity 25) ---\n[OK] Course BUS400: 1 section(s), sizes [18] (target [18]), variance penalty 0 (achievable minimum 0).\n\n==============================================================================\nRESULT: PASS\n==============================================================================\n",
+          "stderr": "",
+          "ok": true,
+          "error": null
+        }
+      }
+    },
+    {
+      "module": "integrated",
+      "display": "Integrated 2-Stage Pipeline QA",
+      "ok": true,
+      "elapsed_seconds": 0.422,
+      "hard_pass_rate": 100.0,
+      "soft_delta": 0.0,
+      "soft_label": "4 course(s)/section(s) checked",
+      "recommendations": [],
+      "steps": {
+        "solve": {
+          "command": "run_pipeline.py pipeline_dataset.json integrated_schedule.json",
+          "returncode": 0,
+          "stdout": "=== STAGE 1: Section Load Balancer ===\n  ITS101-SEC1: 7 students (course ITS101, room type Lecture, coreq -> ITS101L-SEC1)\n  ITS101-SEC2: 7 students (course ITS101, room type Lecture, coreq -> ITS101L-SEC2)\n  ITS101L-SEC1: 7 students (course ITS101L, room type Lab, coreq -> ITS101-SEC1)\n  ITS101L-SEC2: 7 students (course ITS101L, room type Lab, coreq -> ITS101-SEC2)\n  CS101-SEC1: 28 students (course CS101, room type Lecture, coreq -> None)\n  CS101-SEC2: 27 students (course CS101, room type Lecture, coreq -> None)\n  MATH201-SEC1: 20 students (course MATH201, room type Lecture, coreq -> None)\n\n=== STAGE 2: CSP Timetable Scheduler ===\n  Stage 2 attempt 1/30 (backtracking search)...\n  Solved in 12 search step(s), 0 of which backtracked past the first try.\n\nWrote 7 sections (12 total sessions) to integrated_schedule.json.\n",
+          "stderr": "",
+          "ok": true,
+          "error": null
+        },
+        "validate": {
+          "command": "validate_pipeline.py pipeline_dataset.json integrated_schedule.json",
+          "returncode": 0,
+          "stdout": "==============================================================================\nINTEGRATED 2-STAGE PIPELINE \u2014 VALIDATION REPORT\n==============================================================================\n\n### STAGE 1 AUDIT (Section Load Balancer) ###\n[OK] Stage 1 / ITS101: 2 section(s), sizes [7, 7] == achievable optimum (penalty 0, min 0).\n[OK] Stage 1 / ITS101L: 2 section(s), sizes [7, 7] == achievable optimum (penalty 0, min 0).\n[OK] Stage 1 / CS101: 2 section(s), sizes [28, 27] == achievable optimum (penalty 1, min 1).\n[OK] Stage 1 / MATH201: 1 section(s), sizes [20] == achievable optimum (penalty 0, min 0).\n\n### STAGE 2 AUDIT (CSP Timetable Scheduler) ###\n[OK] Stage 2: zero room collisions, zero professor double-bookings, 100% capacity/type fit, zero corequisite overlaps.\n\n==============================================================================\nSTAGE 1: PASS   |   STAGE 2: PASS\nOVERALL RESULT: PASS\n==============================================================================\n",
+          "stderr": "",
+          "ok": true,
+          "error": null
+        }
+      }
+    },
+    {
+      "module": "student_audit",
+      "display": "Student Conflict Auto-Resolver QA",
+      "ok": true,
+      "elapsed_seconds": 0.595,
+      "hard_pass_rate": 100.0,
+      "soft_delta": null,
+      "soft_label": "n/a",
+      "recommendations": [
+        "[FAIL] Student X (S05) has overlapping sections: CS101-SEC1 vs MATH101-SEC1."
+      ],
+      "steps": {
+        "resolve": {
+          "command": "resolve_student_conflicts.py student_manifest.json resolved_student_manifest.json",
+          "returncode": 0,
+          "stdout": "==============================================================================\nCAPACITY-AWARE AUTOMATED STUDENT CONFLICT RESOLVER\n==============================================================================\n\n[OK] Alice Rivera (S01): no conflicts, nothing to resolve.\n\n[OK] Ben Tolentino (S02): no conflicts, nothing to resolve.\n\n[OK] Carla Dizon (S03): no conflicts, nothing to resolve.\n\n[OK] Dennis Ocampo (S04): no conflicts, nothing to resolve.\n\n[FAIL] Student X (S05) has overlapping sections: CS101-SEC1 vs MATH101-SEC1.\n[RESOLVED] Reassigned Student X (S05) from CS101-SEC1 to CS101-SEC2. Headcounts updated: CS101-SEC1 -> 2, CS101-SEC2 -> 4/4.\n\n[OK] Faye Lacson (S06): no conflicts, nothing to resolve.\n\n[OK] Gino Manalo (S07): no conflicts, nothing to resolve.\n\n[OK] Hannah Soriano (S08): no conflicts, nothing to resolve.\n\n[OK] Ivan Cortez (S09): no conflicts, nothing to resolve.\n\n[OK] Jenny Villar (S10): no conflicts, nothing to resolve.\n\n==============================================================================\nPRE-FIX vs POST-FIX COMPARISON\n==============================================================================\nStudent                 Status              Before                                    After\nAlice Rivera (S01)      ok                  CS101-SEC1, ENG101-SEC1, HIST101-SEC1     CS101-SEC1, ENG101-SEC1, HIST101-SEC1\nBen Tolentino (S02)     ok                  CS101-SEC2, MATH101-SEC2, PHYS101-SEC1    CS101-SEC2, MATH101-SEC2, PHYS101-SEC1\nCarla Dizon (S03)       ok                  MATH101-SEC1, BIO101-SEC1, ART101-SEC1    MATH101-SEC1, BIO101-SEC1, ART101-SEC1\nDennis Ocampo (S04)     ok                  CS101-SEC2, ENG101-SEC1, CHEM101-SEC1     CS101-SEC2, ENG101-SEC1, CHEM101-SEC1\nStudent X (S05)         resolved            CS101-SEC1, MATH101-SEC1, PE101-SEC1      CS101-SEC2, MATH101-SEC1, PE101-SEC1\nFaye Lacson (S06)       ok                  PHYS101-SEC1, HIST101-SEC1, ART101-SEC1   PHYS101-SEC1, HIST101-SEC1, ART101-SEC1\nGino Manalo (S07)       ok                  CS101-SEC1, BIO101-SEC1, PE101-SEC1       CS101-SEC1, BIO101-SEC1, PE101-SEC1\nHannah Soriano (S08)    ok                  MATH101-SEC2, CHEM101-SEC1, ENG101-SEC1   MATH101-SEC2, CHEM101-SEC1, ENG101-SEC1\nIvan Cortez (S09)       ok                  CS101-SEC2, HIST101-SEC1, BIO101-SEC1     CS101-SEC2, HIST101-SEC1, BIO101-SEC1\nJenny Villar (S10)      ok                  PHYS101-SEC1, ART101-SEC1, CHEM101-SEC1   PHYS101-SEC1, ART101-SEC1, CHEM101-SEC1\n\nSection headcounts \u2014 before -> after:\n  CS101-SEC1      3 -> 2 / 5\n  CS101-SEC2      3 -> 4 / 4\n  MATH101-SEC1    2 -> 2 / 5\n  MATH101-SEC2    2 -> 2 / 5\n  PHYS101-SEC1    3 -> 3 / 5\n  ENG101-SEC1     3 -> 3 / 5\n  HIST101-SEC1    3 -> 3 / 5\n  BIO101-SEC1     3 -> 3 / 5\n  ART101-SEC1     3 -> 3 / 5\n  PE101-SEC1      2 -> 2 / 5\n  CHEM101-SEC1    3 -> 3 / 5\n\nResolved: 1   Capacity-exhausted (unresolved): 0\nWrote resolved manifest to resolved_student_manifest.json.\n==============================================================================\n",
+          "stderr": "",
+          "ok": true,
+          "error": null
+        },
+        "audit_schedule": {
+          "command": "audit_student_schedules.py resolved_student_manifest.json",
+          "returncode": 0,
+          "stdout": "==============================================================================\nSTUDENT SCHEDULE CONFLICT AUDIT\n==============================================================================\n\n[OK] Alice Rivera (S01): 3 section(s) registered (CS101-SEC1, ENG101-SEC1, HIST101-SEC1), zero schedule conflicts.\n\n[OK] Ben Tolentino (S02): 3 section(s) registered (CS101-SEC2, MATH101-SEC2, PHYS101-SEC1), zero schedule conflicts.\n\n[OK] Carla Dizon (S03): 3 section(s) registered (MATH101-SEC1, BIO101-SEC1, ART101-SEC1), zero schedule conflicts.\n\n[OK] Dennis Ocampo (S04): 3 section(s) registered (CS101-SEC2, ENG101-SEC1, CHEM101-SEC1), zero schedule conflicts.\n\n[OK] Student X (S05): 3 section(s) registered (CS101-SEC2, MATH101-SEC1, PE101-SEC1), zero schedule conflicts.\n\n[OK] Faye Lacson (S06): 3 section(s) registered (PHYS101-SEC1, HIST101-SEC1, ART101-SEC1), zero schedule conflicts.\n\n[OK] Gino Manalo (S07): 3 section(s) registered (CS101-SEC1, BIO101-SEC1, PE101-SEC1), zero schedule conflicts.\n\n[OK] Hannah Soriano (S08): 3 section(s) registered (MATH101-SEC2, CHEM101-SEC1, ENG101-SEC1), zero schedule conflicts.\n\n[OK] Ivan Cortez (S09): 3 section(s) registered (CS101-SEC2, HIST101-SEC1, BIO101-SEC1), zero schedule conflicts.\n\n[OK] Jenny Villar (S10): 3 section(s) registered (PHYS101-SEC1, ART101-SEC1, CHEM101-SEC1), zero schedule conflicts.\n\n==============================================================================\nStudents audited: 10   |   Students with conflicts: 0\nRESULT: PASS \u2014 zero schedule conflicts\n==============================================================================\n",
+          "stderr": "",
+          "ok": true,
+          "error": null
+        },
+        "audit_capacity": {
+          "command": "audit_section_capacity.py resolved_student_manifest.json",
+          "returncode": 0,
+          "stdout": "==============================================================================\nSECTION CAPACITY AUDIT\n==============================================================================\n[OK] Section CS101-SEC1 (CS101): 2 / 5.\n[OK] Section CS101-SEC2 (CS101): 4 / 4.\n[OK] Section MATH101-SEC1 (MATH101): 2 / 5.\n[OK] Section MATH101-SEC2 (MATH101): 2 / 5.\n[OK] Section PHYS101-SEC1 (PHYS101): 3 / 5.\n[OK] Section ENG101-SEC1 (ENG101): 3 / 5.\n[OK] Section HIST101-SEC1 (HIST101): 3 / 5.\n[OK] Section BIO101-SEC1 (BIO101): 3 / 5.\n[OK] Section ART101-SEC1 (ART101): 3 / 5.\n[OK] Section PE101-SEC1 (PE101): 2 / 5.\n[OK] Section CHEM101-SEC1 (CHEM101): 3 / 5.\n\n==============================================================================\nRESULT: PASS \u2014 no section exceeds capacity\n==============================================================================\n",
+          "stderr": "",
+          "ok": true,
+          "error": null
+        }
+      }
+    }
+  ],
+  "overall_pass": true
+}

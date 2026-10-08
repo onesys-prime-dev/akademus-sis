@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Conflict Auditor Architecture</title>
+<style>
+  :root {
+    --ink: #1b1f24;
+    --sub: #5c6370;
+    --rule: #e4e6eb;
+    --panel: #f6f7f9;
+    --accent: #E64980;
+    --accent-dark: #c2255c;
+    --good: #12B886;
+    --warn: #E8590C;
+    --card-bg: #ffffff;
+    --page-bg: #eef0f3;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--ink);
+    font-family: "Georgia", "Iowan Old Style", "Palatino Linotype", serif;
+    line-height: 1.65;
+  }
+
+  .sheet {
+    max-width: 880px;
+    margin: 40px auto 80px;
+    background: var(--card-bg);
+    padding: 64px 72px;
+    box-shadow: 0 2px 24px rgba(0,0,0,0.08);
+    border-radius: 2px;
+  }
+
+  .masthead {
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 20px;
+    margin-bottom: 8px;
+  }
+
+  .doc-kicker {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  h1.doc-title {
+    font-size: 32px;
+    line-height: 1.2;
+    margin: 0 0 12px;
+    font-weight: 700;
+  }
+
+  .doc-meta {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12.5px;
+    color: var(--sub);
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .doc-meta b { color: var(--ink); }
+
+  .status-pill {
+    display: inline-block;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #ffe3ee;
+    color: #c2255c;
+    border: 1px solid #ffc2dd;
+  }
+
+  h2 {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+    border-top: 1px solid var(--rule);
+    margin-top: 52px;
+    padding-top: 36px;
+    font-weight: 700;
+  }
+
+  h2 .num {
+    display: inline-block;
+    background: var(--ink);
+    color: #fff;
+    font-size: 11px;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    line-height: 20px;
+    border-radius: 4px;
+    margin-right: 8px;
+  }
+
+  h3 {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    margin-top: 28px;
+  }
+
+  p { font-size: 15.5px; }
+
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--panel);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #c2255c;
+  }
+
+  pre {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    background: #1b1f24;
+    color: #e4e6eb;
+    padding: 18px 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    line-height: 1.6;
+  }
+
+  pre .num-red { color: #ff8787; }
+  pre .num-green { color: #63e6be; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 13.5px;
+  }
+
+  th, td {
+    border: 1px solid var(--rule);
+    padding: 9px 12px;
+    text-align: left;
+  }
+
+  th {
+    background: var(--ink);
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  tr:nth-child(even) td { background: var(--panel); }
+  .ok-cell { color: var(--good); font-weight: 700; font-family: "Helvetica Neue", Arial, sans-serif; }
+  .fail-cell { color: var(--warn); font-weight: 700; font-family: "Helvetica Neue", Arial, sans-serif; }
+  .flag-row td { background: #fff3f7 !important; }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin: 24px 0;
+  }
+
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 16px 14px;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .stat-card .value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent-dark);
+    line-height: 1.1;
+  }
+
+  .stat-card.good .value { color: var(--good); }
+  .stat-card.warn .value { color: var(--warn); }
+
+  .stat-card .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--sub);
+    margin-top: 4px;
+  }
+
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: #fff0f6;
+    padding: 14px 18px;
+    border-radius: 4px;
+    margin: 20px 0;
+    font-size: 14.5px;
+  }
+
+  .callout.good { border-left-color: var(--good); background: #e9fbf5; }
+  .callout.warn { border-left-color: var(--warn); background: #fff3e9; }
+
+  .callout b { display: block; margin-bottom: 4px; font-family: "Helvetica Neue", Arial, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  ul, ol { font-size: 15.5px; }
+  ul li, ol li { margin-bottom: 6px; }
+
+  footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11.5px;
+    color: var(--sub);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media print {
+    body { background: #fff; }
+    .sheet { box-shadow: none; margin: 0; padding: 0 8mm; max-width: none; }
+    h2 { page-break-after: avoid; }
+    table, pre, .stat-grid, .callout { page-break-inside: avoid; }
+    .no-print { display: none !important; }
+  }
+
+  .print-hint {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: var(--ink);
+    color: #fff;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+  <div class="print-hint no-print">Press Ctrl+P / Cmd+P to save as PDF</div>
+
+  <div class="sheet">
+
+    <div class="masthead">
+      <div class="doc-kicker">Technical Case Study &middot; Student Schedule Conflict Auditor</div>
+      <h1 class="doc-title">Catching the Conflict No Scheduler Can See: Per-Student Overlap Auditing</h1>
+      <div class="doc-meta">
+        <span><b>Subsystem:</b> Student Schedule Conflict Auditor</span>
+        <span><b>Status:</b> <span class="status-pill">9/10 clean &middot; 1 edge case caught &amp; resolved</span></span>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card good"><div class="value">10</div><div class="label">Students Audited</div></div>
+      <div class="stat-card good"><div class="value">9 / 10</div><div class="label">Conflict-Free</div></div>
+      <div class="stat-card warn"><div class="value">1</div><div class="label">Real Conflict Caught</div></div>
+      <div class="stat-card good"><div class="value">0</div><div class="label">False Positives</div></div>
+    </div>
+
+    <h2><span class="num">1</span>Executive Summary</h2>
+    <p>
+      A course timetable and a room-balancing engine can both be
+      individually perfect &mdash; no room double-booked, no professor
+      double-booked, every section correctly sized &mdash; and a student
+      can still end up with an impossible schedule. That happens the
+      moment a student registers for two sections that, independently,
+      were each scheduled validly, but which happen to meet at the same
+      time. Neither the scheduling engine nor the section-balancing
+      engine can catch this on their own: it is purely a property of one
+      specific student's <i>personal combination</i> of registrations,
+      invisible until those registrations are laid side by side.
+    </p>
+    <p>
+      This auditor closes that gap. It takes the master section timetable
+      and a roster of actual student registrations, builds each
+      student's individual weekly schedule, and checks every pair of
+      that student's sections for a shared timeslot.
+    </p>
+    <div class="callout good">
+      <b>Result</b>
+      Tested against 10 student profiles with varied course loads &mdash;
+      one deliberately constructed to contain a real double-booking &mdash;
+      the auditor correctly passed the 9 legitimately conflict-free
+      students with zero false positives, and correctly caught and
+      diagnosed the one real conflict, down to the exact day, time, and
+      course pair, with a concrete, verified alternate-section
+      recommendation.
+    </div>
+
+    <h2><span class="num">2</span>Data Model</h2>
+    <p><code>student_manifest.json</code> combines two independent data sources, exactly as they would arrive from two different systems in production:</p>
+    <ul>
+      <li><b>sections</b> &mdash; the master timetable: each section's course and its <code>(day, start_time)</code> sessions. Already internally conflict-free from the scheduling engine's perspective.</li>
+      <li><b>students</b> &mdash; each student's <code>registered_sections</code>: a flat list of section IDs, with no awareness of time at all.</li>
+    </ul>
+    <p>The auditor's entire job is to resolve the second against the first and ask: <i>does this particular combination of registrations put this student in two places at once?</i></p>
+
+    <h2><span class="num">3</span>Algorithm</h2>
+
+    <h3>3.1 Building an individual timetable</h3>
+    <p>Each student's <code>registered_sections</code> are expanded into a flat list of <code>(section_id, course_id, day, start_time)</code> tuples &mdash; the student's actual personal weekly schedule, assembled purely from data.</p>
+
+    <h3>3.2 Pairwise overlap detection</h3>
+    <p>Every pair of <i>different</i> sections is compared for a shared <code>(day, start_time)</code>. Sessions of the <b>same</b> section are never compared against each other &mdash; only cross-section pairs, which correctly isolates a genuine double-booking between two distinct courses.</p>
+    <p>This mirrors the same pairwise shared-timeslot check used elsewhere in this test suite (room overlap, corequisite overlap) &mdash; applied here at the student level instead of the room or professor level.</p>
+
+    <h3>3.3 Resolution: finding a real, verified alternate</h3>
+    <p>On a detected conflict, the auditor searches the master timetable for another section of the same course whose sessions overlap with <b>none</b> of the student's remaining schedule &mdash; including the section staying in place. Only if such a section genuinely exists is it recommended; otherwise the auditor says so explicitly rather than fabricating a suggestion.</p>
+    <div class="callout warn">
+      <b>Why this matters</b>
+      The recommendation is not a canned message &mdash; it is the result of actually checking the alternate section against the rest of that specific student's schedule, so the fix is provably correct, not just plausible-sounding.
+    </div>
+
+    <h2><span class="num">4</span>Diagnostic Output Format</h2>
+    <pre>[FAIL] Student X (S05) has overlapping sections: CS101 (CS101-SEC1) vs
+       MATH101 (MATH101-SEC1) on Mon at 09:00.
+[RECOMMENDED FIX] Move Student X (S05) from CS101-SEC1 (Mon 09:00) to
+       CS101-SEC2 (Tue 10:00) to resolve the conflict.</pre>
+    <p>Every conflict produces exactly this pair: a <code>[FAIL]</code> line naming the student, both courses, and the exact day/time of the clash, followed by a <code>[RECOMMENDED FIX]</code> naming a concrete section and the day/time it lands on instead. A student with multiple overlapping instances (e.g. clashing on both meeting days) gets one such pair per instance &mdash; never collapsed into a single vague warning.</p>
+
+    <h2><span class="num">5</span>Test Case Audit Results</h2>
+    <p>10 students audited against an 11-section master timetable (7 courses). 9 were constructed conflict-free; 1 (Student X, S05) was deliberately registered into both <code>CS101-SEC1</code> and <code>MATH101-SEC1</code>, which the master timetable schedules at the identical Mon 09:00 / Wed 09:00 slots.</p>
+    <table>
+      <thead><tr><th>Student</th><th>Sections Registered</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Alice Rivera (S01)</td><td>CS101-SEC1, ENG101-SEC1, HIST101-SEC1</td><td class="ok-cell">OK</td></tr>
+        <tr><td>Ben Tolentino (S02)</td><td>CS101-SEC2, MATH101-SEC2, PHYS101-SEC1</td><td class="ok-cell">OK</td></tr>
+        <tr><td>Carla Dizon (S03)</td><td>MATH101-SEC1, BIO101-SEC1, ART101-SEC1</td><td class="ok-cell">OK</td></tr>
+        <tr><td>Dennis Ocampo (S04)</td><td>CS101-SEC2, ENG101-SEC1, CHEM101-SEC1</td><td class="ok-cell">OK</td></tr>
+        <tr class="flag-row"><td><b>Student X (S05)</b></td><td>CS101-SEC1, MATH101-SEC1, PE101-SEC1</td><td class="fail-cell">FAIL (2 clash instances)</td></tr>
+        <tr><td>Faye Lacson (S06)</td><td>PHYS101-SEC1, HIST101-SEC1, ART101-SEC1</td><td class="ok-cell">OK</td></tr>
+        <tr><td>Gino Manalo (S07)</td><td>CS101-SEC1, BIO101-SEC1, PE101-SEC1</td><td class="ok-cell">OK</td></tr>
+        <tr><td>Hannah Soriano (S08)</td><td>MATH101-SEC2, CHEM101-SEC1, ENG101-SEC1</td><td class="ok-cell">OK</td></tr>
+        <tr><td>Ivan Cortez (S09)</td><td>CS101-SEC2, HIST101-SEC1, BIO101-SEC1</td><td class="ok-cell">OK</td></tr>
+        <tr><td>Jenny Villar (S10)</td><td>PHYS101-SEC1, ART101-SEC1, CHEM101-SEC1</td><td class="ok-cell">OK</td></tr>
+      </tbody>
+    </table>
+    <div class="callout good">
+      <b>Result: 9/10 students conflict-free, 1/10 correctly flagged</b>
+      The flagged conflict was reported as two separate <code>[FAIL]</code> entries (the Monday and Wednesday 09:00 clashes), each resolving to <code>CS101-SEC2</code> (Tue 10:00) &mdash; verified by the auditor to have zero overlap with Student X's remaining schedule before being recommended. The zero-false-positive result across the other 9 students confirms the pairwise check does not over-trigger on legitimately varied, non-overlapping course loads.
+    </div>
+
+    <footer>
+      <span>Student Schedule Conflict Auditor &mdash; Technical Case Study</span>
+      <span>student_audit_qa/</span>
+    </footer>
+
+  </div>
+
+</body>
+</html>

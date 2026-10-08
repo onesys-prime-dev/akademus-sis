@@ -1,0 +1,245 @@
+{
+  "metadata": {
+    "description": "Student Schedule Conflict Auditor test manifest: 10 students registered against an 11-section master timetable.",
+    "notes": [
+      "Student X (S05) is the deliberate edge case: registered for both CS101-SEC1 and MATH101-SEC1, which meet at the identical Mon 09:00 / Wed 09:00 slots on the master schedule -- a direct double-booking.",
+      "All other 9 students are conflict-free by construction, to confirm the auditor does not raise false positives on legitimately non-overlapping schedules.",
+      "Room max_capacity added per section for the capacity-aware resolver; CS101-SEC2 is deliberately set to a tight boundary (capacity 4, currently 3 enrolled) so Student X's resolved move exactly fills it (3+1<=4)."
+    ]
+  },
+  "sections": [
+    {
+      "section_id": "CS101-SEC1",
+      "course_id": "CS101",
+      "sessions": [
+        {
+          "day": "Mon",
+          "start_time": "09:00"
+        },
+        {
+          "day": "Wed",
+          "start_time": "09:00"
+        }
+      ],
+      "max_capacity": 5
+    },
+    {
+      "section_id": "CS101-SEC2",
+      "course_id": "CS101",
+      "sessions": [
+        {
+          "day": "Tue",
+          "start_time": "10:00"
+        },
+        {
+          "day": "Thu",
+          "start_time": "10:00"
+        }
+      ],
+      "max_capacity": 4
+    },
+    {
+      "section_id": "MATH101-SEC1",
+      "course_id": "MATH101",
+      "sessions": [
+        {
+          "day": "Mon",
+          "start_time": "09:00"
+        },
+        {
+          "day": "Wed",
+          "start_time": "09:00"
+        }
+      ],
+      "max_capacity": 5
+    },
+    {
+      "section_id": "MATH101-SEC2",
+      "course_id": "MATH101",
+      "sessions": [
+        {
+          "day": "Tue",
+          "start_time": "11:00"
+        },
+        {
+          "day": "Thu",
+          "start_time": "11:00"
+        }
+      ],
+      "max_capacity": 5
+    },
+    {
+      "section_id": "PHYS101-SEC1",
+      "course_id": "PHYS101",
+      "sessions": [
+        {
+          "day": "Fri",
+          "start_time": "11:00"
+        }
+      ],
+      "max_capacity": 5
+    },
+    {
+      "section_id": "ENG101-SEC1",
+      "course_id": "ENG101",
+      "sessions": [
+        {
+          "day": "Tue",
+          "start_time": "13:00"
+        },
+        {
+          "day": "Thu",
+          "start_time": "13:00"
+        }
+      ],
+      "max_capacity": 5
+    },
+    {
+      "section_id": "HIST101-SEC1",
+      "course_id": "HIST101",
+      "sessions": [
+        {
+          "day": "Mon",
+          "start_time": "11:00"
+        }
+      ],
+      "max_capacity": 5
+    },
+    {
+      "section_id": "BIO101-SEC1",
+      "course_id": "BIO101",
+      "sessions": [
+        {
+          "day": "Wed",
+          "start_time": "13:00"
+        }
+      ],
+      "max_capacity": 5
+    },
+    {
+      "section_id": "ART101-SEC1",
+      "course_id": "ART101",
+      "sessions": [
+        {
+          "day": "Fri",
+          "start_time": "09:00"
+        }
+      ],
+      "max_capacity": 5
+    },
+    {
+      "section_id": "PE101-SEC1",
+      "course_id": "PE101",
+      "sessions": [
+        {
+          "day": "Mon",
+          "start_time": "14:00"
+        }
+      ],
+      "max_capacity": 5
+    },
+    {
+      "section_id": "CHEM101-SEC1",
+      "course_id": "CHEM101",
+      "sessions": [
+        {
+          "day": "Tue",
+          "start_time": "09:00"
+        }
+      ],
+      "max_capacity": 5
+    }
+  ],
+  "students": [
+    {
+      "student_id": "S01",
+      "name": "Alice Rivera",
+      "registered_sections": [
+        "CS101-SEC1",
+        "ENG101-SEC1",
+        "HIST101-SEC1"
+      ]
+    },
+    {
+      "student_id": "S02",
+      "name": "Ben Tolentino",
+      "registered_sections": [
+        "CS101-SEC2",
+        "MATH101-SEC2",
+        "PHYS101-SEC1"
+      ]
+    },
+    {
+      "student_id": "S03",
+      "name": "Carla Dizon",
+      "registered_sections": [
+        "MATH101-SEC1",
+        "BIO101-SEC1",
+        "ART101-SEC1"
+      ]
+    },
+    {
+      "student_id": "S04",
+      "name": "Dennis Ocampo",
+      "registered_sections": [
+        "CS101-SEC2",
+        "ENG101-SEC1",
+        "CHEM101-SEC1"
+      ]
+    },
+    {
+      "student_id": "S05",
+      "name": "Student X",
+      "registered_sections": [
+        "CS101-SEC1",
+        "MATH101-SEC1",
+        "PE101-SEC1"
+      ]
+    },
+    {
+      "student_id": "S06",
+      "name": "Faye Lacson",
+      "registered_sections": [
+        "PHYS101-SEC1",
+        "HIST101-SEC1",
+        "ART101-SEC1"
+      ]
+    },
+    {
+      "student_id": "S07",
+      "name": "Gino Manalo",
+      "registered_sections": [
+        "CS101-SEC1",
+        "BIO101-SEC1",
+        "PE101-SEC1"
+      ]
+    },
+    {
+      "student_id": "S08",
+      "name": "Hannah Soriano",
+      "registered_sections": [
+        "MATH101-SEC2",
+        "CHEM101-SEC1",
+        "ENG101-SEC1"
+      ]
+    },
+    {
+      "student_id": "S09",
+      "name": "Ivan Cortez",
+      "registered_sections": [
+        "CS101-SEC2",
+        "HIST101-SEC1",
+        "BIO101-SEC1"
+      ]
+    },
+    {
+      "student_id": "S10",
+      "name": "Jenny Villar",
+      "registered_sections": [
+        "PHYS101-SEC1",
+        "ART101-SEC1",
+        "CHEM101-SEC1"
+      ]
+    }
+  ]
+}
