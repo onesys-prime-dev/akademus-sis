@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Section Load Balancing Architecture</title>
+<style>
+  :root {
+    --ink: #1b1f24;
+    --sub: #5c6370;
+    --rule: #e4e6eb;
+    --panel: #f6f7f9;
+    --accent: #0B8457;
+    --accent-dark: #086b46;
+    --good: #12B886;
+    --warn: #E8590C;
+    --card-bg: #ffffff;
+    --page-bg: #eef0f3;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--ink);
+    font-family: "Georgia", "Iowan Old Style", "Palatino Linotype", serif;
+    line-height: 1.65;
+  }
+
+  .sheet {
+    max-width: 880px;
+    margin: 40px auto 80px;
+    background: var(--card-bg);
+    padding: 64px 72px;
+    box-shadow: 0 2px 24px rgba(0,0,0,0.08);
+    border-radius: 2px;
+  }
+
+  .masthead {
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 20px;
+    margin-bottom: 8px;
+  }
+
+  .doc-kicker {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  h1.doc-title {
+    font-size: 32px;
+    line-height: 1.2;
+    margin: 0 0 12px;
+    font-weight: 700;
+  }
+
+  .doc-meta {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12.5px;
+    color: var(--sub);
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .doc-meta b { color: var(--ink); }
+
+  .status-pill {
+    display: inline-block;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #e3fcef;
+    color: #0b7a56;
+    border: 1px solid #b7f3da;
+  }
+
+  h2 {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+    border-top: 1px solid var(--rule);
+    margin-top: 52px;
+    padding-top: 36px;
+    font-weight: 700;
+  }
+
+  h2 .num {
+    display: inline-block;
+    background: var(--ink);
+    color: #fff;
+    font-size: 11px;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    line-height: 20px;
+    border-radius: 4px;
+    margin-right: 8px;
+  }
+
+  h3 {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    margin-top: 28px;
+  }
+
+  p { font-size: 15.5px; }
+
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--panel);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #0b7a56;
+  }
+
+  pre {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    background: #1b1f24;
+    color: #e4e6eb;
+    padding: 18px 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    line-height: 1.6;
+  }
+
+  pre .dim { color: #8a8f98; }
+  pre .num-green { color: #63e6be; }
+  pre .num-red { color: #ff8787; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 13.5px;
+  }
+
+  th, td {
+    border: 1px solid var(--rule);
+    padding: 9px 12px;
+    text-align: left;
+  }
+
+  th {
+    background: var(--ink);
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  tr:nth-child(even) td { background: var(--panel); }
+
+  .pass-cell { color: var(--good); font-weight: 700; font-family: "Helvetica Neue", Arial, sans-serif; }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin: 24px 0;
+  }
+
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 16px 14px;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .stat-card .value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent-dark);
+    line-height: 1.1;
+  }
+
+  .stat-card.good .value { color: var(--good); }
+  .stat-card.warn .value { color: var(--warn); }
+
+  .stat-card .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--sub);
+    margin-top: 4px;
+  }
+
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: #eafff5;
+    padding: 14px 18px;
+    border-radius: 4px;
+    margin: 20px 0;
+    font-size: 14.5px;
+  }
+
+  .callout.good { border-left-color: var(--good); background: #e9fbf5; }
+  .callout.warn { border-left-color: var(--warn); background: #fff3e9; }
+
+  .callout b { display: block; margin-bottom: 4px; font-family: "Helvetica Neue", Arial, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  ul, ol { font-size: 15.5px; }
+  ul li, ol li { margin-bottom: 6px; }
+
+  footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11.5px;
+    color: var(--sub);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media print {
+    body { background: #fff; }
+    .sheet {
+      box-shadow: none;
+      margin: 0;
+      padding: 0 8mm;
+      max-width: none;
+    }
+    h2 { page-break-after: avoid; }
+    table, pre, .stat-grid, .callout { page-break-inside: avoid; }
+    .no-print { display: none !important; }
+  }
+
+  .print-hint {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: var(--ink);
+    color: #fff;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+  <div class="print-hint no-print">Press Ctrl+P / Cmd+P to save as PDF</div>
+
+  <div class="sheet">
+
+    <div class="masthead">
+      <div class="doc-kicker">Technical Case Study &middot; Section Load Balancing Engine</div>
+      <h1 class="doc-title">Dynamic Target Sectioning &amp; Achievable-Optimum Validation</h1>
+      <div class="doc-meta">
+        <span><b>Subsystem:</b> Student Section Load Balancing</span>
+        <span><b>Status:</b> <span class="status-pill">VALIDATED &mdash; 4/4 cases PASS</span></span>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card good">
+        <div class="value">4 / 4</div>
+        <div class="label">Test Cases Passed</div>
+      </div>
+      <div class="stat-card good">
+        <div class="value">157</div>
+        <div class="label">Students Partitioned</div>
+      </div>
+      <div class="stat-card good">
+        <div class="value">9</div>
+        <div class="label">Sections Generated</div>
+      </div>
+      <div class="stat-card good">
+        <div class="value">0</div>
+        <div class="label">Avoidable Imbalance</div>
+      </div>
+    </div>
+
+    <h2><span class="num">1</span>Executive Summary</h2>
+    <p>
+      Splitting a large enrolled class into multiple sections under a fixed
+      room capacity is an instance of <b>Multiway Number Partitioning</b>
+      (also known as <b>Balanced Bin Packing</b>): given <code>N</code>
+      students and a maximum capacity <code>C</code> per room, divide
+      <code>N</code> into the fewest possible groups such that no group
+      exceeds <code>C</code>, while keeping the groups as close in size as
+      possible. Done naively &mdash; filling sections first-come-first-served
+      until each hits capacity &mdash; this produces <b>lopsided
+      distributions</b>: a course of 14 students against a 13-seat room
+      would naively yield a 13/1 split rather than the sensible 7/7.
+    </p>
+    <p>
+      This engine eliminates that failure mode by <b>dynamically computing
+      the target section count and target load before assigning a single
+      student</b>, rather than greedily filling sections and dealing with
+      the leftover. Student assignment becomes the final step of an
+      already-solved partitioning problem, not a source of imbalance.
+    </p>
+    <div class="callout good">
+      <b>Result</b>
+      Across four deliberately distinct test cases &mdash; an evenly-divisible
+      split, a large cohort with a remainder, an odd-number squeeze, and a
+      single-section fit &mdash; an independent diagnostic validator confirmed
+      all four produced the <b>mathematically optimal partition</b>, with
+      zero capacity violations, zero misplaced/duplicated students, and
+      zero avoidable load imbalance.
+    </div>
+
+    <h2><span class="num">2</span>Mathematical Strategy &amp; Algorithmic Design</h2>
+
+    <h3>2.1 Required section count</h3>
+    <p>For a course with <code>N</code> students and room capacity <code>C</code>, the minimum section count is a hard floor:</p>
+    <pre>k = ceil(N / C)</pre>
+    <p>Any fewer sections and at least one would mathematically have to exceed <code>C</code>, regardless of arrangement.</p>
+
+    <h3>2.2 Dynamic target load</h3>
+    <p>Given <code>k</code>, the ideal average load per section is:</p>
+    <pre>L = ceil(N / k)</pre>
+    <p>This represents the size of the <i>largest</i> section in a perfectly balanced split &mdash; every other section will be <code>L</code> or <code>L&minus;1</code>.</p>
+
+    <h3>2.3 O(1) multiway partitioning via <code>divmod</code></h3>
+    <p>Rather than searching for a balanced split, the engine computes it directly in constant time:</p>
+    <pre>base, remainder = divmod(N, k)
+sizes = [base + 1] * remainder + [base] * (k - remainder)</pre>
+    <p>This is <b>provably the minimum-spread partition</b> of N into k integer parts &mdash; no other split has a smaller gap between largest and smallest group.</p>
+
+    <table>
+      <thead><tr><th>Course</th><th>N</th><th>C</th><th>k</th><th>L</th><th>divmod(N,k)</th><th>Resulting sizes</th></tr></thead>
+      <tbody>
+        <tr><td>ITS101</td><td>14</td><td>13</td><td>2</td><td>7</td><td>base=7, rem=0</td><td>[7, 7]</td></tr>
+        <tr><td>CS101</td><td>82</td><td>30</td><td>3</td><td>28</td><td>base=27, rem=1</td><td>[28, 27, 27]</td></tr>
+        <tr><td>ENG200</td><td>43</td><td>20</td><td>3</td><td>15</td><td>base=14, rem=1</td><td>[15, 14, 14]</td></tr>
+        <tr><td>BUS400</td><td>18</td><td>25</td><td>1</td><td>18</td><td>base=18, rem=0</td><td>[18]</td></tr>
+      </tbody>
+    </table>
+
+    <h2><span class="num">3</span>Achievable-Optimum Validation Philosophy</h2>
+
+    <h3>3.1 The formula, taken literally, rejects correct answers</h3>
+    <p>The specified soft-balance metric is <code>Penalty = &Sigma;(ActualSize_i &minus; L_target)&sup2;</code>. Taken literally, this is non-zero even for the best possible split whenever N doesn't divide evenly by k. Take CS101 (N=82, k=3): the optimal partition is [28, 27, 27], scored against the scalar L_target=28:</p>
+    <pre>(28-28)&sup2; + (27-28)&sup2; + (27-28)&sup2; = 0 + 1 + 1 = <span class="num-red">2</span></pre>
+    <p>A validator flagging any non-zero result as failure would reject this schedule &mdash; even though no better partition exists. Roughly half of all (N,k) pairs have a remainder, so a literal <code>penalty &gt; 0</code> threshold produces false positives on a huge fraction of legitimately optimal schedules.</p>
+
+    <h3>3.2 The fix: compare against the achievable minimum, not zero</h3>
+    <p>The validator computes the formula exactly as specified, but also computes the penalty of the <b>divmod-optimal partition</b> for that same (N,k) &mdash; the best any solver could possibly achieve. A course only fails if:</p>
+    <pre>FAIL only if:  Penalty_actual  &gt;  Penalty_min_achievable</pre>
+    <p>This turns the metric from "is this perfectly uniform" (impossible with a remainder) into "is this as good as it could possibly be" &mdash; the only meaningful question. Both numbers are always printed; nothing is hidden behind the verdict.</p>
+
+    <h3>3.3 Proof this still catches real imbalance</h3>
+    <p>Self-test: ITS101 (N=14, k=2, achievable minimum=0 with [7,7]) deliberately rebalanced into a lopsided [13,1] split:</p>
+    <pre>Penalty_actual = (13-7)&sup2; + (1-7)&sup2; = 36 + 36 = <span class="num-red">72</span>
+Penalty_min_achievable = <span class="num-green">0</span>
+72 &gt; 0  -&gt;  FAIL</pre>
+    <div class="callout warn">
+      <b>Confirmed</b>
+      The validator correctly rejected this deliberately broken input, proving the achievable-minimum comparison does not simply rubber-stamp every input &mdash; it still catches real, fixable imbalance while passing the legitimately optimal remainder-based splits.
+    </div>
+
+    <h2><span class="num">4</span>Diagnostic &amp; Self-Healing Engine</h2>
+    <p>Every validation run produces, per course, either an <code>[OK]</code> line or a structured failure with two parts: a <b>Problem Statement</b> and a <b>Recommended System Solution</b>.</p>
+
+    <h3>4.1 Hard-rule diagnostics</h3>
+    <table>
+      <thead><tr><th>Violation</th><th>Problem statement</th><th>Recommended fix</th></tr></thead>
+      <tbody>
+        <tr><td>Capacity exceeded</td><td>Section has 15 students, exceeding max_capacity 13.</td><td>Split the section &mdash; move 2 students out.</td></tr>
+        <tr><td>Student assigned twice</td><td>Student assigned to both SEC1 and SEC2.</td><td>Remove 1 duplicate assignment.</td></tr>
+        <tr><td>Student unplaced</td><td>3 enrolled students not assigned to any section.</td><td>Assign the 3 unplaced students.</td></tr>
+        <tr><td>Wrong section count</td><td>2 sections produced, but demand requires 3.</td><td>Increase section count k from 2 to 3.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>4.2 Soft-rule diagnostics (the self-healing recommendation)</h3>
+    <p>When actual penalty exceeds the achievable minimum, the engine reports the exact imbalance and a concrete transfer plan via greedy largest-excess-to-largest-deficit matching:</p>
+    <pre>[FAIL] Course ITS101: Section ITS101-SEC1 has 13 students, Section
+       ITS101-SEC2 has 1 student(s). Load imbalance delta = 12.
+  (variance penalty = 72, best achievable for N=14/k=2 is 0 with sizes [7, 7])
+[RECOMMENDED FIX] Move 6 student(s) from ITS101-SEC1 to ITS101-SEC2
+                  to approach the target distribution [7, 7].</pre>
+    <p>This is live output from the Section&nbsp;3.3 self-test &mdash; including the precisely-computed transfer count (6 students) needed to restore the 7/7 balance, not a generic "rebalance needed" message.</p>
+
+    <h2><span class="num">5</span>Test Case Audit Results</h2>
+    <table>
+      <thead>
+        <tr><th>Course</th><th>N</th><th>C</th><th>Req. k</th><th>Produced</th><th>Sizes</th><th>Target</th><th>Penalty</th><th>Min</th><th>Result</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ITS101</td><td>14</td><td>13</td><td>2</td><td>2</td><td>[7, 7]</td><td>[7, 7]</td><td>0</td><td>0</td><td class="pass-cell">PASS</td></tr>
+        <tr><td>CS101</td><td>82</td><td>30</td><td>3</td><td>3</td><td>[28, 27, 27]</td><td>[28, 27, 27]</td><td>2</td><td>2</td><td class="pass-cell">PASS</td></tr>
+        <tr><td>ENG200</td><td>43</td><td>20</td><td>3</td><td>3</td><td>[15, 14, 14]</td><td>[15, 14, 14]</td><td>2</td><td>2</td><td class="pass-cell">PASS</td></tr>
+        <tr><td>BUS400</td><td>18</td><td>25</td><td>1</td><td>1</td><td>[18]</td><td>[18]</td><td>0</td><td>0</td><td class="pass-cell">PASS</td></tr>
+      </tbody>
+    </table>
+    <div class="callout good">
+      <b>Overall result: 4 / 4 courses PASS (100%)</b>
+      Every course hit its mathematically optimal partition exactly &mdash; zero capacity violations, zero student-assignment errors, zero section-count mismatches, and zero avoidable soft-balance penalty across all 157 students and 9 generated sections. The diagnostic layer was additionally proven to correctly <b>reject</b> a deliberately broken schedule, confirming this 100% pass rate reflects genuine correctness rather than a validator that simply never fails.
+    </div>
+
+    <footer>
+      <span>Section Load Balancing Engine &mdash; Technical Case Study</span>
+      <span>section_balancing_qa/</span>
+    </footer>
+
+  </div>
+
+</body>
+</html>
