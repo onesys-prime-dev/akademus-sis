@@ -7,6 +7,7 @@ use App\Libraries\ScheduleOverlap;
 use App\Models\AcademicYearModel;
 use App\Models\DepartmentModel;
 use App\Models\FacultyAssignmentModel;
+use App\Models\FacultyDepartmentModel;
 use App\Models\FacultyChangeRequestModel;
 use App\Models\NotificationModel;
 use App\Models\PlottedScheduleModel;
@@ -275,16 +276,26 @@ class TeachingLoads extends BaseController
      */
     private function buildState(int $userId): array
     {
-        $deptCode = (new DepartmentModel())->codeOfUser($userId);
+        // Visibility follows SUBJECT ownership (the same rule
+        // SchedulingAuthorization::canManageSubject() and the swap-approval
+        // flow use), not the program the class happens to be taught under.
+        // A subject owned by one department is routinely taught to another
+        // program's students (e.g. General-Ed subjects like GEC101/NSTP101
+        // appear on every program's schedule but are NOT owned by every
+        // program's department) — filtering by the enrolled program's
+        // department let faculty see (and previously, try to edit) classes
+        // belonging to departments they have no affiliation with at all.
+        $deptIds = (new FacultyDepartmentModel())->activeDepartmentIdsForFaculty($userId);
 
-        // A faculty member with no assigned department has no department to
-        // scope against — show nothing rather than leaking every department's
-        // loads.
-        $groups = $deptCode === null
+        $subjectDeptByCode = array_column((new SubjectModel())->findAll(), 'sub_department_id', 'subject_code');
+
+        // No department affiliation at all: nothing to scope against —
+        // show nothing rather than leaking every department's loads.
+        $groups = $deptIds === []
             ? []
             : array_filter(
                 $this->loadGroups(),
-                static fn (array $g) => DepartmentModel::programDept($g['context']['program']) === $deptCode
+                static fn (array $g) => in_array((int) ($subjectDeptByCode[$g['code']] ?? 0), $deptIds, true)
             );
 
         $assignmentRows = db_connect()->table('faculty_assignments fa')

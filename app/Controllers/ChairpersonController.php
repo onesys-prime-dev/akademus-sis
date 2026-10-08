@@ -661,14 +661,17 @@ class ChairpersonController extends BaseController
      */
     private function swapApprovals(): array
     {
-        $dept = (new DepartmentModel())->codeOfUser((int) auth()->id());
+        $subDept   = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        $subDeptId = $subDept['sub_dept_id'] ?? null;
 
         $rows = db_connect()->table('swap_requests sr')
             ->select('sr.swap_id, r.username AS requester, t.username AS target,'
                 . ' fa1.program a1_prog, fa1.year_level a1_yl, fa1.section a1_sec, fa1.subject_code a1_code,'
-                . ' fa2.program a2_prog, fa2.year_level a2_yl, fa2.section a2_sec, fa2.subject_code a2_code')
+                . ' fa2.program a2_prog, fa2.year_level a2_yl, fa2.section a2_sec, fa2.subject_code a2_code,'
+                . ' su1.sub_department_id a1_subdept')
             ->join('faculty_assignments fa1', 'fa1.assignment_id = sr.assignment_id')
             ->join('faculty_assignments fa2', 'fa2.assignment_id = sr.requested_assignment_id', 'left')
+            ->join('subjects su1', 'su1.subject_code = fa1.subject_code', 'left')
             ->join('users r', 'r.id = sr.requester_id')
             ->join('users t', 't.id = sr.target_id')
             ->where('sr.status', 'accepted')
@@ -682,7 +685,17 @@ class ChairpersonController extends BaseController
         $items = [];
 
         foreach ($rows as $row) {
-            if ($dept !== null && DepartmentModel::programDept($row['a1_prog']) !== $dept) {
+            // Approval authority follows SUBJECT ownership (the same rule
+            // SchedulingAuthorization::canManageSubject() applies
+            // everywhere else), not the program the class happens to be
+            // taught under. A subject owned by one department is
+            // routinely taken by another program's students (e.g.
+            // ITE101/ITE102 are IT-owned subjects taught to BSCS sections
+            // too) — filtering by the enrolled program's department hid
+            // the swap from the chairperson who actually owns the
+            // subject, and would have shown it to whichever department
+            // merely happens to take it instead.
+            if ($subDeptId !== null && (int) ($row['a1_subdept'] ?? 0) !== (int) $subDeptId) {
                 continue;
             }
 
@@ -733,10 +746,16 @@ class ChairpersonController extends BaseController
             return $this->fail('This swap is no longer valid.');
         }
 
-        // Department ownership: only the owning department's chair decides.
-        $dept = (new DepartmentModel())->codeOfUser((int) auth()->id());
+        // Department ownership: only the chair who owns the SUBJECT being
+        // swapped decides — not whichever department the class's own
+        // program belongs to (see swapApprovals()'s docblock for why;
+        // same bug, same fix, needed here too since this is the actual
+        // approve/reject action, not just the list).
+        $subDept   = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        $subDeptId = $subDept['sub_dept_id'] ?? null;
+        $subject   = (new SubjectModel())->where('subject_code', $offered['subject_code'])->first();
 
-        if ($dept !== null && DepartmentModel::programDept($offered['program']) !== $dept) {
+        if ($subDeptId !== null && (int) ($subject['sub_department_id'] ?? 0) !== (int) $subDeptId) {
             return $this->fail('This swap belongs to another department.');
         }
 
