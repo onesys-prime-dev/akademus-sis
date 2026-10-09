@@ -107,6 +107,15 @@ function mk(tag, className, text) {
     return node;
 }
 
+/** Collapses a burst of calls (e.g. every tick of a live window-resize drag) into one, after things settle. */
+function debounce(fn, wait) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), wait);
+    };
+}
+
 // ---------- time helpers ----------
 function rowToHHMM(row) {
     const mins = CONFIG.gridStartMin + row * 30;
@@ -2546,7 +2555,12 @@ function announce(message) {
                 facultyFilterPill.style.transition = '';
             }
         }
-        window.addEventListener('resize', () => moveFacultyFilterPill(true));
+        // Debounced: moveFacultyFilterPill forces a synchronous reflow
+        // (void ...offsetWidth) to restart its transition cleanly, which is
+        // fine once, but running it on every single tick of a live
+        // window-resize drag (it can fire dozens of times a second) visibly
+        // fights the drag instead of settling after it.
+        window.addEventListener('resize', debounce(() => moveFacultyFilterPill(true), 120));
 
         // Smoothly open/close a card's details (height + padding + fade).
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -2846,12 +2860,19 @@ function setTab(name) {
     }
 }
 
-// Badge counts and fonts change tab widths after the first paint.
+// Badge counts and fonts change tab widths after the first paint. Both
+// listeners are debounced for the same reason as moveFacultyFilterPill
+// above — moveTabIndicator's forced reflow fighting every tick of a live
+// resize drag is exactly what reads as "chasing"/glitchy while dragging the
+// window, and the ResizeObserver here fires on the same window-resize
+// reflow as the plain listener below, so without debouncing both would
+// double up on every tick too.
+const debouncedMoveTabIndicator = debounce(() => moveTabIndicator(false), 120);
 if (window.ResizeObserver) {
-    const watcher = new ResizeObserver(() => moveTabIndicator(false));
+    const watcher = new ResizeObserver(debouncedMoveTabIndicator);
     document.querySelectorAll('.panel-tab').forEach(t => watcher.observe(t));
 }
-window.addEventListener('resize', () => moveTabIndicator(false));
+window.addEventListener('resize', debouncedMoveTabIndicator);
 
 document.querySelectorAll('.panel-tab').forEach(tab => {
     tab.addEventListener('click', () => setTab(tab.dataset.tab));
