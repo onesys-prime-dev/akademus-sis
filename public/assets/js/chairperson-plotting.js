@@ -4408,6 +4408,15 @@ document.querySelectorAll('#contextForm .context-select').forEach(select => {
                 if (yearSelect) yearSelect.removeAttribute('name');
                 if (sectionSelect) sectionSelect.removeAttribute('name');
             }
+            // Switching YEAR LEVEL alone has the same "A" section leak —
+            // sections don't carry over between year levels (2nd Year's own
+            // sections are a different set from 1st Year's, often empty),
+            // so a section chosen under the old year level must not survive
+            // into the new one.
+            if (select.id === 'plot-year_level') {
+                const sectionSelect = document.getElementById('plot-section');
+                if (sectionSelect) sectionSelect.removeAttribute('name');
+            }
             form.submit();
         };
 

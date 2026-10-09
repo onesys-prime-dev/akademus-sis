@@ -165,6 +165,66 @@ class SectionBalancer
     }
 
     /**
+     * Ensures at least one section exists for this program/year level/term —
+     * the bootstrap apply() itself deliberately refuses to do (see
+     * analyzeSections(): "No sections exist yet" is a blocked state, not
+     * something a rebalance can act on, since there's nothing yet to
+     * redistribute FROM). Idempotent: returns the first live (not
+     * closed/merged) section if one already exists, otherwise creates
+     * exactly one — named via the same "2A"-style sequence, capacity from
+     * CapacityPolicyModel, origin 'auto' — and audits the creation.
+     *
+     * Call this only from an explicit action (a chairperson clicking
+     * "Create section", not a page's own GET load) — consistent with every
+     * other write in this class.
+     *
+     * @return array the section row (existing or newly created)
+     */
+    public function ensureBaseSection(string $academicYear, string $program, string $yearLevel, ?int $actorId = null, ?string $actorRole = null): array
+    {
+        $model = new SectionModel();
+
+        $existing = $model->where(['academic_year' => $academicYear, 'program' => $program, 'year_level' => $yearLevel])
+            ->whereNotIn('status', ['closed', 'merged'])
+            ->orderBy('section')
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $policy = (new CapacityPolicyModel())->resolve(['program' => $program, 'year_level' => $yearLevel]);
+        $name   = $this->svc->generateNextSectionCode($yearLevel, []);
+
+        $model->insert([
+            'academic_year' => $academicYear,
+            'program'       => $program,
+            'program_id'    => DepartmentModel::programIdOfName($program),
+            'year_level'    => $yearLevel,
+            'section'       => $name,
+            'capacity'      => $policy['max'],
+            'status'        => 'open',
+            'origin'        => 'auto',
+            'auto_balance'  => 1,
+        ]);
+
+        $created = $model->find($model->getInsertID());
+
+        (new AuditLogModel())->record(
+            'sections.auto_create',
+            'section',
+            $created['section_id'],
+            null,
+            $created,
+            'Auto-created as the first section for this program/year level/term — no section existed yet.',
+            $actorId,
+            $actorRole
+        );
+
+        return $created;
+    }
+
+    /**
      * Assigns a student to a section's home roster, enforcing the resolved
      * ceiling (max + overflow) under a row lock. A chairperson may pass
      * $override with a reason to exceed it; the override is audited.

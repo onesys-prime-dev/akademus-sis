@@ -98,6 +98,16 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     .gap-row__actions { display: flex; align-items: center; gap: 10px; flex: none; }
     .gap-row__actions a { font-size: 12px; font-weight: 700; color: var(--color-primary); text-decoration: none; white-space: nowrap; }
     .gap-row__actions a:hover { text-decoration: underline; }
+    /* "Create section" is a real form submit (see below), not a plain link,
+       so it still works when the enhancement script can't run. Style the
+       button to read exactly like the "Plot now" link next to it. */
+    .gap-ensure-form { margin: 0; display: inline; }
+    .gap-ensure-form .gap-ensure {
+        font: inherit; font-size: 12px; font-weight: 700; color: var(--color-primary);
+        background: none; border: 0; padding: 0; margin: 0; cursor: pointer; white-space: nowrap;
+    }
+    .gap-ensure-form .gap-ensure:hover { text-decoration: underline; }
+    .gap-ensure-form .gap-ensure:disabled { opacity: .65; cursor: default; text-decoration: none; }
 </style>
 <?= $this->endSection() ?>
 
@@ -179,13 +189,36 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     <div class="gap-row">
                         <div class="gap-row__where">
                             <div class="gap-row__combo">
-                                <?= esc($gap['program']) ?><span class="sep">&middot;</span><?= esc($gap['year_level']) ?><span class="sep">&middot;</span>Section <?= esc($gap['section']) ?>
+                                <?= esc($gap['program']) ?><span class="sep">&middot;</span><?= esc($gap['year_level']) ?><span class="sep">&middot;</span><?= $gap['section'] === null ? 'No section yet' : 'Section ' . esc($gap['section']) ?>
                             </div>
                             <div class="gap-row__subjects"><?= esc(implode(', ', $gap['missing_codes'])) ?></div>
                         </div>
                         <div class="gap-row__actions">
                             <span class="kpi-flag kpi-flag--warn"><?= (int) $gap['missing_count'] ?> to plot</span>
-                            <a href="<?= esc($gap['url']) ?>">Plot now &rarr;</a>
+                            <?php if ($gap['section'] === null): ?>
+                                <?php // A real form POST, not just a JS-driven link.
+                                      // The submit handler below is the fast path, but if that
+                                      // script is blocked, cached or swallowed by another
+                                      // document-level click interceptor, the plain submit
+                                      // still reaches ensureSection() — which creates the
+                                      // section and redirects to Schedule Plotting with it
+                                      // selected. "Create section" must never silently do
+                                      // nothing. ?>
+                                <form class="gap-ensure-form" method="post"
+                                      action="<?= esc($gap['ensureUrl'], 'attr') ?>"
+                                      data-no-dirty-tracking
+                                      data-plot-url-base="<?= esc($gap['plotUrlBase'], 'attr') ?>">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="academic_year" value="<?= esc($gap['academicYear'], 'attr') ?>">
+                                    <input type="hidden" name="ay_label" value="<?= esc($gap['ayLabel'], 'attr') ?>">
+                                    <input type="hidden" name="semester" value="<?= esc($gap['semester'], 'attr') ?>">
+                                    <input type="hidden" name="program" value="<?= esc($gap['program'], 'attr') ?>">
+                                    <input type="hidden" name="year_level" value="<?= esc($gap['year_level'], 'attr') ?>">
+                                    <button type="submit" class="gap-ensure">Create section &rarr;</button>
+                                </form>
+                            <?php else: ?>
+                                <a href="<?= esc($gap['url']) ?>">Plot now &rarr;</a>
+                            <?php endif ?>
                         </div>
                     </div>
                 <?php endforeach ?>
@@ -325,4 +358,43 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
 <?php endif; ?>
 
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+(() => {
+    // Progressive enhancement for the "Create section" forms: post JSON so
+    // the rail can show a "Creating…" state and go straight to the new
+    // section. If this never runs (script blocked, stale page, another
+    // document-level handler swallowing the click) the form simply submits
+    // and ensureSection() redirects to Schedule Plotting itself — either way
+    // a section actually gets created.
+    document.querySelectorAll('.gap-ensure-form').forEach(form => {
+        form.addEventListener('submit', async evt => {
+            const btn = form.querySelector('.gap-ensure');
+            evt.preventDefault();
+            if (!btn || btn.disabled) return;
+            btn.disabled = true;
+            const original = btn.textContent;
+            btn.textContent = 'Creating…';
+            try {
+                const payload = {};
+                new FormData(form).forEach((value, key) => { payload[key] = value; });
+                const res = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json().catch(() => null);
+                if (!res.ok || !data?.ok) throw new Error(data?.error || 'Could not create the section.');
+                window.location.href = form.dataset.plotUrlBase + '&section=' + encodeURIComponent(data.section);
+            } catch (error) {
+                btn.disabled = false;
+                btn.textContent = original;
+                alert(error.message);
+            }
+        });
+    });
+})();
+</script>
 <?= $this->endSection() ?>

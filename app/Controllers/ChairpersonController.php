@@ -2328,6 +2328,77 @@ class ChairpersonController extends BaseController
     }
 
     /**
+     * Bootstraps the first section for a program/year level/term that has
+     * none yet — e.g. from the Dashboard's "Sections to Plot" panel, where a
+     * program/year level has real curriculum demand but nothing to plot
+     * into. Deliberately a POST the chairperson explicitly triggers (a
+     * button click), not something that happens as a side effect of a page
+     * load — see SectionBalancer::ensureBaseSection()'s own docblock.
+     * Idempotent: a section created by someone else in the meantime is
+     * returned as-is, never duplicated.
+     */
+    public function ensureSection()
+    {
+        // The dashboard's inline script posts JSON; the plain form fallback
+        // (when that script can't run) posts form-encoded fields. Accept both
+        // so the action always lands, never silently no-ops.
+        // getJSON() throws on a non-JSON body, so it must only be called when
+        // the request really is JSON (see IncomingRequest::getJSON()).
+        $payload = $this->request->is('json') ? $this->request->getJSON(true) : null;
+
+        if (! is_array($payload)) {
+            $payload = $this->request->getPost();
+        }
+
+        if (! is_array($payload)) {
+            return $this->fail('Invalid payload.');
+        }
+
+        foreach (['academic_year', 'program', 'year_level'] as $key) {
+            if (! isset($payload[$key]) || ! is_string($payload[$key]) || trim($payload[$key]) === '') {
+                return $this->fail("Missing field: {$key}");
+            }
+        }
+
+        if (! in_array($payload['program'], $this->authorizedPrograms(), true)) {
+            return $this->fail('Invalid program.');
+        }
+
+        if (! in_array($payload['year_level'], self::FILTERS['year_level'], true)) {
+            return $this->fail('Invalid year level.');
+        }
+
+        if (! in_array($payload['academic_year'], $this->creatableAcademicYears(), true)) {
+            return $this->fail('Invalid academic year.');
+        }
+
+        $section = (new SectionBalancer())->ensureBaseSection(
+            $payload['academic_year'],
+            $payload['program'],
+            $payload['year_level'],
+            (int) auth()->id(),
+            'chairperson'
+        );
+
+        // AJAX (the dashboard's enhanced path) gets JSON and drives the
+        // redirect itself. A plain form submission — JS unavailable, blocked
+        // or intercepted — gets a real 302 to Schedule Plotting with the new
+        // section pre-selected, so "Create section" always ends up creating
+        // AND selecting one instead of dumping raw JSON on the user.
+        if (! $this->request->isAJAX()) {
+            return redirect()->to(site_url('chairperson/dashboard') . '?' . http_build_query([
+                'ay_label'   => (string) ($payload['ay_label'] ?? ''),
+                'semester'   => (string) ($payload['semester'] ?? ''),
+                'program'    => $payload['program'],
+                'year_level' => $payload['year_level'],
+                'section'    => $section['section'],
+            ]));
+        }
+
+        return $this->response->setJSON(['ok' => true, 'section' => $section['section']]);
+    }
+
+    /**
      * Delete a section — only if it belongs to this department AND has no
      * students assigned or enrolled. Blocked rather than cascaded so a
      * roster is never silently wiped out by a delete click.
@@ -3057,6 +3128,42 @@ class ChairpersonController extends BaseController
                             ->getResultArray(),
                         'section'
                     );
+
+                    // Curriculum demand doesn't wait on a section existing
+                    // (yearLevelsNeedingAttention(), which drives the Year
+                    // level dropdown's own "N to plot" badge, checks the
+                    // same thing with no section requirement either) — a
+                    // program/year level with real pending subjects but no
+                    // section yet is still a real gap. The view's button
+                    // posts to ensureSection() (an explicit click, never a
+                    // GET side effect — see SectionBalancer::ensureBaseSection())
+                    // to bootstrap one, then goes straight to Schedule
+                    // Plotting with it selected; 'url' is the no-JS fallback.
+                    if ($sections === []) {
+                        $plottingGaps[] = [
+                            'program'       => $program,
+                            'year_level'    => $yearLevel,
+                            'section'       => null,
+                            'missing_count' => count($ownedCodes),
+                            'missing_codes' => $ownedCodes,
+                            'academicYear'  => $activeYear,
+                            // ay_label/semester travel with the form's POST so
+                            // ensureSection() can rebuild the Schedule
+                            // Plotting URL for its no-JS redirect fallback
+                            // without re-parsing the combined academic_year.
+                            'ayLabel'       => $activeYearRow['label'],
+                            'semester'      => $activeYearRow['semester'],
+                            'ensureUrl'     => site_url('chairperson/sections/ensure'),
+                            'plotUrlBase'   => site_url('chairperson/dashboard') . '?' . http_build_query([
+                                'ay_label'   => $activeYearRow['label'],
+                                'semester'   => $activeYearRow['semester'],
+                                'program'    => $program,
+                                'year_level' => $yearLevel,
+                            ]),
+                            'url'           => site_url('chairperson/sections'),
+                        ];
+                        continue;
+                    }
 
                     foreach ($sections as $section) {
                         $plottedCodes = array_column(
