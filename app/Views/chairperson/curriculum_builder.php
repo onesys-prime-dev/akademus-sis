@@ -144,15 +144,38 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
                 if (!res.ok || !data.ok) throw new Error('Search is unavailable. Please try again.');
                 if (!data.subjects.length) { searchMessage('No subjects found. Try another code or title.'); return; }
                 searchResults.replaceChildren();
+                // Merge a lecture+lab pair into one result, so adding a subject that
+                // has both components is a single click instead of two separate finds.
+                const byId = new Map(data.subjects.map(s => [s.subject_id, s]));
+                const seen = new Set();
+                const merged = [];
                 data.subjects.forEach(s => {
+                    if (seen.has(s.subject_id)) return;
+                    const partner = s.pair_id ? byId.get(s.pair_id) : null;
+                    seen.add(s.subject_id);
+                    if (partner) seen.add(partner.subject_id);
+                    const lecture = s.is_lab ? (partner || null) : s;
+                    const lab = s.is_lab ? s : (partner || null);
+                    merged.push({ primary: lecture || lab, lecture, lab });
+                });
+                merged.forEach(m => {
+                    const mixed = m.lecture && m.lab;
+                    const parts = [m.lecture, m.lab].filter(Boolean);
+                    const totalUnits = parts.reduce((sum, p) => sum + parseFloat(p.units), 0);
+                    const typeLabel = mixed ? 'Lecture + Lab' : (m.lab ? 'Laboratory' : 'Lecture');
                     const button = document.createElement('button'); button.type = 'button'; button.className = 'cb-result';
-                    button.innerHTML = `<span><strong>${escapeHtml(s.code)}</strong><span>${escapeHtml(s.title)}</span></span><small>${escapeHtml(s.units)} units</small><span class="material-symbols-outlined" aria-hidden="true">add</span>`;
+                    button.innerHTML = `<span><strong>${escapeHtml(m.primary.code)}</strong><span>${escapeHtml(m.primary.title)} · ${escapeHtml(typeLabel)}</span></span><small>${totalUnits} units</small><span class="material-symbols-outlined" aria-hidden="true">add</span>`;
                     button.addEventListener('click', async () => {
                         if (mutationBusy) return;
                         setBusy(true); saveStatus('Adding subject…');
                         try {
-                            await post('/add-subject', { curriculum_id: CURRICULUM_ID, subject_id: s.subject_id, year_level: YEAR_LEVEL, semester: SEMESTER, is_laboratory: s.is_lab });
-                            feedback(s.code + ' added to this term.'); location.reload();
+                            const results = await Promise.allSettled(parts.map(p =>
+                                post('/add-subject', { curriculum_id: CURRICULUM_ID, subject_id: p.subject_id, year_level: YEAR_LEVEL, semester: SEMESTER, is_laboratory: p.is_lab })
+                            ));
+                            const failed = results.filter(r => r.status === 'rejected');
+                            if (failed.length === results.length) throw new Error(failed[0].reason?.message || 'Unable to add this subject.');
+                            feedback(m.primary.code + (mixed ? ' (lecture + lab)' : '') + ' added to this term.' + (failed.length ? ' One component was already assigned.' : ''));
+                            location.reload();
                         } catch (error) { feedback(error.message, true); saveStatus('Subject not added'); setBusy(false); }
                     });
                     searchResults.append(button);

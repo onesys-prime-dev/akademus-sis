@@ -97,6 +97,7 @@ class ChairpersonController extends BaseController
             'duration'     => $duration,
             'weekly_hours' => (float) ($row['weekly_hours'] ?? 0),
             'is_lab'       => (bool) $row['is_laboratory'],
+            'pair_id'      => isset($row['pair_subject_id']) && $row['pair_subject_id'] !== null ? (int) $row['pair_subject_id'] : null,
             'color'        => self::COLORS[array_sum(array_map('ord', str_split($row['subject_code']))) % count(self::COLORS)],
         ];
     }
@@ -1387,11 +1388,26 @@ class ChairpersonController extends BaseController
             return $this->response->setJSON(['ok' => true, 'subjects' => []]);
         }
 
-        $rows = (new SubjectModel())
+        $subjects = new SubjectModel();
+        $rows     = $subjects
             ->where('is_active', 1)
             ->like('subject_code', $query, 'after')
             ->orderBy('subject_code')
             ->findAll(8);
+
+        // A lecture+lab pair's codes always share a prefix (the lab side is
+        // derived as "<code>-LAB"), so a code-prefix search normally finds
+        // both halves on its own. But a narrower query (e.g. the lab code
+        // itself) could match only one side — pull in any missing partner so
+        // the client always has enough to offer "add both" as one action.
+        $missingPairIds = array_values(array_diff(
+            array_filter(array_unique(array_column($rows, 'pair_subject_id'))),
+            array_column($rows, 'subject_id')
+        ));
+
+        if ($missingPairIds !== []) {
+            $rows = array_merge($rows, $subjects->whereIn('subject_id', $missingPairIds)->findAll());
+        }
 
         return $this->response->setJSON(['ok' => true, 'subjects' => array_map([self::class, 'formatCatalogSubject'], $rows)]);
     }
@@ -1584,9 +1600,17 @@ class ChairpersonController extends BaseController
                 return $this->fail('Invalid block time range.');
             }
 
-            // The plotted length must match the subject's class duration.
-            if ($this->toMinutes($block['end']) - $this->toMinutes($block['start']) !== (int) round($subject['duration'] * 60)) {
-                return $this->fail("{$subject['code']} must be plotted as a {$subject['hours']} block.");
+            // A meeting is built up by joining 30-minute slots on the grid
+            // (see chairperson-plotting.js's mergeIntoBlock), so its saved
+            // length only has to land on that grid — not match the
+            // subject's configured meeting length exactly, since a
+            // chairperson may still be partway through joining slots, or
+            // may deliberately split the weekly hours across uneven
+            // meetings.
+            $blockMinutes = $this->toMinutes($block['end']) - $this->toMinutes($block['start']);
+
+            if ($blockMinutes < 30 || $blockMinutes % 30 !== 0) {
+                return $this->fail("{$subject['code']} must be plotted in 30-minute blocks.");
             }
 
             // Faculty is chairperson-assigned at plot time (optional — a

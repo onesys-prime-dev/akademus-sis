@@ -153,6 +153,14 @@ function fmtHours(n) {
     return r === 1 ? '1 hr' : r + ' hrs';
 }
 
+/** Compact duration badge for a block ("30m", "1h", "1.5h") — fits a single 30-minute grid row. */
+function fmtHoursShort(n) {
+    const mins = Math.round(n * 60);
+    if (mins < 60) return `${mins}m`;
+    const hrs = mins / 60;
+    return (Number.isInteger(hrs) ? hrs : hrs.toFixed(1)) + 'h';
+}
+
 function shortYear(yearLevel) {
     return (yearLevel || '').replace(' Year', ' Yr');
 }
@@ -631,6 +639,9 @@ function ownEl(b) {
     const head = mk('div', 'b-head');
     head.appendChild(mk('span', 'b-code', b.code));
     if (isLab) head.appendChild(mk('span', 'b-type', 'Lab'));
+    // Shown even on a 30-min "tiny" block (where the fuller b-line rows are
+    // hidden for space) so the plotted length is always visible at a glance.
+    head.appendChild(mk('span', 'b-dur', fmtHoursShort(blockHours(b))));
     if (worst) {
         const flag = mk('span', 'b-flag', '!');
         flag.setAttribute('aria-hidden', 'true');
@@ -1585,7 +1596,99 @@ setupQueueControls();
 // cap) so a bad drop is explained before anything is sent, and adds the soft
 // warnings a chairperson may knowingly accept.
 function subjectSlots(subject) {
-    return Math.max(1, Math.round((subject.duration || 1.5) * 2));
+    // Every new placement (drag or the "Plot a meeting" picker) is one
+    // 30-minute slot — a chairperson builds up a longer meeting by placing
+    // adjacent slots, which auto-join (see touchingOwnBlocks/mergeIntoBlock)
+    // instead of committing the subject's whole duration in a single drop.
+    return 1;
+}
+
+/** Already-plotted blocks of this subject, same day, touching the given range (so a new drop can join them instead of becoming a separate meeting). */
+function touchingOwnBlocks(code, day, startRow, endRow) {
+    return blocks.filter(b => b.code === code && Number(b.day) === day
+        && (blockEndRow(b) === startRow || blockStartRow(b) === endRow));
+}
+
+/** Extends/merges `touching` blocks (1 or 2 of them) and the new range into one continuous block, reusing the room/faculty they already have. Returns true if it merged, false if the merged range hit a hard conflict (and the drop was shown as a conflict). */
+function mergeIntoBlock(touching, subject, day, startRow, endRow) {
+    const startRows = touching.map(blockStartRow).concat(startRow);
+    const endRows = touching.map(blockEndRow).concat(endRow);
+    const merged = { startRow: Math.min(...startRows), endRow: Math.max(...endRows) };
+    const anchor = touching[0];
+
+    const result = evaluatePlacement({ subject, day, ...merged, ignoreKey: blockKey(anchor), roomName: anchor.room, prof: anchor.prof });
+    if (result.hard) {
+        showConflict(result.hard);
+        return true;
+    }
+
+    pushUndo(`extended ${subject.code}`);
+    touching.forEach(b => { if (b !== anchor) blocks.splice(blocks.indexOf(b), 1); });
+    anchor.start = rowToHHMM(merged.startRow);
+    anchor.end = rowToHHMM(merged.endRow);
+    anchor.time_label = `${rowTo12h(merged.startRow)} - ${rowTo12h(merged.endRow)}`;
+    ui.subjectCode = anchor.code;
+    ui.blockKey = blockKey(anchor);
+    ui.mode = 'block';
+    renderBlocks();
+    scheduleSave();
+    focusBlock(ui.blockKey);
+    showToast(`${anchor.code} extended to ${rowRange(merged.startRow, merged.endRow)}.`, 'success', { label: 'Undo', onClick: undoLast });
+    announce(`${anchor.code} extended on ${dayName(day)} to ${blockRange(anchor)}.`);
+    return true;
+}
+
+/** Grows (+1) or shrinks (-1) an already-plotted block's end time by one 30-minute slot, in place. */
+function resizeBlock(b, deltaSlots) {
+    const key = blockKey(b);
+    const startRow = blockStartRow(b);
+    const endRow = blockEndRow(b) + deltaSlots;
+    if (endRow - startRow < 1 || endRow > CONFIG.totalRows) return;
+
+    const subject = SUBJECT_BY_CODE.get(b.code) || { code: b.code, title: b.title, is_lab: false, units: '0', duration: blockHours(b) };
+    const result = evaluatePlacement({ subject, day: Number(b.day), startRow, endRow, ignoreKey: key, roomName: b.room, prof: b.prof });
+    if (result.hard) {
+        showConflict(result.hard);
+        return;
+    }
+
+    pushUndo(deltaSlots > 0 ? `extended ${b.code}` : `shortened ${b.code}`);
+    b.end = rowToHHMM(endRow);
+    b.time_label = `${rowTo12h(startRow)} - ${rowTo12h(endRow)}`;
+    ui.blockKey = key;
+    renderBlocks();
+    renderInspector();
+    scheduleSave();
+    showToast(`${b.code} is now ${fmtHours((endRow - startRow) / 2)}.`, 'success', { label: 'Undo', onClick: undoLast });
+}
+
+/** "This meeting" fact value: the length, plus a +/- stepper to resize it directly (no dragging). */
+function meetingLengthControl(b, subject, stats, isOwned) {
+    const wrap = mk('span', 'meeting-length', fmtHours(blockHours(b)));
+    if (!isOwned) return wrap;
+
+    const slots = blockEndRow(b) - blockStartRow(b);
+    const otherPlotted = stats.plotted - blockHours(b);
+    const maxSlots = stats.weekly > 0
+        ? Math.max(slots, Math.floor((stats.weekly - otherPlotted + 1e-9) / 0.5))
+        : slots + 12;
+
+    const stepper = mk('span', 'stepper stepper--inline');
+    const minus = mk('button', 'stepper__btn', '−');
+    minus.type = 'button';
+    minus.setAttribute('aria-label', `Shorten ${b.code}`);
+    minus.disabled = slots <= 1;
+    minus.addEventListener('click', () => resizeBlock(b, -1));
+
+    const plus = mk('button', 'stepper__btn', '+');
+    plus.type = 'button';
+    plus.setAttribute('aria-label', `Extend ${b.code}`);
+    plus.disabled = slots >= maxSlots || blockEndRow(b) >= CONFIG.totalRows;
+    plus.addEventListener('click', () => resizeBlock(b, 1));
+
+    stepper.append(minus, plus);
+    wrap.appendChild(stepper);
+    return wrap;
 }
 
 function evaluatePlacement({ subject, day, startRow, endRow, ignoreKey = null, roomName = null, prof = null }) {
@@ -1667,8 +1770,11 @@ function beginDrag(e, payload, sourceEl) {
     sourceEl.classList.add('is-dragging');
     document.body.classList.add('is-plot-dragging');
 
-    const hours = payload.kind === 'move' ? blockHours(payload.block) : payload.subject.duration;
-    const chip = mk('div', 'drag-chip', `${payload.subject.code} · ${fmtHours(hours)}`);
+    // A 'new' drag always places one 30-minute slot (it joins an adjacent
+    // slot of the same class automatically rather than sizing to the whole
+    // subject duration) — only a 'move' drag keeps the block's real length.
+    const lengthLabel = payload.kind === 'move' ? fmtHours(blockHours(payload.block)) : '30 min';
+    const chip = mk('div', 'drag-chip', `${payload.subject.code} · ${lengthLabel}`);
     document.body.appendChild(chip);
     e.dataTransfer.setDragImage(chip, 14, 14);
     setTimeout(() => chip.remove(), 0);
@@ -1761,6 +1867,9 @@ $('boardScroll').addEventListener('dragleave', e => {
 });
 
 function dropNew(subject, day, range) {
+    const touching = touchingOwnBlocks(subject.code, day, range.startRow, range.endRow);
+    if (touching.length) { mergeIntoBlock(touching, subject, day, range.startRow, range.endRow); return; }
+
     const faculty = assignedFaculty(subject.code);
     const result = evaluatePlacement({ subject, day, ...range, prof: faculty && faculty.name });
 
@@ -2775,7 +2884,7 @@ function selectSubject(code) {
     ui.conflict = null;
     ui.moveOpen = false;
     ui.mode = 'subject';
-    ui.draft = { day: 0, row: 0 };
+    ui.draft = { day: 0, row: 0, slots: 1 };
     setTab('inspector');
     openPanel();
     renderInspector();
@@ -2933,7 +3042,7 @@ function slotSelects(subject, draft, onChange) {
     const timeField = mk('label', 'field');
     timeField.appendChild(mk('span', '', 'Starts'));
     const time = mk('select');
-    const slots = subjectSlots(subject);
+    const slots = draft.slots || 1;
     for (let r = 0; r <= CONFIG.totalRows - slots; r++) {
         time.appendChild(new Option(rowRange(r, r + slots), String(r), false, r === draft.row));
     }
@@ -2949,6 +3058,31 @@ function slotSelects(subject, draft, onChange) {
 
     row.append(dayField, timeField);
     return row;
+}
+
+/** "How many 30-min slots to place at once" +/- control, so building a longer meeting doesn't need repeated drags. */
+function slotStepper(draft, maxSlots, onChange) {
+    draft.slots = Math.min(Math.max(draft.slots || 1, 1), maxSlots);
+
+    const field = mk('label', 'field');
+    field.appendChild(mk('span', '', 'Length'));
+    const row = mk('div', 'stepper');
+    const minus = mk('button', 'stepper__btn', '−');
+    minus.type = 'button';
+    minus.setAttribute('aria-label', 'Shorter');
+    const value = mk('span', 'stepper__value', fmtHours(draft.slots * 0.5));
+    const plus = mk('button', 'stepper__btn', '+');
+    plus.type = 'button';
+    plus.setAttribute('aria-label', 'Longer');
+
+    minus.disabled = draft.slots <= 1;
+    plus.disabled = draft.slots >= maxSlots;
+    minus.addEventListener('click', () => { draft.slots = Math.max(1, draft.slots - 1); onChange(); });
+    plus.addEventListener('click', () => { draft.slots = Math.min(maxSlots, draft.slots + 1); onChange(); });
+
+    row.append(minus, value, plus);
+    field.appendChild(row);
+    return field;
 }
 
 /** Live pass/fail line for a day/time chosen from the selects. */
@@ -3108,10 +3242,16 @@ function renderSubjectView() {
         return;
     }
 
-    section.appendChild(mk('p', 'muted', 'Drag the class onto the timetable, or pick a time here.'));
+    section.appendChild(mk('p', 'muted', 'Drag the class onto the timetable, or pick a time and length here.'));
+
+    // How many 30-min slots one placement can cover — capped to what's still
+    // needed, so the stepper can't place more than the class requires.
+    const maxSlots = Math.max(1, Math.min(12, stats.remaining !== null ? Math.ceil(stats.remaining / 0.5) : 6));
+    ui.draft.row = Math.min(ui.draft.row, CONFIG.totalRows - maxSlots);
+
     const verdict = mk('div', 'verdict-slot');
     const faculty = assignedFaculty(subject.code);
-    const evaluate = () => evaluatePlacement({ subject, day: ui.draft.day, startRow: ui.draft.row, endRow: ui.draft.row + subjectSlots(subject), prof: faculty && faculty.name });
+    const evaluate = () => evaluatePlacement({ subject, day: ui.draft.day, startRow: ui.draft.row, endRow: ui.draft.row + ui.draft.slots, prof: faculty && faculty.name });
     const go = mk('button', 'btn btn-primary', 'Choose room');
     go.type = 'button';
 
@@ -3121,10 +3261,13 @@ function renderSubjectView() {
         go.disabled = !!result.hard;
     };
 
+    section.appendChild(slotStepper(ui.draft, maxSlots, () => renderInspector()));
     section.appendChild(slotSelects(subject, ui.draft, update));
     section.append(verdict, go);
     go.addEventListener('click', () => {
-        const range = { startRow: ui.draft.row, endRow: ui.draft.row + subjectSlots(subject) };
+        const range = { startRow: ui.draft.row, endRow: ui.draft.row + ui.draft.slots };
+        const touching = touchingOwnBlocks(subject.code, ui.draft.day, range.startRow, range.endRow);
+        if (touching.length) { mergeIntoBlock(touching, subject, ui.draft.day, range.startRow, range.endRow); return; }
         const result = evaluate();
         if (result.hard) { showConflict(result.hard); return; }
         beginPlacement({ kind: 'new', subject, day: ui.draft.day, ...range, warnings: result.warnings });
@@ -3174,7 +3317,7 @@ function renderBlockView() {
 
     facts.appendChild(factRow('Section', document.createTextNode(`${CONTEXT.section} · ${CONTEXT.year_level}`)));
     facts.appendChild(factRow('Units', document.createTextNode(String(parseFloat(subject.units) || 0))));
-    facts.appendChild(factRow('This meeting', document.createTextNode(fmtHours(blockHours(b)))));
+    facts.appendChild(factRow('This meeting', meetingLengthControl(b, subject, stats, isOwned)));
     box.appendChild(facts);
 
     if (isOwned && ui.moveOpen) box.appendChild(moveForm(b, subject));

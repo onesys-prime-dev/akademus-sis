@@ -18,6 +18,7 @@ class SubjectModel extends Model
         'units',
         'contact_hours',
         'is_laboratory',
+        'pair_subject_id',
         'lecture_units',
         'laboratory_units',
         'meetings_per_week',

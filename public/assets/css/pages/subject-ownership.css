@@ -70,6 +70,7 @@
 .so-duration { color: #758399; white-space: nowrap; font-size: 11px !important; }
 .so-type { display: inline-block; font-size: 11px; color: #62738e; }
 .so-type--lab { color: #7860a8; background: #f5f1fb; padding: 4px 7px; border-radius: 5px; }
+.so-type--mixed { color: #1d6b55; background: #eaf7f1; padding: 4px 7px; border-radius: 5px; }
 .so-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; background: #f1f4f8; color: #7a879b; border-radius: 5px; font-size: 10px; font-weight: 600; }
 .so-status--active { color: #367455; background: #edf7f1; }
 .so-status--active .so-dot { background: #459065; }
@@ -123,6 +124,15 @@
 .so-type-options strong, .so-type-options small { display: block; }
 .so-type-options strong { font-size: 12px; font-weight: 600; }
 .so-type-options small { font-size: 10px; color: #8190a5; margin-top: 4px; }
+.so-component { margin: 14px 0 0; padding: 14px; border: 1px solid #e4eaf3; border-radius: 8px; background: #fafbfd; }
+.so-component .so-field { margin-bottom: 10px; }
+.so-computed { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #6b7a90; margin: 0; }
+.so-computed strong { font-size: 15px; color: var(--so-ink); }
+.so-computed span { font-size: 10px; color: #8b99ac; }
+.so-totals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0 0; padding: 14px; border-radius: 8px; background: #f1f5ff; }
+.so-totals > div { display: flex; flex-direction: column; gap: 4px; }
+.so-totals span { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: #5574b8; }
+.so-totals strong { font-size: 18px; color: var(--so-ink); }
 .so-editor-hint { display: flex; align-items: flex-start; gap: 8px; padding: 12px; border-radius: 7px; background: #f7f9fc; font-size: 10px; line-height: 1.7; color: #798aa3; margin: 20px 0 0; }
 .so-editor-hint .material-symbols-outlined { font-size: 16px; }
 .so-dialog-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 17px 26px; border-top: 1px solid var(--so-line); background: #fafbfd; }

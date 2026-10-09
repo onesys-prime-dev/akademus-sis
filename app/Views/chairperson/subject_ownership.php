@@ -12,6 +12,7 @@ $catalog = array_map(static fn ($s) => [
     'units' => (float) $s['units'], 'duration' => (float) $s['contact_hours'],
     'is_lab' => (bool) $s['is_laboratory'], 'active' => (bool) $s['is_active'],
     'department' => (int) $s['sub_department_id'],
+    'pairId' => $s['pair_subject_id'] !== null ? (int) $s['pair_subject_id'] : null,
 ], $subjects);
 ?>
 <?= $this->section('styles') ?>
@@ -64,8 +65,13 @@ $catalog = array_map(static fn ($s) => [
                     <div class="so-field" id="soOwnerField"><label for="soOwner">Owning department</label><select id="soOwner" required><?php foreach ($deptNames as $id => $name): ?><option value="<?= (int) $id ?>"><?= esc($name) ?></option><?php endforeach ?></select></div>
                     <div class="so-field"><label for="soCode">Subject code <span>Required</span></label><input id="soCode" type="text" placeholder="e.g. ITE 101" maxlength="20" minlength="2" required aria-describedby="soCodeHelp"><small id="soCodeHelp">Use a unique code, 2–20 characters. Letters are capitalized automatically.</small></div>
                     <div class="so-field"><label for="soTitle">Subject title <span>Required</span></label><input id="soTitle" type="text" placeholder="e.g. Introduction to Computing" maxlength="200" required></div>
-                    <div class="so-form-grid"><div class="so-field"><label for="soUnits">Units</label><input id="soUnits" type="number" min="0.5" max="6" step="any" value="3" required><small>Between 0.5 and 6 units.</small></div><div class="so-field"><label for="soDuration">Meeting length</label><select id="soDuration" required><?php foreach ($durations as $d): ?><option value="<?= (float) $d ?>" <?= (float) $d === 1.5 ? 'selected' : '' ?>><?= (float) $d ?> <?= (float) $d === 1.0 ? 'hour' : 'hours' ?></option><?php endforeach ?></select><small>Duration of each meeting.</small></div></div>
-                    <fieldset class="so-type-options"><legend>Class type</legend><label><input type="radio" name="class_type" value="lecture" checked><span class="material-symbols-outlined" aria-hidden="true">menu_book</span><span><strong>Lecture</strong><small>Classroom instruction</small></span></label><label><input type="radio" name="class_type" value="lab"><span class="material-symbols-outlined" aria-hidden="true">science</span><span><strong>Laboratory</strong><small>Practical instruction</small></span></label></fieldset>
+                    <fieldset class="so-type-options"><legend>Class type</legend>
+                        <label><input type="checkbox" name="class_type" value="lecture" id="soHasLecture" checked><span class="material-symbols-outlined" aria-hidden="true">menu_book</span><span><strong>Lecture</strong><small>Classroom instruction</small></span></label>
+                        <label><input type="checkbox" name="class_type" value="lab" id="soHasLab"><span class="material-symbols-outlined" aria-hidden="true">science</span><span><strong>Laboratory</strong><small>Practical instruction</small></span></label>
+                    </fieldset>
+                    <div class="so-component" id="soLectureComponent"><div class="so-field"><label for="soLectureUnits">Lecture units</label><input id="soLectureUnits" type="number" min="0.5" max="6" step="0.5" value="3"><small>Between 0.5 and 6 units.</small></div><p class="so-computed">Meeting length <strong id="soLectureLength">1 hr</strong><span>Computed automatically — 1 unit = <span id="soLectureRate">1</span> hr/week.</span></p></div>
+                    <div class="so-component" id="soLabComponent" hidden><div class="so-field"><label for="soLabUnits">Laboratory units</label><input id="soLabUnits" type="number" min="0.5" max="6" step="0.5" value="1"><small>Between 0.5 and 6 units.</small></div><p class="so-computed">Meeting length <strong id="soLabLength">3 hrs</strong><span>Computed automatically — 1 unit = <span id="soLabRate">3</span> hrs/week.</span></p></div>
+                    <div class="so-totals"><div><span>Total units</span><strong id="soTotalUnits">3</strong></div><div><span>Total weekly hours</span><strong id="soTotalHours">1 hr</strong></div></div>
                     <p class="so-editor-hint" id="soEditorHint"><span class="material-symbols-outlined" aria-hidden="true">info</span>Already in the catalog? Reuse it through the Curriculum Builder.</p>
                 </div>
                 <footer class="so-dialog-footer"><button type="button" class="so-button" data-close-editor>Cancel</button><button type="submit" class="so-button so-button--primary" id="soSave">Add subject</button></footer>
@@ -77,7 +83,7 @@ $catalog = array_map(static fn ($s) => [
 <?= $this->endSection() ?>
 <?= $this->section('scripts') ?>
 <?php if ($hasAnyDept): ?>
-<script type="application/json" id="soConfig"><?= json_encode(['subjects' => $catalog, 'departments' => (object) $deptNames, 'courses' => (object) $courses, 'subjectCourses' => (object) $subjectCourses, 'endpoint' => site_url('chairperson/subject-ownership')], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+<script type="application/json" id="soConfig"><?= json_encode(['subjects' => $catalog, 'departments' => (object) $deptNames, 'courses' => (object) $courses, 'subjectCourses' => (object) $subjectCourses, 'academicRates' => $academicRates, 'endpoint' => site_url('chairperson/subject-ownership')], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="<?= base_url('assets/js/subject-ownership.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/subject-ownership.js') ?>"></script>
 <?php endif ?>
 <?= $this->endSection() ?>

@@ -438,6 +438,7 @@
 .b-head { display: flex; align-items: center; gap: 3px; min-width: 0; }
 .b-code { font-size: 12px; font-weight: 650; color: var(--color-text-primary); white-space: nowrap; }
 .b-type { font-size: 9px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--color-lab); }
+.b-dur { margin-left: auto; flex: none; font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--color-text-tertiary); white-space: nowrap; }
 .b-flag {
     margin-left: auto;
     width: 14px;
@@ -631,6 +632,15 @@ body.is-plot-dragging .block.is-other { opacity: .7; }
 
 .slot-form { display: grid; grid-template-columns: 1fr 1.4fr; gap: var(--space-2); margin: var(--space-2) 0 0; }
 .slot-form .field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: var(--color-text-tertiary); }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: var(--color-text-tertiary); margin: var(--space-2) 0 0; }
+.stepper { display: flex; align-items: center; gap: var(--space-2); }
+.stepper__btn { display: grid; place-items: center; width: var(--control-height-sm); height: var(--control-height-sm); border: 1px solid var(--color-border-control); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text-primary); font-size: 16px; line-height: 1; cursor: pointer; transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard); }
+.stepper__btn:hover:not(:disabled) { border-color: var(--color-primary); background: var(--color-surface-secondary); }
+.stepper__btn:disabled { opacity: .4; cursor: not-allowed; }
+.stepper__value { min-width: 64px; text-align: center; font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+.meeting-length { display: flex; align-items: center; gap: var(--space-2); }
+.stepper--inline { display: inline-flex; gap: 4px; }
+.stepper--inline .stepper__btn { width: 22px; height: 22px; font-size: 13px; }
 .move-form { padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-secondary); }
 
 .issue-list, .attention-list, .meeting-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }

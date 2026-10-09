@@ -3,6 +3,7 @@
 namespace App\Controllers\Chairperson;
 
 use App\Controllers\BaseController;
+use App\Libraries\AcademicHourResolver;
 use App\Libraries\SchedulingAuthorization;
 use App\Models\PlottedScheduleModel;
 use App\Models\SubjectModel;
@@ -22,11 +23,17 @@ use App\Models\SubjectModel;
  * single owned department, so a chairperson delegated across more than one
  * department (see the Assign Chairperson / multi-department fix) manages
  * every department they're authorized for from one page.
+ *
+ * A subject with both a lecture AND a laboratory component is represented
+ * as two ordinary, single-type subject rows (one is_laboratory = 0, one
+ * is_laboratory = 1), linked only by subjects.pair_subject_id. Every other
+ * consumer of subjects (plotting, ScheduleSuggester, faculty load) keeps
+ * treating subject_code as a 1:1 key to one is_lab/duration/weekly_hours —
+ * exactly as it does today — because each row really is single-type. The
+ * pairing only matters here, to present/edit the two rows as one subject.
  */
 class SubjectOwnershipController extends BaseController
 {
-    private const ALLOWED_DURATIONS = [1.0, 1.5, 2.0, 2.5, 3.0];
-
     public function index()
     {
         $userId     = (int) auth()->id();
@@ -86,6 +93,8 @@ class SubjectOwnershipController extends BaseController
             }
         }
 
+        $resolver = new AcademicHourResolver();
+
         return view('chairperson/subject_ownership', [
             'pageTitle'   => 'Subject Ownership',
             'user'        => [
@@ -95,7 +104,7 @@ class SubjectOwnershipController extends BaseController
             'deptNames'      => $deptNames,
             'hasAnyDept'     => $subDeptIds !== [],
             'subjects'       => $subjects,
-            'durations'      => self::ALLOWED_DURATIONS,
+            'academicRates'  => ['lecture' => $resolver->lectureHoursPerUnit(), 'lab' => $resolver->labHoursPerUnit()],
             'courses'        => $courses,
             'subjectCourses' => $subjectCourses,
         ]);
@@ -133,19 +142,15 @@ class SubjectOwnershipController extends BaseController
             return $this->fail('Subject title is required (max 200 characters).');
         }
 
-        $units = (float) ($payload['units'] ?? 0);
+        $components = $this->readComponents($payload);
 
-        if ($units < 0.5 || $units > 6) {
-            return $this->fail('Units must be between 0.5 and 6.');
+        if ($components === null) {
+            return $this->fail('Select at least one class type (Lecture and/or Laboratory).');
         }
 
-        $duration = (float) ($payload['duration'] ?? 0);
-
-        if (! in_array($duration, self::ALLOWED_DURATIONS, true)) {
-            return $this->fail('Duration must be one of: ' . implode(', ', self::ALLOWED_DURATIONS) . ' hours.');
+        if ($error = $this->componentError($components)) {
+            return $this->fail($error);
         }
-
-        $isLab = ! empty($payload['is_lab']);
 
         $subjects = new SubjectModel();
         $existing = $subjects->where('subject_code', $code)->first();
@@ -154,26 +159,46 @@ class SubjectOwnershipController extends BaseController
             return $this->fail("Subject {$code} already exists in the catalog, owned by another department — it can be reused from the Curriculum Builder instead of being re-created here.");
         }
 
-        $row = [
-            'sub_department_id' => $subDeptId,
-            'program_id'        => null,
-            'subject_code'      => $code,
-            'subject_name'      => $title,
-            'units'             => $units,
-            'contact_hours'     => $duration,
-            'is_laboratory'     => $isLab ? 1 : 0,
-            'is_active'         => 1,
-        ];
+        $db = db_connect();
+        $db->transException(true)->transStart();
 
-        if ($existing === null) {
-            $subjects->insert($row);
-        } else {
-            // Reactivating a previously-deactivated code — safe to reassign
-            // ownership here since nothing references it while inactive.
-            $subjects->update($existing['subject_id'], $row);
+        try {
+            $lecId = null;
+            $labId = null;
+
+            if ($components['lecture'] !== null) {
+                $lecId = $this->upsertRow($subjects, $code, $subDeptId, $title, false, $components['lecture']);
+            }
+
+            if ($components['lab'] !== null) {
+                $labCode = $components['lecture'] !== null ? $this->deriveComponentCode($code, '-LAB') : $code;
+
+                if ($components['lecture'] !== null) {
+                    $labExisting = $subjects->where('subject_code', $labCode)->first();
+
+                    if ($labExisting !== null && $labExisting['is_active']) {
+                        throw new \RuntimeException("Could not auto-create the laboratory section as {$labCode} — that code is already used by another active subject. Rename or deactivate it first.");
+                    }
+                }
+
+                $labId = $this->upsertRow($subjects, $labCode, $subDeptId, $title, true, $components['lab']);
+            }
+
+            if ($lecId !== null && $labId !== null) {
+                $subjects->update($lecId, ['pair_subject_id' => $labId]);
+                $subjects->update($labId, ['pair_subject_id' => $lecId]);
+            }
+
+            $db->transComplete();
+        } catch (\RuntimeException $e) {
+            $db->transRollback();
+
+            return $this->fail($e->getMessage());
         }
 
-        return $this->response->setJSON(['ok' => true, 'subject_id' => $existing['subject_id'] ?? $subjects->getInsertID()]);
+        $rows = array_map(fn ($rowId) => $this->toCatalogRow($subjects->find($rowId)), array_filter([$lecId, $labId]));
+
+        return $this->response->setJSON(['ok' => true, 'rows' => array_values($rows)]);
     }
 
     public function update($id)
@@ -200,45 +225,57 @@ class SubjectOwnershipController extends BaseController
             return $this->fail('Subject title is required (max 200 characters).');
         }
 
-        $units = (float) ($payload['units'] ?? 0);
+        $components = $this->readComponents($payload);
 
-        if ($units < 0.5 || $units > 6) {
-            return $this->fail('Units must be between 0.5 and 6.');
+        if ($components === null) {
+            return $this->fail('Select at least one class type (Lecture and/or Laboratory).');
         }
 
-        $duration = (float) ($payload['duration'] ?? 0);
-
-        if (! in_array($duration, self::ALLOWED_DURATIONS, true)) {
-            return $this->fail('Duration must be one of: ' . implode(', ', self::ALLOWED_DURATIONS) . ' hours.');
+        if ($error = $this->componentError($components)) {
+            return $this->fail($error);
         }
 
-        $isLab = ! empty($payload['is_lab']);
+        $partner = $existing['pair_subject_id'] ? $subjects->find((int) $existing['pair_subject_id']) : null;
+        $lecRow  = ((int) $existing['is_laboratory'] === 0) ? $existing : $partner;
+        $labRow  = ((int) $existing['is_laboratory'] === 1) ? $existing : $partner;
 
-        $plotted = (new PlottedScheduleModel())->where('subject_code', $existing['subject_code'])->countAllResults();
+        $plottedCountFor = static fn (string $code) => (new PlottedScheduleModel())->where('subject_code', $code)->countAllResults();
 
-        if ($plotted > 0) {
-            $classes = $plotted . ' ' . ($plotted === 1 ? 'class' : 'classes');
+        $db = db_connect();
+        $db->transException(true)->transStart();
 
-            if (abs($duration - (float) $existing['contact_hours']) > 0.01 || $isLab !== (bool) $existing['is_laboratory']) {
-                return $this->fail("{$existing['subject_code']} is plotted in {$classes} — its duration/laboratory setting cannot change until those are removed.");
+        try {
+            $finalLecId = $this->applyComponentEdit($subjects, $lecRow, $components['lecture'], false, $title, $plottedCountFor, $existing, '-LEC');
+            $finalLabId = $this->applyComponentEdit($subjects, $labRow, $components['lab'], true, $title, $plottedCountFor, $existing, '-LAB');
+
+            if ($finalLecId !== null && $finalLabId !== null) {
+                $subjects->update($finalLecId, ['pair_subject_id' => $finalLabId]);
+                $subjects->update($finalLabId, ['pair_subject_id' => $finalLecId]);
+            } else {
+                // One side is gone (removed or never existed) — the survivor, if any, is unpaired.
+                if ($finalLecId !== null) {
+                    $subjects->update($finalLecId, ['pair_subject_id' => null]);
+                }
+                if ($finalLabId !== null) {
+                    $subjects->update($finalLabId, ['pair_subject_id' => null]);
+                }
             }
+
+            $db->transComplete();
+        } catch (\RuntimeException $e) {
+            $db->transRollback();
+
+            return $this->fail($e->getMessage());
         }
 
-        $subjects->update($existing['subject_id'], [
-            'subject_name'  => $title,
-            'units'         => $units,
-            'contact_hours' => $duration,
-            'is_laboratory' => $isLab ? 1 : 0,
-        ]);
+        // Report every row that existed before or exists after the edit (including a
+        // just-deactivated one, so the client can sync it out of the catalog display).
+        $touchedIds = array_unique(array_filter([
+            $lecRow ? $lecRow['subject_id'] : null, $labRow ? $labRow['subject_id'] : null, $finalLecId, $finalLabId,
+        ]));
+        $rows = array_map(fn ($rowId) => $this->toCatalogRow($subjects->find($rowId)), $touchedIds);
 
-        if ($plotted > 0 && $title !== $existing['subject_name']) {
-            (new PlottedScheduleModel())
-                ->where('subject_code', $existing['subject_code'])
-                ->set('subject_title', $title)
-                ->update();
-        }
-
-        return $this->response->setJSON(['ok' => true]);
+        return $this->response->setJSON(['ok' => true, 'rows' => array_values($rows)]);
     }
 
     public function toggleStatus($id)
@@ -253,17 +290,183 @@ class SubjectOwnershipController extends BaseController
             return $this->fail('Subject not found, or not owned by your department.');
         }
 
-        if ($existing['is_active']) {
-            $plotted = (new PlottedScheduleModel())->where('subject_code', $existing['subject_code'])->countAllResults();
+        $partner = $existing['pair_subject_id'] ? $subjects->find((int) $existing['pair_subject_id']) : null;
+        $rows    = array_filter([$existing, $partner]);
+        $turningOn = ! $existing['is_active'];
 
-            if ($plotted > 0) {
-                return $this->fail("{$existing['subject_code']} is plotted in {$plotted} " . ($plotted === 1 ? 'class' : 'classes') . ' — remove those from the schedules first.');
+        if (! $turningOn) {
+            foreach ($rows as $row) {
+                $plotted = (new PlottedScheduleModel())->where('subject_code', $row['subject_code'])->countAllResults();
+
+                if ($plotted > 0) {
+                    return $this->fail("{$row['subject_code']} is plotted in {$plotted} " . ($plotted === 1 ? 'class' : 'classes') . ' — remove those from the schedules first.');
+                }
             }
         }
 
-        $subjects->update($existing['subject_id'], ['is_active' => $existing['is_active'] ? 0 : 1]);
+        foreach ($rows as $row) {
+            $subjects->update($row['subject_id'], ['is_active' => $turningOn ? 1 : 0]);
+        }
 
         return $this->response->setJSON(['ok' => true]);
+    }
+
+    private function toCatalogRow(array $row): array
+    {
+        return [
+            'id'         => (int) $row['subject_id'],
+            'code'       => $row['subject_code'],
+            'title'      => $row['subject_name'],
+            'units'      => (float) $row['units'],
+            'duration'   => (float) $row['contact_hours'],
+            'is_lab'     => (bool) $row['is_laboratory'],
+            'active'     => (bool) $row['is_active'],
+            'department' => (int) $row['sub_department_id'],
+            'pairId'     => $row['pair_subject_id'] !== null ? (int) $row['pair_subject_id'] : null,
+        ];
+    }
+
+    /**
+     * Reads {has_lecture, lecture_units, has_lab, lab_units} into
+     * ['lecture' => float|null, 'lab' => float|null], null meaning "not
+     * requested this type". Returns null overall if neither type is set.
+     */
+    private function readComponents(array $payload): ?array
+    {
+        $hasLecture = ! empty($payload['has_lecture']);
+        $hasLab     = ! empty($payload['has_lab']);
+
+        if (! $hasLecture && ! $hasLab) {
+            return null;
+        }
+
+        return [
+            'lecture' => $hasLecture ? (float) ($payload['lecture_units'] ?? 0) : null,
+            'lab'     => $hasLab ? (float) ($payload['lab_units'] ?? 0) : null,
+        ];
+    }
+
+    private function componentError(array $components): ?string
+    {
+        foreach (['lecture' => 'Lecture', 'lab' => 'Laboratory'] as $key => $label) {
+            $units = $components[$key];
+
+            if ($units !== null && ($units < 0.5 || $units > 6)) {
+                return "{$label} units must be between 0.5 and 6.";
+            }
+        }
+
+        return null;
+    }
+
+    /** units x hours-per-unit, rounded to the nearest 0.5h so it fits the plotting grid's 30-minute slots. */
+    private function computeDuration(float $units, bool $isLab): float
+    {
+        $resolver = new AcademicHourResolver();
+        $rate     = $isLab ? $resolver->labHoursPerUnit() : $resolver->lectureHoursPerUnit();
+
+        return round(($units * $rate) * 2) / 2;
+    }
+
+    private function deriveComponentCode(string $anchorCode, string $suffix): string
+    {
+        $base    = preg_replace('/-(LAB|LEC)$/', '', $anchorCode);
+        $maxBase = 20 - strlen($suffix);
+
+        return substr($base, 0, $maxBase) . $suffix;
+    }
+
+    /** Inserts a new row, or reactivates/overwrites a matching inactive one. Returns the subject_id. */
+    private function upsertRow(SubjectModel $subjects, string $code, int $subDeptId, string $title, bool $isLab, float $units): int
+    {
+        $existing = $subjects->where('subject_code', $code)->first();
+
+        $row = [
+            'sub_department_id' => $subDeptId,
+            'program_id'        => null,
+            'subject_code'      => $code,
+            'subject_name'      => $title,
+            'units'             => $units,
+            'contact_hours'     => $this->computeDuration($units, $isLab),
+            'is_laboratory'     => $isLab ? 1 : 0,
+            'is_active'         => 1,
+        ];
+
+        if ($existing === null) {
+            $subjects->insert($row);
+
+            return (int) $subjects->getInsertID();
+        }
+
+        // Reactivating a previously-deactivated code — safe to reassign ownership here since nothing references it while inactive.
+        $subjects->update($existing['subject_id'], $row);
+
+        return (int) $existing['subject_id'];
+    }
+
+    /**
+     * Applies the edit for one component (lecture or lab) of a subject being updated.
+     * Returns the resulting row's subject_id, or null if that component doesn't exist afterward.
+     *
+     * @throws \RuntimeException on a plotted-lock violation or an auto-generated code collision.
+     */
+    private function applyComponentEdit(SubjectModel $subjects, ?array $currentRow, ?float $units, bool $isLab, string $title, callable $plottedCountFor, array $editedSubject, string $suffix): ?int
+    {
+        if ($units === null) {
+            // This type isn't checked. If it previously existed, retire it.
+            if ($currentRow === null) {
+                return null;
+            }
+
+            $plotted = $plottedCountFor($currentRow['subject_code']);
+
+            if ($plotted > 0) {
+                $classes = $plotted . ' ' . ($plotted === 1 ? 'class' : 'classes');
+
+                throw new \RuntimeException("{$currentRow['subject_code']} is plotted in {$classes} — remove those from the schedules first.");
+            }
+
+            $subjects->update($currentRow['subject_id'], ['is_active' => 0, 'pair_subject_id' => null]);
+
+            return null;
+        }
+
+        $duration = $this->computeDuration($units, $isLab);
+
+        if ($currentRow !== null) {
+            $plotted = $plottedCountFor($currentRow['subject_code']);
+
+            if ($plotted > 0 && abs($duration - (float) $currentRow['contact_hours']) > 0.01) {
+                $classes = $plotted . ' ' . ($plotted === 1 ? 'class' : 'classes');
+
+                throw new \RuntimeException("{$currentRow['subject_code']} is plotted in {$classes} — its meeting length cannot change until those are removed.");
+            }
+
+            $subjects->update($currentRow['subject_id'], [
+                'subject_name'  => $title,
+                'units'         => $units,
+                'contact_hours' => $duration,
+            ]);
+
+            if ($plotted > 0 && $title !== $currentRow['subject_name']) {
+                (new PlottedScheduleModel())->where('subject_code', $currentRow['subject_code'])->set('subject_title', $title)->update();
+            }
+
+            return (int) $currentRow['subject_id'];
+        }
+
+        // Newly checked — create it, anchored off whichever row already exists on this subject.
+        $anchorCode = $editedSubject['subject_code'];
+        $code       = $this->deriveComponentCode($anchorCode, $suffix);
+        $collision  = $subjects->where('subject_code', $code)->first();
+
+        if ($collision !== null && $collision['is_active']) {
+            $typeLabel = $isLab ? 'laboratory' : 'lecture';
+
+            throw new \RuntimeException("Could not auto-create the {$typeLabel} section as {$code} — that code is already used by another active subject. Rename or deactivate it first.");
+        }
+
+        return $this->upsertRow($subjects, $code, (int) $editedSubject['sub_department_id'], $title, $isLab, $units);
     }
 
     private function fail(string $message)
