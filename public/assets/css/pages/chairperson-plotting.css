@@ -641,6 +641,29 @@ body.is-plot-dragging .block.is-other { opacity: .7; }
 .meeting-length { display: flex; align-items: center; gap: var(--space-2); }
 .stepper--inline { display: inline-flex; gap: 4px; }
 .stepper--inline .stepper__btn { width: 22px; height: 22px; font-size: 13px; }
+
+/* On-calendar resize row: a 30-min "tiny" block is only ~32px tall, nowhere
+   near enough for a legible, tappable control crammed into its header — so
+   this sits as its own row at normal (sidebar) button size, always in the
+   DOM but shown only for the selected block. Blocks are absolutely
+   positioned, so letting a short selected tile grow past its real height to
+   fit this is safe: it just overlaps the row beneath it instead of
+   disturbing the grid's layout. */
+.b-resize {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-top: 3px;
+    padding-top: 4px;
+    border-top: 1px dashed var(--color-border);
+}
+.block.is-selected { overflow: visible; }
+.block.is-selected .b-resize { display: flex; }
+.b-resize__label { font-size: 10px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--color-text-tertiary); }
+/* A touch more contrast than the default stepper fill, since this sits on
+   top of a colored (lecture/lab/warning) block background, not a plain panel. */
+.b-resize .stepper__btn { background: var(--color-surface-secondary); border-color: var(--color-border-medium); box-shadow: var(--shadow-sm); }
 .move-form { padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-secondary); }
 
 .issue-list, .attention-list, .meeting-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }

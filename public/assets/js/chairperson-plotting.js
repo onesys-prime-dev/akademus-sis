@@ -652,6 +652,20 @@ function ownEl(b) {
     el.appendChild(b.prof ? mk('div', 'b-line b-prof', b.prof) : mk('div', 'b-line b-noprof', 'No faculty'));
     el.appendChild(mk('div', 'b-line b-room', b.room));
     el.appendChild(mk('div', 'b-line b-time', blockRange(b)));
+
+    // A 30-min "tiny" block is only ~32px tall — nowhere near enough room for
+    // a legible, tappable +/- control next to the code/duration text. So the
+    // resize row lives at normal (sidebar) button size, in the DOM for every
+    // owned block but shown only when selected (CSS .is-selected), and the
+    // block itself grows to fit it — safe because blocks are absolutely
+    // positioned, so a taller selected tile just overlaps the row beneath it
+    // instead of pushing the grid's layout around.
+    if (isOwned) {
+        const resize = mk('div', 'b-resize');
+        resize.appendChild(mk('span', 'b-resize__label', 'Length'));
+        resize.appendChild(resizeStepper(b, subjectStats(b.code), 'stepper stepper--inline'));
+        el.appendChild(resize);
+    }
     el.title = `${b.code} · ${b.title}\n${dayName(b.day)} ${blockRange(b)} · ${b.room}${b.prof ? ' · ' + b.prof : ''}`
         + issues.map(i => `\n${i.title}`).join('');
 
@@ -1662,32 +1676,45 @@ function resizeBlock(b, deltaSlots) {
     showToast(`${b.code} is now ${fmtHours((endRow - startRow) / 2)}.`, 'success', { label: 'Undo', onClick: undoLast });
 }
 
-/** "This meeting" fact value: the length, plus a +/- stepper to resize it directly (no dragging). */
-function meetingLengthControl(b, subject, stats, isOwned) {
-    const wrap = mk('span', 'meeting-length', fmtHours(blockHours(b)));
-    if (!isOwned) return wrap;
-
+/** How many 30-min slots a block could grow to without overshooting the subject's weekly target. */
+function meetingMaxSlots(b, stats) {
     const slots = blockEndRow(b) - blockStartRow(b);
     const otherPlotted = stats.plotted - blockHours(b);
-    const maxSlots = stats.weekly > 0
+    return stats.weekly > 0
         ? Math.max(slots, Math.floor((stats.weekly - otherPlotted + 1e-9) / 0.5))
         : slots + 12;
+}
 
-    const stepper = mk('span', 'stepper stepper--inline');
+/** The +/- buttons that grow/shrink a plotted block by 30 minutes, in place — shared by the Details panel and the calendar tile itself. `className` lets each caller size them appropriately. */
+function resizeStepper(b, stats, className) {
+    const slots = blockEndRow(b) - blockStartRow(b);
+    const maxSlots = meetingMaxSlots(b, stats);
+
+    const stepper = mk('span', className);
     const minus = mk('button', 'stepper__btn', '−');
     minus.type = 'button';
+    minus.draggable = false;
     minus.setAttribute('aria-label', `Shorten ${b.code}`);
     minus.disabled = slots <= 1;
-    minus.addEventListener('click', () => resizeBlock(b, -1));
+    minus.addEventListener('mousedown', e => e.stopPropagation());
+    minus.addEventListener('click', e => { e.stopPropagation(); resizeBlock(b, -1); });
 
     const plus = mk('button', 'stepper__btn', '+');
     plus.type = 'button';
+    plus.draggable = false;
     plus.setAttribute('aria-label', `Extend ${b.code}`);
     plus.disabled = slots >= maxSlots || blockEndRow(b) >= CONFIG.totalRows;
-    plus.addEventListener('click', () => resizeBlock(b, 1));
+    plus.addEventListener('mousedown', e => e.stopPropagation());
+    plus.addEventListener('click', e => { e.stopPropagation(); resizeBlock(b, 1); });
 
     stepper.append(minus, plus);
-    wrap.appendChild(stepper);
+    return stepper;
+}
+
+/** "This meeting" fact value: the length, plus a +/- stepper to resize it directly (no dragging). */
+function meetingLengthControl(b, subject, stats, isOwned) {
+    const wrap = mk('span', 'meeting-length', fmtHours(blockHours(b)));
+    if (isOwned) wrap.appendChild(resizeStepper(b, stats, 'stepper stepper--inline'));
     return wrap;
 }
 
