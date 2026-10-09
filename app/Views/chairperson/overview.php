@@ -83,6 +83,21 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     .tool-card:hover .material-symbols-outlined { color: var(--color-primary); }
     .tool-card__title { font-size: 12.5px; font-weight: 700; color: var(--color-text-primary); }
     .tool-card__sub { font-size: 10.5px; color: var(--color-text-tertiary); }
+
+    /* ===== Sections to Plot ===== */
+    .gap-list { display: flex; flex-direction: column; gap: 8px; }
+    .gap-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 14px;
+        padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md);
+        background: var(--color-surface-secondary);
+    }
+    .gap-row__where { min-width: 0; }
+    .gap-row__combo { font-size: 12.5px; font-weight: 700; color: var(--color-text-primary); }
+    .gap-row__combo .sep { margin: 0 4px; color: var(--color-text-tertiary); font-weight: 400; }
+    .gap-row__subjects { margin-top: 2px; font-size: 11px; color: var(--color-text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gap-row__actions { display: flex; align-items: center; gap: 10px; flex: none; }
+    .gap-row__actions a { font-size: 12px; font-weight: 700; color: var(--color-primary); text-decoration: none; white-space: nowrap; }
+    .gap-row__actions a:hover { text-decoration: underline; }
 </style>
 <?= $this->endSection() ?>
 
@@ -140,6 +155,43 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             </div>
         </div>
     </section>
+
+    <div class="dash-panel">
+        <div class="dash-panel__head">
+            <div>
+                <h3>Sections to Plot</h3>
+                <p>Your own programs' sections still missing subjects on the weekly schedule.</p>
+            </div>
+            <?php if ($plottingGaps !== []): ?>
+                <span class="kpi-flag kpi-flag--warn"><?= count($plottingGaps) ?> <?= count($plottingGaps) === 1 ? 'section' : 'sections' ?></span>
+            <?php else: ?>
+                <span class="kpi-flag kpi-flag--ok">All Clear</span>
+            <?php endif ?>
+        </div>
+
+        <?php if ($plottingGaps === []): ?>
+            <div class="empty-state" style="padding:24px;">
+                <p>Every section in your programs is fully plotted for this term.</p>
+            </div>
+        <?php else: ?>
+            <div class="gap-list">
+                <?php foreach ($plottingGaps as $gap): ?>
+                    <div class="gap-row">
+                        <div class="gap-row__where">
+                            <div class="gap-row__combo">
+                                <?= esc($gap['program']) ?><span class="sep">&middot;</span><?= esc($gap['year_level']) ?><span class="sep">&middot;</span>Section <?= esc($gap['section']) ?>
+                            </div>
+                            <div class="gap-row__subjects"><?= esc(implode(', ', $gap['missing_codes'])) ?></div>
+                        </div>
+                        <div class="gap-row__actions">
+                            <span class="kpi-flag kpi-flag--warn"><?= (int) $gap['missing_count'] ?> to plot</span>
+                            <a href="<?= esc($gap['url']) ?>">Plot now &rarr;</a>
+                        </div>
+                    </div>
+                <?php endforeach ?>
+            </div>
+        <?php endif ?>
+    </div>
 
     <div class="kpi-grid">
         <div class="kpi-card">

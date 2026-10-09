@@ -2882,12 +2882,22 @@ class ChairpersonController extends BaseController
         $deptModel = new DepartmentModel();
         $subDept   = $deptModel->subDeptOfUser((int) auth()->id());
 
-        $activeYear = (new AcademicYearModel())->activeFormatted();
-        $programs   = $subDept === null ? [] : $deptModel->programsOfSubDept((int) $subDept['sub_dept_id']);
+        $activeYearRow = (new AcademicYearModel())->where('is_active', 1)->first();
+        $activeYear    = $activeYearRow === null ? null : AcademicYearModel::format($activeYearRow['label'], $activeYearRow['semester']);
+        $programs      = $subDept === null ? [] : $deptModel->programsOfSubDept((int) $subDept['sub_dept_id']);
+        $subDeptIds    = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
 
         $plottedClasses = 0;
         $curriculumSet  = 0;
         $curriculumSlots = count($programs) * count(self::FILTERS['year_level']);
+
+        // Per-section gaps in MY OWN programs' schedules — distinct from
+        // needsPlottingCount below, which is cross-department demand for
+        // subjects I own. This answers "how complete is my own section's
+        // schedule," surfaced on the dashboard as "Sections to Plot" so a
+        // chairperson doesn't have to click through every program/year/
+        // section combo on Schedule Plotting to find out.
+        $plottingGaps = [];
 
         if ($programs !== [] && $activeYear !== null) {
             $plottedClasses = (new PlottedScheduleModel())
@@ -2897,11 +2907,81 @@ class ChairpersonController extends BaseController
 
             foreach ($programs as $program) {
                 foreach (self::FILTERS['year_level'] as $yearLevel) {
-                    if ($this->termSubjectCodes(['academic_year' => $activeYear, 'program' => $program, 'year_level' => $yearLevel]) !== null) {
+                    $contextSubjects = $this->termSubjectCodes(['academic_year' => $activeYear, 'program' => $program, 'year_level' => $yearLevel]);
+
+                    if ($contextSubjects !== null) {
                         $curriculumSet++;
+                    }
+
+                    if ($contextSubjects === null || $contextSubjects === [] || $subDeptIds === []) {
+                        continue;
+                    }
+
+                    // Only subjects this department actually owns — a
+                    // required-but-borrowed subject isn't this chairperson's
+                    // to plot from here (see Shared Subject Requests), so
+                    // counting it as "to plot" would just point at a dead end.
+                    $ownedCodes = array_column(
+                        (new SubjectModel())
+                            ->whereIn('subject_code', $contextSubjects)
+                            ->whereIn('sub_department_id', $subDeptIds)
+                            ->findAll(),
+                        'subject_code'
+                    );
+
+                    if ($ownedCodes === []) {
+                        continue;
+                    }
+
+                    $sections = array_column(
+                        db_connect()->table('sections')
+                            ->select('section')
+                            ->where(['program' => $program, 'year_level' => $yearLevel, 'academic_year' => $activeYear])
+                            ->distinct()
+                            ->get()
+                            ->getResultArray(),
+                        'section'
+                    );
+
+                    foreach ($sections as $section) {
+                        $plottedCodes = array_column(
+                            db_connect()->table('plotted_schedules')
+                                ->select('subject_code')
+                                ->where([
+                                    'academic_year' => $activeYear, 'program' => $program,
+                                    'year_level' => $yearLevel, 'section' => $section,
+                                ])
+                                ->distinct()
+                                ->get()
+                                ->getResultArray(),
+                            'subject_code'
+                        );
+
+                        $missing = array_values(array_diff($ownedCodes, $plottedCodes));
+
+                        if ($missing === []) {
+                            continue;
+                        }
+
+                        $plottingGaps[] = [
+                            'program'       => $program,
+                            'year_level'    => $yearLevel,
+                            'section'       => $section,
+                            'missing_count' => count($missing),
+                            'missing_codes' => $missing,
+                            'url'           => site_url('chairperson/dashboard') . '?' . http_build_query([
+                                'ay_label'   => $activeYearRow['label'],
+                                'semester'   => $activeYearRow['semester'],
+                                'program'    => $program,
+                                'year_level' => $yearLevel,
+                                'section'    => $section,
+                            ]),
+                        ];
                     }
                 }
             }
+
+            usort($plottingGaps, static fn (array $a, array $b): int => $b['missing_count'] <=> $a['missing_count']);
         }
 
         $facultyCount = $subDept === null ? 0 : db_connect()->table('users u')
@@ -2919,8 +2999,6 @@ class ChairpersonController extends BaseController
         $needsPlottingCount = 0;
 
         if ($activeYear !== null) {
-            $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
-
             if ($subDeptIds !== []) {
                 $ownedSubjects = db_connect()->table('subjects')
                     ->select('subject_id, subject_code')
@@ -2959,6 +3037,7 @@ class ChairpersonController extends BaseController
             'deptName'    => $subDept['name'] ?? null,
             'activeYear'  => $activeYear,
             'programs'    => $programs,
+            'plottingGaps' => $plottingGaps,
             'stats' => [
                 'plotted_classes'     => $plottedClasses,
                 'faculty_count'       => $facultyCount,
