@@ -4400,6 +4400,112 @@ document.querySelectorAll('#contextForm .context-select').forEach(select => {
         }
     });
 });
+
+// ---------- context bar: custom dropdown ----------
+// The context selects (academic year/semester/program/year level/section)
+// are plain browser <select>s, whose open dropdown list browsers don't let
+// a page style (no custom hover colors, badges, etc). This progressively
+// enhances each one with a styled trigger + listbox that drives the real,
+// still-present <select> — so every existing behavior (the dirty-check
+// guard above, form submission via select.name, the program-change reset,
+// no-JS fallback, screen readers) keeps working unchanged; only the visual
+// chrome of the OPEN list changes.
+function enhanceContextSelect(select) {
+    const field = select.closest('.pl-field');
+    if (!field) return;
+
+    const wrap = mk('div', 'cx-select');
+    const trigger = mk('button', 'cx-select__trigger');
+    trigger.type = 'button';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    const list = mk('ul', 'cx-select__list');
+    list.setAttribute('role', 'listbox');
+    list.hidden = true;
+
+    select.classList.add('cx-select__native');
+    select.insertAdjacentElement('afterend', wrap);
+    wrap.appendChild(select); // move inside .cx-select so its position:absolute is scoped to it, not the page
+    wrap.append(trigger, list);
+
+    // Options already carry " — N to plot" in their text (server-rendered,
+    // year_level only) — read it back out instead of recomputing it here.
+    const splitLabel = text => {
+        const i = text.indexOf(' — ');
+        return i === -1 ? { main: text, badge: null } : { main: text.slice(0, i), badge: text.slice(i + 3) };
+    };
+
+    function renderTrigger() {
+        const opt = select.options[select.selectedIndex];
+        trigger.replaceChildren();
+        trigger.disabled = select.disabled || select.options.length === 0;
+        if (!opt) return;
+        const { main, badge } = splitLabel(opt.textContent);
+        trigger.appendChild(mk('span', 'cx-select__value', main));
+        if (badge) trigger.appendChild(mk('span', 'cx-select__badge', badge));
+        trigger.appendChild(mk('span', 'cx-select__chevron material-symbols-outlined', 'expand_more'));
+    }
+
+    function renderList() {
+        list.replaceChildren();
+        [...select.options].forEach(opt => {
+            const { main, badge } = splitLabel(opt.textContent);
+            const li = mk('li', 'cx-select__option' + (opt.selected ? ' is-selected' : '') + (opt.disabled ? ' is-disabled' : ''));
+            li.setAttribute('role', 'option');
+            li.setAttribute('aria-selected', String(opt.selected));
+            li.tabIndex = -1;
+            li.appendChild(mk('span', 'cx-select__value', main));
+            if (badge) li.appendChild(mk('span', 'cx-select__badge', badge));
+            if (!opt.disabled) {
+                li.addEventListener('click', () => {
+                    closeList();
+                    if (select.value !== opt.value) {
+                        select.value = opt.value;
+                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    trigger.focus();
+                });
+            }
+            list.appendChild(li);
+        });
+    }
+
+    function openList() {
+        if (trigger.disabled || !list.hidden) return;
+        renderList();
+        list.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        wrap.classList.add('is-open');
+        (list.querySelector('.is-selected') || list.querySelector('.cx-select__option:not(.is-disabled)'))?.focus();
+    }
+
+    function closeList() {
+        if (list.hidden) return;
+        list.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        wrap.classList.remove('is-open');
+    }
+
+    trigger.addEventListener('click', () => (list.hidden ? openList() : closeList()));
+    trigger.addEventListener('keydown', e => {
+        if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) { e.preventDefault(); openList(); }
+    });
+    list.addEventListener('keydown', e => {
+        const items = [...list.querySelectorAll('.cx-select__option:not(.is-disabled)')];
+        const i = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown') { e.preventDefault(); (items[i + 1] || items[0])?.focus(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); (items[i - 1] || items[items.length - 1])?.focus(); }
+        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.activeElement?.click(); }
+        else if (e.key === 'Escape') { e.preventDefault(); closeList(); trigger.focus(); }
+        else if (e.key === 'Tab') closeList();
+    });
+    document.addEventListener('click', e => { if (!wrap.contains(e.target)) closeList(); });
+
+    select.addEventListener('change', renderTrigger);
+    renderTrigger();
+}
+document.querySelectorAll('#contextForm .context-select').forEach(enhanceContextSelect);
+
         // ---------- real-time sync (long-polling) ----------
         // The server holds each request open until the schedule changes, so
         // edits from other tabs/users appear in under a second.
