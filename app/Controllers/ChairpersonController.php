@@ -3256,17 +3256,31 @@ class ChairpersonController extends BaseController
         // reads better than "1 department".
         $deptName = count($deptNames) === 1 ? reset($deptNames) : ($deptNames === [] ? null : implode(', ', $deptNames));
 
+        $deptSections = [];
+        if ($programs !== [] && $activeYear !== null) {
+            $deptSections = db_connect()->table('sections')
+                ->select('section_id, program, year_level, section, capacity, status')
+                ->where('academic_year', $activeYear)
+                ->whereIn('program', $programs)
+                ->orderBy('program')
+                ->orderBy('year_level')
+                ->orderBy('section')
+                ->get()
+                ->getResultArray();
+        }
+
         return view('chairperson/overview', [
             'pageTitle' => 'Dashboard',
             'user' => [
                 'name' => $account->username ?? 'Chairperson',
                 'role' => (count($deptNames) === 1 ? reset($deptNames) . ' - ' : '') . 'Chairperson',
             ],
-            'deptName'    => $deptName,
-            'deptCount'   => count($deptNames),
-            'activeYear'  => $activeYear,
-            'programs'    => $programs,
+            'deptName'     => $deptName,
+            'deptCount'    => count($deptNames),
+            'activeYear'   => $activeYear,
+            'programs'     => $programs,
             'plottingGaps' => $plottingGaps,
+            'deptSections' => $deptSections,
             'stats' => [
                 'plotted_classes'     => $plottedClasses,
                 'faculty_count'       => $facultyCount,
