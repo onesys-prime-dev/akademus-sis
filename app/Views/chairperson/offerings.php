@@ -231,7 +231,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                             <?php else: ?>
                                 <?php foreach ($o['meetings'] as $m): ?>
                                     <div class="mc-pill" style="margin-bottom:4px;">
-                                        <?= esc(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][(int) $m['day']] ?? '?') ?>
+                                        <?= esc(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][(int) $m['day']] ?? '?') ?>
                                         <?= esc(substr($m['start_time'], 0, 5)) ?>–<?= esc(substr($m['end_time'], 0, 5)) ?>
                                         · <?= esc($m['room']) ?>
                                         <?php if (! empty($m['prof'])): ?> · <?= esc($m['prof']) ?><?php endif ?>
@@ -243,7 +243,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                 <form class="mc-schedule-form" onsubmit="return addOfferingMeeting(event, <?= (int) $o['offering_id'] ?>)">
                                     <select name="day" required>
                                         <option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option>
-                                        <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option>
+                                        <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option><option value="6">Sun</option>
                                     </select>
                                     <input type="time" name="start" required>
                                     <input type="time" name="end" required>
@@ -284,7 +284,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                         <?php else: ?>
                                             <?php foreach ($c['meetings'] as $m): ?>
                                                 <div class="mc-pill" style="margin-bottom:4px;">
-                                                    <?= esc(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][(int) $m['day']] ?? '?') ?>
+                                                    <?= esc(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][(int) $m['day']] ?? '?') ?>
                                                     <?= esc(substr($m['start_time'], 0, 5)) ?>–<?= esc(substr($m['end_time'], 0, 5)) ?>
                                                     · <?= esc($m['room']) ?>
                                                 </div>
@@ -295,7 +295,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                             <form class="mc-schedule-form" onsubmit="return addComponentMeeting(event, <?= (int) $c['id'] ?>)">
                                                 <select name="day" required>
                                                     <option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option>
-                                                    <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option>
+                                                    <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option><option value="6">Sun</option>
                                                 </select>
                                                 <input type="time" name="start" required>
                                                 <input type="time" name="end" required>

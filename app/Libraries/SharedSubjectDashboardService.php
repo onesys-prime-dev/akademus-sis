@@ -116,7 +116,7 @@ class SharedSubjectDashboardService
 
             foreach ($scheduleRows as $r) {
                 $meetingsByOffering[(int) $r['offering_id']][] = [
-                    'day_label'  => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][(int) $r['day']] ?? '?',
+                    'day_label'  => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][(int) $r['day']] ?? '?',
                     'start'      => substr($r['start_time'], 0, 5),
                     'end'        => substr($r['end_time'], 0, 5),
                     'room'       => $r['room'],

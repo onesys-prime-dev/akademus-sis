@@ -55,6 +55,7 @@ class ScheduleSuggester
         'earliest_start'  => '07:00',
         'latest_end'      => '17:30',
         'allow_saturday'  => true,
+        'allow_sunday'    => false,
         'max_hours_day'   => 8.0,
         'day_pattern'     => 'spaced',
         'spread'          => 'balanced',
@@ -62,7 +63,7 @@ class ScheduleSuggester
 
     private const SPREAD_WEIGHT = ['off' => 0.0, 'balanced' => 1.0, 'strong' => 2.0];
 
-    private const DAY_NAMES  = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    private const DAY_NAMES  = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     private const PREF_WEIGHT = ['preferred' => 30, 'willing' => 15, 'qualified' => 8];
 
     /**
@@ -345,7 +346,7 @@ class ScheduleSuggester
      * break the assistant.
      *
      * @return array{lunch_enabled: bool, lunch_start: string, lunch_end: string, earliest_start: string,
-     *               latest_end: string, allow_saturday: bool, max_hours_day: float, day_pattern: string, spread: string}
+     *               latest_end: string, allow_saturday: bool, allow_sunday: bool, max_hours_day: float, day_pattern: string, spread: string}
      */
     public function normalizeRules(array $rules): array
     {
@@ -359,6 +360,7 @@ class ScheduleSuggester
             'earliest_start' => $time($rules['earliest_start'] ?? null, $d['earliest_start']),
             'latest_end'     => $time($rules['latest_end'] ?? null, $d['latest_end']),
             'allow_saturday' => array_key_exists('allow_saturday', $rules) ? (bool) $rules['allow_saturday'] : $d['allow_saturday'],
+            'allow_sunday'   => array_key_exists('allow_sunday', $rules) ? (bool) $rules['allow_sunday'] : $d['allow_sunday'],
             'max_hours_day'  => isset($rules['max_hours_day']) && is_numeric($rules['max_hours_day'])
                 ? max(1.0, min(12.0, (float) $rules['max_hours_day'])) : $d['max_hours_day'],
             'day_pattern'    => in_array($rules['day_pattern'] ?? null, ['any', 'spaced'], true) ? $rules['day_pattern'] : $d['day_pattern'],
@@ -587,7 +589,7 @@ class ScheduleSuggester
             $myRoomUsage[$b['room']] = ($myRoomUsage[$b['room']] ?? 0) + 1;
         }
 
-        $dayLoad = array_fill(0, 6, 0);
+        $dayLoad = array_fill(0, 7, 0);
 
         foreach ($mine as $b) {
             $dayLoad[$b['day']] += ($b['end'] - $b['start']);
@@ -595,11 +597,17 @@ class ScheduleSuggester
 
         $out = [];
 
-        $rules   = $ctx['rules'];
-        $maxDay  = (int) round($rules['max_hours_day'] * 60);
-        $lastDay = $rules['allow_saturday'] ? 5 : 4;
+        $rules      = $ctx['rules'];
+        $maxDay     = (int) round($rules['max_hours_day'] * 60);
+        $allowedDays = range(0, 4);
+        if ($rules['allow_saturday']) {
+            $allowedDays[] = 5;
+        }
+        if ($rules['allow_sunday']) {
+            $allowedDays[] = 6;
+        }
 
-        for ($day = 0; $day <= $lastDay; $day++) {
+        foreach ($allowedDays as $day) {
             if (isset($sameSubjectDays[$day])) {
                 continue;
             }

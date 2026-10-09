@@ -7,7 +7,7 @@
     const preferences = document.getElementById('preferencesForm');
     const statuses = Array.from(root.querySelectorAll('.day-status'));
     const subjects = Array.from(root.querySelectorAll('.subj-row'));
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const byId = id => document.getElementById(id);
     const minutes = value => value ? Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5)) : null;
     const number = value => Number(value.toFixed(1)).toString();

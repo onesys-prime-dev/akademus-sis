@@ -14,7 +14,7 @@ use App\Models\PlottedScheduleModel;
  */
 class ScheduleController extends BaseController
 {
-    private const DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    private const DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     /** Mirrors ChairpersonController::COLORS so blocks use the same accent per subject. */
     private const COLORS = ['blue', 'purple', 'cyan', 'red', 'green', 'yellow'];

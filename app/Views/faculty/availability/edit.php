@@ -154,7 +154,7 @@ usort($sortedSubjects, function ($a, $b) use ($preferencesById, $levelRank) {
                 <input type="hidden" name="ay_id" value="<?= (int) $term['ay_id'] ?>">
 
                 <?php foreach ($dayLabels as $day => $label): ?>
-                    <?php $row = $availabilityByDay[$day] ?? null; $fullDay = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][$day]; ?>
+                    <?php $row = $availabilityByDay[$day] ?? null; $fullDay = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][$day]; ?>
                     <?php $status = $row ? ($row['is_available'] ? 'available' : 'unavailable') : ''; ?>
                     <div class="avail-row <?= $status === 'available' ? 'is-available' : ($status === 'unavailable' ? 'is-unavailable' : '') ?>" id="row_<?= $day ?>" data-day="<?= $day ?>">
                         <div class="avail-day-group">

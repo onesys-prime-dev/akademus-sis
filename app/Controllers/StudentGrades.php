@@ -11,7 +11,7 @@ use App\Models\GradingScaleModel;
  */
 class StudentGrades extends BaseController
 {
-    private const DAY_LABELS = ['M', 'T', 'W', 'TH', 'F', 'S'];
+    private const DAY_LABELS = ['M', 'T', 'W', 'TH', 'F', 'S', 'SU'];
 
     public function index()
     {
@@ -56,7 +56,7 @@ class StudentGrades extends BaseController
     /**
      * "W (2:30 PM - 5:30 PM); S (9:00 AM - 12:00 PM)" from plotted_schedules
      * meeting rows — same day-index convention as StudentEnrollment::schedule
-     * (0 = Monday .. 5 = Saturday).
+     * (0 = Monday .. 6 = Sunday).
      */
     private function scheduleLabel(array $meetings): string
     {

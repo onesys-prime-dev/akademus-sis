@@ -249,6 +249,7 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
                     </div>
 
                     <label class="ai-check"><input type="checkbox" name="allow_saturday"> Allow Saturday classes</label>
+                    <label class="ai-check"><input type="checkbox" name="allow_sunday"> Allow Sunday classes</label>
 
                     <div class="ai-row">
                         <label>Meeting days

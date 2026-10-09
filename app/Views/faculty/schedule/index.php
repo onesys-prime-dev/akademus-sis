@@ -151,7 +151,7 @@ $colors = [
                             <div class="time-slot"><?php $h12 = $m % 720 === 0 ? 12 : intdiv($m, 60) % 12; echo $h12 . ($m < 720 ? ' AM' : ' PM'); ?></div>
                         <?php endfor ?>
                     </div>
-                    <?php for ($day = 0; $day < 6; $day++): ?>
+                    <?php for ($day = 0; $day < count($dayLabels); $day++): ?>
                         <div class="day-col" style="height:<?= $totalRows * 32 ?>px;">
                             <?php for ($r = 0; $r < $totalRows / 2; $r++): ?><div class="hour-line"></div><?php endfor ?>
                             <?php foreach ($blocks as $b): ?>
@@ -176,7 +176,7 @@ $colors = [
         </section>
 
         <section class="schedule-agenda" aria-label="Weekly schedule list">
-            <?php for ($day = 0; $day < 6; $day++): ?>
+            <?php for ($day = 0; $day < count($dayLabels); $day++): ?>
                 <?php $dayBlocks = array_values(array_filter($blocks, static fn ($b) => $b['day'] === $day)); ?>
                 <?php if (empty($dayBlocks)) continue; ?>
                 <div class="schedule-agenda__day"><?= esc($dayLabels[$day]) ?></div>

@@ -429,7 +429,7 @@ class PlottedScheduleModel extends Model
                 }
             }
 
-            if (! is_int($block['day']) || $block['day'] < 0 || $block['day'] > 5) {
+            if (! is_int($block['day']) || $block['day'] < 0 || $block['day'] > 6) {
                 return 'Invalid block day.';
             }
 

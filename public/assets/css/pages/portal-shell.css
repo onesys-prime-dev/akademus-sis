@@ -262,7 +262,7 @@ table.grade-table tr:last-child td { border-bottom: none; }
 
 .grid {
     display: grid;
-    grid-template-columns: 64px repeat(6, 1fr);
+    grid-template-columns: 64px repeat(7, 1fr);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     overflow: hidden;

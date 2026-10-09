@@ -19,8 +19,8 @@ use App\Models\SubjectModel;
  */
 class AvailabilityController extends BaseController
 {
-    /** 0 = Monday .. 5 = Saturday, matching the plotting grid's days. */
-    private const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    /** 0 = Monday .. 6 = Sunday, matching the plotting grid's days. */
+    private const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     private const PREFERENCE_LEVELS = ['preferred', 'willing', 'qualified'];
 

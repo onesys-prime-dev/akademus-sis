@@ -17,7 +17,7 @@ use App\Models\SwapRequestModel;
 class TeachingLoads extends BaseController
 {
     /** Weekday labels matching the plotting grid's day indexes (0 = Monday). */
-    private const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    private const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     /** Plotting themes mapped onto this view's accent palette. */
     private const ACCENTS = [

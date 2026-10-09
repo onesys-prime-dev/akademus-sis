@@ -528,6 +528,9 @@ function blockIssues(b) {
         if (day === 5 && !rules.allow_saturday) {
             issues.push({ level: 'warn', title: 'Saturday class', detail: 'Saturday classes are switched off in this department\'s scheduling rules.' });
         }
+        if (day === 6 && !rules.allow_sunday) {
+            issues.push({ level: 'warn', title: 'Sunday class', detail: 'Sunday classes are switched off in this department\'s scheduling rules.' });
+        }
     }
 
     return issues;
@@ -1048,6 +1051,7 @@ $('noProfAuto').addEventListener('click', () => {
             if (!rules) return;
             rulesForm.lunch_enabled.checked = !!rules.lunch_enabled;
             rulesForm.allow_saturday.checked = !!rules.allow_saturday;
+            rulesForm.allow_sunday.checked = !!rules.allow_sunday;
             ['lunch_start', 'lunch_end', 'earliest_start', 'latest_end', 'day_pattern', 'spread'].forEach(k => { rulesForm[k].value = rules[k]; });
             rulesForm.max_hours_day.value = String(Math.round(rules.max_hours_day));
         }
@@ -1060,6 +1064,7 @@ $('noProfAuto').addEventListener('click', () => {
                 earliest_start: rulesForm.earliest_start.value,
                 latest_end: rulesForm.latest_end.value,
                 allow_saturday: rulesForm.allow_saturday.checked,
+                allow_sunday: rulesForm.allow_sunday.checked,
                 max_hours_day: Number(rulesForm.max_hours_day.value),
                 day_pattern: rulesForm.day_pattern.value,
                 spread: rulesForm.spread.value,
@@ -1787,6 +1792,9 @@ function evaluatePlacement({ subject, day, startRow, endRow, ignoreKey = null, r
         if (day === 5 && !rules.allow_saturday) {
             warnings.push('Saturday classes are switched off in this department\'s scheduling rules.');
         }
+        if (day === 6 && !rules.allow_sunday) {
+            warnings.push('Sunday classes are switched off in this department\'s scheduling rules.');
+        }
     }
 
     return { hard: null, warnings, roomsFree };
@@ -2510,7 +2518,7 @@ function announce(message) {
         }
 
         function facultyAvailabilityDetails(faculty) {
-            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             if (!(faculty.availability || []).length) return '<span class="fd-day is-unavailable">No availability submitted</span>';
             const groups = [];
             days.forEach((day, index) => {

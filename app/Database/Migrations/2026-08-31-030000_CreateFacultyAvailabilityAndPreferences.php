@@ -27,7 +27,7 @@ class CreateFacultyAvailabilityAndPreferences extends Migration
             'ay_id' => [
                 'type' => 'INT',
             ],
-            // 0 = Monday .. 5 = Saturday, matching the plotting grid's days.
+            // 0 = Monday .. 6 = Sunday, matching the plotting grid's days.
             'day_of_week' => [
                 'type'       => 'TINYINT',
                 'constraint' => 1,

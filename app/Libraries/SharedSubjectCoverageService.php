@@ -281,7 +281,7 @@ class SharedSubjectCoverageService
                     'day'       => (int) $r['day'],
                     'start'     => substr($r['start_time'], 0, 5),
                     'end'       => substr($r['end_time'], 0, 5),
-                    'day_label' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][(int) $r['day']] ?? '?',
+                    'day_label' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][(int) $r['day']] ?? '?',
                     'room'      => $r['room'],
                     'faculty'   => $r['prof'],
                 ];

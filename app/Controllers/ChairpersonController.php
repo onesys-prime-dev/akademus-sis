@@ -453,6 +453,7 @@ class ChairpersonController extends BaseController
                 ['day' => 'Thursday'],
                 ['day' => 'Friday'],
                 ['day' => 'Saturday'],
+                ['day' => 'Sunday'],
             ],
 
             // Grid runs 7:00 AM - 5:30 PM in 30-minute rows.
@@ -1657,7 +1658,7 @@ class ChairpersonController extends BaseController
                 }
             }
 
-            if (! isset($block['day']) || ! is_int($block['day']) || $block['day'] < 0 || $block['day'] > 5) {
+            if (! isset($block['day']) || ! is_int($block['day']) || $block['day'] < 0 || $block['day'] > 6) {
                 return $this->fail('Invalid block day.');
             }
 

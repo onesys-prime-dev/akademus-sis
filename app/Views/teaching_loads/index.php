@@ -106,7 +106,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 }
 .timetable-panel__link:hover { text-decoration: underline; }
 .tt-grid-wrap { overflow-x: auto; }
-.tt-grid { display: grid; grid-template-columns: 56px repeat(6, minmax(96px, 1fr)); min-width: 720px; }
+.tt-grid { display: grid; grid-template-columns: 56px repeat(7, minmax(96px, 1fr)); min-width: 720px; }
 .tt-corner { grid-row: 1; grid-column: 1; }
 .tt-day-head {
     grid-row: 1; text-align: center; font-size: 11px; font-weight: 700; color: var(--muted);
@@ -444,7 +444,7 @@ const CONFIG = {
     noDepartment: <?= json_encode($no_department) ?>,
 };
 
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 let LOADS = <?= json_encode($state['loads'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 let TAKEN = <?= json_encode($state['taken'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
@@ -859,7 +859,7 @@ function renderTimetable() {
     grid.appendChild(timeCol);
 
     let hasAny = false;
-    for (let day = 0; day < 6; day++) {
+    for (let day = 0; day < DAY_LABELS.length; day++) {
         const col = document.createElement('div');
         col.className = 'tt-day-col';
         col.style.gridColumn = String(day + 2);
