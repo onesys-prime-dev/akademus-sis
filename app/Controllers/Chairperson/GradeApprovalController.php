@@ -3,6 +3,7 @@
 namespace App\Controllers\Chairperson;
 
 use App\Controllers\BaseController;
+use App\Libraries\SchedulingAuthorization;
 use App\Models\DepartmentModel;
 use App\Models\GradeChangeRequestModel;
 use App\Models\GradeModel;
@@ -17,9 +18,13 @@ class GradeApprovalController extends BaseController
 {
     public function index()
     {
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        // Every department this chairperson is authorized for (home +
+        // delegated) — see SchedulingAuthorization::authorizedSubDeptIds().
+        // subDeptOfUser() alone would silently drop a delegated
+        // department's classes from this entire page.
+        $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
 
-        if ($subDept === null) {
+        if ($subDeptIds === []) {
             return view('chairperson/grade_approvals', [
                 'pageTitle'      => 'Grade Approvals',
                 'user'           => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
@@ -30,13 +35,24 @@ class GradeApprovalController extends BaseController
             ]);
         }
 
-        $programs   = (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
+        $deptModel = new DepartmentModel();
+        $deptNames = array_column(
+            db_connect()->table('sub_departments')->whereIn('sub_dept_id', $subDeptIds)->orderBy('name')->get()->getResultArray(),
+            'name'
+        );
+        $programs = [];
+
+        foreach ($subDeptIds as $id) {
+            $programs = array_merge($programs, $deptModel->programsOfSubDept($id));
+        }
+
+        $programs   = array_values(array_unique($programs));
         $gradeModel = new GradeModel();
 
         return view('chairperson/grade_approvals', [
             'pageTitle'      => 'Grade Approvals',
-            'user'           => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => $subDept['name'] . ' - Chairperson'],
-            'deptName'       => $subDept['name'],
+            'user'           => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => (count($deptNames) === 1 ? $deptNames[0] . ' - ' : '') . 'Chairperson'],
+            'deptName'       => count($deptNames) === 1 ? $deptNames[0] : implode(', ', $deptNames),
             'classes'        => $gradeModel->submittedClasses($programs),
             'lockedClasses'  => $gradeModel->lockedClasses($programs),
             'changeRequests' => (new GradeChangeRequestModel())->pendingForPrograms($programs),
@@ -142,12 +158,6 @@ class GradeApprovalController extends BaseController
      */
     private function ownSection(int $sectionId): ?array
     {
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-
-        if ($subDept === null) {
-            return null;
-        }
-
         $section = (new \App\Models\SectionModel())->find($sectionId);
 
         if ($section === null) {
@@ -159,13 +169,18 @@ class GradeApprovalController extends BaseController
 
     private function ownProgram(string $program): ?string
     {
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
 
-        if ($subDept === null) {
+        if ($subDeptIds === []) {
             return null;
         }
 
-        $programs = (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
+        $deptModel = new DepartmentModel();
+        $programs  = [];
+
+        foreach ($subDeptIds as $id) {
+            $programs = array_merge($programs, $deptModel->programsOfSubDept($id));
+        }
 
         return in_array($program, $programs, true) ? $program : null;
     }

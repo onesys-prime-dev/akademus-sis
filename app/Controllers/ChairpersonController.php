@@ -43,6 +43,92 @@ class ChairpersonController extends BaseController
     private const COLORS = ['blue', 'purple', 'cyan', 'red', 'green', 'yellow'];
 
     /**
+     * Every department this chairperson is authorized for — their own home
+     * department PLUS any delegated to them. The single-department
+     * DepartmentModel::subDeptOfUser() undercounts a delegated chairperson
+     * (see the Dashboard "my CS department doesn't show up" fix); this is
+     * the one correct source of truth, already used by Subject Ownership /
+     * Curriculum Builder, and now by every method below that used to read
+     * subDeptOfUser() alone.
+     */
+    private function authorizedSubDeptIds(): array
+    {
+        return (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
+    }
+
+    /** Every active program across every department this chairperson is authorized for. */
+    private function authorizedPrograms(): array
+    {
+        $deptModel = new DepartmentModel();
+        $programs  = [];
+
+        foreach ($this->authorizedSubDeptIds() as $id) {
+            $programs = array_merge($programs, $deptModel->programsOfSubDept($id));
+        }
+
+        return array_values(array_unique($programs));
+    }
+
+    /** sub_dept_id => name for every department this chairperson is authorized for. */
+    private function authorizedDeptNames(): array
+    {
+        $ids = $this->authorizedSubDeptIds();
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $names = [];
+
+        foreach (db_connect()->table('sub_departments')->whereIn('sub_dept_id', $ids)->orderBy('name')->get()->getResultArray() as $row) {
+            $names[(int) $row['sub_dept_id']] = $row['name'];
+        }
+
+        return $names;
+    }
+
+    /**
+     * "{Dept Name} - " prefix for the topbar role label, or just blank when
+     * delegated across more than one department — a joined list wouldn't
+     * fit, and "Chairperson" alone reads fine there.
+     */
+    private function chairpersonRoleLabel(): string
+    {
+        $names = $this->authorizedDeptNames();
+
+        return (count($names) === 1 ? reset($names) . ' - ' : '') . 'Chairperson';
+    }
+
+    /** Display string for every authorized department: the one name, a comma-joined list, or null if none. */
+    private function authorizedDeptNamesJoined(): ?string
+    {
+        $names = $this->authorizedDeptNames();
+
+        if ($names === []) {
+            return null;
+        }
+
+        return count($names) === 1 ? reset($names) : implode(', ', $names);
+    }
+
+    /**
+     * One deterministic department id to key department-level SETTINGS by
+     * (e.g. the scheduling assistant's rules) — unlike data that's safe to
+     * union across departments, a single stored setting can't be merged
+     * from several departments at once. A chairperson delegated across more
+     * than one department shares one set of assistant rules between them
+     * (the lowest id, stable across requests) rather than being blocked
+     * outright, which is what subDeptOfUser() alone did for anyone without
+     * a home department. Null only when authorized for no department at all.
+     */
+    private function primaryAuthorizedSubDeptId(): ?int
+    {
+        $ids = $this->authorizedSubDeptIds();
+
+        return $ids === [] ? null : min($ids);
+    }
+
+    /**
      * Subject catalog from the subjects table (active rows only), scoped to
      * the logged-in chairperson's own department AND to one specific
      * program ("course"). A subject only ever belongs to one course — browse
@@ -264,7 +350,6 @@ class ChairpersonController extends BaseController
         $context = $this->contextFromRequest();
 
         $schedules = new PlottedScheduleModel();
-        $subDept   = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
 
         [$profMap, $assignments] = $this->assignmentsFor($context['academic_year']);
 
@@ -274,15 +359,14 @@ class ChairpersonController extends BaseController
         );
 
         // Classes plotted for other sections in the same AY: shown as ghost
-        // blocks and counted for room/faculty availability. Scoped to this
-        // chairperson's own programs PLUS any borrowing program using one of
-        // their owned subjects (see borrowingProgramNames()) — otherwise a
-        // subject owner viewing a borrowed section's grid would see no
-        // context for that section's other classes at all.
-        $deptPrograms = array_merge(
-            $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']),
-            $this->borrowingProgramNames()
-        );
+        // blocks and counted for room/faculty availability. Scoped to every
+        // program across every department this chairperson is authorized
+        // for (home + delegated — see authorizedPrograms()) PLUS any
+        // borrowing program using one of their owned subjects (see
+        // borrowingProgramNames()) — otherwise a subject owner viewing a
+        // borrowed section's grid would see no context for that section's
+        // other classes at all.
+        $deptPrograms = array_merge($this->authorizedPrograms(), $this->borrowingProgramNames());
 
         $otherBlocks = $this->attachProfs(
             array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section'], $deptPrograms)),
@@ -348,7 +432,7 @@ class ChairpersonController extends BaseController
         $data = [
             'user' => [
                 'name' => $account->username ?? 'Chairperson',
-                'role' => ($subDept !== null ? $subDept['name'] . ' - ' : '') . 'Chairperson',
+                'role' => $this->chairpersonRoleLabel(),
             ],
 
             'filters'        => $filters,
@@ -510,11 +594,7 @@ class ChairpersonController extends BaseController
 
         [$profMap, $assignments] = $this->assignmentsFor($context['academic_year']);
 
-        $subDept      = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-        $deptPrograms = array_merge(
-            $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']),
-            $this->borrowingProgramNames()
-        );
+        $deptPrograms = array_merge($this->authorizedPrograms(), $this->borrowingProgramNames());
 
         $blocks = $this->attachProfs(
             array_map([$this, 'rowToBlock'], $schedules->forContext($context['academic_year'], $context['program'], $context['year_level'], $context['section'])),
@@ -627,15 +707,15 @@ class ChairpersonController extends BaseController
      */
     private function assistantRules(): array
     {
-        $engine  = new ScheduleSuggester();
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        $engine    = new ScheduleSuggester();
+        $subDeptId = $this->primaryAuthorizedSubDeptId();
 
-        if ($subDept === null) {
+        if ($subDeptId === null) {
             return $engine->normalizeRules([]);
         }
 
         try {
-            $raw   = service('settings')->get('Scheduling.assistantRules', 'dept:' . (int) $subDept['sub_dept_id']);
+            $raw   = service('settings')->get('Scheduling.assistantRules', 'dept:' . $subDeptId);
             $saved = is_string($raw) ? json_decode($raw, true) : null;
         } catch (\Throwable $e) {
             $saved = null;
@@ -656,18 +736,18 @@ class ChairpersonController extends BaseController
             return $this->fail('Invalid payload.');
         }
 
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        $subDeptId = $this->primaryAuthorizedSubDeptId();
 
-        if ($subDept === null) {
+        if ($subDeptId === null) {
             return $this->fail('You are not assigned to a department.');
         }
 
         $before = $this->assistantRules();
         $rules  = (new ScheduleSuggester())->normalizeRules(! empty($payload['reset']) ? [] : $payload);
 
-        service('settings')->set('Scheduling.assistantRules', json_encode($rules), 'dept:' . (int) $subDept['sub_dept_id']);
+        service('settings')->set('Scheduling.assistantRules', json_encode($rules), 'dept:' . $subDeptId);
 
-        $this->audit('scheduling.assistant_rules', 'sub_department', $subDept['sub_dept_id'], $before, $rules);
+        $this->audit('scheduling.assistant_rules', 'sub_department', $subDeptId, $before, $rules);
 
         return $this->response->setJSON(['ok' => true, 'rules' => $rules]);
     }
@@ -682,9 +762,9 @@ class ChairpersonController extends BaseController
      */
     private function facultyForSuggestions(array $context): array
     {
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        $subDeptIds = $this->authorizedSubDeptIds();
 
-        if ($subDept === null) {
+        if ($subDeptIds === []) {
             return [];
         }
 
@@ -693,8 +773,16 @@ class ChairpersonController extends BaseController
         // Affiliated faculty (primary or secondary), not just this
         // department's own primary roster — a faculty member whose home
         // department is elsewhere but who's also affiliated here is a
-        // legitimate assistant-suggestion candidate.
-        $affiliatedIds = (new FacultyDepartmentModel())->userIdsForDepartment((int) $subDept['sub_dept_id']);
+        // legitimate assistant-suggestion candidate. Unioned across every
+        // department this chairperson is authorized for (home + delegated).
+        $affiliationModel = new FacultyDepartmentModel();
+        $affiliatedIds     = [];
+
+        foreach ($subDeptIds as $id) {
+            $affiliatedIds = array_merge($affiliatedIds, $affiliationModel->userIdsForDepartment($id));
+        }
+
+        $affiliatedIds = array_values(array_unique($affiliatedIds));
 
         if ($affiliatedIds === []) {
             return [];
@@ -775,8 +863,7 @@ class ChairpersonController extends BaseController
      */
     private function swapApprovals(): array
     {
-        $subDept   = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-        $subDeptId = $subDept['sub_dept_id'] ?? null;
+        $subDeptIds = $this->authorizedSubDeptIds();
 
         $rows = db_connect()->table('swap_requests sr')
             ->select('sr.swap_id, r.username AS requester, t.username AS target,'
@@ -809,7 +896,7 @@ class ChairpersonController extends BaseController
             // the swap from the chairperson who actually owns the
             // subject, and would have shown it to whichever department
             // merely happens to take it instead.
-            if ($subDeptId !== null && (int) ($row['a1_subdept'] ?? 0) !== (int) $subDeptId) {
+            if ($subDeptIds !== [] && ! in_array((int) ($row['a1_subdept'] ?? 0), $subDeptIds, true)) {
                 continue;
             }
 
@@ -865,11 +952,10 @@ class ChairpersonController extends BaseController
         // program belongs to (see swapApprovals()'s docblock for why;
         // same bug, same fix, needed here too since this is the actual
         // approve/reject action, not just the list).
-        $subDept   = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-        $subDeptId = $subDept['sub_dept_id'] ?? null;
-        $subject   = (new SubjectModel())->where('subject_code', $offered['subject_code'])->first();
+        $subDeptIds = $this->authorizedSubDeptIds();
+        $subject    = (new SubjectModel())->where('subject_code', $offered['subject_code'])->first();
 
-        if ($subDeptId !== null && (int) ($subject['sub_department_id'] ?? 0) !== (int) $subDeptId) {
+        if ($subDeptIds !== [] && ! in_array((int) ($subject['sub_department_id'] ?? 0), $subDeptIds, true)) {
             return $this->fail('This swap belongs to another department.');
         }
 
@@ -1185,15 +1271,23 @@ class ChairpersonController extends BaseController
      */
     public function facultyPanel()
     {
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        $subDeptIds = $this->authorizedSubDeptIds();
 
-        if ($subDept === null) {
+        if ($subDeptIds === []) {
             return $this->response->setJSON(['faculty' => []]);
         }
 
-        // Affiliated faculty (primary or secondary) — see
+        // Affiliated faculty (primary or secondary), unioned across every
+        // department this chairperson is authorized for — see
         // facultyForSuggestions() for the same reasoning.
-        $affiliatedIds = (new FacultyDepartmentModel())->userIdsForDepartment((int) $subDept['sub_dept_id']);
+        $affiliationModel = new FacultyDepartmentModel();
+        $affiliatedIds    = [];
+
+        foreach ($subDeptIds as $id) {
+            $affiliatedIds = array_merge($affiliatedIds, $affiliationModel->userIdsForDepartment($id));
+        }
+
+        $affiliatedIds = array_values(array_unique($affiliatedIds));
 
         if ($affiliatedIds === []) {
             return $this->response->setJSON(['faculty' => []]);
@@ -1466,9 +1560,7 @@ class ChairpersonController extends BaseController
                     // owns, for a program they don't, can't be told to
                     // "create one" themselves; they'd just hit a second
                     // rejection. Route them to the right workflow instead.
-                    $subDept     = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-                    $ownPrograms = $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
-                    $owns        = in_array($context['program'], $ownPrograms, true);
+                    $owns = in_array($context['program'], $this->authorizedPrograms(), true);
 
                     $message = "No section exists yet for {$context['program']}, {$context['year_level']} "
                         . "({$context['academic_year']}). ";
@@ -2083,9 +2175,25 @@ class ChairpersonController extends BaseController
      */
     public function sections()
     {
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        $subDeptIds = $this->authorizedSubDeptIds();
 
-        $sections = $subDept === null ? [] : (new SectionModel())->forSubDepartment($subDept['code']);
+        // forSubDepartment() takes one department code at a time, so a
+        // chairperson delegated across more than one department needs it
+        // called once per department and merged — otherwise a delegated
+        // department's sections (and its students/roster below) would
+        // silently never show up here.
+        $sections = [];
+
+        if ($subDeptIds !== []) {
+            $codes = array_column(db_connect()->table('sub_departments')->whereIn('sub_dept_id', $subDeptIds)->get()->getResultArray(), 'code');
+            $sectionModel = new SectionModel();
+
+            foreach ($codes as $code) {
+                $sections = array_merge($sections, $sectionModel->forSubDepartment($code));
+            }
+
+            $sections = array_values(array_column($sections, null, 'section_id'));
+        }
 
         $sectionIds = array_column($sections, 'section_id');
 
@@ -2133,10 +2241,10 @@ class ChairpersonController extends BaseController
             'pageTitle' => 'Sections',
             'user'      => [
                 'name' => auth()->user()->username ?? 'Chairperson',
-                'role' => ($subDept !== null ? $subDept['name'] . ' - ' : '') . 'Chairperson',
+                'role' => $this->chairpersonRoleLabel(),
             ],
-            'deptName'        => $subDept['name'] ?? null,
-            'programs'        => $subDept === null ? [] : (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']),
+            'deptName'        => $this->authorizedDeptNamesJoined(),
+            'programs'        => $this->authorizedPrograms(),
             'yearLevels'      => self::FILTERS['year_level'],
             'academicYears'   => $this->creatableAcademicYears(),
             'activeAcademicYear' => (new AcademicYearModel())->activeFormatted(),
@@ -2166,15 +2274,11 @@ class ChairpersonController extends BaseController
             }
         }
 
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-
-        if ($subDept === null) {
+        if ($this->authorizedSubDeptIds() === []) {
             return $this->fail('You are not assigned to a department.');
         }
 
-        $programs = (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']);
-
-        if (! in_array($payload['program'], $programs, true)) {
+        if (! in_array($payload['program'], $this->authorizedPrograms(), true)) {
             return $this->fail('Invalid program.');
         }
 
@@ -2466,9 +2570,7 @@ class ChairpersonController extends BaseController
             }
         }
 
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
-
-        if ($subDept === null || ! in_array($payload['program'], (new DepartmentModel())->programsOfSubDept((int) $subDept['sub_dept_id']), true)) {
+        if (! in_array($payload['program'], $this->authorizedPrograms(), true)) {
             return 'Invalid program.';
         }
 
@@ -2528,11 +2630,8 @@ class ChairpersonController extends BaseController
         $filters['academic_year_labels'] = $this->academicYearLabels();
         $filters['semester']             = ['1st', '2nd', 'Summer'];
 
-        $deptModel = new DepartmentModel();
-        $subDept   = $deptModel->subDeptOfUser((int) auth()->id());
-
-        // A chairperson schedules for their own department's programs...
-        $ownPrograms = $subDept === null ? [] : $deptModel->programsOfSubDept((int) $subDept['sub_dept_id']);
+        // A chairperson schedules for their own department(s)' programs...
+        $ownPrograms = $this->authorizedPrograms();
 
         // ...PLUS any other program whose curriculum needs a subject this
         // department owns — e.g. General Subjects (no programs of its own)
@@ -2794,19 +2893,15 @@ class ChairpersonController extends BaseController
      */
     private function bestYearLevelForBorrowedSubject(string $program, string $academicYear): ?string
     {
-        $deptModel = new DepartmentModel();
-        $subDept   = $deptModel->subDeptOfUser((int) auth()->id());
-
-        // Only apply to a BORROWED program (not owned by this chairperson's
-        // own department) — their own program keeps the normal "1st Year"
-        // default, since jumping around would be surprising for the
-        // day-to-day case this wasn't designed for.
-        $ownPrograms = $subDept === null ? [] : $deptModel->programsOfSubDept((int) $subDept['sub_dept_id']);
-        if (in_array($program, $ownPrograms, true)) {
+        // Only apply to a BORROWED program (not owned by any department this
+        // chairperson is authorized for) — their own program keeps the
+        // normal "1st Year" default, since jumping around would be
+        // surprising for the day-to-day case this wasn't designed for.
+        if (in_array($program, $this->authorizedPrograms(), true)) {
             return null;
         }
 
-        $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
+        $subDeptIds = $this->authorizedSubDeptIds();
         if ($subDeptIds === []) {
             return null;
         }
@@ -2880,12 +2975,32 @@ class ChairpersonController extends BaseController
     {
         $account   = auth()->user();
         $deptModel = new DepartmentModel();
-        $subDept   = $deptModel->subDeptOfUser((int) auth()->id());
+
+        // Scoped to every department this chairperson is authorized for —
+        // their own home department PLUS any delegated to them (see
+        // SchedulingAuthorization::authorizedSubDeptIds(), the same source
+        // of truth Subject Ownership/Curriculum Builder already use) —
+        // never just subDeptOfUser()'s single home department, which would
+        // silently hide a delegated department's programs from this page.
+        $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
+
+        $deptNames = [];
+        $programs  = [];
+
+        if ($subDeptIds !== []) {
+            foreach (db_connect()->table('sub_departments')->whereIn('sub_dept_id', $subDeptIds)->orderBy('name')->get()->getResultArray() as $row) {
+                $deptNames[(int) $row['sub_dept_id']] = $row['name'];
+            }
+
+            foreach ($subDeptIds as $id) {
+                $programs = array_merge($programs, $deptModel->programsOfSubDept($id));
+            }
+
+            $programs = array_values(array_unique($programs));
+        }
 
         $activeYearRow = (new AcademicYearModel())->where('is_active', 1)->first();
         $activeYear    = $activeYearRow === null ? null : AcademicYearModel::format($activeYearRow['label'], $activeYearRow['semester']);
-        $programs      = $subDept === null ? [] : $deptModel->programsOfSubDept((int) $subDept['sub_dept_id']);
-        $subDeptIds    = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
 
         $plottedClasses = 0;
         $curriculumSet  = 0;
@@ -2984,10 +3099,10 @@ class ChairpersonController extends BaseController
             usort($plottingGaps, static fn (array $a, array $b): int => $b['missing_count'] <=> $a['missing_count']);
         }
 
-        $facultyCount = $subDept === null ? 0 : db_connect()->table('users u')
+        $facultyCount = $subDeptIds === [] ? 0 : db_connect()->table('users u')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'faculty')
-            ->where('u.sub_department_id', (int) $subDept['sub_dept_id'])
+            ->whereIn('u.sub_department_id', $subDeptIds)
             ->where('u.deleted_at', null)
             ->countAllResults();
 
@@ -3028,13 +3143,20 @@ class ChairpersonController extends BaseController
             }
         }
 
+        // A chairperson delegated across more than one department sees them
+        // all named here (not just their home one) — singular phrasing when
+        // there's only one, since that's the overwhelmingly common case and
+        // reads better than "1 department".
+        $deptName = count($deptNames) === 1 ? reset($deptNames) : ($deptNames === [] ? null : implode(', ', $deptNames));
+
         return view('chairperson/overview', [
             'pageTitle' => 'Dashboard',
             'user' => [
                 'name' => $account->username ?? 'Chairperson',
-                'role' => ($subDept !== null ? $subDept['name'] . ' - ' : '') . 'Chairperson',
+                'role' => (count($deptNames) === 1 ? reset($deptNames) . ' - ' : '') . 'Chairperson',
             ],
-            'deptName'    => $subDept['name'] ?? null,
+            'deptName'    => $deptName,
+            'deptCount'   => count($deptNames),
             'activeYear'  => $activeYear,
             'programs'    => $programs,
             'plottingGaps' => $plottingGaps,
@@ -3055,22 +3177,25 @@ class ChairpersonController extends BaseController
      */
     public function profile()
     {
-        $account   = auth()->user();
-        $deptModel = new DepartmentModel();
-        $subDept   = $deptModel->subDeptOfUser((int) auth()->id());
+        $account    = auth()->user();
+        $subDeptIds = $this->authorizedSubDeptIds();
+        $deptCodes  = $subDeptIds === [] ? [] : array_column(
+            db_connect()->table('sub_departments')->whereIn('sub_dept_id', $subDeptIds)->orderBy('name')->get()->getResultArray(),
+            'code'
+        );
 
         return view('chairperson/profile', [
             'pageTitle' => 'Profile',
             'user' => [
                 'name' => $account->username ?? 'Chairperson',
-                'role' => ($subDept !== null ? $subDept['name'] . ' - ' : '') . 'Chairperson',
+                'role' => $this->chairpersonRoleLabel(),
             ],
             'account' => [
                 'username' => $account->username ?? '',
                 'email'    => $account->getEmail() ?? '',
             ],
-            'deptName' => $subDept['name'] ?? null,
-            'deptCode' => $subDept['code'] ?? null,
+            'deptName' => $this->authorizedDeptNamesJoined(),
+            'deptCode' => $deptCodes === [] ? null : implode(', ', $deptCodes),
         ]);
     }
 

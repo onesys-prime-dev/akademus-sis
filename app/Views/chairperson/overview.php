@@ -140,7 +140,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     <span class="dash-hero__term"><?= esc($activeYear) ?></span>
                 </div>
                 <h1 class="dash-hero__title">Welcome back, <?= esc($user['name']) ?></h1>
-                <p class="dash-hero__sub"><?= esc($deptName) ?> department overview — live tracking of class plotting and faculty teaching loads.</p>
+                <p class="dash-hero__sub">Department overview for <?= esc($deptName) ?> — live tracking of class plotting and faculty teaching loads.</p>
             </div>
 
             <div class="dash-hero__actions">
@@ -261,7 +261,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             <div class="dash-panel">
                 <div class="dash-panel__head">
                     <div>
-                        <h3>Your Department</h3>
+                        <h3>Your Department<?= $deptCount > 1 ? 's' : '' ?></h3>
                         <p><?= esc($deptName) ?> &middot; Active term: <?= esc($activeYear) ?></p>
                     </div>
                 </div>

@@ -7,7 +7,6 @@ use App\Libraries\SchedulingAuthorization;
 use App\Libraries\SubjectDemandService;
 use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
-use App\Models\DepartmentModel;
 use App\Models\OfferingComponentModel;
 use App\Models\PlottedScheduleModel;
 use App\Models\RoomModel;
@@ -23,10 +22,13 @@ class OfferingController extends BaseController
 {
     public function index()
     {
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        // Every department this chairperson is authorized for (home +
+        // delegated). subDeptOfUser() alone would silently drop a delegated
+        // department's sections/merge-candidates from this whole page.
+        $subDeptIds    = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
         $needsPlotting = $this->needsPlottingList();
 
-        if ($subDept === null) {
+        if ($subDeptIds === []) {
             return view('chairperson/offerings', [
                 'pageTitle'     => 'Merged Classes',
                 'user'          => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
@@ -38,8 +40,18 @@ class OfferingController extends BaseController
             ]);
         }
 
-        $sections   = (new SectionModel())->forSubDepartment($subDept['code']);
-        $offeringM  = new CourseOfferingModel();
+        $deptRows  = db_connect()->table('sub_departments')->whereIn('sub_dept_id', $subDeptIds)->orderBy('name')->get()->getResultArray();
+        $deptNames = array_column($deptRows, 'name');
+
+        $sectionModel = new SectionModel();
+        $sections     = [];
+
+        foreach (array_column($deptRows, 'code') as $code) {
+            $sections = array_merge($sections, $sectionModel->forSubDepartment($code));
+        }
+
+        $sections  = array_values(array_column($sections, null, 'section_id'));
+        $offeringM = new CourseOfferingModel();
 
         // Mergeable candidates: a subject_code plotted for 2+ of this
         // department's sections in the same academic year, where none of
@@ -143,8 +155,8 @@ class OfferingController extends BaseController
 
         return view('chairperson/offerings', [
             'pageTitle'     => 'Merged Classes',
-            'user'          => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => $subDept['name'] . ' - Chairperson'],
-            'deptName'      => $subDept['name'],
+            'user'          => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => (count($deptNames) === 1 ? $deptNames[0] . ' - ' : '') . 'Chairperson'],
+            'deptName'      => count($deptNames) === 1 ? $deptNames[0] : implode(', ', $deptNames),
             'candidates'    => $candidates,
             'offerings'     => $offerings,
             'rooms'         => $rooms,
