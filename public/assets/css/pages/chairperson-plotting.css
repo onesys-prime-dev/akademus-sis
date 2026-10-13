@@ -427,6 +427,21 @@
 }
 .noprof-banner[hidden] { display: none; }
 
+.merge-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 8px var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-info-soft);
+    color: var(--color-info);
+    font-size: 12px;
+}
+.merge-banner[hidden] { display: none; }
+.merge-banner__icon { font-size: 18px; flex: none; }
+.merge-banner__text { flex: 1; }
+.merge-banner__actions { display: flex; gap: var(--space-2); flex: none; }
+
 .board-scroll { position: relative; flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
 
 .grid {

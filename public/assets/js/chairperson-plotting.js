@@ -777,6 +777,7 @@ function renderBlocks(opts = {}) {
     renderQueue();
     updateBoardSummary();
     updateNoProfBanner();
+    renderMergeBanner();
     renderRoomOverview(); // keep the overview live with every change
     refreshInspector();
     if (!opts.skipSuggestions) queueSuggestions();
@@ -905,6 +906,7 @@ $('noProfAuto').addEventListener('click', () => {
                 renderLunchBand(data.rules);
                 if (rulesForm.hidden) fillRulesForm(data.rules);
                 renderSuggestions();
+                loadMergeSuggestions();
 
                 // Department rules and headcount feed the checks on plotted
                 // classes, so refresh those once when they actually change.
@@ -917,6 +919,86 @@ $('noProfAuto').addEventListener('click', () => {
                 document.getElementById('aiSuggestions').replaceChildren();
             }
         }
+
+        // ---------- Class merging suggestions ----------
+        // For each subject this section hasn't plotted yet, the server
+        // checks whether that exact subject is already running for another
+        // section this term with enough free room seats to take this
+        // section too (chairperson/offerings/merge-suggestions). Accepting
+        // just adds the same meeting(s) as a normal block and autosaves —
+        // the normal sync validation still has the last word, same as the
+        // AI assistant's own suggestions.
+        let mergePlan = [];
+        const mergeDismissed = new Set();
+
+        async function loadMergeSuggestions() {
+            try {
+                const response = await fetch(`${CONFIG.mergeSuggestionsUrl}?${new URLSearchParams(CONTEXT).toString()}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await response.json();
+                mergePlan = (response.ok && data.ok) ? (data.suggestions || []) : [];
+            } catch (err) {
+                mergePlan = [];
+            }
+            renderMergeBanner();
+        }
+
+        function renderMergeBanner() {
+            const banner = document.getElementById('mergeBanner');
+            if (!banner) return;
+
+            const suggestion = mergePlan.find(s => !mergeDismissed.has(s.subject_code) && !blocks.some(b => b.code === s.subject_code));
+
+            if (!suggestion) {
+                banner.hidden = true;
+                return;
+            }
+
+            banner.hidden = false;
+            banner.dataset.code = suggestion.subject_code;
+            const seats = `${suggestion.available_seats} available seat${suggestion.available_seats === 1 ? '' : 's'}`;
+            document.getElementById('mergeBannerText').textContent =
+                `Suggestion: ${suggestion.subject_code} is already scheduled for ${suggestion.time_label} at ${suggestion.room}`
+                + (suggestion.prof ? ` with ${suggestion.prof}` : '')
+                + `. The room has ${seats}. Merge this section into that existing class?`;
+        }
+
+        document.getElementById('mergeDismiss')?.addEventListener('click', () => {
+            const code = document.getElementById('mergeBanner').dataset.code;
+            if (code) mergeDismissed.add(code);
+            renderMergeBanner();
+        });
+
+        document.getElementById('mergeAccept')?.addEventListener('click', () => {
+            const code = document.getElementById('mergeBanner').dataset.code;
+            const suggestion = mergePlan.find(s => s.subject_code === code);
+            if (!suggestion) return;
+
+            const subject = SUBJECTS.find(x => x.code === suggestion.subject_code);
+
+            pushUndo(`merged ${suggestion.subject_code}`);
+            clearPreview();
+            suggestion.meetings.forEach(m => {
+                blocks.push({
+                    day: m.day,
+                    code: suggestion.subject_code,
+                    title: subject ? subject.title : suggestion.subject_title,
+                    prof: suggestion.prof || undefined,
+                    faculty_id: suggestion.faculty_id || null,
+                    time_label: m.time_label,
+                    room: suggestion.room,
+                    theme: subject ? subject.color : 'blue',
+                    start: m.start,
+                    end: m.end,
+                });
+            });
+
+            mergeDismissed.add(suggestion.subject_code);
+            renderBlocks();
+            scheduleSave();
+            showToast(`${suggestion.subject_code} merged into the existing class at ${suggestion.room}.`, 'success');
+        });
 
         function aiEl(tag, className, text) {
             const el = document.createElement(tag);

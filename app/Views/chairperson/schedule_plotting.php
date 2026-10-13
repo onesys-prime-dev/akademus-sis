@@ -180,6 +180,15 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
                 <button type="button" class="btn btn-secondary btn-sm" id="noProfAuto">Auto-assign faculty</button>
             </div>
 
+            <div class="merge-banner" id="mergeBanner" role="status" hidden>
+                <span class="material-symbols-outlined merge-banner__icon" aria-hidden="true">merge_type</span>
+                <span class="merge-banner__text" id="mergeBannerText"></span>
+                <div class="merge-banner__actions">
+                    <button type="button" class="btn btn-ghost btn-sm" id="mergeDismiss">Dismiss</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="mergeAccept">Merge into that class</button>
+                </div>
+            </div>
+
             <div class="board-scroll" id="boardScroll">
                 <div class="grid">
                     <div class="head head--corner"></div>
@@ -488,6 +497,7 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
             'syncUrl'            => site_url('chairperson/schedule/sync'),
             'stateUrl'           => site_url('chairperson/schedule/state'),
             'suggestUrl'         => site_url('chairperson/schedule/suggest'),
+            'mergeSuggestionsUrl' => site_url('chairperson/offerings/merge-suggestions'),
             'rulesUrl'           => site_url('chairperson/schedule/assistant-rules'),
             'facultyPanelUrl'    => site_url('chairperson/faculty-panel'),
             'facultyOverrideUrl' => site_url('chairperson/schedule/faculty-override'),

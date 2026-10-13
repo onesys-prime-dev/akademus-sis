@@ -3,9 +3,11 @@
 namespace App\Controllers\Chairperson;
 
 use App\Controllers\BaseController;
+use App\Libraries\ScheduleOverlap;
 use App\Libraries\SchedulingAuthorization;
 use App\Libraries\SubjectDemandService;
 use App\Models\AcademicYearModel;
+use App\Models\CapacityPolicyModel;
 use App\Models\CourseOfferingModel;
 use App\Models\OfferingComponentModel;
 use App\Models\PlottedScheduleModel;
@@ -335,6 +337,191 @@ class OfferingController extends BaseController
         }
 
         return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * Proactive merge candidates for one plotting section: for every
+     * subject already running for ANOTHER section this academic year that
+     * this section hasn't plotted yet, whether the room it's using still
+     * has enough free seats for this section's projected headcount too.
+     * Powers the plotting page's "Suggestion: merge into that class?"
+     * banner — the live, per-section counterpart to index()'s own merge
+     * candidates list.
+     *
+     * Deliberately a pure read with no curriculum lookup of its own: a
+     * subject only ever shows up here because it's ALREADY plotted
+     * somewhere else, which is exactly the signal this feature cares about.
+     *
+     * @return array{ok: bool, suggestions: list<array>}
+     */
+    public function mergeSuggestions()
+    {
+        $academicYear = (string) $this->request->getGet('academic_year');
+        $program      = (string) $this->request->getGet('program');
+        $yearLevel    = (string) $this->request->getGet('year_level');
+        $section      = (string) $this->request->getGet('section');
+
+        if ($academicYear === '' || $program === '' || $yearLevel === '' || $section === '') {
+            return $this->response->setJSON(['ok' => true, 'suggestions' => []]);
+        }
+
+        $sectionRow = (new SectionModel())->forContext($academicYear, $program, $yearLevel, $section);
+
+        if ($sectionRow === null) {
+            return $this->response->setJSON(['ok' => true, 'suggestions' => []]);
+        }
+
+        $schedules = new PlottedScheduleModel();
+        $offerings = new CourseOfferingModel();
+
+        $myRows      = $schedules->forContext($academicYear, $program, $yearLevel, $section);
+        $myCodes     = array_unique(array_column($myRows, 'subject_code'));
+        $myMeetings  = array_map(static fn (array $b) => [
+            'day' => (int) $b['day'], 'start' => substr($b['start_time'], 0, 5), 'end' => substr($b['end_time'], 0, 5),
+        ], $myRows);
+        $myHeadcount = $this->projectedHeadcount($sectionRow);
+
+        // School-wide (null deptPrograms), matching ChairpersonController::
+        // suggest()'s own use of this method — a subject this department
+        // owns can be taught to a borrowing program outside the normal
+        // ghost-block program list too.
+        $others = $schedules->forOtherContexts($academicYear, $program, $yearLevel, $section, null);
+
+        $groups = [];
+        foreach ($others as $row) {
+            if (in_array($row['subject_code'], $myCodes, true)) {
+                continue; // already plotted here — nothing to suggest
+            }
+
+            $key = $row['offering_id'] !== null
+                ? 'offering:' . $row['offering_id']
+                : 'section:' . $row['program'] . '|' . $row['year_level'] . '|' . $row['section'] . '|' . $row['subject_code'];
+
+            $groups[$key]['code'] = $row['subject_code'];
+            $groups[$key]['rows'][] = $row;
+        }
+
+        $roomCapacity = array_column((new RoomModel())->findAll(), 'capacity', 'name');
+        $suggestions  = [];
+
+        foreach ($groups as $group) {
+            $code = $group['code'];
+
+            // Merging is the subject OWNER's call, same rule create() enforces.
+            if (! $this->authorizeSubjectCode($code)) {
+                continue;
+            }
+
+            if ($offerings->offeringForSection((int) $sectionRow['section_id'], $code) !== null) {
+                continue; // already attached to an offering for this code
+            }
+
+            $rows     = $group['rows'];
+            $first    = $rows[0];
+            $meetings = array_map(static fn (array $b) => [
+                'day' => (int) $b['day'], 'start' => substr($b['start_time'], 0, 5), 'end' => substr($b['end_time'], 0, 5),
+            ], $rows);
+
+            if (ScheduleOverlap::anyClash($meetings, $myMeetings)) {
+                continue; // this section already has a class at that time elsewhere
+            }
+
+            $capacity = $roomCapacity[$first['room']] ?? null;
+
+            if ($capacity === null) {
+                continue; // unknown/retired room, can't verify remaining seats
+            }
+
+            $offeringId = $first['offering_id'] !== null ? (int) $first['offering_id'] : null;
+
+            $targetSectionId = null;
+
+            if ($offeringId !== null) {
+                $attendees = $offerings->rosterCount($offeringId);
+            } else {
+                $targetSectionId = $this->sectionIdFor($first);
+                $attendees       = $targetSectionId !== null ? (int) db_connect()->table('enrollments')
+                    ->where('subject_code', $code)
+                    ->where('section_id', $targetSectionId)
+                    ->where('status', 'enrolled')
+                    ->countAllResults() : 0;
+
+                if ($attendees === 0) {
+                    $attendees = $this->projectedHeadcount([
+                        'section_id' => $targetSectionId,
+                        'program'    => $first['program'],
+                        'year_level' => $first['year_level'],
+                    ]);
+                }
+            }
+
+            $available = $capacity - $attendees;
+
+            if ($available < $myHeadcount) {
+                continue; // not enough free seats for this section
+            }
+
+            $suggestions[] = [
+                'subject_code'        => $code,
+                'subject_title'       => $first['subject_title'],
+                'room'                => $first['room'],
+                'prof'                => $first['prof'],
+                'faculty_id'          => $first['prof'] !== null ? $this->facultyIdFor($first['prof']) : null,
+                'time_label'          => implode('; ', array_unique(array_column($rows, 'time_label'))),
+                'available_seats'     => $available,
+                'projected_headcount' => $myHeadcount,
+                'meetings'            => array_map(static fn (array $b) => [
+                    'day'        => (int) $b['day'],
+                    'start'      => substr($b['start_time'], 0, 5),
+                    'end'        => substr($b['end_time'], 0, 5),
+                    'time_label' => $b['time_label'],
+                ], $rows),
+            ];
+        }
+
+        return $this->response->setJSON(['ok' => true, 'suggestions' => $suggestions]);
+    }
+
+    /** The section_id behind a legacy (non-offering) plotted_schedules row's program/year_level/section tuple. */
+    private function sectionIdFor(array $row): ?int
+    {
+        if ($row['section'] === null) {
+            return null; // offering-linked row — no single section identity
+        }
+
+        $section = (new SectionModel())->forContext($row['academic_year'], $row['program'], $row['year_level'], $row['section']);
+
+        return $section !== null ? (int) $section['section_id'] : null;
+    }
+
+    private function facultyIdFor(string $username): ?int
+    {
+        $row = db_connect()->table('users')->select('id')->where('username', $username)->get()->getRowArray();
+
+        return $row !== null ? (int) $row['id'] : null;
+    }
+
+    /**
+     * Same headcount estimate ChairpersonController::suggest() uses: real
+     * enrollment when the section has students yet, else the capacity
+     * policy's target for its program/year level.
+     */
+    private function projectedHeadcount(array $sectionRow): int
+    {
+        if ($sectionRow['section_id'] === null) {
+            return (int) (new CapacityPolicyModel())->resolve(['program' => $sectionRow['program'], 'year_level' => $sectionRow['year_level']])['target'];
+        }
+
+        $enrolled = (int) db_connect()->table('users u')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'student')->where('u.deleted_at', null)->where('u.section_id', $sectionRow['section_id'])
+            ->countAllResults();
+
+        if ($enrolled > 0) {
+            return $enrolled;
+        }
+
+        return (int) (new CapacityPolicyModel())->resolve(['program' => $sectionRow['program'], 'year_level' => $sectionRow['year_level']])['target'];
     }
 
     /**

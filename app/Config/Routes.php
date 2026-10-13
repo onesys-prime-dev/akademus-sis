@@ -319,6 +319,7 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('offerings/unmerge'       , 'Chairperson\OfferingController::unmergeSection');
     $routes->get('offerings/schedule'       , 'Chairperson\OfferingController::scheduleState');
     $routes->post('offerings/schedule/sync' , 'Chairperson\OfferingController::syncSchedule');
+    $routes->get('offerings/merge-suggestions', 'Chairperson\OfferingController::mergeSuggestions');
 
     // Step 9: offering components (Lecture/Laboratory split scheduling + roster)
     $routes->post('offerings/components/schedule/sync', 'Chairperson\OfferingController::syncComponentSchedule');
