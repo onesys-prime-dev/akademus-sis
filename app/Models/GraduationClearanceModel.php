@@ -80,23 +80,41 @@ class GraduationClearanceModel extends Model
         return ['ok' => true, 'clearance_id' => $clearanceId];
     }
 
-    public function clearItem(int $clearanceId, int $itemId, int $clearedBy, ?string $remarks = null): array
+    /**
+     * $authorizedOffices, when given (ClearanceAuthorization::
+     * authorizedOfficeRoles()), restricts this to items whose
+     * clearance_requirements.office_role the actor is actually allowed to
+     * act on — e.g. only Finance may clear the 'accounting' item. Omit it
+     * (null) only for trusted internal callers that have already checked
+     * authorization themselves; every controller action should pass it.
+     */
+    public function clearItem(int $clearanceId, int $itemId, int $clearedBy, ?string $remarks = null, ?array $authorizedOffices = null): array
     {
-        return $this->decideItem($clearanceId, $itemId, 'cleared', $clearedBy, $remarks);
+        return $this->decideItem($clearanceId, $itemId, 'cleared', $clearedBy, $remarks, $authorizedOffices);
     }
 
-    public function denyItem(int $clearanceId, int $itemId, int $clearedBy, ?string $remarks = null): array
+    public function denyItem(int $clearanceId, int $itemId, int $clearedBy, ?string $remarks = null, ?array $authorizedOffices = null): array
     {
-        return $this->decideItem($clearanceId, $itemId, 'denied', $clearedBy, $remarks);
+        return $this->decideItem($clearanceId, $itemId, 'denied', $clearedBy, $remarks, $authorizedOffices);
     }
 
-    private function decideItem(int $clearanceId, int $itemId, string $decision, int $actorId, ?string $remarks): array
+    private function decideItem(int $clearanceId, int $itemId, string $decision, int $actorId, ?string $remarks, ?array $authorizedOffices): array
     {
         $itemModel = new GraduationClearanceItemModel();
-        $item      = $itemModel->where('id', $itemId)->where('clearance_id', $clearanceId)->first();
+        $item      = $this->db->table('graduation_clearance_items i')
+            ->select('i.*, r.office_role')
+            ->join('clearance_requirements r', 'r.id = i.requirement_id')
+            ->where('i.id', $itemId)
+            ->where('i.clearance_id', $clearanceId)
+            ->get()
+            ->getRowArray();
 
         if ($item === null) {
             return ['ok' => false, 'error' => 'Clearance item not found.'];
+        }
+
+        if ($authorizedOffices !== null && ! in_array($item['office_role'], $authorizedOffices, true)) {
+            return ['ok' => false, 'error' => 'You are not authorized to act on this clearance item.'];
         }
 
         $itemModel->update($itemId, [
@@ -201,6 +219,35 @@ class GraduationClearanceModel extends Model
             ->getResultArray();
 
         return $cases;
+    }
+
+    /**
+     * Every pending item across every in-progress case whose office_role
+     * is in $officeRoles — Finance's cross-student "accounting" queue
+     * (distinct from queue()/withItems(), which are Registrar's
+     * per-case views).
+     *
+     * @param list<string> $officeRoles
+     */
+    public function pendingForOffices(array $officeRoles): array
+    {
+        if ($officeRoles === []) {
+            return [];
+        }
+
+        return $this->db->table('graduation_clearance_items i')
+            ->select('i.id, i.clearance_id, i.status, r.name AS requirement_name, r.office_role,
+                      c.student_id, c.academic_year, s.student_number, u.username')
+            ->join('clearance_requirements r', 'r.id = i.requirement_id')
+            ->join('graduation_clearances c', 'c.id = i.clearance_id')
+            ->join('students s', 's.student_id = c.student_id')
+            ->join('users u', 'u.id = s.user_id')
+            ->where('i.status', 'pending')
+            ->where('c.status', 'pending')
+            ->whereIn('r.office_role', $officeRoles)
+            ->orderBy('c.created_at', 'ASC')
+            ->get()
+            ->getResultArray();
     }
 
     /**

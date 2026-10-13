@@ -39,7 +39,7 @@
                     <td><?= esc($item['remarks'] ?? '—') ?></td>
                     <td><?= $item['cleared_at'] ? esc(date('M j, Y', strtotime($item['cleared_at']))) : '—' ?></td>
                     <td>
-                        <?php if ($item['status'] === 'pending'): ?>
+                        <?php if ($item['status'] === 'pending' && in_array($item['office_role'], $authorizedOffices, true)): ?>
                             <form method="post" action="<?= site_url('registrar/clearance/' . $item['clearance_id'] . '/item/' . $item['id'] . '/clear') ?>" style="display:inline;">
                                 <?= csrf_field() ?>
                                 <input type="text" name="remarks" placeholder="Remarks (optional)" style="width:140px; font-size:11.5px;">
@@ -50,6 +50,8 @@
                                 <input type="text" name="remarks" placeholder="Reason (required)" style="width:140px; font-size:11.5px;" required>
                                 <button type="submit" class="ac-btn-outline">Deny</button>
                             </form>
+                        <?php elseif ($item['status'] === 'pending'): ?>
+                            <span class="ac-muted" style="font-size:11.5px;">Owned by another office</span>
                         <?php endif ?>
                     </td>
                 </tr>
