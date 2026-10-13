@@ -3,6 +3,7 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Libraries\FinancePortal;
 use App\Libraries\RegistrarPortal;
 use App\Models\FeeTypeModel;
 use App\Models\ProgramFeeRateModel;
@@ -14,8 +15,11 @@ use CodeIgniter\Exceptions\PageNotFoundException;
  * The tuition price list (per program per academic year) registrar/admin
  * sets — without a rate sheet for a program+year, TuitionAssessmentService
  * leaves every student in that program "unassessed" rather than guessing.
- * Served under both /admin/tuition-rates and /registrar/tuition-rates, same
- * convention as Admin\StudentRecordController.
+ * Served under /admin/tuition-rates and /finance/tuition-rates — rate
+ * management moved to Finance; Registrar keeps read-only fees.view context
+ * elsewhere but no longer mounts this controller at all. Same
+ * isRegistrarPortal()-style convention as Admin\StudentRecordController,
+ * extended to a third portal.
  *
  * A "rate sheet" is the per-unit tuition rate + installment count
  * (tuition_rates) plus one amount per active fee_types entry
@@ -25,21 +29,25 @@ use CodeIgniter\Exceptions\PageNotFoundException;
  */
 class TuitionController extends BaseController
 {
-    private function isRegistrarPortal(): bool
+    private function portal(): string
     {
-        return service('request')->getUri()->getSegment(1) === 'registrar';
+        $segment = service('request')->getUri()->getSegment(1);
+
+        return in_array($segment, ['registrar', 'finance'], true) ? $segment : 'admin';
     }
 
     private function baseUrl(): string
     {
-        return '/' . ($this->isRegistrarPortal() ? 'registrar' : 'admin') . '/tuition-rates';
+        return '/' . $this->portal() . '/tuition-rates';
     }
 
     private function shell(): array
     {
-        return $this->isRegistrarPortal()
-            ? RegistrarPortal::shell('tuition-rates')
-            : ['activeAdmin' => 'tuition-rates', 'basePath' => 'admin'];
+        return match ($this->portal()) {
+            'registrar' => RegistrarPortal::shell('tuition-rates'),
+            'finance'   => FinancePortal::shell('tuition-rates'),
+            default     => ['activeAdmin' => 'tuition-rates', 'basePath' => 'admin'],
+        };
     }
 
     public function index()

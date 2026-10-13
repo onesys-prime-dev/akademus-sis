@@ -3,6 +3,7 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Libraries\FinancePortal;
 use App\Libraries\RegistrarPortal;
 use App\Models\PaymentProofModel;
 use App\Services\TuitionAssessmentService;
@@ -16,21 +17,25 @@ use CodeIgniter\Exceptions\PageNotFoundException;
  */
 class PaymentProofController extends BaseController
 {
-    private function isRegistrarPortal(): bool
+    private function portal(): string
     {
-        return service('request')->getUri()->getSegment(1) === 'registrar';
+        $segment = service('request')->getUri()->getSegment(1);
+
+        return in_array($segment, ['registrar', 'finance'], true) ? $segment : 'admin';
     }
 
     private function baseUrl(): string
     {
-        return '/' . ($this->isRegistrarPortal() ? 'registrar' : 'admin') . '/payment-proofs';
+        return '/' . $this->portal() . '/payment-proofs';
     }
 
     private function shell(): array
     {
-        return $this->isRegistrarPortal()
-            ? RegistrarPortal::shell('payment-proofs')
-            : ['activeAdmin' => 'payment-proofs', 'basePath' => 'admin'];
+        return match ($this->portal()) {
+            'registrar' => RegistrarPortal::shell('payment-proofs'),
+            'finance'   => FinancePortal::shell('payment-proofs'),
+            default     => ['activeAdmin' => 'payment-proofs', 'basePath' => 'admin'],
+        };
     }
 
     public function index()

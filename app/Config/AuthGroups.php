@@ -88,6 +88,11 @@ class AuthGroups extends ShieldAuthGroups
             'description' => 'Department chairpersons',
         ],
 
+        'finance' => [
+            'title'       => 'Finance',
+            'description' => 'Finance/Accounting staff',
+        ],
+
         'student' => [
             'title'       => 'Student',
             'description' => 'Student users',
@@ -125,6 +130,11 @@ class AuthGroups extends ShieldAuthGroups
         'enrollment.override'  => 'Can override prerequisite or capacity checks when enrolling a student',
         'clearance.manage'     => 'Can initiate, clear, deny, and finalize graduation clearance cases',
         'documents.issue'      => 'Can generate and release official student documents (TOR, certificates)',
+        'finance.view'         => 'Can view finance dashboards, ledgers, and reports',
+        'finance.assess'       => 'Can manage discounts/scholarships applied to student assessments',
+        'finance.cashier'      => 'Can record payments and review payment proofs',
+        'finance.manage'       => 'Can manage financial holds, official receipts, and finance configuration',
+        'finance.override'     => 'Can bypass a financial hold or unpaid-balance gate',
         // 'beta.access'        => 'Can access beta-level features',
     ];
 
@@ -147,6 +157,7 @@ class AuthGroups extends ShieldAuthGroups
             'enrollment.*',
             'clearance.*',
             'documents.*',
+            'finance.*',
         ],
         'admin' => [
             'admin.access',
@@ -160,11 +171,14 @@ class AuthGroups extends ShieldAuthGroups
         ],
         // Institution-wide by design: a registrar looks up and corrects any
         // student's record (audited, reason required), but administers nothing else.
+        // fees.manage moved to the finance group — registrar keeps fees.view
+        // (read-only balance/hold context on a student's record) but can no
+        // longer record payments, set rates, or manage the payment-proof
+        // queue; that's Finance's exclusive territory now.
         'registrar' => [
             'students.view',
             'students.manage',
             'fees.view',
-            'fees.manage',
             'grades.manage',
             'grades.view',
             'calendar.manage',
@@ -184,6 +198,19 @@ class AuthGroups extends ShieldAuthGroups
         'chairperson' => [
             'grades.manage',
             'grades.view',
+        ],
+        // Owns tuition rates, fee catalog, payment recording/verification,
+        // holds, discounts, receipts, and reports — fees.view/fees.manage
+        // are the same keys that already gated the existing tuition-rates/
+        // fee-types/payment-proofs routes, reused rather than duplicated.
+        'finance' => [
+            'fees.view',
+            'fees.manage',
+            'finance.view',
+            'finance.assess',
+            'finance.cashier',
+            'finance.manage',
+            'finance.override',
         ],
         'student' => [],
         'user' => [],

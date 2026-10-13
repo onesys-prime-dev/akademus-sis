@@ -275,15 +275,16 @@
 <!-- Tuition & Fees -->
 <div class="ac-table-card sr-panel" id="sr-tuition" hidden>
     <table class="ac-table">
-        <thead><tr><th>Academic Year</th><th>Units</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+        <thead><tr><th>Academic Year</th><th>Units</th><th>Discounts</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
         <tbody>
         <?php if (empty($s['tuition_assessments'])): ?>
-            <tr><td colspan="6" class="ac-muted">No tuition assessments yet — one is created automatically once the student enrolls.</td></tr>
+            <tr><td colspan="7" class="ac-muted">No tuition assessments yet — one is created automatically once the student enrolls.</td></tr>
         <?php endif ?>
         <?php foreach ($s['tuition_assessments'] as $a): ?>
             <tr>
                 <td><?= esc($a['academic_year']) ?></td>
                 <td><?= esc((string) $a['total_units']) ?></td>
+                <td><?= ((float) ($a['discount_amount'] ?? 0)) > 0 ? '−' . number_format((float) $a['discount_amount'], 2) : '—' ?></td>
                 <td><?= number_format((float) $a['total_amount'], 2) ?></td>
                 <td><?= number_format((float) $a['amount_paid'], 2) ?></td>
                 <td><?= number_format((float) $a['balance'], 2) ?></td>
@@ -332,10 +333,16 @@
     </div>
     <?php endif ?>
 
+    <?php $canManageFees = auth()->user()->can('fees.manage'); ?>
+
     <?php if (!empty($s['pending_proofs'])): ?>
     <div style="padding:16px 24px; border-top:1px solid var(--color-border, #e5e7eb);">
         <h4 style="margin:0 0 8px; font-size:14px;">Pending Proofs of Payment</h4>
-        <p class="ac-muted" style="font-size:11.5px; margin:0 0 10px;">Review and act on these from <a href="<?= site_url($basePath . '/payment-proofs') ?>">Payment Proofs</a>.</p>
+        <?php if ($canManageFees): ?>
+            <p class="ac-muted" style="font-size:11.5px; margin:0 0 10px;">Review and act on these from <a href="<?= site_url($basePath . '/payment-proofs') ?>">Payment Proofs</a>.</p>
+        <?php else: ?>
+            <p class="ac-muted" style="font-size:11.5px; margin:0 0 10px;">Reviewed by the Finance office.</p>
+        <?php endif ?>
         <ul style="margin:0; padding-left:18px;">
             <?php foreach ($s['pending_proofs'] as $proof): ?>
                 <li><a href="<?= site_url('student/tuition/proof/' . $proof['proof_id']) ?>" target="_blank"><?= esc($proof['original_filename']) ?></a> — <?= esc(date('M j, Y', strtotime($proof['created_at']))) ?></li>
@@ -344,6 +351,7 @@
     </div>
     <?php endif ?>
 
+    <?php if ($canManageFees): ?>
     <div style="padding:16px 24px; border-top:1px solid var(--color-border, #e5e7eb);">
         <h4 style="margin:0 0 8px; font-size:14px;">Record a Payment</h4>
         <?php if (empty($s['tuition_assessments'])): ?>
@@ -375,20 +383,33 @@
             </form>
         <?php endif ?>
     </div>
+    <?php else: ?>
+    <div style="padding:16px 24px; border-top:1px solid var(--color-border, #e5e7eb);">
+        <p class="ac-muted" style="margin:0; font-size:11.5px;">Payment recording has moved to the Finance portal. This view is read-only.</p>
+    </div>
+    <?php endif ?>
 
     <h4 style="padding:16px 24px 0; font-size:13px;">Payment History</h4>
     <table class="ac-table">
-        <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead>
+        <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th><th>Receipt</th></tr></thead>
         <tbody>
         <?php if (empty($s['payment_history'])): ?>
-            <tr><td colspan="4" class="ac-muted">No payments recorded yet.</td></tr>
+            <tr><td colspan="5" class="ac-muted">No payments recorded yet.</td></tr>
         <?php endif ?>
         <?php foreach ($s['payment_history'] as $p): ?>
             <tr>
                 <td><?= esc(date('M j, Y', strtotime($p['payment_date']))) ?></td>
                 <td><?= number_format((float) $p['amount'], 2) ?></td>
-                <td><?= esc($p['method']) ?></td>
+                <td><?= esc(ucfirst(str_replace('_', ' ', $p['method']))) ?></td>
                 <td><?= $p['reference_no'] !== null ? esc($p['reference_no']) : '—' ?></td>
+                <td>
+                    <?php if (! empty($p['or_number'])): ?>
+                        <a href="<?= site_url('student/tuition/receipt/' . $p['receipt_id']) ?>" target="_blank"><?= esc($p['or_number']) ?></a>
+                        <?php if ($p['receipt_status'] === 'voided'): ?><span class="ac-muted">(voided)</span><?php endif ?>
+                    <?php else: ?>
+                        <span class="ac-muted">—</span>
+                    <?php endif ?>
+                </td>
             </tr>
         <?php endforeach ?>
         </tbody>

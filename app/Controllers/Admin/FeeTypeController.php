@@ -3,6 +3,7 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Libraries\FinancePortal;
 use App\Libraries\RegistrarPortal;
 use App\Models\FeeTypeModel;
 use CodeIgniter\Exceptions\PageNotFoundException;
@@ -17,21 +18,25 @@ use CodeIgniter\Exceptions\PageNotFoundException;
  */
 class FeeTypeController extends BaseController
 {
-    private function isRegistrarPortal(): bool
+    private function portal(): string
     {
-        return service('request')->getUri()->getSegment(1) === 'registrar';
+        $segment = service('request')->getUri()->getSegment(1);
+
+        return in_array($segment, ['registrar', 'finance'], true) ? $segment : 'admin';
     }
 
     private function baseUrl(): string
     {
-        return '/' . ($this->isRegistrarPortal() ? 'registrar' : 'admin') . '/fee-types';
+        return '/' . $this->portal() . '/fee-types';
     }
 
     private function shell(): array
     {
-        return $this->isRegistrarPortal()
-            ? RegistrarPortal::shell('fee-types')
-            : ['activeAdmin' => 'fee-types', 'basePath' => 'admin'];
+        return match ($this->portal()) {
+            'registrar' => RegistrarPortal::shell('fee-types'),
+            'finance'   => FinancePortal::shell('fee-types'),
+            default     => ['activeAdmin' => 'fee-types', 'basePath' => 'admin'],
+        };
     }
 
     public function index()
