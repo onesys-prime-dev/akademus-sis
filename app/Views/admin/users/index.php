@@ -338,7 +338,7 @@
         <div class="ac-modal__header">
             <div>
                 <div class="ac-modal__title">Reset Password</div>
-                <div class="ac-modal__subtitle">A new temporary password will be generated for <b id="acResetUsername"></b>.</div>
+                <div class="ac-modal__subtitle">Set a new password for <b id="acResetUsername"></b>, or leave it blank to auto-generate one.</div>
             </div>
             <button type="button" onclick="acCloseModal('modalResetPassword')" class="ac-modal__close">
                 <span class="material-symbols-outlined" style="font-size:18px;">close</span>
@@ -347,7 +347,15 @@
 
         <form method="post" id="acResetForm">
             <?= csrf_field() ?>
-            <div class="ac-notice" style="margin-top:16px;">
+            <div class="ac-field" style="margin-top:16px;">
+                <label>New Password</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" name="password" id="acResetPassword" class="ac-input" placeholder="Leave blank to auto-generate" minlength="8">
+                    <button type="button" class="ac-btn-outline" style="white-space:nowrap;" onclick="acGeneratePassword('acResetPassword')">Generate</button>
+                </div>
+                <p style="font-size:11.5px; color:var(--color-text-secondary); margin-top:4px;">Minimum 8 characters if set manually.</p>
+            </div>
+            <div class="ac-notice" style="margin-top:12px;">
                 <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-info); margin-top:1px;">info</span>
                 <span class="ac-notice__text">Their current password stops working immediately. Share the new one with them directly — it's only shown once.</span>
             </div>
@@ -479,11 +487,11 @@
         if (role === 'student') acCascadeSections('');
     }
 
-    function acGeneratePassword() {
+    function acGeneratePassword(targetId) {
         var bytes = new Uint8Array(9);
         crypto.getRandomValues(bytes);
         var pass = Array.from(bytes, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
-        document.getElementById('acNewPassword').value = pass;
+        document.getElementById(targetId || 'acNewPassword').value = pass;
     }
 
     function acOpenEdit(user) {
@@ -525,6 +533,7 @@
     function acOpenResetPassword(id, username) {
         document.getElementById('acResetForm').action = AC_USERS_BASE + '/reset-password/' + id;
         document.getElementById('acResetUsername').textContent = username;
+        document.getElementById('acResetPassword').value = '';
         acOpenModal('modalResetPassword');
     }
 
@@ -544,7 +553,13 @@
         <?php endif ?>
     });
 </script>
-<?php if (session('errors')): ?>
+<?php $modalFlash = session('modal'); ?>
+<?php if (session('errors') && is_array($modalFlash) && ($modalFlash['type'] ?? null) === 'reset-password'): ?>
+<script>
+    acOpenResetPassword(<?= (int) $modalFlash['id'] ?>, <?= json_encode($modalFlash['username']) ?>);
+    document.getElementById('acResetPassword').value = <?= json_encode(old('password') ?? '') ?>;
+</script>
+<?php elseif (session('errors')): ?>
 <script>document.getElementById('modalCreateAccount').classList.add('is-open'); acToggleDeptField();</script>
 <?php endif ?>
 <?= $this->endSection() ?>

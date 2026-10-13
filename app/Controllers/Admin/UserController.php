@@ -269,7 +269,9 @@ class UserController extends BaseController
     }
 
     /**
-     * Generate a fresh temporary password for an account that forgot theirs.
+     * Sets a fresh password for an account that forgot theirs — either a
+     * specific one the admin types in, or an auto-generated one when the
+     * field is left blank (same optional-password pattern as store()).
      * Shown once in the same reveal modal used at creation time.
      */
     public function resetPassword($id)
@@ -281,9 +283,22 @@ class UserController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
-        $tempPassword = bin2hex(random_bytes(6));
-        $user->password = $tempPassword;
-        $users->save($user);
+        $manualPassword = trim((string) $this->request->getPost('password'));
+
+        $reopenModal = ['type' => 'reset-password', 'id' => (int) $id, 'username' => $user->username];
+
+        if ($manualPassword !== '' && mb_strlen($manualPassword) < 8) {
+            return redirect()->back()->with('errors', ['password' => 'Password must be at least 8 characters.'])->with('modal', $reopenModal);
+        }
+
+        $tempPassword    = $manualPassword !== '' ? $manualPassword : bin2hex(random_bytes(6));
+        $user->password  = $tempPassword;
+
+        try {
+            $users->save($user);
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('errors', ['password' => 'That password was rejected. Use at least 8 characters that are not easy to guess.'])->with('modal', $reopenModal);
+        }
 
         $email = db_connect()->table('auth_identities')
             ->where('user_id', $id)
