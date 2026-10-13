@@ -4,6 +4,7 @@ namespace App\Controllers\Faculty;
 
 use App\Controllers\BaseController;
 use App\Models\FacultyAssignmentModel;
+use App\Models\GradeChangeRequestModel;
 use App\Models\GradeModel;
 
 /**
@@ -30,9 +31,8 @@ class GradingController extends BaseController
             $result = $gradeModel->rosterWithGrades($a['academic_year'], $a['program'], $a['year_level'], $a['section'], $a['subject_code']);
             $roster = $result['roster'];
 
-            $graded    = 0;
-            $submitted = 0;
-            $locked    = 0;
+            $graded = 0;
+            $counts = ['submitted' => 0, 'chair_recommended' => 0, 'dean_noted' => 0, 'registrar_approved' => 0, 'locked' => 0];
 
             foreach ($roster as $row) {
                 if ($row['grade'] === null) {
@@ -40,20 +40,27 @@ class GradingController extends BaseController
                 }
 
                 $graded++;
-                if ($row['grade']['status'] === 'submitted') {
-                    $submitted++;
-                }
-                if ($row['grade']['status'] === 'locked') {
-                    $locked++;
+                $status = $row['grade']['status'];
+
+                if (isset($counts[$status])) {
+                    $counts[$status]++;
                 }
             }
 
+            $rosterCount = count($roster);
+            // "In review" covers every stage past submitted but short of
+            // locked — the faculty view only needs to know the grade has
+            // left their hands, not exactly which office currently has it
+            // (the chairperson/dean/registrar queues show that detail).
+            $inReview = $counts['chair_recommended'] + $counts['dean_noted'] + $counts['registrar_approved'];
+
             $classes[] = [
                 'assignment'    => $a,
-                'student_count' => count($roster),
+                'student_count' => $rosterCount,
                 'graded_count'  => $graded,
-                'submitted'     => $submitted === count($roster) && count($roster) > 0,
-                'locked'        => $locked === count($roster) && count($roster) > 0,
+                'submitted'     => $counts['submitted'] === $rosterCount && $rosterCount > 0,
+                'in_review'     => $inReview === $rosterCount && $rosterCount > 0,
+                'locked'        => $counts['locked'] === $rosterCount && $rosterCount > 0,
             ];
         }
 
@@ -145,7 +152,7 @@ class GradingController extends BaseController
                 'academic_year' => $context['academic_year'],
             ];
 
-            $saved = $gradeModel->saveOne($rowContext, $enrollmentId, $value, $remarks, $facultyId);
+            $saved = $gradeModel->saveOne($rowContext, $enrollmentId, $value, $remarks, $facultyId, auth()->user()->can('calendar.override'));
 
             if (! $saved['ok']) {
                 $errors[] = "{$rosterById[$enrollmentId]['username']}: {$saved['error']}";
@@ -179,13 +186,55 @@ class GradingController extends BaseController
         }
 
         $enrollmentIds = array_map(static fn (array $r) => (int) $r['enrollment_id'], $result['roster']);
-        $submitted     = $gradeModel->submitClass($enrollmentIds, $facultyId);
+        $submitted     = $gradeModel->submitClass($enrollmentIds, $facultyId, auth()->user()->can('calendar.override'));
 
         if (! $submitted['ok']) {
             return $this->fail($submitted['error']);
         }
 
         return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * Queue of correction forms the registrar has issued against this
+     * faculty member's locked grades, awaiting their response — step 2
+     * (FACULTY_SUBMITTED) of the 5-step chain.
+     */
+    public function changeRequests()
+    {
+        $facultyId = (int) auth()->id();
+
+        return view('faculty/grading/change_requests', [
+            'pageTitle' => 'Grade Correction Requests',
+            'user'      => ['name' => auth()->user()->username ?? 'Faculty'],
+            'requests'  => (new GradeChangeRequestModel())->awaitingFacultyResponse($facultyId),
+        ]);
+    }
+
+    /**
+     * Faculty's response to an issued correction form — new value, reason,
+     * and optional supporting documents.
+     */
+    public function submitChangeResponse()
+    {
+        $facultyId = (int) auth()->id();
+        $requestId = (int) $this->request->getPost('request_id');
+        $value     = (string) $this->request->getPost('requested_value');
+        $reason    = (string) $this->request->getPost('reason');
+
+        if ($requestId === 0 || trim($value) === '' || trim($reason) === '') {
+            return redirect()->back()->with('errors', ['New value and reason are both required.']);
+        }
+
+        $files = $this->request->getFileMultiple('attachments') ?? [];
+
+        $result = (new GradeChangeRequestModel())->submitFacultyResponse($requestId, $value, $reason, $facultyId, $files);
+
+        if (! $result['ok']) {
+            return redirect()->back()->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to('/faculty/grading/change-requests')->with('message', 'Response submitted to the chairperson.');
     }
 
     public function requestChange()
