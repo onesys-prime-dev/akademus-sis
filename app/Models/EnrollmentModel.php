@@ -229,6 +229,80 @@ class EnrollmentModel extends Model
     }
 
     /**
+     * Read-only preview of whether $userId could be enrolled into
+     * (section, subject) right now — runs the SAME checks enrollOne() does
+     * (catalog membership, prerequisites, curriculum membership, schedule
+     * conflict, capacity) without locking or inserting anything. Powers the
+     * enlistment cart's live "can I add this?" feedback (StudentEnlistmentModel::
+     * addItem()) so that rule set is never duplicated. Unlike enrollOne(),
+     * there is no override path here — an unmet prerequisite or a full
+     * section simply can't be added to a cart; overrides stay a registrar/
+     * admin capability exercised only at conversion time.
+     *
+     * @return array{ok: bool, error?: string, units?: float}
+     */
+    public function checkEligibility(int $userId, int $sectionId, string $subjectCode): array
+    {
+        $section = db_connect()->table('sections')->where('section_id', $sectionId)->get()->getRowArray();
+
+        if ($section === null) {
+            return ['ok' => false, 'error' => 'That section no longer exists.'];
+        }
+
+        $meetings = $this->meetingsFor($section, $subjectCode);
+
+        if ($meetings === []) {
+            return ['ok' => false, 'error' => "{$subjectCode} is not scheduled for this section."];
+        }
+
+        if (! $this->subjectExistsInCatalog($subjectCode)) {
+            return ['ok' => false, 'error' => "{$subjectCode} is not a recognized subject. Please contact the registrar."];
+        }
+
+        $missing = $this->unmetPrerequisites($userId, $subjectCode);
+
+        if ($missing !== []) {
+            return ['ok' => false, 'error' => "Prerequisite not met for {$subjectCode}: " . implode(', ', $missing) . ' must be passed first.'];
+        }
+
+        $outsideCurriculum = $this->outsideCurriculum($userId, $subjectCode);
+
+        if ($outsideCurriculum !== null) {
+            return ['ok' => false, 'error' => $outsideCurriculum];
+        }
+
+        $conflict = $this->findConflict($userId, $section['academic_year'], $meetings, $subjectCode);
+
+        if ($conflict !== null) {
+            return ['ok' => false, 'error' => "Schedule conflict: {$subjectCode} overlaps {$conflict}, which you're already enrolled in."];
+        }
+
+        $offering   = (new CourseOfferingModel())->offeringForSection($sectionId, $subjectCode);
+        $offeringId = $offering['offering_id'] ?? null;
+        $capacity   = $offering !== null ? $offering['capacity'] : $section['capacity'];
+
+        if ($capacity !== null) {
+            $memberQuery = $offeringId !== null
+                ? ['offering_id' => $offeringId, 'user_id' => $userId, 'status' => 'enrolled']
+                : ['section_id' => $sectionId, 'user_id' => $userId, 'status' => 'enrolled'];
+
+            $alreadyMember = $this->where($memberQuery)->countAllResults() > 0;
+
+            $rosterCount = $offeringId !== null
+                ? (new CourseOfferingModel())->rosterCount($offeringId)
+                : $this->rosterCount($sectionId);
+
+            if (! $alreadyMember && $rosterCount >= (int) $capacity) {
+                return ['ok' => false, 'error' => $offeringId !== null ? 'This merged class is full.' : 'This section is full.'];
+            }
+        }
+
+        $subject = (new SubjectModel())->where('subject_code', $subjectCode)->first();
+
+        return ['ok' => true, 'units' => $subject !== null ? (float) $subject['units'] : 0.0];
+    }
+
+    /**
      * The (section, subject) classes a registrar can enroll a student into:
      * everything plotted in the given term for the given program. Each entry
      * is one option for the "Enroll in a subject" form.
