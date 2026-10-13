@@ -199,7 +199,8 @@ class StudentRecordController extends BaseController
             'manual',
             $overrideArg($overridePrereq),
             auth()->user()->can('calendar.override'),
-            $overrideArg($overrideCapacity)
+            $overrideArg($overrideCapacity),
+            auth()->user()->can('finance.override')
         );
 
         if (! $result['ok']) {
@@ -255,7 +256,8 @@ class StudentRecordController extends BaseController
             (int) $enrollmentId,
             (string) $this->request->getPost('reason'),
             (int) auth()->id(),
-            (int) $student['user_id']
+            (int) $student['user_id'],
+            auth()->user()->can('finance.override')
         );
 
         if (! $result['ok']) {

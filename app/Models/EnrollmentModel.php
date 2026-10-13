@@ -50,13 +50,26 @@ class EnrollmentModel extends Model
      * hard rules. A used override is written to enrollment_logs with the
      * missing subjects, the reason and the approver.
      *
+     * $holdOverride bypasses an active financial hold (finance.override
+     * only) — checked here, never against raw balance, since a normal
+     * unpaid installment balance must never block routine enrollment; only
+     * an explicit Finance-placed hold does.
+     *
      * @param array{reason: string, by: int}|null $prerequisiteOverride
      * @return array{ok: bool, error?: string, enrollment_id?: int}
      */
-    public function enrollOne(int $userId, int $sectionId, string $subjectCode, string $method = 'manual', ?array $prerequisiteOverride = null, bool $windowOverride = false, ?array $capacityOverride = null): array
+    public function enrollOne(int $userId, int $sectionId, string $subjectCode, string $method = 'manual', ?array $prerequisiteOverride = null, bool $windowOverride = false, ?array $capacityOverride = null, bool $holdOverride = false): array
     {
         if (! $windowOverride && ! (new AcademicYearModel())->isRegistrationOpen()) {
             return ['ok' => false, 'error' => 'Registration is closed for the current term.'];
+        }
+
+        if (! $holdOverride) {
+            $student = (new StudentModel())->where('user_id', $userId)->first();
+
+            if ($student !== null && (new FinancialHoldModel())->isOnHold((int) $student['student_id'])) {
+                return ['ok' => false, 'error' => 'This student has an active financial hold. Contact the Finance office.'];
+            }
         }
 
         $db = $this->db;
@@ -255,12 +268,26 @@ class EnrollmentModel extends Model
      * Freeing the seat needs no extra work: capacity/roster counts only
      * ever count status = 'enrolled'.
      *
+     * $holdOverride, same shape and rationale as enrollOne()'s.
+     *
      * @return array{ok: bool, error?: string, enrollment?: array}
      */
-    public function drop(int $enrollmentId, string $reason, ?int $changedBy, ?int $ownerUserId = null): array
+    public function drop(int $enrollmentId, string $reason, ?int $changedBy, ?int $ownerUserId = null, bool $holdOverride = false): array
     {
         $db     = $this->db;
         $suffix = $db->DBDriver === 'MySQLi' ? ' FOR UPDATE' : '';
+
+        if (! $holdOverride) {
+            $owner = $this->find($enrollmentId);
+
+            if ($owner !== null) {
+                $student = (new StudentModel())->where('user_id', (int) $owner['user_id'])->first();
+
+                if ($student !== null && (new FinancialHoldModel())->isOnHold((int) $student['student_id'])) {
+                    return ['ok' => false, 'error' => 'This student has an active financial hold. Contact the Finance office.'];
+                }
+            }
+        }
 
         $db->transStart();
 

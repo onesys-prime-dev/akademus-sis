@@ -60,7 +60,7 @@ class DocumentController extends BaseController
             return redirect()->back()->with('errors', ['Choose a student and document type.']);
         }
 
-        $result = (new GeneratedDocumentModel())->generate($studentId, $type, (int) auth()->id(), $requestId);
+        $result = (new GeneratedDocumentModel())->generate($studentId, $type, (int) auth()->id(), $requestId, auth()->user()->can('finance.override'));
 
         if (! $result['ok']) {
             return redirect()->back()->with('errors', [$result['error']]);

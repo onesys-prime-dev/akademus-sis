@@ -23,9 +23,16 @@ class GeneratedDocumentModel extends Model
     protected $useTimestamps = false;
 
     /**
+     * $holdOverride (finance.override only) bypasses both the financial
+     * hold AND the outstanding-balance check below — unlike enrollment,
+     * document release checks EITHER condition, since a document is a
+     * one-time release point where "fully paid" is a reasonable bar
+     * (ongoing enrollment, which tolerates a normal installment balance,
+     * is a different gate — see EnrollmentModel::enrollOne()).
+     *
      * @return array{ok: bool, error?: string, id?: int, path?: string}
      */
-    public function generate(int $studentId, string $type, int $generatedBy, ?int $requestId = null): array
+    public function generate(int $studentId, string $type, int $generatedBy, ?int $requestId = null, bool $holdOverride = false): array
     {
         if (! in_array($type, DocumentRequestModel::TYPES, true)) {
             return ['ok' => false, 'error' => 'Unknown document type.'];
@@ -35,6 +42,19 @@ class GeneratedDocumentModel extends Model
 
         if ($student === null) {
             return ['ok' => false, 'error' => 'Student not found.'];
+        }
+
+        if (! $holdOverride) {
+            if ((new FinancialHoldModel())->isOnHold($studentId)) {
+                return ['ok' => false, 'error' => 'This student has an active financial hold. Contact the Finance office.'];
+            }
+
+            $activeYear = (new AcademicYearModel())->activeFormatted();
+            $assessment = $activeYear !== null ? (new TuitionAssessmentModel())->forStudentYear($studentId, $activeYear) : null;
+
+            if ($assessment !== null && (float) $assessment['balance'] > 0) {
+                return ['ok' => false, 'error' => 'This student has an outstanding balance for the current term. Settle it with the Finance office before releasing this document.'];
+            }
         }
 
         $verificationCode = bin2hex(random_bytes(16));
