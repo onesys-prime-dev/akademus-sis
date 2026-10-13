@@ -222,15 +222,22 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
     <?php else: ?>
         <div class="tf-table-scroll" role="region" aria-label="Payment details" tabindex="0"><table class="grade-table">
             <thead>
-                <tr><th>Date</th><th class="tf-money">Amount</th><th>Method</th><th>Reference</th></tr>
+                <tr><th>Date</th><th class="tf-money">Amount</th><th>Method</th><th>Reference</th><th>Receipt</th></tr>
             </thead>
             <tbody>
                 <?php foreach ($payments as $p): ?>
                     <tr>
                         <td><?= esc(date('M j, Y', strtotime($p['payment_date']))) ?></td>
                         <td class="tf-money">&#8369;<?= number_format((float) $p['amount'], 2) ?></td>
-                        <td><?= esc($p['method']) ?></td>
+                        <td><?= esc(ucfirst(str_replace('_', ' ', $p['method']))) ?></td>
                         <td><?= $p['reference_no'] !== null ? esc($p['reference_no']) : '—' ?></td>
+                        <td>
+                            <?php if (! empty($p['or_number'])): ?>
+                                <a href="<?= site_url('student/tuition/receipt/' . $p['receipt_id']) ?>" target="_blank"><?= esc($p['or_number']) ?></a>
+                            <?php else: ?>
+                                —
+                            <?php endif ?>
+                        </td>
                     </tr>
                 <?php endforeach ?>
             </tbody>

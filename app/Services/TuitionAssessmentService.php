@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Models\AssessmentItemModel;
+use App\Models\LedgerAdjustmentModel;
 use App\Models\NotificationModel;
+use App\Models\OfficialReceiptModel;
 use App\Models\PaymentProofModel;
 use App\Models\PaymentScheduleModel;
 use App\Models\ProgramFeeRateModel;
+use App\Models\StudentDiscountModel;
 use App\Models\StudentModel;
 use App\Models\StudentPaymentModel;
 use App\Models\TuitionAssessmentModel;
@@ -65,31 +68,32 @@ class TuitionAssessmentService
 
         if ($rate === null) {
             $data = [
-                'student_id'     => $studentId,
-                'academic_year'  => $academicYear,
-                'total_units'    => $totalUnits,
-                'tuition_amount' => 0,
-                'total_amount'   => 0,
-                'amount_paid'    => $amountPaid,
-                'balance'        => 0,
-                'status'         => 'unassessed',
+                'student_id'      => $studentId,
+                'academic_year'   => $academicYear,
+                'total_units'     => $totalUnits,
+                'tuition_amount'  => 0,
+                'discount_amount' => 0,
+                'total_amount'    => 0,
+                'amount_paid'     => $amountPaid,
+                'balance'         => 0,
+                'status'          => 'unassessed',
             ];
             $feeItems = [];
         } else {
-            $tuitionAmount = $totalUnits * (float) $rate['per_unit_rate'];
+            $tuitionAmount  = $totalUnits * (float) $rate['per_unit_rate'];
             $addedFeesTotal = array_sum(array_column($feeItems, 'amount'));
-            $totalAmount   = $tuitionAmount + $addedFeesTotal;
-            $balance       = max(0, $totalAmount - $amountPaid);
+            $grossAmount    = $tuitionAmount + $addedFeesTotal;
 
             $data = [
-                'student_id'     => $studentId,
-                'academic_year'  => $academicYear,
-                'total_units'    => $totalUnits,
-                'tuition_amount' => $tuitionAmount,
-                'total_amount'   => $totalAmount,
-                'amount_paid'    => $amountPaid,
-                'balance'        => $balance,
-                'status'         => $this->statusFor($totalAmount, $amountPaid),
+                'student_id'      => $studentId,
+                'academic_year'   => $academicYear,
+                'total_units'     => $totalUnits,
+                'tuition_amount'  => $tuitionAmount,
+                'discount_amount' => 0, // filled in below, once $assessmentId exists
+                'total_amount'    => $grossAmount,
+                'amount_paid'     => $amountPaid,
+                'balance'         => max(0, $grossAmount - $amountPaid),
+                'status'          => $this->statusFor($grossAmount, $amountPaid),
             ];
         }
 
@@ -105,14 +109,101 @@ class TuitionAssessmentService
 
         (new AssessmentItemModel())->replaceFor($assessmentId, $feeItems);
 
+        // Discounts need assessmentId to exist first (ledger_adjustments
+        // rows are keyed to it) — ensureDiscountAdjustments() creates any
+        // missing ones idempotently, then total_amount/balance/status are
+        // recomputed net of every discount on record for this assessment.
+        if ($rate !== null) {
+            $this->ensureDiscountAdjustments($assessmentId, $studentId, $academicYear, $data['total_amount']);
+
+            $discountAmount = $this->sumActiveDiscounts($assessmentId);
+            $netAmount      = max(0, $data['total_amount'] - $discountAmount);
+            $balance        = max(0, $netAmount - $amountPaid);
+
+            $assessments->update($assessmentId, [
+                'discount_amount' => $discountAmount,
+                'total_amount'    => $netAmount,
+                'balance'         => $balance,
+                'status'          => $this->statusFor($netAmount, $amountPaid),
+            ]);
+        }
+
+        $finalAssessment = $assessments->find($assessmentId);
+
         // Only ever generated once — a later rate correction must not
         // reshuffle a payment plan the student may already be paying
         // against (see payment_schedules migration docblock).
         if ($isNew && $rate !== null) {
-            $this->generateSchedule($assessmentId, (float) $data['total_amount'], max(1, (int) $rate['installment_count']));
+            $this->generateSchedule($assessmentId, (float) $finalAssessment['total_amount'], max(1, (int) $rate['installment_count']));
         }
 
-        return ['ok' => true, 'assessment' => $assessments->find($assessmentId)];
+        return ['ok' => true, 'assessment' => $finalAssessment];
+    }
+
+    /**
+     * Ensures one 'discount' ledger_adjustments credit row exists per
+     * active student_discounts grant applicable to this term, computed
+     * against the gross (pre-discount) amount. Idempotent via
+     * LedgerAdjustmentModel::activeForGrant() — safe to call on every
+     * recompute.
+     */
+    private function ensureDiscountAdjustments(int $assessmentId, int $studentId, string $academicYear, float $grossAmount): void
+    {
+        $grants  = (new StudentDiscountModel())->activeFor($studentId, $academicYear);
+        $ledger  = new LedgerAdjustmentModel();
+
+        foreach ($grants as $grant) {
+            if ($ledger->activeForGrant((int) $grant['id'], $assessmentId) !== null) {
+                continue;
+            }
+
+            $value = $grant['override_value'] !== null ? (float) $grant['override_value'] : (float) $grant['default_value'];
+            $amount = $grant['value_type'] === 'percentage' ? round($grossAmount * $value / 100, 2) : round($value, 2);
+
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $grantedBy = $grant['granted_by'] !== null ? (int) $grant['granted_by'] : $studentId;
+            $ledger->record($assessmentId, $studentId, 'credit', 'discount', $amount, $grant['name'], $grantedBy, (int) $grant['id']);
+        }
+    }
+
+    /**
+     * Sum of every still-active (never-reversed) 'discount'-category
+     * credit adjustment for this assessment — what total_amount is
+     * actually net of. LedgerAdjustmentModel::reverse() records its
+     * reversal with category 'correction' (not 'discount'), so a reversed
+     * discount must be excluded explicitly here by checking whether any
+     * other row points back at it via reverses_adjustment_id — summing by
+     * category alone would still count an original discount row that has
+     * since been reversed.
+     */
+    private function sumActiveDiscounts(int $assessmentId): float
+    {
+        $ledger = new LedgerAdjustmentModel();
+        $rows   = $ledger->where('assessment_id', $assessmentId)->where('category', 'discount')->findAll();
+
+        if ($rows === []) {
+            return 0.0;
+        }
+
+        $reversedIds = array_column(
+            $ledger->whereIn('reverses_adjustment_id', array_column($rows, 'id'))->findAll(),
+            'reverses_adjustment_id'
+        );
+
+        $total = 0.0;
+
+        foreach ($rows as $row) {
+            if (in_array($row['id'], $reversedIds, true)) {
+                continue;
+            }
+
+            $total += (float) $row['amount'];
+        }
+
+        return round($total, 2);
     }
 
     private function generateSchedule(int $assessmentId, float $totalAmount, int $installmentCount): void
@@ -180,8 +271,12 @@ class TuitionAssessmentService
 
     /**
      * Record a payment against a student's assessment for one academic year,
-     * then recompute the assessment's amount_paid/balance/status from the
-     * ledger — the assessment row never has amount_paid written directly.
+     * issue its Official Receipt in the same transaction (a payment is
+     * never left without one), then recompute the assessment's
+     * amount_paid/balance/status from the ledger — the assessment row
+     * never has amount_paid written directly.
+     *
+     * @return array{ok: bool, error?: string, assessment?: array, or_number?: string}
      */
     public function recordPayment(int $studentId, string $academicYear, float $amount, string $method, ?string $referenceNo, ?int $recordedBy): array
     {
@@ -192,7 +287,11 @@ class TuitionAssessmentService
             return ['ok' => false, 'error' => 'No assessment exists yet for this student/academic year.'];
         }
 
-        (new StudentPaymentModel())->insert([
+        $db = db_connect();
+        $db->transStart();
+
+        $payments = new StudentPaymentModel();
+        $payments->insert([
             'assessment_id' => (int) $assessment['assessment_id'],
             'student_id'    => $studentId,
             'amount'        => $amount,
@@ -201,10 +300,21 @@ class TuitionAssessmentService
             'reference_no'  => $referenceNo,
             'recorded_by'   => $recordedBy,
         ]);
+        $paymentId = $payments->getInsertID();
 
-        $this->recalculateLedger((int) $assessment['assessment_id']);
+        $receipt = (new OfficialReceiptModel())->issueFor($paymentId, (int) ($recordedBy ?? $studentId));
 
-        return ['ok' => true, 'assessment' => $assessments->find((int) $assessment['assessment_id'])];
+        if ($receipt['ok']) {
+            $this->recalculateLedger((int) $assessment['assessment_id']);
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false || ! $receipt['ok']) {
+            return ['ok' => false, 'error' => $receipt['error'] ?? 'Could not record this payment. Please try again.'];
+        }
+
+        return ['ok' => true, 'assessment' => $assessments->find((int) $assessment['assessment_id']), 'or_number' => $receipt['or_number']];
     }
 
     /**

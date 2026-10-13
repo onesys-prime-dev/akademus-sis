@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\AssessmentItemModel;
 use App\Models\AcademicYearModel;
 use App\Libraries\StudentDashboardSchedule;
+use App\Models\OfficialReceiptModel;
 use App\Models\PaymentProofModel;
 use App\Models\PaymentScheduleModel;
 use App\Models\SectionModel;
@@ -211,6 +212,31 @@ class StudentController extends BaseController
         }
 
         return $this->response->download($path, null)->setFileName($proof['original_filename']);
+    }
+
+    public function viewReceipt(int $id)
+    {
+        $receipt = (new OfficialReceiptModel())->find($id);
+
+        if ($receipt === null) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $student  = (new StudentModel())->where('user_id', (int) auth()->id())->first();
+        $isOwner  = $student !== null && (int) $receipt['student_id'] === (int) $student['student_id'];
+        $isStaff  = auth()->user()->can('fees.view') || auth()->user()->can('fees.manage');
+
+        if (! $isOwner && ! $isStaff) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $path = (new OfficialReceiptModel())->filePath($receipt);
+
+        if (! is_file($path)) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        return $this->response->download($path, null)->setFileName($receipt['or_number'] . '.pdf');
     }
 
     public function updateProfile()
