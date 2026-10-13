@@ -242,6 +242,12 @@ $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) 
     // academic calendar (same controller/permission as the admin console)
     $academicCalendarRoutes($routes);
 
+    // enlistment — registrar's final step (dean_noted -> enrolled), the
+    // conversion into real enrollments happens inside approve()
+    $routes->get('enlistments', 'Registrar\EnlistmentController::index', ['filter' => 'permission:enlistment.manage']);
+    $routes->post('enlistments/approve', 'Registrar\EnlistmentController::approve', ['filter' => 'permission:enlistment.manage']);
+    $routes->post('enlistments/return', 'Registrar\EnlistmentController::returnToStudent', ['filter' => 'permission:enlistment.manage']);
+
     // graduation clearance
     $routes->get('clearance', 'Registrar\ClearanceController::index', ['filter' => 'permission:clearance.manage']);
     $routes->get('clearance/(:num)', 'Registrar\ClearanceController::show/$1', ['filter' => 'permission:clearance.manage']);
@@ -336,6 +342,11 @@ $routes->group('dean', ['filter' => 'group:dean'], function ($routes) {
     $routes->post('grade-change-requests/recommend', 'Dean\GradeChangeApprovalController::recommend');
     $routes->post('grade-change-requests/reject', 'Dean\GradeChangeApprovalController::reject');
 
+    // enlistment — dean's step in the chain (chair_recommended -> dean_noted, or returned)
+    $routes->get('enlistment-approvals', 'Dean\EnlistmentApprovalController::index');
+    $routes->post('enlistment-approvals/note', 'Dean\EnlistmentApprovalController::note');
+    $routes->post('enlistment-approvals/return', 'Dean\EnlistmentApprovalController::returnToStudent');
+
     // notifications (shared controller, scoped by auth()->id())
     $routes->get('notifications', 'NotificationController::index');
     $routes->post('notifications/mark-read', 'NotificationController::markRead');
@@ -391,6 +402,10 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->post('enroll', 'StudentEnrollment::enroll');
     $routes->post('enroll/block', 'StudentEnrollment::enrollBlock');
     $routes->post('enrollments/drop', 'StudentEnrollment::drop');
+    $routes->get('enlistment', 'StudentEnlistment::wizard');
+    $routes->post('enlistment/add-item', 'StudentEnlistment::addItem');
+    $routes->post('enlistment/remove-item', 'StudentEnlistment::removeItem');
+    $routes->post('enlistment/submit', 'StudentEnlistment::submit');
     $routes->get('grades', 'StudentGrades::index');
     $routes->get('tuition', 'StudentController::tuition');
     $routes->post('tuition/proof/upload', 'StudentController::uploadProof');
@@ -490,6 +505,14 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     // student academic progress monitoring + graduation candidate review (one page, filtered by "view")
     $routes->get('student-progress'        , 'Chairperson\StudentProgressController::index');
     $routes->get('student-progress/detail' , 'Chairperson\StudentProgressController::detail');
+
+    // online enlistment — this chair's slice of the term's enlistment window,
+    // plus the chair's step in the enlistment approval chain
+    $routes->get('enlistment-window'        , 'Chairperson\EnlistmentWindowController::edit');
+    $routes->post('enlistment-window/update', 'Chairperson\EnlistmentWindowController::update');
+    $routes->get('enlistment-approvals'          , 'Chairperson\EnlistmentApprovalController::index');
+    $routes->post('enlistment-approvals/recommend', 'Chairperson\EnlistmentApprovalController::recommend');
+    $routes->post('enlistment-approvals/return'   , 'Chairperson\EnlistmentApprovalController::returnToStudent');
 });
 
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']);
