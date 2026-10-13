@@ -189,6 +189,11 @@ class DepartmentController extends BaseController
             $user->addGroup('dean');
         }
 
+        // A college has exactly one primary dean at a time — clear whoever
+        // currently holds that slot (primary or delegated) before handing
+        // it to this account. Mirrors clearDepartmentChair().
+        $this->clearCollegeDean($id, $user->id);
+
         db_connect()->table('users')
             ->where('id', $user->id)
             ->update(['department_id' => $id]);
@@ -302,6 +307,81 @@ class DepartmentController extends BaseController
             ->where('u.deleted_at', null)
             ->get()
             ->getRowArray();
+    }
+
+    /**
+     * Clears whoever currently holds this college's dean slot — the
+     * PRIMARY dean (users.department_id match, detached to null, account
+     * untouched) and any DELEGATED dean (department_deans row, deleted) —
+     * except $exceptUserId, so re-assigning the same person is a no-op
+     * rather than momentarily unseating them. Mirrors
+     * SubDepartmentController::clearDepartmentChair() exactly.
+     */
+    private function clearCollegeDean(int $deptId, ?int $exceptUserId = null): void
+    {
+        $db = db_connect();
+
+        $primaryIds = $db->table('users u')
+            ->select('u.id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'dean')
+            ->where('u.department_id', $deptId)
+            ->get()
+            ->getResultArray();
+
+        foreach ($primaryIds as $row) {
+            if ($exceptUserId !== null && (int) $row['id'] === $exceptUserId) {
+                continue;
+            }
+
+            $db->table('users')->where('id', $row['id'])->update(['department_id' => null]);
+        }
+
+        $delegated = $db->table('department_deans')->where('dept_id', $deptId);
+
+        if ($exceptUserId !== null) {
+            $delegated->where('user_id !=', $exceptUserId);
+        }
+
+        $delegated->delete();
+    }
+
+    /**
+     * Removes one dean's access to this college — the primary dean
+     * (users.department_id match) is detached (set null, account
+     * untouched); a delegated dean (department_deans row) simply has that
+     * delegation row removed. Mirrors
+     * SubDepartmentController::removeChair() exactly.
+     */
+    public function removeDean($id, $userId)
+    {
+        $college = $this->departmentModel->find($id);
+
+        if (! $college) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $users = auth()->getProvider();
+        $user  = $users->find($userId);
+
+        if (! $user) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $db = db_connect();
+
+        if ((int) $user->department_id === (int) $id) {
+            $db->table('users')->where('id', $user->id)->update(['department_id' => null]);
+        } else {
+            $db->table('department_deans')
+                ->where('dept_id', $id)
+                ->where('user_id', $userId)
+                ->delete();
+        }
+
+        return redirect()
+            ->to("/admin/departments/{$id}")
+            ->with('message', "{$user->username} removed as dean of {$college['name']}.");
     }
 
     private function chairOf(int $subDeptId): ?array

@@ -2,6 +2,7 @@
 
 namespace App\Libraries;
 
+use App\Models\DepartmentDeanModel;
 use App\Models\DepartmentModel;
 use App\Models\SectionModel;
 use App\Models\SubDepartmentSchedulerModel;
@@ -34,6 +35,33 @@ class SchedulingAuthorization
         }
 
         foreach ((new SubDepartmentSchedulerModel())->subDeptIdsForUser($userId) as $delegatedId) {
+            if (! in_array($delegatedId, $ids, true)) {
+                $ids[] = $delegatedId;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Every dept_id (College) this user may act as dean for: their own
+     * primary college (if any, and only while they hold the 'dean' group)
+     * plus any colleges they've been explicitly delegated. Dean's
+     * counterpart to authorizedSubDeptIds().
+     *
+     * @return list<int>
+     */
+    public function authorizedDepartmentIds(int $userId): array
+    {
+        $ids = [];
+
+        $college = (new DepartmentModel())->collegeOfUser($userId);
+
+        if ($college !== null) {
+            $ids[] = (int) $college['dept_id'];
+        }
+
+        foreach ((new DepartmentDeanModel())->deptIdsForUser($userId) as $delegatedId) {
             if (! in_array($delegatedId, $ids, true)) {
                 $ids[] = $delegatedId;
             }

@@ -47,6 +47,26 @@ class DepartmentModel extends Model
     }
 
     /**
+     * College (the dean-headed "Department" row in this table) that a user
+     * primary-deans, or null when they have none. Dean's counterpart to
+     * subDeptOfUser() — must additionally check the 'dean' Shield group,
+     * since users.department_id is also kept in sync for chairpersons (to
+     * scope their college-wide scheduling), so the column alone can't tell
+     * a dean apart from a chairperson of a department in that same college.
+     */
+    public function collegeOfUser(int $userId): ?array
+    {
+        return db_connect()->table('users u')
+            ->select('d.dept_id, d.code, d.name')
+            ->join('departments d', 'd.dept_id = u.department_id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('u.id', $userId)
+            ->where('g.group', 'dean')
+            ->get()
+            ->getRowArray();
+    }
+
+    /**
      * Department code of a user, or null when they have none.
      */
     public function codeOfUser(int $userId): ?string
