@@ -296,7 +296,7 @@ class StudentModel extends Model
         return $student;
     }
 
-    public const STATUSES = ['active', 'inactive', 'graduated', 'dropped'];
+    public const STATUSES = ['active', 'inactive', 'graduated', 'dropped', 'loa', 'dismissed', 'transferred'];
 
     /**
      * Student list for the registrar/admin Student Records page, joined to
@@ -470,6 +470,22 @@ class StudentModel extends Model
         $db->transComplete();
 
         if ($db->transStatus() !== false) {
+            // student_status_logs is append-only too, but it's a narrow,
+            // student-status-specific trail — audit_logs is the one
+            // cross-domain view (admin/audit-logs) staff actually search,
+            // and a status flip (especially 'graduated'/'dismissed') is
+            // exactly the high-stakes change that belongs there.
+            (new AuditLogModel())->record(
+                'student.status_changed',
+                'student',
+                $studentId,
+                ['student_status' => $student['student_status']],
+                ['student_status' => $newStatus],
+                $reason,
+                $changedBy,
+                null
+            );
+
             helper('url');
             (new NotificationModel())->notify(
                 (int) $student['user_id'],
