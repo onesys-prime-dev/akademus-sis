@@ -104,7 +104,7 @@
         <?php if ($totalPages > 1): ?>
             <div class="ac-pagination__pages">
                 <?php
-                    $pageUrl = static function (int $p) use ($qs) {
+                    $pageUrl = static function (int $p) use ($qs, $basePath) {
                         return site_url($basePath . '/students') . '?' . http_build_query($qs + ['page' => $p]);
                     };
                 ?>

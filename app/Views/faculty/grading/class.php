@@ -13,6 +13,7 @@ $navGroups     = [
         'schedule'     => ['label' => 'Schedule',     'icon' => 'calendar_month',   'url' => 'faculty/schedule'],
         'availability' => ['label' => 'Availability', 'icon' => 'event_available',  'url' => 'faculty/availability'],
         'grading'      => ['label' => 'Grading',      'icon' => 'grade',            'url' => 'faculty/grading'],
+        'grading-change-requests' => ['label' => 'Correction Requests', 'icon' => 'history_edu', 'url' => 'faculty/grading/change-requests'],
     ],
 ];
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
@@ -26,7 +27,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     table.grade-table input[type=text].remarks { width: 160px; }
     .status-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill); }
     .status-pill.locked { background: var(--color-success-soft); color: #14532d; }
-    .status-pill.submitted { background: #dff8fb; color: #164e63; }
+    .status-pill.submitted,
+    .status-pill.chair_recommended,
+    .status-pill.dean_noted,
+    .status-pill.registrar_approved { background: #dff8fb; color: #164e63; }
     .status-pill.draft { background: var(--color-warning-soft); color: #713f12; }
     .status-pill.pending { background: var(--color-warning-soft); color: #713f12; }
 </style>
@@ -54,6 +58,20 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             <p>No students are enrolled in this class yet.</p>
         </div>
     <?php else: ?>
+        <?php
+            // Once a grade leaves 'draft' (submitted, chair_recommended,
+            // dean_noted, registrar_approved, or locked) it's out of the
+            // faculty's hands — submitClass() submits the whole roster in
+            // one bulk update, so any one row past draft means the whole
+            // class already left draft together.
+            $classSubmitted = false;
+            foreach ($roster as $row) {
+                if ($row['grade'] !== null && $row['grade']['status'] !== 'draft') {
+                    $classSubmitted = true;
+                    break;
+                }
+            }
+        ?>
         <table class="grade-table">
             <thead>
                 <tr>
@@ -68,7 +86,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <?php foreach ($roster as $row): ?>
                     <?php
                         $g         = $row['grade'];
-                        $locked    = $g !== null && $g['status'] === 'locked';
+                        $editable  = $g === null || $g['status'] === 'draft';
+                        $isLocked  = $g !== null && $g['status'] === 'locked';
                         $history   = $row['change_requests'];
                         $pending   = null;
                         foreach ($history as $h) { if ($h['status'] === 'pending') { $pending = $h; break; } }
@@ -76,16 +95,16 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     <tr data-enrollment-id="<?= esc($row['enrollment_id']) ?>">
                         <td><?= esc($row['username']) ?></td>
                         <td>
-                            <input type="text" class="grade-input" aria-label="Grade for <?= esc($row['username']) ?>" value="<?= $g !== null ? esc($g['grade_value']) : '' ?>" <?= $locked ? 'disabled' : '' ?>>
+                            <input type="text" class="grade-input" aria-label="Grade for <?= esc($row['username']) ?>" value="<?= $g !== null ? esc($g['grade_value']) : '' ?>" <?= $editable ? '' : 'disabled' ?>>
                         </td>
                         <td>
-                            <input type="text" class="remarks-input" aria-label="Remarks for <?= esc($row['username']) ?>" value="<?= $g !== null ? esc($g['remarks']) : '' ?>" <?= $locked ? 'disabled' : '' ?>>
+                            <input type="text" class="remarks-input" aria-label="Remarks for <?= esc($row['username']) ?>" value="<?= $g !== null ? esc($g['remarks']) : '' ?>" <?= $editable ? '' : 'disabled' ?>>
                         </td>
                         <td>
                             <?php if ($pending !== null): ?>
                                 <span class="status-pill pending">Change requested</span>
                             <?php elseif ($g !== null): ?>
-                                <span class="status-pill <?= esc($g['status']) ?>"><?= esc(ucfirst($g['status'])) ?></span>
+                                <span class="status-pill <?= esc($g['status']) ?>"><?= esc(ucfirst(str_replace('_', ' ', $g['status']))) ?></span>
                             <?php endif ?>
                             <?php if ($history !== []): ?>
                                 <details class="ga-history">
@@ -101,7 +120,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                             <?php endif ?>
                         </td>
                         <td>
-                            <?php if ($locked): ?>
+                            <?php if ($isLocked): ?>
                                 <button type="button" class="btn btn-secondary" <?= $pending !== null ? 'disabled title="A change request is already pending for this grade."' : '' ?> onclick="openRequestChange(<?= esc($g['grade_id']) ?>, '<?= esc($row['username'], 'js') ?>', '<?= esc($g['grade_value'], 'js') ?>', this)"><?= $pending !== null ? 'Request pending' : 'Request Change' ?></button>
                             <?php endif ?>
                         </td>
@@ -110,10 +129,14 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             </tbody>
         </table>
 
-        <div style="display:flex; gap:10px; margin-top:16px;">
-            <button type="button" class="btn btn-secondary" onclick="saveDraft()">Save Draft</button>
-            <button type="button" class="btn btn-primary" onclick="submitClass()">Submit for Approval</button>
-        </div>
+        <?php if ($classSubmitted): ?>
+            <p class="panel-sub" style="margin-top:16px;">This class has already been submitted and is no longer editable here. A grade only becomes correctable again after it's locked — use "Request Change" above once it is.</p>
+        <?php else: ?>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+                <button type="button" class="btn btn-secondary" onclick="saveDraft()">Save Draft</button>
+                <button type="button" class="btn btn-primary" onclick="submitClass()">Submit for Approval</button>
+            </div>
+        <?php endif ?>
     <?php endif ?>
 </div>
 
