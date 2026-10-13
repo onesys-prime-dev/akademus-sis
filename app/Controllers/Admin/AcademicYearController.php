@@ -90,6 +90,8 @@ class AcademicYearController extends BaseController
             'grading_closes_at'      => 'permit_empty|valid_date',
             'registration_opens_at'  => 'permit_empty|valid_date',
             'registration_closes_at' => 'permit_empty|valid_date',
+            'enlistment_opens_at'    => 'permit_empty|valid_date',
+            'enlistment_closes_at'   => 'permit_empty|valid_date',
         ];
 
         if (! $this->validate($rules)) {
@@ -101,6 +103,8 @@ class AcademicYearController extends BaseController
             'grading_closes_at'      => $this->request->getPost('grading_closes_at') ?: null,
             'registration_opens_at'  => $this->request->getPost('registration_opens_at') ?: null,
             'registration_closes_at' => $this->request->getPost('registration_closes_at') ?: null,
+            'enlistment_opens_at'    => $this->request->getPost('enlistment_opens_at') ?: null,
+            'enlistment_closes_at'   => $this->request->getPost('enlistment_closes_at') ?: null,
         ]);
 
         return redirect()->back()->with('message', "{$ay['label']} ({$ay['semester']}) window updated.");

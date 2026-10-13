@@ -35,6 +35,7 @@ $ayModel = new \App\Models\AcademicYearModel();
             <?php
                 $gradingOpen      = $ayModel->isGradingOpen((int) $ay['ay_id']);
                 $registrationOpen = $ayModel->isRegistrationOpen((int) $ay['ay_id']);
+                $enlistmentOpen   = $ayModel->isEnlistmentOpen((int) $ay['ay_id']);
             ?>
             <div class="ac-card" style="<?= $ay['is_active'] ? 'border-color:#bbf7d0;' : '' ?>">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -55,6 +56,7 @@ $ayModel = new \App\Models\AcademicYearModel();
                 <div style="display:flex; gap:6px; margin-top:10px;">
                     <span class="ac-pill <?= $gradingOpen ? 'ac-pill--success' : 'ac-pill--danger' ?>">Grading <?= $gradingOpen ? 'OPEN' : 'CLOSED' ?></span>
                     <span class="ac-pill <?= $registrationOpen ? 'ac-pill--success' : 'ac-pill--danger' ?>">Registration <?= $registrationOpen ? 'OPEN' : 'CLOSED' ?></span>
+                    <span class="ac-pill <?= $enlistmentOpen ? 'ac-pill--success' : 'ac-pill--danger' ?>">Enlistment <?= $enlistmentOpen ? 'OPEN' : 'CLOSED' ?></span>
                 </div>
 
                 <details style="margin-top:10px;">
@@ -65,6 +67,8 @@ $ayModel = new \App\Models\AcademicYearModel();
                         <label style="font-size:11.5px;">Grading closes<input type="datetime-local" name="grading_closes_at" class="ac-input" value="<?= $ay['grading_closes_at'] ? esc(str_replace(' ', 'T', $ay['grading_closes_at'])) : '' ?>"></label>
                         <label style="font-size:11.5px;">Registration opens<input type="datetime-local" name="registration_opens_at" class="ac-input" value="<?= $ay['registration_opens_at'] ? esc(str_replace(' ', 'T', $ay['registration_opens_at'])) : '' ?>"></label>
                         <label style="font-size:11.5px;">Registration closes<input type="datetime-local" name="registration_closes_at" class="ac-input" value="<?= $ay['registration_closes_at'] ? esc(str_replace(' ', 'T', $ay['registration_closes_at'])) : '' ?>"></label>
+                        <label style="font-size:11.5px;">Enlistment opens<input type="datetime-local" name="enlistment_opens_at" class="ac-input" value="<?= $ay['enlistment_opens_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_opens_at'])) : '' ?>"></label>
+                        <label style="font-size:11.5px;">Enlistment closes<input type="datetime-local" name="enlistment_closes_at" class="ac-input" value="<?= $ay['enlistment_closes_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_closes_at'])) : '' ?>"></label>
                         <button type="submit" class="ac-btn ac-btn-secondary ac-btn-block">Save windows</button>
                     </form>
                 </details>

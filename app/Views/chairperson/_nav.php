@@ -25,5 +25,7 @@ return [
         'student-progress'        => ['label' => 'Student Progress',        'icon' => 'school',              'url' => 'chairperson/student-progress'],
         'grade-approvals'         => ['label' => 'Grade Approvals',         'icon' => 'grade',              'url' => 'chairperson/grade-approvals'],
         'grade-change-requests'   => ['label' => 'Correction Requests',     'icon' => 'history_edu',        'url' => 'chairperson/grade-change-requests'],
+        'enlistment-approvals'    => ['label' => 'Enlistment Approvals',    'icon' => 'playlist_add_check', 'url' => 'chairperson/enlistment-approvals'],
+        'enlistment-window'       => ['label' => 'Enlistment Window',      'icon' => 'event_available',    'url' => 'chairperson/enlistment-window'],
     ],
 ];

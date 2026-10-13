@@ -57,6 +57,11 @@
             <input type="number" step="1" id="part_time_max_units" name="part_time_max_units" class="ac-input" placeholder="Leave blank to use the same cap as full-time" value="<?= old('part_time_max_units', $partTimeMaxUnits) ?>">
         </div>
 
+        <div class="ac-field">
+            <label for="max_student_units">Max Student Units per Term (enlistment cap)</label>
+            <input type="number" step="1" id="max_student_units" name="max_student_units" class="ac-input" value="<?= old('max_student_units', $maxStudentUnits) ?>">
+        </div>
+
         <div style="margin-top:8px;">
             <button type="submit" class="ac-btn ac-btn-primary">Save Rules</button>
         </div>

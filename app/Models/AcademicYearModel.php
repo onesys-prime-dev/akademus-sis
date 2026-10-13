@@ -12,6 +12,7 @@ class AcademicYearModel extends Model
     protected $allowedFields = [
         'label', 'semester', 'is_active', 'start_date', 'end_date',
         'grading_opens_at', 'grading_closes_at', 'registration_opens_at', 'registration_closes_at',
+        'enlistment_opens_at', 'enlistment_closes_at',
     ];
 
     protected $useTimestamps = true;
@@ -144,6 +145,18 @@ class AcademicYearModel extends Model
     public function isRegistrationOpen(?int $ayId = null, ?string $now = null): bool
     {
         return $this->isWindowOpen('registration_opens_at', 'registration_closes_at', $ayId, $now);
+    }
+
+    /**
+     * Whether the online enlistment / pre-registration window is currently
+     * open for $ayId (defaults to the active term). While open, students
+     * build/submit a cart through the enlistment wizard instead of using
+     * the instant-enroll endpoints (see StudentEnrollment::enroll()'s
+     * gate). Same open-by-default rule as the other two windows.
+     */
+    public function isEnlistmentOpen(?int $ayId = null, ?string $now = null): bool
+    {
+        return $this->isWindowOpen('enlistment_opens_at', 'enlistment_closes_at', $ayId, $now);
     }
 
     private function isWindowOpen(string $opensColumn, string $closesColumn, ?int $ayId, ?string $now): bool
