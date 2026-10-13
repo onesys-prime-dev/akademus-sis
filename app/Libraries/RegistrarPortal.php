@@ -27,6 +27,7 @@ class RegistrarPortal
                     'grade-approvals' => ['label' => 'Grade Approvals', 'icon' => 'grade', 'url' => 'registrar/grade-approvals'],
                     'grade-change-requests' => ['label' => 'Correction Requests', 'icon' => 'history_edu', 'url' => 'registrar/grade-change-requests'],
                     'academic-calendar' => ['label' => 'Academic Calendar', 'icon' => 'event', 'url' => 'registrar/academic-calendar'],
+                    'enlistments' => ['label' => 'Enlistment Approvals', 'icon' => 'playlist_add_check', 'url' => 'registrar/enlistments'],
                     'clearance' => ['label' => 'Graduation Clearance', 'icon' => 'checklist', 'url' => 'registrar/clearance'],
                     'documents' => ['label' => 'Document Requests', 'icon' => 'description', 'url' => 'registrar/documents'],
                     'students'  => ['label' => 'Student Records', 'icon' => 'school',    'url' => 'registrar/students'],

@@ -130,6 +130,7 @@ class AuthGroups extends ShieldAuthGroups
         'enrollment.override'  => 'Can override prerequisite or capacity checks when enrolling a student',
         'clearance.manage'     => 'Can initiate, clear, deny, and finalize graduation clearance cases',
         'documents.issue'      => 'Can generate and release official student documents (TOR, certificates)',
+        'enlistment.manage'    => 'Can give final approval on a submitted enlistment cart, converting it into real enrollments',
         'finance.view'         => 'Can view finance dashboards, ledgers, and reports',
         'finance.assess'       => 'Can manage discounts/scholarships applied to student assessments',
         'finance.cashier'      => 'Can record payments and review payment proofs',
@@ -158,6 +159,7 @@ class AuthGroups extends ShieldAuthGroups
             'clearance.*',
             'documents.*',
             'finance.*',
+            'enlistment.manage',
         ],
         'admin' => [
             'admin.access',
@@ -186,6 +188,7 @@ class AuthGroups extends ShieldAuthGroups
             'enrollment.override',
             'clearance.manage',
             'documents.issue',
+            'enlistment.manage',
         ],
         'faculty' => [
             'grades.manage',
