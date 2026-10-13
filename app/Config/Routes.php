@@ -208,15 +208,12 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
 });
 
-$routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) use ($studentRecordRoutes, $tuitionRateRoutes, $academicCalendarRoutes, $clearanceInitiateRoute) {
+$routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) use ($studentRecordRoutes, $academicCalendarRoutes, $clearanceInitiateRoute) {
     $routes->get('dashboard', 'RegistrarController::index');
 
     // student records (same controller/permissions as the admin console)
     $studentRecordRoutes($routes);
     $clearanceInitiateRoute($routes);
-
-    // tuition rates (same controller/permissions as the admin console)
-    $tuitionRateRoutes($routes);
 
     // profile
     $routes->get('profile', 'Registrar\ProfileController::edit');
@@ -264,6 +261,62 @@ $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) 
 // printed TOR/certificate has no SIS account at all. The controller only
 // ever exposes document_type + issued date, never student data.
 $routes->get('verify/(:any)', 'Registrar\DocumentController::verify/$1');
+
+$routes->group('finance', ['filter' => 'group:finance'], function ($routes) use ($tuitionRateRoutes) {
+    $routes->get('dashboard', 'Finance\FinanceController::index');
+    $routes->get('profile', 'Finance\FinanceController::profile');
+    $routes->post('profile/update', 'Finance\FinanceController::updateProfile');
+    $routes->post('profile/password', 'Finance\FinanceController::updatePassword');
+
+    // tuition rates / fee catalog / payment-proof queue — moved here from
+    // Registrar; same controllers, same fees.view/fees.manage permission
+    // filters already baked into this closure.
+    $tuitionRateRoutes($routes);
+
+    // official receipts — download is handled by the shared
+    // StudentController::viewReceipt() (ownership-or-staff, same as proof
+    // downloads); only voiding is finance-exclusive.
+    $routes->post('receipts/(:num)/void', 'Finance\ReceiptController::void/$1', ['filter' => 'permission:finance.manage']);
+
+    // discounts & scholarships
+    $routes->get('discounts', 'Finance\DiscountController::index', ['filter' => 'permission:finance.assess']);
+    $routes->post('discounts/store', 'Finance\DiscountController::store', ['filter' => 'permission:finance.assess']);
+    $routes->post('discounts/(:num)/toggle-active', 'Finance\DiscountController::toggleActive/$1', ['filter' => 'permission:finance.assess']);
+    $routes->get('discounts/search-students', 'Finance\DiscountController::searchStudents', ['filter' => 'permission:finance.assess']);
+    $routes->get('discounts/student/(:num)', 'Finance\DiscountController::studentGrants/$1', ['filter' => 'permission:finance.assess']);
+    $routes->post('discounts/student/(:num)/grant', 'Finance\DiscountController::grant/$1', ['filter' => 'permission:finance.assess']);
+    $routes->post('discounts/grant/(:num)/revoke', 'Finance\DiscountController::revoke/$1', ['filter' => 'permission:finance.assess']);
+
+    // cashier — dedicated record-payment screen
+    $routes->get('cashier', 'Finance\CashierController::index', ['filter' => 'permission:finance.cashier']);
+    $routes->get('cashier/search-students', 'Finance\CashierController::searchStudents', ['filter' => 'permission:finance.cashier']);
+    $routes->get('cashier/student/(:num)', 'Finance\CashierController::studentLedger/$1', ['filter' => 'permission:finance.cashier']);
+    $routes->post('cashier/student/(:num)/payment', 'Finance\CashierController::recordPayment/$1', ['filter' => 'permission:finance.cashier']);
+
+    // reports
+    $routes->get('reports', 'Finance\ReportController::index', ['filter' => 'permission:finance.view']);
+    $routes->get('reports/search-students', 'Finance\ReportController::searchStudents', ['filter' => 'permission:finance.view']);
+    $routes->get('reports/daily-collection', 'Finance\ReportController::dailyCollection', ['filter' => 'permission:finance.view']);
+    $routes->get('reports/ar-aging', 'Finance\ReportController::arAging', ['filter' => 'permission:finance.view']);
+    $routes->get('reports/ledger/(:num)', 'Finance\ReportController::ledgerSummary/$1', ['filter' => 'permission:finance.view']);
+
+    // graduation clearance — Finance's exclusive "accounting" item queue
+    $routes->get('clearance', 'Finance\ClearanceController::index', ['filter' => 'permission:finance.manage']);
+    $routes->post('clearance/(:num)/item/(:num)/clear', 'Finance\ClearanceController::clearItem/$1/$2', ['filter' => 'permission:finance.manage']);
+    $routes->post('clearance/(:num)/item/(:num)/deny', 'Finance\ClearanceController::denyItem/$1/$2', ['filter' => 'permission:finance.manage']);
+
+    // financial holds
+    $routes->get('holds', 'Finance\HoldController::index', ['filter' => 'permission:finance.manage']);
+    $routes->get('holds/search-students', 'Finance\HoldController::searchStudents', ['filter' => 'permission:finance.manage']);
+    $routes->get('holds/student/(:num)', 'Finance\HoldController::studentHolds/$1', ['filter' => 'permission:finance.manage']);
+    $routes->post('holds/student/(:num)/place', 'Finance\HoldController::place/$1', ['filter' => 'permission:finance.manage']);
+    $routes->post('holds/(:num)/release', 'Finance\HoldController::release/$1', ['filter' => 'permission:finance.manage']);
+
+    // notifications (shared controller, scoped by auth()->id())
+    $routes->get('notifications', 'NotificationController::index');
+    $routes->post('notifications/mark-read', 'NotificationController::markRead');
+    $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
+});
 
 $routes->group('dean', ['filter' => 'group:dean'], function ($routes) {
     $routes->get('dashboard', 'Dean\DeanController::index');
@@ -446,6 +499,10 @@ $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'session']
 // (staff reviewing via the Payment Proofs queue), since the requester could
 // be either.
 $routes->get('/student/tuition/proof/(:num)', 'StudentController::viewProof/$1', ['filter' => 'session']);
+
+// Official Receipt download — same ownership-or-staff shape as the proof
+// route above; StudentController::viewReceipt() enforces it.
+$routes->get('/student/tuition/receipt/(:num)', 'StudentController::viewReceipt/$1', ['filter' => 'session']);
 
 // Forced password change (temp-password first login) — any signed-in role.
 $routes->post('/account/set-temp-password', 'AccountController::setTempPassword', ['filter' => 'session']);
