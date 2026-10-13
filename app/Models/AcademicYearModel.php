@@ -9,7 +9,10 @@ class AcademicYearModel extends Model
     protected $table      = 'academic_years';
     protected $primaryKey = 'ay_id';
 
-    protected $allowedFields = ['label', 'semester', 'is_active', 'start_date', 'end_date'];
+    protected $allowedFields = [
+        'label', 'semester', 'is_active', 'start_date', 'end_date',
+        'grading_opens_at', 'grading_closes_at', 'registration_opens_at', 'registration_closes_at',
+    ];
 
     protected $useTimestamps = true;
 
@@ -121,5 +124,52 @@ class AcademicYearModel extends Model
         return $this->where('start_date >', date('Y-m-d'))
             ->orderBy('start_date', 'ASC')
             ->first();
+    }
+
+    /**
+     * Whether grading is currently open for $ayId (defaults to the active
+     * term). A term with no window set (both columns null) is treated as
+     * open — the window is an opt-in restriction a registrar deliberately
+     * sets, not a default lockout.
+     */
+    public function isGradingOpen(?int $ayId = null, ?string $now = null): bool
+    {
+        return $this->isWindowOpen('grading_opens_at', 'grading_closes_at', $ayId, $now);
+    }
+
+    /**
+     * Whether registration/enrollment is currently open for $ayId (defaults
+     * to the active term). Same open-by-default rule as isGradingOpen().
+     */
+    public function isRegistrationOpen(?int $ayId = null, ?string $now = null): bool
+    {
+        return $this->isWindowOpen('registration_opens_at', 'registration_closes_at', $ayId, $now);
+    }
+
+    private function isWindowOpen(string $opensColumn, string $closesColumn, ?int $ayId, ?string $now): bool
+    {
+        $row = $ayId !== null ? $this->find($ayId) : $this->activeRow();
+
+        if ($row === null) {
+            // No term resolved at all — nothing to gate against, so don't
+            // block the caller over a calendar-configuration gap.
+            return true;
+        }
+
+        if ($row[$opensColumn] === null && $row[$closesColumn] === null) {
+            return true;
+        }
+
+        $now ??= date('Y-m-d H:i:s');
+
+        if ($row[$opensColumn] !== null && $now < $row[$opensColumn]) {
+            return false;
+        }
+
+        if ($row[$closesColumn] !== null && $now > $row[$closesColumn]) {
+            return false;
+        }
+
+        return true;
     }
 }

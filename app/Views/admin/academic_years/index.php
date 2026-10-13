@@ -1,7 +1,10 @@
 <?= $this->extend('layouts/admin_console') ?>
 
+<?php $basePath = $basePath ?? 'admin'; ?>
+
 <?= $this->section('content') ?>
 
+<?php if ($basePath === 'admin'): ?>
 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
     <button type="button" class="ac-btn ac-btn-primary" onclick="acOpenModal('modalAddAy')">
         <?= admin_icon('plus', 16) ?> Add Academic Year
@@ -14,12 +17,25 @@
         </button>
     </form>
 </div>
+<?php else: ?>
+<div class="ac-page-header">
+    <div><h2 class="ac-page-header__title">Academic Calendar</h2><p class="ac-page-header__sub">Set grading and registration windows per term.</p></div>
+</div>
+<?php endif ?>
+
+<?php
+$ayModel = new \App\Models\AcademicYearModel();
+?>
 
 <?php if (empty($years)): ?>
     <div class="ac-empty-block" style="margin-top:16px;">No academic years yet.</div>
 <?php else: ?>
     <div class="ac-grid ac-grid--sm" style="margin-top:16px;">
         <?php foreach ($years as $ay): ?>
+            <?php
+                $gradingOpen      = $ayModel->isGradingOpen((int) $ay['ay_id']);
+                $registrationOpen = $ayModel->isRegistrationOpen((int) $ay['ay_id']);
+            ?>
             <div class="ac-card" style="<?= $ay['is_active'] ? 'border-color:#bbf7d0;' : '' ?>">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span class="ac-dept-name"><?= esc($ay['label']) ?></span>
@@ -36,7 +52,24 @@
                     <?php endif ?>
                 </div>
 
-                <?php if (! $ay['is_active']): ?>
+                <div style="display:flex; gap:6px; margin-top:10px;">
+                    <span class="ac-pill <?= $gradingOpen ? 'ac-pill--success' : 'ac-pill--danger' ?>">Grading <?= $gradingOpen ? 'OPEN' : 'CLOSED' ?></span>
+                    <span class="ac-pill <?= $registrationOpen ? 'ac-pill--success' : 'ac-pill--danger' ?>">Registration <?= $registrationOpen ? 'OPEN' : 'CLOSED' ?></span>
+                </div>
+
+                <details style="margin-top:10px;">
+                    <summary style="cursor:pointer; font-size:12.5px; color:var(--color-text-secondary);">Edit windows</summary>
+                    <form method="post" action="<?= site_url($basePath . '/academic-' . ($basePath === 'admin' ? 'years' : 'calendar') . '/' . $ay['ay_id'] . '/window') ?>" style="display:grid; gap:8px; margin-top:8px;">
+                        <?= csrf_field() ?>
+                        <label style="font-size:11.5px;">Grading opens<input type="datetime-local" name="grading_opens_at" class="ac-input" value="<?= $ay['grading_opens_at'] ? esc(str_replace(' ', 'T', $ay['grading_opens_at'])) : '' ?>"></label>
+                        <label style="font-size:11.5px;">Grading closes<input type="datetime-local" name="grading_closes_at" class="ac-input" value="<?= $ay['grading_closes_at'] ? esc(str_replace(' ', 'T', $ay['grading_closes_at'])) : '' ?>"></label>
+                        <label style="font-size:11.5px;">Registration opens<input type="datetime-local" name="registration_opens_at" class="ac-input" value="<?= $ay['registration_opens_at'] ? esc(str_replace(' ', 'T', $ay['registration_opens_at'])) : '' ?>"></label>
+                        <label style="font-size:11.5px;">Registration closes<input type="datetime-local" name="registration_closes_at" class="ac-input" value="<?= $ay['registration_closes_at'] ? esc(str_replace(' ', 'T', $ay['registration_closes_at'])) : '' ?>"></label>
+                        <button type="submit" class="ac-btn ac-btn-secondary ac-btn-block">Save windows</button>
+                    </form>
+                </details>
+
+                <?php if ($basePath === 'admin' && ! $ay['is_active']): ?>
                     <form method="post" action="<?= site_url('admin/academic-years/set-active/' . $ay['ay_id']) ?>" style="margin-top:12px;">
                         <?= csrf_field() ?>
                         <button type="submit" class="ac-btn ac-btn-secondary ac-btn-block">Set as active term</button>

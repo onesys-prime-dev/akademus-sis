@@ -3,6 +3,7 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Libraries\RegistrarPortal;
 use App\Models\AcademicYearModel;
 
 class AcademicYearController extends BaseController
@@ -14,15 +15,32 @@ class AcademicYearController extends BaseController
         $this->ayModel = new AcademicYearModel();
     }
 
+    /**
+     * Served under both /admin/academic-years (full CRUD) and
+     * /registrar/academic-calendar (view + window editing only, via the
+     * $academicCalendarRoutes closure in Routes.php) — mirrors
+     * StudentRecordController's isRegistrarPortal()/shell() pattern exactly.
+     */
+    private function isRegistrarPortal(): bool
+    {
+        return service('request')->getUri()->getSegment(1) === 'registrar';
+    }
+
+    private function shell(string $active): array
+    {
+        return $this->isRegistrarPortal()
+            ? RegistrarPortal::shell($active)
+            : ['activeAdmin' => $active, 'basePath' => 'admin'];
+    }
+
     public function index()
     {
         $years = $this->ayModel->orderBy('label', 'desc')->orderBy('semester', 'asc')->findAll();
 
         return view('admin/academic_years/index', [
-            'pageTitle'   => 'Academic Years',
-            'activeAdmin' => 'academic-years',
-            'years'       => $years,
-        ]);
+            'pageTitle' => 'Academic Years',
+            'years'     => $years,
+        ] + $this->shell($this->isRegistrarPortal() ? 'academic-calendar' : 'academic-years'));
     }
 
     public function store()
@@ -51,6 +69,41 @@ class AcademicYearController extends BaseController
         return redirect()
             ->to('/admin/academic-years')
             ->with('message', 'Academic year added successfully.');
+    }
+
+    /**
+     * Sets or clears this term's grading/registration sub-windows —
+     * Registrar\AcademicCalendarController's thin wrapper reuses this same
+     * action rather than duplicating it, since the underlying data and
+     * validation are identical regardless of which console edits it.
+     */
+    public function updateWindow($id)
+    {
+        $ay = $this->ayModel->find($id);
+
+        if (! $ay) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $rules = [
+            'grading_opens_at'       => 'permit_empty|valid_date',
+            'grading_closes_at'      => 'permit_empty|valid_date',
+            'registration_opens_at'  => 'permit_empty|valid_date',
+            'registration_closes_at' => 'permit_empty|valid_date',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        }
+
+        $this->ayModel->update($id, [
+            'grading_opens_at'       => $this->request->getPost('grading_opens_at') ?: null,
+            'grading_closes_at'      => $this->request->getPost('grading_closes_at') ?: null,
+            'registration_opens_at'  => $this->request->getPost('registration_opens_at') ?: null,
+            'registration_closes_at' => $this->request->getPost('registration_closes_at') ?: null,
+        ]);
+
+        return redirect()->back()->with('message', "{$ay['label']} ({$ay['semester']}) window updated.");
     }
 
     public function setActive($id)
