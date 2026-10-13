@@ -159,7 +159,7 @@
                 </div>
                 <div class="ac-field">
                     <label>Email</label>
-                    <input type="email" name="email" class="ac-input" placeholder="sjenkins@spum.edu.ph" value="<?= esc($college['dean']['email'] ?? '') ?>" required>
+                    <input type="email" name="email" class="ac-input" placeholder="name@example.com" value="<?= esc($college['dean']['email'] ?? '') ?>" required>
                 </div>
                 <div class="ac-notice">
                     <span class="material-symbols-outlined" style="font-size:14px; color:var(--color-info); margin-top:1px;">info</span>

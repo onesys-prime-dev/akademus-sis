@@ -483,7 +483,7 @@
                     </div>
                     <div class="ac-field">
                         <label>Email</label>
-                        <input type="email" name="email" class="ac-input" placeholder="mreyes@spum.edu.ph" value="<?= esc($department['chair']['email'] ?? '') ?>">
+                        <input type="email" name="email" class="ac-input" placeholder="name@example.com" value="<?= esc($department['chair']['email'] ?? '') ?>">
                     </div>
                 </div>
 
@@ -559,7 +559,7 @@
                     </div>
                     <div class="ac-field">
                         <label>Email</label>
-                        <input type="email" name="email" class="ac-input" placeholder="rconsulta@spum.edu.ph" value="<?= old('email') ?>">
+                        <input type="email" name="email" class="ac-input" placeholder="name@example.com" value="<?= old('email') ?>">
                     </div>
                 </div>
 

@@ -84,12 +84,17 @@
                 <button type="button" class="ac-icon-btn"
                         title="Edit"
                         onclick='acOpenEdit(<?= json_encode([
-                            'id'            => (int) $u['id'],
-                            'username'      => $u['username'],
-                            'email'         => $u['email'],
-                            'group'         => $u['group'],
-                            'department_id'     => $u['department_id'],
-                            'section_id'        => $u['section_id'],
+                            'id'                => (int) $u['id'],
+                            'username'          => $u['username'],
+                            'email'             => $u['email'],
+                            'group'             => $u['group'],
+                            // Cast every id field so the JS side never has to
+                            // guess whether it got a number or a numeric
+                            // string out of MySQLi — AC_SECTIONS/AC_SUBDEPTS
+                            // below are built the same way, so a strict ===
+                            // lookup between them is guaranteed to work.
+                            'department_id'     => $u['department_id'] !== null ? (int) $u['department_id'] : null,
+                            'section_id'        => $u['section_id'] !== null ? (int) $u['section_id'] : null,
                             'employment_status' => $u['employment_status'],
                         ]) ?>)'
                         aria-label="Edit <?= esc($u['username']) ?>">
@@ -154,7 +159,7 @@
                 </div>
                 <div class="ac-field">
                     <label>Email</label>
-                    <input type="email" name="email" class="ac-input" placeholder="mreyes@spum.edu.ph" value="<?= old('email') ?>" required>
+                    <input type="email" name="email" class="ac-input" placeholder="name@example.com" value="<?= old('email') ?>" required>
                 </div>
 
                 <div class="ac-field">
@@ -433,18 +438,34 @@
     ], $sections)) ?>;
 
     /**
+     * Every id coming out of PHP (user fields, AC_SECTIONS/AC_SUBDEPTS) is
+     * already explicitly cast server-side, but every lookup here still
+     * normalizes through Number() before comparing — so a strict-equality
+     * mismatch (a number vs. the numeric string MySQLi can return) can
+     * never again silently break the auto-fill, even if some future data
+     * source forgets to cast. '' and null both become null (no id).
+     */
+    function acNum(value) {
+        return value === '' || value === null || value === undefined ? null : Number(value);
+    }
+
+    /**
      * Rebuilds the Department select from the chosen College, and the
-     * Section select from the chosen Department, for either the create
-     * form (suffix '') or the edit form (suffix 'Edit').
+     * Section select from the chosen Department (and Year Level), for
+     * either the create form (suffix '') or the edit form (suffix 'Edit').
+     * `preselect`, when given, is {subDeptId, yearLevel, sectionId} to
+     * restore after rebuilding — used when opening Edit for an existing
+     * student, where the values come from their current section, not
+     * from whatever the selects currently contain.
      */
     function acCascadeSections(suffix, preselect) {
-        var collegeEl    = document.getElementById(suffix === 'Edit' ? 'acEditDeptSelect' : 'acCollegeSelect');
-        var subDeptEl    = document.getElementById('ac' + suffix + 'SubDeptSelect');
-        var yearLevelEl  = document.getElementById('ac' + suffix + 'YearLevelSelect');
-        var sectionEl    = document.getElementById('ac' + suffix + 'SectionSelect');
-        var collegeId    = collegeEl.value ? parseInt(collegeEl.value, 10) : null;
+        var collegeEl   = document.getElementById(suffix === 'Edit' ? 'acEditDeptSelect' : 'acCollegeSelect');
+        var subDeptEl   = document.getElementById('ac' + suffix + 'SubDeptSelect');
+        var yearLevelEl = document.getElementById('ac' + suffix + 'YearLevelSelect');
+        var sectionEl   = document.getElementById('ac' + suffix + 'SectionSelect');
+        var collegeId   = acNum(collegeEl.value);
 
-        var keepSubDept = preselect ? preselect.subDeptId : (subDeptEl.value ? parseInt(subDeptEl.value, 10) : null);
+        var keepSubDept = preselect ? acNum(preselect.subDeptId) : acNum(subDeptEl.value);
 
         subDeptEl.innerHTML = '<option value="">— Select a department —</option>';
         AC_SUBDEPTS.filter(function (sd) { return collegeId === null || sd.college_id === collegeId; })
@@ -454,14 +475,16 @@
                 opt.textContent = sd.label;
                 subDeptEl.appendChild(opt);
             });
-        subDeptEl.value = keepSubDept || '';
+        subDeptEl.value = keepSubDept !== null ? String(keepSubDept) : '';
 
-        var subDeptId = subDeptEl.value ? parseInt(subDeptEl.value, 10) : null;
+        var subDeptId = acNum(subDeptEl.value);
 
-        yearLevelEl.value = preselect ? (preselect.yearLevel || '') : yearLevelEl.value;
+        if (preselect) {
+            yearLevelEl.value = preselect.yearLevel || '';
+        }
         var yearLevel = yearLevelEl.value || null;
 
-        var keepSection = preselect ? preselect.sectionId : null;
+        var keepSection = preselect ? acNum(preselect.sectionId) : null;
 
         sectionEl.innerHTML = '<option value="">— No section yet —</option>';
         AC_SECTIONS.filter(function (s) {
@@ -474,7 +497,7 @@
                 opt.textContent = s.label;
                 sectionEl.appendChild(opt);
             });
-        sectionEl.value = keepSection || '';
+        sectionEl.value = keepSection !== null ? String(keepSection) : '';
     }
 
     function acToggleDeptField() {
@@ -505,16 +528,26 @@
         document.getElementById('acEditChairNotice').style.display = isChair ? 'flex' : 'none';
 
         if (!isChair) {
+            var departmentId = acNum(user.department_id);
+            var sectionId    = acNum(user.section_id);
+
             document.getElementById('acEditRoleSelect').value = user.group;
-            document.getElementById('acEditDeptSelect').value = user.department_id || '';
+            document.getElementById('acEditDeptSelect').value = departmentId !== null ? String(departmentId) : '';
             document.getElementById('acEditEmpStatusSelect').value = user.employment_status || '';
 
-            var currentSection = AC_SECTIONS.find(function (s) { return s.id === user.section_id; });
+            // The student's actual department/year-level/section is
+            // derived from their current section (the source of truth),
+            // not from a possibly-stale users.department_id — matches
+            // AC_SECTIONS by id with both sides normalized through
+            // acNum(), so this never silently fails to find it.
+            var currentSection = sectionId !== null
+                ? AC_SECTIONS.find(function (s) { return s.id === sectionId; })
+                : null;
 
             acToggleEditDeptField({
                 subDeptId: currentSection ? currentSection.sub_dept_id : null,
                 yearLevel: currentSection ? currentSection.year_level : null,
-                sectionId: user.section_id || null,
+                sectionId: currentSection ? sectionId : null,
             });
         }
 
