@@ -24,6 +24,11 @@ class RegistrarPortal
             'navGroups'     => [
                 '' => [
                     'dashboard' => ['label' => 'Dashboard',       'icon' => 'dashboard', 'url' => 'registrar/dashboard'],
+                    'grade-approvals' => ['label' => 'Grade Approvals', 'icon' => 'grade', 'url' => 'registrar/grade-approvals'],
+                    'grade-change-requests' => ['label' => 'Correction Requests', 'icon' => 'history_edu', 'url' => 'registrar/grade-change-requests'],
+                    'academic-calendar' => ['label' => 'Academic Calendar', 'icon' => 'event', 'url' => 'registrar/academic-calendar'],
+                    'clearance' => ['label' => 'Graduation Clearance', 'icon' => 'checklist', 'url' => 'registrar/clearance'],
+                    'documents' => ['label' => 'Document Requests', 'icon' => 'description', 'url' => 'registrar/documents'],
                     'students'  => ['label' => 'Student Records', 'icon' => 'school',    'url' => 'registrar/students'],
                     'tuition-rates' => ['label' => 'Tuition Rates', 'icon' => 'payments', 'url' => 'registrar/tuition-rates'],
                     'fee-types'     => ['label' => 'Fee Types', 'icon' => 'sell', 'url' => 'registrar/fee-types'],

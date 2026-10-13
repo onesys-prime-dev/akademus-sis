@@ -28,6 +28,23 @@ $studentRecordRoutes = static function ($routes): void {
     $routes->post('students/(:num)/tuition/payment', 'Admin\StudentRecordController::recordPayment/$1', $feesManage);
 };
 
+// Graduation clearance initiation lives on the shared student record
+// controller but is registrar-only (clearance.manage), unlike the rest of
+// $studentRecordRoutes above.
+$clearanceInitiateRoute = static function ($routes): void {
+    $routes->post('students/(:num)/clearance/initiate', 'Admin\StudentRecordController::initiateClearance/$1', ['filter' => 'permission:clearance.manage']);
+};
+
+// Academic calendar (grading/registration windows) served under both
+// /admin and /registrar from the same controller, gated by calendar.manage
+// on top of the role group — mirrors $studentRecordRoutes exactly.
+$academicCalendarRoutes = static function ($routes): void {
+    $manage = ['filter' => 'permission:calendar.manage'];
+
+    $routes->get('academic-calendar'                     , 'Admin\AcademicYearController::index', $manage);
+    $routes->post('academic-calendar/(:num)/window'       , 'Admin\AcademicYearController::updateWindow/$1', $manage);
+};
+
 $tuitionRateRoutes = static function ($routes): void {
     $view   = ['filter' => 'permission:fees.view'];
     $manage = ['filter' => 'permission:fees.manage'];
@@ -117,6 +134,7 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('departments/(:num)/update'         , 'Admin\DepartmentController::update/$1');
     $routes->post('departments/(:num)/sub-departments', 'Admin\DepartmentController::storeSubDepartment/$1');
     $routes->post('departments/store-dean/(:num)'     , 'Admin\DepartmentController::storeDean/$1');
+    $routes->post('departments/(:num)/dean/(:num)/remove', 'Admin\DepartmentController::removeDean/$1/$2');
     $routes->post('departments/(:num)/delete'         , 'Admin\DepartmentController::delete/$1');
 
     // sub-departments (departments, chairperson-headed, nested under a college)
@@ -156,6 +174,7 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('academic-years/store'          , 'Admin\AcademicYearController::store');
     $routes->post('academic-years/set-active/(:num)', 'Admin\AcademicYearController::setActive/$1');
     $routes->post('academic-years/sync-active'    , 'Admin\AcademicYearController::syncActive');
+    $routes->post('academic-years/(:num)/window'  , 'Admin\AcademicYearController::updateWindow/$1');
 
     // user accounts
     $routes->get('users'                       , 'Admin\UserController::index');
@@ -189,11 +208,12 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
 });
 
-$routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) use ($studentRecordRoutes, $tuitionRateRoutes) {
+$routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) use ($studentRecordRoutes, $tuitionRateRoutes, $academicCalendarRoutes, $clearanceInitiateRoute) {
     $routes->get('dashboard', 'RegistrarController::index');
 
     // student records (same controller/permissions as the admin console)
     $studentRecordRoutes($routes);
+    $clearanceInitiateRoute($routes);
 
     // tuition rates (same controller/permissions as the admin console)
     $tuitionRateRoutes($routes);
@@ -202,6 +222,66 @@ $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) 
     $routes->get('profile', 'Registrar\ProfileController::edit');
     $routes->post('profile/update', 'Registrar\ProfileController::updateProfile');
     $routes->post('profile/password', 'Registrar\ProfileController::updatePassword');
+
+    // notifications (shared controller, scoped by auth()->id())
+    $routes->get('notifications', 'NotificationController::index');
+    $routes->post('notifications/mark-read', 'NotificationController::markRead');
+    $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
+
+    // grade approvals — final two stages of the chain (dean_noted ->
+    // registrar_approved -> locked), institution-wide.
+    $routes->get('grade-approvals', 'Registrar\GradeApprovalController::index');
+    $routes->get('grade-approvals/class', 'Registrar\GradeApprovalController::show');
+    $routes->post('grade-approvals/approve', 'Registrar\GradeApprovalController::approve');
+    $routes->post('grade-approvals/lock', 'Registrar\GradeApprovalController::lock');
+
+    // grade change requests — registrar issues the correction form and
+    // gives final approval (steps 1 and 5 of the chain).
+    $routes->get('grade-change-requests', 'Registrar\GradeChangeRequestController::index');
+    $routes->get('grade-change-requests/search', 'Registrar\GradeChangeRequestController::search');
+    $routes->post('grade-change-requests/issue', 'Registrar\GradeChangeRequestController::issue');
+    $routes->post('grade-change-requests/final-approve', 'Registrar\GradeChangeRequestController::finalApprove');
+
+    // academic calendar (same controller/permission as the admin console)
+    $academicCalendarRoutes($routes);
+
+    // graduation clearance
+    $routes->get('clearance', 'Registrar\ClearanceController::index', ['filter' => 'permission:clearance.manage']);
+    $routes->get('clearance/(:num)', 'Registrar\ClearanceController::show/$1', ['filter' => 'permission:clearance.manage']);
+    $routes->post('clearance/(:num)/item/(:num)/clear', 'Registrar\ClearanceController::clearItem/$1/$2', ['filter' => 'permission:clearance.manage']);
+    $routes->post('clearance/(:num)/item/(:num)/deny', 'Registrar\ClearanceController::denyItem/$1/$2', ['filter' => 'permission:clearance.manage']);
+    $routes->post('clearance/(:num)/finalize', 'Registrar\ClearanceController::finalize/$1', ['filter' => 'permission:clearance.manage']);
+
+    // document requests — TOR / certificates
+    $routes->get('documents', 'Registrar\DocumentController::index', ['filter' => 'permission:documents.issue']);
+    $routes->get('documents/search', 'Registrar\DocumentController::search', ['filter' => 'permission:documents.issue']);
+    $routes->post('documents/generate', 'Registrar\DocumentController::generate', ['filter' => 'permission:documents.issue']);
+    $routes->get('documents/download/(:num)', 'Registrar\DocumentController::download/$1', ['filter' => 'permission:documents.issue']);
+});
+
+// Public QR verification for generated documents — deliberately outside
+// every group/permission filter, since the person scanning the QR on a
+// printed TOR/certificate has no SIS account at all. The controller only
+// ever exposes document_type + issued date, never student data.
+$routes->get('verify/(:any)', 'Registrar\DocumentController::verify/$1');
+
+$routes->group('dean', ['filter' => 'group:dean'], function ($routes) {
+    $routes->get('dashboard', 'Dean\DeanController::index');
+    $routes->get('profile', 'Dean\DeanController::profile');
+    $routes->post('profile/update', 'Dean\DeanController::updateProfile');
+    $routes->post('profile/password', 'Dean\DeanController::updatePassword');
+
+    // grade approvals — second stage of the chain (chair_recommended ->
+    // dean_noted), scoped to this dean's authorized colleges.
+    $routes->get('grade-approvals', 'Dean\GradeApprovalController::index');
+    $routes->get('grade-approvals/class', 'Dean\GradeApprovalController::show');
+    $routes->post('grade-approvals/note', 'Dean\GradeApprovalController::note');
+
+    // grade change requests — dean's step in the chain (chair_recommended
+    // -> dean_recommended, or rejected).
+    $routes->get('grade-change-requests', 'Dean\GradeChangeApprovalController::index');
+    $routes->post('grade-change-requests/recommend', 'Dean\GradeChangeApprovalController::recommend');
+    $routes->post('grade-change-requests/reject', 'Dean\GradeChangeApprovalController::reject');
 
     // notifications (shared controller, scoped by auth()->id())
     $routes->get('notifications', 'NotificationController::index');
@@ -245,6 +325,8 @@ $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {
     $routes->post('grading/save', 'Faculty\GradingController::saveDraft');
     $routes->post('grading/submit', 'Faculty\GradingController::submit');
     $routes->post('grading/request-change', 'Faculty\GradingController::requestChange');
+    $routes->get('grading/change-requests', 'Faculty\GradingController::changeRequests');
+    $routes->post('grading/change-requests/submit', 'Faculty\GradingController::submitChangeResponse');
 });
 
 $routes->group('student', ['filter' => 'group:student'], function ($routes) {
@@ -345,7 +427,10 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     // grade approvals: lock a faculty-submitted class, decide correction requests
     $routes->get('grade-approvals'                     , 'Chairperson\GradeApprovalController::index');
     $routes->get('grade-approvals/class'                , 'Chairperson\GradeApprovalController::show');
-    $routes->post('grade-approvals/lock'                , 'Chairperson\GradeApprovalController::lock');
+    $routes->post('grade-approvals/recommend'           , 'Chairperson\GradeApprovalController::recommend');
+    $routes->get('grade-change-requests'                , 'Chairperson\GradeApprovalController::changeRequestsQueue');
+    $routes->post('grade-change-requests/recommend'      , 'Chairperson\GradeApprovalController::recommendChange');
+    $routes->post('grade-change-requests/reject'         , 'Chairperson\GradeApprovalController::rejectChainRequest');
     $routes->post('grade-approvals/change-requests/approve', 'Chairperson\GradeApprovalController::approveChange');
     $routes->post('grade-approvals/change-requests/reject'  , 'Chairperson\GradeApprovalController::rejectChange');
 
