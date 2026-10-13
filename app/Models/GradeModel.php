@@ -32,6 +32,12 @@ class GradeModel extends Model
         'status',
         'submitted_at',
         'submitted_by',
+        'chair_recommended_at',
+        'chair_recommended_by',
+        'dean_noted_at',
+        'dean_noted_by',
+        'registrar_approved_at',
+        'registrar_approved_by',
         'locked_at',
         'locked_by',
     ];
@@ -96,12 +102,23 @@ class GradeModel extends Model
      *
      * @return array{ok: bool, error?: string, grade_id?: int}
      */
-    public function saveOne(array $context, int $enrollmentId, string $value, ?string $remarks, int $facultyId): array
+    public function saveOne(array $context, int $enrollmentId, string $value, ?string $remarks, int $facultyId, bool $override = false): array
     {
         $existing = $this->where('enrollment_id', $enrollmentId)->first();
 
         if ($existing !== null && $existing['status'] === 'locked') {
             return ['ok' => false, 'error' => 'This grade is locked. File a change request instead.'];
+        }
+
+        // Anything past draft is already out of the faculty's hands
+        // (submitted, chair_recommended, dean_noted, registrar_approved) —
+        // editing here would silently race whoever's reviewing it next.
+        if ($existing !== null && $existing['status'] !== 'draft') {
+            return ['ok' => false, 'error' => 'This grade has already been submitted and is awaiting approval — it can no longer be edited here.'];
+        }
+
+        if (! $override && ! (new AcademicYearModel())->isGradingOpen()) {
+            return ['ok' => false, 'error' => 'Grading is closed for the current term.'];
         }
 
         $scale = $existing !== null
@@ -151,10 +168,14 @@ class GradeModel extends Model
      *
      * @param int[] $enrollmentIds
      */
-    public function submitClass(array $enrollmentIds, int $facultyId): array
+    public function submitClass(array $enrollmentIds, int $facultyId, bool $override = false): array
     {
         if ($enrollmentIds === []) {
             return ['ok' => false, 'error' => 'No students to submit.'];
+        }
+
+        if (! $override && ! (new AcademicYearModel())->isGradingOpen()) {
+            return ['ok' => false, 'error' => 'Grading is closed for the current term.'];
         }
 
         $rows = $this->whereIn('enrollment_id', $enrollmentIds)->findAll();
@@ -169,7 +190,14 @@ class GradeModel extends Model
             }
 
             if ($row['status'] === 'locked') {
-                return ['ok' => false, 'error' => 'This class has already been locked by the chairperson.'];
+                return ['ok' => false, 'error' => 'This class has already been locked.'];
+            }
+
+            // Anything past draft means this class was already submitted —
+            // re-submitting would silently reset chair_recommended/
+            // dean_noted/registrar_approved progress back to 'submitted'.
+            if ($row['status'] !== 'draft') {
+                return ['ok' => false, 'error' => 'This class has already been submitted and is awaiting approval.'];
             }
         }
 
@@ -182,38 +210,124 @@ class GradeModel extends Model
     }
 
     /**
-     * Bulk submitted -> locked, the chairperson's official approval. Every
-     * grade in the batch must already be submitted — chairperson cannot
-     * lock a class faculty hasn't finished with.
+     * Bulk submitted -> chair_recommended, the chairperson's first-stage
+     * sign-off. Same all-or-nothing shape as lockClass(): every grade in
+     * the batch must already be submitted.
      *
      * @param int[] $enrollmentIds
      */
-    public function lockClass(array $enrollmentIds, int $chairpersonId): array
+    public function recommendClass(array $enrollmentIds, int $chairId, ?string $comments = null): array
     {
-        if ($enrollmentIds === []) {
-            return ['ok' => false, 'error' => 'No students to lock.'];
+        $rows = $this->transitionClass($enrollmentIds, 'submitted', 'chair_recommended', 'chair_recommended_at', 'chair_recommended_by', $chairId, 'Every grade must be submitted by faculty before it can be recommended.');
+
+        if (! $rows['ok']) {
+            return $rows;
         }
-
-        $rows = $this->whereIn('enrollment_id', $enrollmentIds)->findAll();
-
-        if (count($rows) < count($enrollmentIds)) {
-            return ['ok' => false, 'error' => 'Not every student has a submitted grade yet.'];
-        }
-
-        foreach ($rows as $row) {
-            if ($row['status'] !== 'submitted') {
-                return ['ok' => false, 'error' => 'Every grade must be submitted by faculty before it can be locked.'];
-            }
-        }
-
-        $this->builder()
-            ->whereIn('enrollment_id', $enrollmentIds)
-            ->set(['status' => 'locked', 'locked_at' => date('Y-m-d H:i:s'), 'locked_by' => $chairpersonId])
-            ->update();
 
         $auditLog = new AuditLogModel();
 
-        foreach ($rows as $row) {
+        foreach ($rows['rows'] as $row) {
+            $auditLog->record(
+                'grade.chair_recommended',
+                'grade',
+                $row['grade_id'],
+                ['status' => 'submitted'],
+                ['status' => 'chair_recommended'],
+                $comments,
+                $chairId,
+                'chairperson'
+            );
+        }
+
+        $this->notifyDeansOfCollegeFor($rows['rows'], 'grade_chair_recommended', 'A class has been recommended by the chairperson and is awaiting your note.');
+
+        return ['ok' => true];
+    }
+
+    /**
+     * Bulk chair_recommended -> dean_noted, the dean's sign-off.
+     *
+     * @param int[] $enrollmentIds
+     */
+    public function noteClass(array $enrollmentIds, int $deanId, ?string $comments = null): array
+    {
+        $rows = $this->transitionClass($enrollmentIds, 'chair_recommended', 'dean_noted', 'dean_noted_at', 'dean_noted_by', $deanId, 'Every grade must be recommended by the chairperson before it can be noted.');
+
+        if (! $rows['ok']) {
+            return $rows;
+        }
+
+        $auditLog = new AuditLogModel();
+
+        foreach ($rows['rows'] as $row) {
+            $auditLog->record(
+                'grade.dean_noted',
+                'grade',
+                $row['grade_id'],
+                ['status' => 'chair_recommended'],
+                ['status' => 'dean_noted'],
+                $comments,
+                $deanId,
+                'dean'
+            );
+        }
+
+        $this->notifyGroup('registrar', 'grade_dean_noted', 'A class has been noted by the dean and is awaiting registrar approval.');
+
+        return ['ok' => true];
+    }
+
+    /**
+     * Bulk dean_noted -> registrar_approved, the registrar's penultimate
+     * sign-off (lockClass() is the final step, immediately after).
+     *
+     * @param int[] $enrollmentIds
+     */
+    public function approveClassForRegistrar(array $enrollmentIds, int $registrarId, ?string $comments = null): array
+    {
+        $rows = $this->transitionClass($enrollmentIds, 'dean_noted', 'registrar_approved', 'registrar_approved_at', 'registrar_approved_by', $registrarId, 'Every grade must be noted by the dean before the registrar can approve it.');
+
+        if (! $rows['ok']) {
+            return $rows;
+        }
+
+        $auditLog = new AuditLogModel();
+
+        foreach ($rows['rows'] as $row) {
+            $auditLog->record(
+                'grade.registrar_approved',
+                'grade',
+                $row['grade_id'],
+                ['status' => 'dean_noted'],
+                ['status' => 'registrar_approved'],
+                $comments,
+                $registrarId,
+                'registrar'
+            );
+        }
+
+        return ['ok' => true];
+    }
+
+    /**
+     * Bulk registrar_approved -> locked, the registrar's final, official
+     * approval. Lock authority sits with the registrar (not the
+     * chairperson) now that the chain has a dean + registrar stage above
+     * the chairperson's own recommend step.
+     *
+     * @param int[] $enrollmentIds
+     */
+    public function lockClass(array $enrollmentIds, int $registrarId): array
+    {
+        $rows = $this->transitionClass($enrollmentIds, 'registrar_approved', 'locked', 'locked_at', 'locked_by', $registrarId, 'Every grade must be approved by the registrar before it can be locked.');
+
+        if (! $rows['ok']) {
+            return $rows;
+        }
+
+        $auditLog = new AuditLogModel();
+
+        foreach ($rows['rows'] as $row) {
             $auditLog->record(
                 'grade.locked',
                 'grade',
@@ -221,8 +335,8 @@ class GradeModel extends Model
                 ['status' => $row['status'], 'grade_value' => $row['grade_value']],
                 ['status' => 'locked', 'grade_value' => $row['grade_value']],
                 null,
-                $chairpersonId,
-                'chairperson'
+                $registrarId,
+                'registrar'
             );
         }
 
@@ -234,7 +348,7 @@ class GradeModel extends Model
         helper('url');
         $notifications = new NotificationModel();
 
-        foreach ($rows as $row) {
+        foreach ($rows['rows'] as $row) {
             $notifications->notify(
                 (int) $row['user_id'],
                 'grade_posted',
@@ -244,6 +358,161 @@ class GradeModel extends Model
         }
 
         return ['ok' => true];
+    }
+
+    /**
+     * The single place that ever writes grade_value/is_passing on a row
+     * that's already locked. Called only from approveChangeRequest() (the
+     * legacy 1-step flow) and GradeChangeRequestModel::finalApprove() (the
+     * 5-step chain) — no controller, and no other model method, should
+     * ever call $this->update($gradeId, ['grade_value' => ...]) directly.
+     * Always re-fetches grading_scale_id from the grade row itself (never
+     * GradingScaleModel::activeScale()), so a scale change mid-correction
+     * never reinterprets an in-flight request against the wrong scale.
+     */
+    public function applyApprovedChange(int $gradeId, string $newValue): void
+    {
+        $grade = $this->find($gradeId);
+
+        if ($grade === null) {
+            return;
+        }
+
+        $scale = (new GradingScaleModel())->find((int) $grade['grading_scale_id']);
+
+        $this->update($gradeId, [
+            'grade_value' => $newValue,
+            'is_passing'  => $scale !== null ? GradeScaleEvaluator::isPassing($scale, $newValue) : null,
+        ]);
+    }
+
+    /**
+     * Shared bulk-transition shape behind recommendClass()/noteClass()/
+     * approveClassForRegistrar()/lockClass(): refuses if any roster member
+     * is missing, or isn't currently in $fromStatus (no partial transitions,
+     * no skipping a stage).
+     *
+     * @param int[] $enrollmentIds
+     * @return array{ok: bool, error?: string, rows?: list<array>}
+     */
+    private function transitionClass(array $enrollmentIds, string $fromStatus, string $toStatus, string $atColumn, string $byColumn, int $actorId, string $preconditionError): array
+    {
+        if ($enrollmentIds === []) {
+            return ['ok' => false, 'error' => 'No students selected.'];
+        }
+
+        $rows = $this->whereIn('enrollment_id', $enrollmentIds)->findAll();
+
+        if (count($rows) < count($enrollmentIds)) {
+            return ['ok' => false, 'error' => 'Not every student has a grade at this stage yet.'];
+        }
+
+        foreach ($rows as $row) {
+            if ($row['status'] !== $fromStatus) {
+                return ['ok' => false, 'error' => $preconditionError];
+            }
+        }
+
+        $this->builder()
+            ->whereIn('enrollment_id', $enrollmentIds)
+            ->set([
+                'status'   => $toStatus,
+                $atColumn  => date('Y-m-d H:i:s'),
+                $byColumn  => $actorId,
+            ])
+            ->update();
+
+        return ['ok' => true, 'rows' => $rows];
+    }
+
+    /**
+     * Notifies every user in the given Shield group — the "notify the whole
+     * office" idiom used wherever there's no single named actor (mirrors
+     * StudentModel::notifyAdminsOfNewProgram()'s auth_groups_users scan).
+     */
+    private function notifyGroup(string $group, string $type, string $message): void
+    {
+        $userIds = array_unique(array_column(
+            $this->db->table('auth_groups_users')->select('user_id')->where('group', $group)->get()->getResultArray(),
+            'user_id'
+        ));
+
+        $notifications = new NotificationModel();
+
+        foreach ($userIds as $userId) {
+            $notifications->notify((int) $userId, $type, $message);
+        }
+    }
+
+    /**
+     * Notifies the dean(s) (primary + delegated, via
+     * SchedulingAuthorization::authorizedDepartmentIds() resolved in
+     * reverse) of each distinct college represented in $rows. Degrades
+     * silently when a college currently has no dean assigned — a missing
+     * notify target must never block the chairperson's underlying action.
+     *
+     * @param list<array> $rows
+     */
+    private function notifyDeansOfCollegeFor(array $rows, string $type, string $message): void
+    {
+        $sectionIds = array_unique(array_column($rows, 'section_id'));
+
+        if ($sectionIds === []) {
+            return;
+        }
+
+        $collegeIds = array_unique(array_column(
+            $this->db->table('sections s')
+                ->select('p.sub_department_id')
+                ->join('programs p', 'p.program_id = s.program_id')
+                ->whereIn('s.section_id', $sectionIds)
+                ->where('s.program_id IS NOT NULL')
+                ->get()
+                ->getResultArray(),
+            'sub_department_id'
+        ));
+
+        if ($collegeIds === []) {
+            return;
+        }
+
+        $subDeptToCollege = $this->db->table('sub_departments')
+            ->select('sub_dept_id, college_id')
+            ->whereIn('sub_dept_id', $collegeIds)
+            ->get()
+            ->getResultArray();
+
+        $deanUserIds = [];
+
+        foreach ($subDeptToCollege as $row) {
+            $primary = $this->db->table('users u')
+                ->select('u.id')
+                ->join('auth_groups_users g', 'g.user_id = u.id')
+                ->where('g.group', 'dean')
+                ->where('u.department_id', $row['college_id'])
+                ->get()
+                ->getResultArray();
+
+            $delegated = $this->db->table('department_deans')
+                ->select('user_id')
+                ->where('dept_id', $row['college_id'])
+                ->get()
+                ->getResultArray();
+
+            foreach (array_merge(array_column($primary, 'id'), array_column($delegated, 'user_id')) as $userId) {
+                $deanUserIds[(int) $userId] = true;
+            }
+        }
+
+        if ($deanUserIds === []) {
+            return;
+        }
+
+        $notifications = new NotificationModel();
+
+        foreach (array_keys($deanUserIds) as $userId) {
+            $notifications->notify($userId, $type, $message);
+        }
     }
 
     /**
@@ -324,15 +593,10 @@ class GradeModel extends Model
             return ['ok' => false, 'error' => 'The underlying grade no longer exists.'];
         }
 
-        $scale = (new GradingScaleModel())->find((int) $grade['grading_scale_id']);
-
         $db = $this->db;
         $db->transStart();
 
-        $this->update($grade['grade_id'], [
-            'grade_value' => $request['requested_value'],
-            'is_passing'  => $scale !== null ? GradeScaleEvaluator::isPassing($scale, $request['requested_value']) : null,
-        ]);
+        $this->applyApprovedChange((int) $grade['grade_id'], $request['requested_value']);
 
         $requests->update($requestId, [
             'status'       => 'approved',
@@ -422,20 +686,70 @@ class GradeModel extends Model
     }
 
     /**
-     * Classes this chairperson already locked — the Grade Approvals page's
-     * "awaiting review" queue drops a class the moment it's locked
-     * (submittedClasses() only matches status='submitted'), so without this
-     * there's no way back to a class once it's official. Mirrors
-     * submittedClasses() exactly but reports the lock, not the submission.
+     * Classes this chairperson already recommended — the Grade Approvals
+     * page's "awaiting review" queue drops a class the moment it's
+     * recommended (submittedClasses() only matches status='submitted'), so
+     * without this there's no way back to a class once the chair has acted
+     * on it. Mirrors submittedClasses() exactly but reports the
+     * recommendation, not the submission.
      */
-    public function lockedClasses(array $programs): array
+    public function recommendedClasses(array $programs): array
+    {
+        return $this->classesByStatus($programs, 'chair_recommended', 'chair_recommended_at');
+    }
+
+    /**
+     * Classes this dean already noted — dean's counterpart to
+     * recommendedClasses().
+     */
+    public function notedClasses(array $programs): array
+    {
+        return $this->classesByStatus($programs, 'dean_noted', 'dean_noted_at');
+    }
+
+    /**
+     * Classes awaiting this dean's note — dean's counterpart to
+     * submittedClasses().
+     */
+    public function recommendedForDean(array $programs): array
+    {
+        return $this->classesByStatus($programs, 'chair_recommended');
+    }
+
+    /**
+     * Classes awaiting registrar approval (dean already noted) —
+     * institution-wide, not program-scoped (registrar has no "own
+     * department").
+     */
+    public function notedForRegistrar(): array
+    {
+        return $this->classesByStatus(null, 'dean_noted');
+    }
+
+    /**
+     * Classes the registrar already approved, awaiting lock.
+     */
+    public function approvedForRegistrar(): array
+    {
+        return $this->classesByStatus(null, 'registrar_approved');
+    }
+
+    /**
+     * Classes the registrar already locked — institution-wide.
+     */
+    public function lockedClasses(?array $programs = null): array
     {
         return $this->classesByStatus($programs, 'locked', 'locked_at');
     }
 
-    private function classesByStatus(array $programs, string $status, ?string $withTimestamp = null): array
+    /**
+     * @param array<int, string>|null $programs Program display names to scope to
+     *   (chairperson/dean's own departments), or null for institution-wide
+     *   (the registrar has no "own department" to scope by).
+     */
+    private function classesByStatus(?array $programs, string $status, ?string $withTimestamp = null): array
     {
-        if ($programs === []) {
+        if ($programs !== null && $programs === []) {
             return [];
         }
 
@@ -445,13 +759,16 @@ class GradeModel extends Model
             $select .= ', g.' . $withTimestamp;
         }
 
-        $rows = $this->db->table('grades g')
+        $query = $this->db->table('grades g')
             ->select($select)
             ->join('sections s', 's.section_id = g.section_id')
-            ->whereIn('s.program', $programs)
-            ->where('g.status', $status)
-            ->get()
-            ->getResultArray();
+            ->where('g.status', $status);
+
+        if ($programs !== null) {
+            $query->whereIn('s.program', $programs);
+        }
+
+        $rows = $query->get()->getResultArray();
 
         $classes = [];
 
@@ -480,6 +797,34 @@ class GradeModel extends Model
         }
 
         return array_values($classes);
+    }
+
+    /**
+     * Locked grades matching a student username or subject code — backs
+     * the registrar's "issue a correction form" search. Capped at 20
+     * results since this is a type-ahead search, not a report.
+     */
+    public function searchLockedGrades(string $query): array
+    {
+        $query = trim($query);
+
+        if ($query === '') {
+            return [];
+        }
+
+        return $this->db->table('grades g')
+            ->select('g.grade_id, g.subject_code, g.academic_year, g.grade_value, s.program, s.year_level, s.section, u.username AS student_username')
+            ->join('sections s', 's.section_id = g.section_id')
+            ->join('users u', 'u.id = g.user_id')
+            ->where('g.status', 'locked')
+            ->groupStart()
+                ->like('u.username', $query)
+                ->orLike('g.subject_code', $query)
+            ->groupEnd()
+            ->orderBy('g.academic_year', 'DESC')
+            ->limit(20)
+            ->get()
+            ->getResultArray();
     }
 
     /**

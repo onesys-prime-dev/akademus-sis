@@ -2,11 +2,13 @@
 
 namespace App\Database\Seeds;
 
+use App\Libraries\GradeScaleEvaluator;
 use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
 use App\Models\EnrollmentModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\GradeModel;
+use App\Models\GradingScaleModel;
 use App\Models\PlottedScheduleModel;
 use App\Models\SectionModel;
 use App\Models\StudentModel;
@@ -336,6 +338,79 @@ class SISDevelopmentSeeder extends Seeder
         $this->gradeClass($academicYear, $sections['ait1_1y'], 'ITE 110', $facultyId, $chairpersonId, $assignmentModel, $gradeModel, lock: false, withChangeRequest: false);
     }
 
+    /**
+     * A spread of grade values valid for whichever grading_scales row is
+     * currently active — mostly passing, one deliberately failing — so
+     * this seeder never hardcodes an assumption about which scale type
+     * (numeric_gwa / percentage / letter) an admin has active. Mirrors
+     * GradeScaleEvaluator's own type branching exactly.
+     *
+     * @return list<string>
+     */
+    private function sampleGradeValues(): array
+    {
+        $scale = (new GradingScaleModel())->activeScale();
+
+        if ($scale === null) {
+            // No scale configured at all — saveOne() will reject every one
+            // of these too (same as a real submission would), which is the
+            // correct, honest failure mode rather than guessing a scale.
+            return ['1.50', '1.75', '2.00', '2.25', '2.50', '3.00', '5.00'];
+        }
+
+        if ($scale['type'] === 'letter') {
+            $options = GradeScaleEvaluator::letterOptions($scale);
+            $failing = GradeScaleEvaluator::failingLetters($scale);
+            $passing = array_values(array_diff($options, $failing));
+
+            if ($passing === []) {
+                return $options !== [] ? $options : ['A'];
+            }
+
+            $spread = [];
+            for ($i = 0; $i < 6; $i++) {
+                $spread[] = $passing[$i % count($passing)];
+            }
+
+            return $failing === [] ? $spread : array_merge($spread, [$failing[0]]);
+        }
+
+        $min     = $scale['min_value'] !== null ? (float) $scale['min_value'] : 0.0;
+        $max     = $scale['max_value'] !== null ? (float) $scale['max_value'] : 100.0;
+        $passing = $scale['passing_value'] !== null ? (float) $scale['passing_value'] : ($min + $max) / 2;
+        $isLower = (bool) $scale['is_lower_better'];
+
+        // Passing spread runs from the threshold toward whichever bound is
+        // "better" under this scale (min when lower-is-better, else max).
+        $bestBound = $isLower ? $min : $max;
+        $values    = [];
+
+        for ($i = 0; $i < 6; $i++) {
+            $values[] = $this->formatScaleValue($passing + ($bestBound - $passing) * ($i / 5), $scale);
+        }
+
+        // One deliberately failing value, just past the threshold on the
+        // other side, clamped to stay within the scale's own bounds.
+        $margin = max(1.0, abs($passing - ($isLower ? $max : $min)) * 0.3);
+        $failingValue = $isLower
+            ? min($max, $passing + $margin)
+            : max($min, $passing - $margin);
+
+        $values[] = $this->formatScaleValue($failingValue, $scale);
+
+        return $values;
+    }
+
+    private function formatScaleValue(float $value, array $scale): string
+    {
+        // GWA-style scales conventionally read to 2 decimals (1.00-5.00);
+        // percentage/other numeric scales read more naturally as whole
+        // numbers — matches how each type is actually entered in the UI.
+        $decimals = $scale['type'] === 'numeric_gwa' ? 2 : 0;
+
+        return number_format($value, $decimals, '.', '');
+    }
+
     private function gradeClass(string $academicYear, array $section, string $subjectCode, int $facultyId, int $chairpersonId, FacultyAssignmentModel $assignmentModel, GradeModel $gradeModel, bool $lock, bool $withChangeRequest): void
     {
         $assignmentModel->upsertAssignment($academicYear, self::PROGRAM_LABEL, $section['year_level'], $section['section'], $subjectCode, $facultyId);
@@ -349,10 +424,13 @@ class SISDevelopmentSeeder extends Seeder
             return;
         }
 
-        // A spread of realistic values on the seeded 1.00-5.00 GWA scale
-        // (lower is better, passing at 3.00) rather than every student
-        // getting the same grade.
-        $values = ['1.50', '1.75', '2.00', '2.25', '2.50', '3.00', '5.00'];
+        // A spread of realistic values — mostly-passing with one failing —
+        // generated against whichever grading scale is CURRENTLY active,
+        // never a hardcoded GWA assumption. An admin can (and did, on this
+        // dev DB) switch the active scale to percentage/letter at any time;
+        // hardcoded GWA values would then fail GradeScaleEvaluator's
+        // validation against that scale.
+        $values = $this->sampleGradeValues();
         $enrollmentIds = [];
         $i = 0;
 
@@ -402,6 +480,35 @@ class SISDevelopmentSeeder extends Seeder
             return;
         }
 
+        // Dev seed only: drives the class through the full chair -> dean ->
+        // registrar chain using the one seeded chairperson account as a
+        // stand-in for all three stages (no dean/registrar accounts are
+        // seeded) — real actor roles don't matter here, only that the
+        // resulting grade rows end up status='locked' like before.
+        $recommend = $gradeModel->recommendClass($enrollmentIds, $chairpersonId);
+
+        if (! $recommend['ok']) {
+            echo "  recommendClass failed for {$subjectCode}: {$recommend['error']}\n";
+
+            return;
+        }
+
+        $note = $gradeModel->noteClass($enrollmentIds, $chairpersonId);
+
+        if (! $note['ok']) {
+            echo "  noteClass failed for {$subjectCode}: {$note['error']}\n";
+
+            return;
+        }
+
+        $approve = $gradeModel->approveClassForRegistrar($enrollmentIds, $chairpersonId);
+
+        if (! $approve['ok']) {
+            echo "  approveClassForRegistrar failed for {$subjectCode}: {$approve['error']}\n";
+
+            return;
+        }
+
         $doLock = $gradeModel->lockClass($enrollmentIds, $chairpersonId);
 
         if (! $doLock['ok']) {
@@ -422,8 +529,11 @@ class SISDevelopmentSeeder extends Seeder
             return;
         }
 
-        $newValue = $firstGrade['grade_value'] === '1.50' ? '1.25' : '1.50';
-        $change   = $gradeModel->requestChange((int) $firstGrade['grade_id'], $newValue, 'DEV SEED: correcting a recording error.', $facultyId);
+        // Any scale-valid value different from the current one — not a
+        // hardcoded GWA assumption, same reasoning as sampleGradeValues().
+        $candidates = array_values(array_filter($this->sampleGradeValues(), static fn ($v) => $v !== $firstGrade['grade_value']));
+        $newValue   = $candidates[0] ?? $firstGrade['grade_value'];
+        $change     = $gradeModel->requestChange((int) $firstGrade['grade_id'], $newValue, 'DEV SEED: correcting a recording error.', $facultyId);
 
         echo $change['ok']
             ? "  filed a change request on grade #{$firstGrade['grade_id']} ({$firstGrade['grade_value']} -> {$newValue}).\n"

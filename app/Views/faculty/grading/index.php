@@ -13,6 +13,7 @@ $navGroups     = [
         'schedule'     => ['label' => 'Schedule',     'icon' => 'calendar_month',   'url' => 'faculty/schedule'],
         'availability' => ['label' => 'Availability', 'icon' => 'event_available',  'url' => 'faculty/availability'],
         'grading'      => ['label' => 'Grading',      'icon' => 'grade',            'url' => 'faculty/grading'],
+        'grading-change-requests' => ['label' => 'Correction Requests', 'icon' => 'history_edu', 'url' => 'faculty/grading/change-requests'],
     ],
 ];
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
@@ -62,6 +63,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <span class="class-meta"><?= esc($c['graded_count']) ?> / <?= esc($c['student_count']) ?> graded</span>
                 <?php if ($c['locked']): ?>
                     <span class="status-pill locked">Locked</span>
+                <?php elseif ($c['in_review']): ?>
+                    <span class="status-pill submitted">In review (chair/dean/registrar)</span>
                 <?php elseif ($c['submitted']): ?>
                     <span class="status-pill submitted">Submitted</span>
                 <?php elseif ($c['graded_count'] > 0): ?>

@@ -24,5 +24,6 @@ return [
         'sections'                => ['label' => 'Sections',                'icon' => 'groups',             'url' => 'chairperson/sections'],
         'student-progress'        => ['label' => 'Student Progress',        'icon' => 'school',              'url' => 'chairperson/student-progress'],
         'grade-approvals'         => ['label' => 'Grade Approvals',         'icon' => 'grade',              'url' => 'chairperson/grade-approvals'],
+        'grade-change-requests'   => ['label' => 'Correction Requests',     'icon' => 'history_edu',        'url' => 'chairperson/grade-change-requests'],
     ],
 ];

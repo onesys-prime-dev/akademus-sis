@@ -30,7 +30,7 @@ class GradeApprovalController extends BaseController
                 'user'           => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
                 'deptName'       => null,
                 'classes'        => [],
-                'lockedClasses'  => [],
+                'recommendedClasses' => [],
                 'changeRequests' => [],
             ]);
         }
@@ -54,7 +54,7 @@ class GradeApprovalController extends BaseController
             'user'           => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => (count($deptNames) === 1 ? $deptNames[0] . ' - ' : '') . 'Chairperson'],
             'deptName'       => count($deptNames) === 1 ? $deptNames[0] : implode(', ', $deptNames),
             'classes'        => $gradeModel->submittedClasses($programs),
-            'lockedClasses'  => $gradeModel->lockedClasses($programs),
+            'recommendedClasses' => $gradeModel->recommendedClasses($programs),
             'changeRequests' => (new GradeChangeRequestModel())->pendingForPrograms($programs),
         ]);
     }
@@ -79,7 +79,14 @@ class GradeApprovalController extends BaseController
         ]);
     }
 
-    public function lock()
+    /**
+     * Chairperson's own sign-off: submitted -> chair_recommended. Renamed
+     * from the old lock() now that lock authority moved to the registrar
+     * (see GradeModel::lockClass()) — this is the first of three stages
+     * (chair -> dean -> registrar) a class now passes through before it's
+     * official.
+     */
+    public function recommend()
     {
         $chairId = (int) auth()->id();
         $payload = $this->request->getJSON(true);
@@ -96,11 +103,12 @@ class GradeApprovalController extends BaseController
             return $this->fail('This class has no enrolled students.');
         }
 
+        $comments      = isset($payload['comments']) ? (string) $payload['comments'] : null;
         $enrollmentIds = array_map(static fn (array $r) => (int) $r['enrollment_id'], $result['roster']);
-        $locked        = $gradeModel->lockClass($enrollmentIds, $chairId);
+        $recommended   = $gradeModel->recommendClass($enrollmentIds, $chairId, $comments);
 
-        if (! $locked['ok']) {
-            return $this->fail($locked['error']);
+        if (! $recommended['ok']) {
+            return $this->fail($recommended['error']);
         }
 
         return $this->response->setJSON(['ok' => true]);
@@ -114,6 +122,73 @@ class GradeApprovalController extends BaseController
     public function rejectChange()
     {
         return $this->reviewChange('reject');
+    }
+
+    /**
+     * Queue of 5-step-chain correction requests awaiting this
+     * chairperson's recommendation (status='faculty_submitted') — distinct
+     * from the legacy 1-step "Corrections" tab on grade_approvals.php,
+     * which only ever shows status='pending' rows.
+     */
+    public function changeRequestsQueue()
+    {
+        $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
+        $programs   = [];
+        $deptModel  = new DepartmentModel();
+
+        foreach ($subDeptIds as $id) {
+            $programs = array_merge($programs, $deptModel->programsOfSubDept($id));
+        }
+
+        $programs = array_values(array_unique($programs));
+
+        return view('chairperson/grade_change_requests', [
+            'pageTitle' => 'Grade Correction Requests',
+            'user'      => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
+            'requests'  => (new GradeChangeRequestModel())->pendingChairRecommendation($programs),
+        ]);
+    }
+
+    public function recommendChange()
+    {
+        return $this->decideChainRequest('recommend');
+    }
+
+    public function rejectChainRequest()
+    {
+        return $this->decideChainRequest('reject');
+    }
+
+    private function decideChainRequest(string $decision)
+    {
+        $chairId = (int) auth()->id();
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload) || empty($payload['request_id'])) {
+            return $this->fail('Missing request.');
+        }
+
+        $requestId = (int) $payload['request_id'];
+        $request   = (new GradeChangeRequestModel())->find($requestId);
+
+        if ($request === null) {
+            return $this->fail('Request not found.');
+        }
+
+        $grade = (new GradeModel())->find((int) $request['grade_id']);
+
+        if ($grade === null || $this->ownSection((int) $grade['section_id']) === null) {
+            return $this->fail('That request does not belong to your department.');
+        }
+
+        $notes  = isset($payload['notes']) ? (string) $payload['notes'] : null;
+        $result = (new GradeChangeRequestModel())->chairRecommend($requestId, $chairId, $decision, $notes);
+
+        if (! $result['ok']) {
+            return $this->fail($result['error'] ?? 'Could not process the request.');
+        }
+
+        return $this->response->setJSON(['ok' => true]);
     }
 
     private function reviewChange(string $action)

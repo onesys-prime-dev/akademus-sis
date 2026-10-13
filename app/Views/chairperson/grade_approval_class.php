@@ -69,12 +69,12 @@ $studentRecords = array_map(static function (array $row): array {
                 <tr><th scope="col">Student</th><th scope="col">Grade</th><th scope="col">Remarks</th><th scope="col">Status</th><th scope="col"><span class="ga-sr-only">Student record</span></th></tr>
             </thead>
             <tbody>
-                <?php $allSubmitted = true; $allLocked = true; ?>
+                <?php $allSubmitted = true; $allRecommended = true; ?>
                 <?php foreach ($roster as $recordIndex => $row): ?>
                     <?php
                         $g = $row['grade'];
                         if ($g === null || $g['status'] !== 'submitted') { $allSubmitted = false; }
-                        if ($g === null || $g['status'] !== 'locked') { $allLocked = false; }
+                        if ($g === null || in_array($g['status'], ['draft', 'submitted'], true)) { $allRecommended = false; }
                     ?>
                     <tr>
                         <td data-label="Student"><button type="button" class="ga-student-button" data-student-record="<?= $recordIndex ?>"><?= esc($row['username']) ?><span>View grade record</span></button></td>
@@ -91,11 +91,11 @@ $studentRecords = array_map(static function (array $row): array {
 
         <div class="ga-lock-footer">
             <?php if ($allSubmitted): ?>
-                <p>Confirm that every grade is correct. Locking makes these grades official and visible to students.</p><button type="button" class="ga-button ga-button--primary" id="gaLockButton" onclick="lockClass()"><span class="material-symbols-outlined" aria-hidden="true">lock</span>Lock grades</button>
-            <?php elseif ($allLocked): ?>
-                <p class="ga-official-note"><span class="material-symbols-outlined" aria-hidden="true">verified</span>All grades in this class are locked, official, and visible to students.</p>
+                <p>Confirm that every grade is correct. Recommending sends this class on to the dean for review.</p><button type="button" class="ga-button ga-button--primary" id="gaLockButton" onclick="recommendClass()"><span class="material-symbols-outlined" aria-hidden="true">thumb_up</span>Recommend grades</button>
+            <?php elseif ($allRecommended): ?>
+                <p class="ga-official-note"><span class="material-symbols-outlined" aria-hidden="true">verified</span>This class has already been recommended and is further along the approval chain.</p>
             <?php else: ?>
-                <p class="panel-sub">Not every student has a submitted grade yet — nothing to lock.</p>
+                <p class="panel-sub">Not every student has a submitted grade yet — nothing to recommend.</p>
             <?php endif ?>
         </div>
     <?php endif ?>
@@ -214,25 +214,25 @@ $studentRecords = array_map(static function (array $row): array {
     }
 
     let lockBusy = false;
-    async function lockClass() {
+    async function recommendClass() {
         if (lockBusy) return;
         lockBusy = true;
         const button = document.getElementById('gaLockButton');
         const label = button.innerHTML;
         try {
-            if (!await acConfirm('Lock these grades? Once locked, changes require a formal correction request.')) return;
-            button.disabled = true; button.textContent = 'Locking grades...';
-            const res = await fetch('<?= site_url('chairperson/grade-approvals/lock') ?>', {
+            if (!await acConfirm('Recommend these grades? They will move on to the dean for review.')) return;
+            button.disabled = true; button.textContent = 'Recommending grades...';
+            const res = await fetch('<?= site_url('chairperson/grade-approvals/recommend') ?>', {
                 method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify(CONTEXT),
             });
             const result = await res.json().catch(() => null);
-            if (!res.ok || !result?.ok) throw new Error(result?.error || 'Could not lock grades. Please try again.');
-            showFeedback('Grades locked and now official.', false);
-            button.textContent = 'Grades locked';
+            if (!res.ok || !result?.ok) throw new Error(result?.error || 'Could not recommend grades. Please try again.');
+            showFeedback('Grades recommended and sent to the dean.', false);
+            button.textContent = 'Grades recommended';
             setTimeout(() => { window.location.href = '<?= site_url('chairperson/grade-approvals') ?>'; }, 800);
         } catch (error) { showFeedback(error.message, true); }
         finally {
-            if (button.textContent !== 'Grades locked') { lockBusy = false; button.disabled = false; button.innerHTML = label; }
+            if (button.textContent !== 'Grades recommended') { lockBusy = false; button.disabled = false; button.innerHTML = label; }
         }
     }
 </script>
