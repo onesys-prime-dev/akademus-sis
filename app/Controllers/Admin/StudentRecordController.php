@@ -5,8 +5,10 @@ namespace App\Controllers\Admin;
 use App\Controllers\BaseController;
 use App\Libraries\RegistrarPortal;
 use App\Models\AcademicYearModel;
+use App\Models\AuditLogModel;
 use App\Models\DepartmentModel;
 use App\Models\EnrollmentModel;
+use App\Models\GraduationClearanceModel;
 use App\Models\NotificationModel;
 use App\Models\ProgramModel;
 use App\Models\StudentModel;
@@ -94,13 +96,39 @@ class StudentRecordController extends BaseController
             ? []
             : (new EnrollmentModel())->classOptions($programName, $activeYear);
 
+        $openClearance = (new GraduationClearanceModel())->where('student_id', (int) $id)->where('status', 'pending')->orderBy('id', 'DESC')->first();
+
         return view('admin/students/show', [
-            'pageTitle'    => $student['first_name'] . ' ' . $student['last_name'] . ' — Student Record',
-            'student'      => $student,
-            'statuses'     => StudentModel::STATUSES,
-            'classOptions' => $classOptions,
-            'activeYear'   => $activeYear,
+            'pageTitle'     => $student['first_name'] . ' ' . $student['last_name'] . ' — Student Record',
+            'student'       => $student,
+            'statuses'      => StudentModel::STATUSES,
+            'classOptions'  => $classOptions,
+            'activeYear'    => $activeYear,
+            'clearanceCase' => $openClearance,
         ] + $this->shell());
+    }
+
+    /**
+     * Opens a graduation clearance case for this student — registrar-only
+     * (gated by permission:clearance.manage in Routes.php), scoped under
+     * /registrar even though this controller is shared with /admin.
+     */
+    public function initiateClearance($id)
+    {
+        $student = (new StudentModel())->find((int) $id);
+
+        if ($student === null) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $activeYear = (new AcademicYearModel())->activeFormatted() ?? 'N/A';
+        $result     = (new GraduationClearanceModel())->initiate((int) $id, $activeYear, (int) auth()->id());
+
+        if (! $result['ok']) {
+            return redirect()->to($this->recordUrl($id))->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to('/registrar/clearance/' . $result['clearance_id'])->with('message', 'Clearance case opened.');
     }
 
     public function changeStatus($id)
@@ -144,8 +172,9 @@ class StudentRecordController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
-        $override = $this->request->getPost('override_prerequisites') === '1';
-        $rules    = ['class' => 'required', 'reason' => $override ? 'required|min_length[5]' : 'permit_empty'];
+        $overridePrereq   = $this->request->getPost('override_prerequisites') === '1';
+        $overrideCapacity = $this->request->getPost('override_capacity') === '1';
+        $rules            = ['class' => 'required', 'reason' => ($overridePrereq || $overrideCapacity) ? 'required|min_length[5]' : 'permit_empty'];
 
         if (! $this->validate($rules)) {
             return redirect()->to($this->recordUrl($id))->with('errors', $this->validator->getErrors());
@@ -159,16 +188,40 @@ class StudentRecordController extends BaseController
             return redirect()->to($this->recordUrl($id))->with('errors', ['Choose a class to enroll the student into.']);
         }
 
+        $reason     = (string) $this->request->getPost('reason');
+        $actorId    = (int) auth()->id();
+        $overrideArg = static fn (bool $on) => $on ? ['reason' => $reason, 'by' => $actorId] : null;
+
         $result = (new EnrollmentModel())->enrollOne(
             (int) $student['user_id'],
             (int) $sectionId,
             $subjectCode,
             'manual',
-            $override ? ['reason' => (string) $this->request->getPost('reason'), 'by' => (int) auth()->id()] : null
+            $overrideArg($overridePrereq),
+            auth()->user()->can('calendar.override'),
+            $overrideArg($overrideCapacity)
         );
 
         if (! $result['ok']) {
             return redirect()->to($this->recordUrl($id))->with('errors', [$result['error']]);
+        }
+
+        if ($overridePrereq || $overrideCapacity) {
+            // enrollment_logs (written inside enrollOne) is enrollment-specific;
+            // audit_logs is the cross-domain compliance view
+            // (admin/audit-logs) staff actually search across every kind of
+            // override, so an institution-wide override also gets recorded
+            // there.
+            (new AuditLogModel())->record(
+                'enrollment.override',
+                'enrollment',
+                $result['enrollment_id'],
+                null,
+                ['subject_code' => $subjectCode, 'override_prerequisites' => $overridePrereq, 'override_capacity' => $overrideCapacity],
+                $reason,
+                $actorId,
+                $this->isRegistrarPortal() ? 'registrar' : 'admin'
+            );
         }
 
         (new NotificationModel())->notify(

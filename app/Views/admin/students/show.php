@@ -187,7 +187,7 @@
         <?php if (empty($classOptions)): ?>
             <p class="ac-muted" style="margin:0;">No plotted classes for this student's program in the active term<?= $activeYear ? ' (' . esc($activeYear) . ')' : '' ?>.</p>
         <?php else: ?>
-            <p style="font-size:11.5px; color:var(--color-text-secondary); margin:0 0 10px;">Schedule conflicts, capacity and the student's curriculum still apply. Only an unmet <b>prerequisite</b> can be overridden, and that needs a reason.</p>
+            <p style="font-size:11.5px; color:var(--color-text-secondary); margin:0 0 10px;">Schedule conflicts and the student's curriculum still apply. An unmet <b>prerequisite</b> or a <b>full section</b> can be overridden, each needs a reason.</p>
             <form method="post" action="<?= site_url($basePath . '/students/' . $s['student_id'] . '/enroll') ?>" style="display:grid; grid-template-columns:2fr 2fr auto; gap:10px; align-items:end;">
                 <?= csrf_field() ?>
                 <div class="ac-field" style="margin:0;">
@@ -200,10 +200,13 @@
                     </select>
                 </div>
                 <div class="ac-field" style="margin:0;">
-                    <label for="enrollReason">Override reason (only if a prerequisite is unmet)</label>
+                    <label for="enrollReason">Override reason (if overriding below)</label>
                     <input type="text" id="enrollReason" name="reason" class="ac-input" placeholder="e.g. Credited from previous school">
                     <label style="display:flex; align-items:center; gap:6px; margin-top:6px; font-size:12px; text-transform:none;">
                         <input type="checkbox" name="override_prerequisites" value="1"> Override unmet prerequisites
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; margin-top:4px; font-size:12px; text-transform:none;">
+                        <input type="checkbox" name="override_capacity" value="1"> Override full section/class capacity
                     </label>
                 </div>
                 <button type="submit" class="ac-btn ac-btn-primary">Enroll</button>
@@ -234,6 +237,19 @@
             </div>
             <button type="submit" class="ac-btn ac-btn-primary" data-confirm="Change this student's status? This is recorded permanently.">Change Status</button>
         </form>
+
+        <?php if ($basePath === 'registrar'): ?>
+        <h4 style="margin:24px 0 8px; font-size:13px;">Graduation Clearance</h4>
+        <?php if (empty($clearanceCase)): ?>
+            <form method="post" action="<?= site_url($basePath . '/students/' . $s['student_id'] . '/clearance/initiate') ?>">
+                <?= csrf_field() ?>
+                <button type="submit" class="ac-btn ac-btn-secondary" data-confirm="Open a graduation clearance case for this student?">Initiate Clearance</button>
+            </form>
+        <?php else: ?>
+            <p class="ac-muted" style="margin:0 0 8px;">Clearance case open (<?= esc(ucfirst($clearanceCase['status'])) ?>) since <?= esc(date('M j, Y', strtotime($clearanceCase['created_at']))) ?>.</p>
+            <a href="<?= site_url('registrar/clearance/' . $clearanceCase['id']) ?>" class="ac-btn ac-btn-secondary">View Clearance Case</a>
+        <?php endif ?>
+        <?php endif ?>
 
         <h4 style="margin:24px 0 8px; font-size:13px;">Status History</h4>
         <table class="ac-table">

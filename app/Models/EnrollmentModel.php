@@ -53,8 +53,12 @@ class EnrollmentModel extends Model
      * @param array{reason: string, by: int}|null $prerequisiteOverride
      * @return array{ok: bool, error?: string, enrollment_id?: int}
      */
-    public function enrollOne(int $userId, int $sectionId, string $subjectCode, string $method = 'manual', ?array $prerequisiteOverride = null): array
+    public function enrollOne(int $userId, int $sectionId, string $subjectCode, string $method = 'manual', ?array $prerequisiteOverride = null, bool $windowOverride = false, ?array $capacityOverride = null): array
     {
+        if (! $windowOverride && ! (new AcademicYearModel())->isRegistrationOpen()) {
+            return ['ok' => false, 'error' => 'Registration is closed for the current term.'];
+        }
+
         $db = $this->db;
         $db->transStart();
 
@@ -92,6 +96,7 @@ class EnrollmentModel extends Model
         $missing = $this->unmetPrerequisites($userId, $subjectCode);
 
         $overrideNote = null;
+        $overrideBy   = $prerequisiteOverride['by'] ?? $capacityOverride['by'] ?? $userId;
 
         if ($missing !== []) {
             if ($prerequisiteOverride === null || trim($prerequisiteOverride['reason']) === '') {
@@ -143,10 +148,15 @@ class EnrollmentModel extends Model
                 : $this->rosterCount($sectionId);
 
             if (! $alreadyMember && $rosterCount >= (int) $capacity) {
-                $db->transRollback();
-                $db->resetTransStatus();
+                if ($capacityOverride === null || trim($capacityOverride['reason']) === '') {
+                    $db->transRollback();
+                    $db->resetTransStatus();
 
-                return ['ok' => false, 'error' => $offeringId !== null ? 'This merged class is full.' : 'This section is full.'];
+                    return ['ok' => false, 'error' => $offeringId !== null ? 'This merged class is full.' : 'This section is full.'];
+                }
+
+                $overrideNote = ($overrideNote !== null ? $overrideNote . '; ' : '')
+                    . 'Capacity override (roster ' . $rosterCount . '/' . (int) $capacity . '): ' . trim($capacityOverride['reason']);
             }
         }
 
@@ -161,7 +171,7 @@ class EnrollmentModel extends Model
                 'method'      => $method,
                 'status'      => 'enrolled',
             ]);
-            $this->logStatusChange((int) $previous['enrollment_id'], $previous['status'], 'enrolled', 'Re-enrolled' . ($overrideNote !== null ? ' — ' . $overrideNote : ''), $prerequisiteOverride['by'] ?? $userId);
+            $this->logStatusChange((int) $previous['enrollment_id'], $previous['status'], 'enrolled', 'Re-enrolled' . ($overrideNote !== null ? ' — ' . $overrideNote : ''), $overrideBy);
             $db->transComplete();
 
             $this->recomputeTuition($userId, $section['academic_year']);
@@ -195,7 +205,7 @@ class EnrollmentModel extends Model
         $enrollmentId = $this->getInsertID();
 
         if ($overrideNote !== null) {
-            $this->logStatusChange((int) $enrollmentId, null, 'enrolled', $overrideNote, $prerequisiteOverride['by']);
+            $this->logStatusChange((int) $enrollmentId, null, 'enrolled', $overrideNote, $overrideBy);
         }
 
         $db->transComplete();
