@@ -36,6 +36,10 @@ class StudentEnrollment extends BaseController
             return $this->fail('This academic year is not active. Only the active term accepts new enrollments.');
         }
 
+        if ((new AcademicYearModel())->isEnlistmentOpen()) {
+            return $this->fail('Online enlistment is open — use the Enlistment wizard to build your schedule.');
+        }
+
         $section = (new SectionModel())->forContext(
             $payload['academic_year'],
             $payload['program'],
@@ -83,6 +87,10 @@ class StudentEnrollment extends BaseController
 
         if (! $this->isActiveYear($section['academic_year'])) {
             return $this->fail('This academic year is not active. Only the active term accepts new enrollments.');
+        }
+
+        if ((new AcademicYearModel())->isEnlistmentOpen()) {
+            return $this->fail('Online enlistment is open — use the Enlistment wizard to build your schedule.');
         }
 
         $enrollments = new EnrollmentModel();
