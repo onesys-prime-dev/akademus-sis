@@ -7,12 +7,30 @@ $userName = auth()->user()->username;
 $userRoleLabel = 'Student';
 $navGroups = [
     '' => [
-        'dashboard' => ['label' => 'Dashboard', 'icon' => 'home', 'url' => 'student/dashboard'],
-        'tuition' => ['label' => 'Tuition & Fees', 'icon' => 'payments', 'url' => 'student/tuition'],
-        'schedule' => ['label' => 'My Schedule', 'icon' => 'calendar_month', 'url' => 'student/schedule'],
-        'grades' => ['label' => 'My Grades', 'icon' => 'grade', 'url' => 'student/grades'],
-        'enlistment' => ['label' => 'Enlistment', 'icon' => 'playlist_add_check', 'url' => 'student/enlistment'],
-        'documents' => ['label' => 'Documents',   'icon' => 'description',        'url' => 'student/documents'],
+        'dashboard' => ['label' => 'Dashboard', 'icon' => 'home', 'url' => 'student/dashboard', 'help' => [
+            'title' => 'Student Dashboard',
+            'text'  => "Your at-a-glance view: today's schedule, upcoming classes, and recent grade/tuition activity. Use the sidebar to get to any other part of your student portal.",
+        ]],
+        'tuition' => ['label' => 'Tuition & Fees', 'icon' => 'payments', 'url' => 'student/tuition', 'help' => [
+            'title' => 'Tuition & Fees',
+            'text'  => "Your current assessment, payment history, and balance. Upload proof of an off-site payment here for Finance to review, or see your installment schedule.",
+        ]],
+        'schedule' => ['label' => 'My Schedule', 'icon' => 'calendar_month', 'url' => 'student/schedule', 'help' => [
+            'title' => 'My Schedule',
+            'text'  => "Your weekly class schedule for the current term — days, times, rooms, and instructors for everything you're enrolled in.",
+        ]],
+        'grades' => ['label' => 'My Grades', 'icon' => 'grade', 'url' => 'student/grades', 'help' => [
+            'title' => 'My Grades',
+            'text'  => "Your official grades, term by term. A grade only appears here once it's been locked by the registrar.",
+        ]],
+        'enlistment' => ['label' => 'Enlistment', 'icon' => 'playlist_add_check', 'url' => 'student/enlistment', 'help' => [
+            'title' => 'Enlistment',
+            'text'  => "Build your subject cart for next term and submit it for chair → dean → registrar approval. Only available while your department's enlistment window is open; otherwise you'll enroll directly once sections open.",
+        ]],
+        'documents' => ['label' => 'Documents',   'icon' => 'description',        'url' => 'student/documents', 'help' => [
+            'title' => 'Documents',
+            'text'  => "Request a Certificate of Registration (needs at least a downpayment) or Certificate of Enrollment (available once you're enrolled, balance or not), and track their status.",
+        ]],
     ],
 ];
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));

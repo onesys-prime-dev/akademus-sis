@@ -146,34 +146,89 @@
  */
 $navGroups = $navGroups ?? [
     'Workspace' => [
-        'dashboard'            => ['label' => 'Overview',        'icon' => 'dashboard',      'url' => 'admin/dashboard'],
+        'dashboard'            => ['label' => 'Overview',        'icon' => 'dashboard',      'url' => 'admin/dashboard', 'help' => [
+            'title' => 'Admin Overview',
+            'text'  => "A system-wide snapshot: enrollment counts, revenue collected, and anything flagged for your attention across every portal.",
+        ]],
     ],
     'Academics' => [
-        'departments'          => ['label' => 'Colleges',        'icon' => 'hub',            'url' => 'admin/departments'],
-        'programs'             => ['label' => 'Programs',        'icon' => 'workspace_premium', 'url' => 'admin/programs'],
-        'curriculum'           => ['label' => 'Curricula',       'icon' => 'auto_stories',   'url' => 'admin/curriculum'],
-        'curriculum-subjects'  => ['label' => 'Curriculum Subjects', 'icon' => 'library_books', 'url' => 'admin/curriculum-subjects'],
-        'subjects'             => ['label' => 'Subjects',        'icon' => 'menu_book',      'url' => 'admin/subjects'],
+        'departments'          => ['label' => 'Colleges',        'icon' => 'hub',            'url' => 'admin/departments', 'help' => [
+            'title' => 'Colleges',
+            'text'  => "The institution's colleges and their departments (sub-departments) — the structure chairpersons, deans, and subject ownership are all organized under.",
+        ]],
+        'programs'             => ['label' => 'Programs',        'icon' => 'workspace_premium', 'url' => 'admin/programs', 'help' => [
+            'title' => 'Programs',
+            'text'  => "The degree programs offered, each assigned to a department. A program needs a published curriculum (see Curricula) before students on it can be scheduled or enrolled.",
+        ]],
+        'curriculum'           => ['label' => 'Curricula',       'icon' => 'auto_stories',   'url' => 'admin/curriculum', 'help' => [
+            'title' => 'Curricula',
+            'text'  => "Each program's curriculum versions — which subjects belong to which year/term. There's one live curriculum per program; no draft/versioning workflow, so changes here take effect immediately.",
+        ]],
+        'curriculum-subjects'  => ['label' => 'Curriculum Subjects', 'icon' => 'library_books', 'url' => 'admin/curriculum-subjects', 'help' => [
+            'title' => 'Curriculum Subjects',
+            'text'  => "Assign subjects to a specific slot (year level + term) within a program's curriculum.",
+        ]],
+        'subjects'             => ['label' => 'Subjects',        'icon' => 'menu_book',      'url' => 'admin/subjects', 'help' => [
+            'title' => 'Subjects',
+            'text'  => "The institution's full subject catalog — code, title, units, and which department owns each one. Ownership here is what Subject Ownership and the shared-subject workflow read from.",
+        ]],
     ],
     'People' => [
-        'students'             => ['label' => 'Student Records', 'icon' => 'school',         'url' => 'admin/students'],
-        'users'                => ['label' => 'User Accounts',   'icon' => 'group',          'url' => 'admin/users'],
+        'students'             => ['label' => 'Student Records', 'icon' => 'school',         'url' => 'admin/students', 'help' => [
+            'title' => 'Student Records',
+            'text'  => "Search and manage every student's record: enrollment, curriculum, status, and tuition — the same administrative view available to the registrar.",
+        ]],
+        'users'                => ['label' => 'User Accounts',   'icon' => 'group',          'url' => 'admin/users', 'help' => [
+            'title' => 'User Accounts',
+            'text'  => "Create and manage every account in the system, assign roles/groups, and reset a user's password. A password reset notifies the account holder.",
+        ]],
     ],
     'Finance' => [
-        'tuition-rates'        => ['label' => 'Tuition Rates',   'icon' => 'payments',       'url' => 'admin/tuition-rates'],
-        'fee-types'            => ['label' => 'Fee Types',       'icon' => 'sell',           'url' => 'admin/fee-types'],
-        'payment-proofs'       => ['label' => 'Payment Proofs',  'icon' => 'receipt_long',   'url' => 'admin/payment-proofs'],
+        'tuition-rates'        => ['label' => 'Tuition Rates',   'icon' => 'payments',       'url' => 'admin/tuition-rates', 'help' => [
+            'title' => 'Tuition Rates',
+            'text'  => "The per-unit tuition rate for each program/academic year, used to compute every student's assessment automatically on enrollment.",
+        ]],
+        'fee-types'            => ['label' => 'Fee Types',       'icon' => 'sell',           'url' => 'admin/fee-types', 'help' => [
+            'title' => 'Fee Types',
+            'text'  => "The itemized fee lines (Miscellaneous, Laboratory, etc.) added on top of per-unit tuition in a student's assessment.",
+        ]],
+        'payment-proofs'       => ['label' => 'Payment Proofs',  'icon' => 'receipt_long',   'url' => 'admin/payment-proofs', 'help' => [
+            'title' => 'Payment Proofs',
+            'text'  => "Review proof of payment students upload for off-site payments. Approving one records it as a real payment on their ledger.",
+        ]],
     ],
     'Administration' => [
-        'rooms'                => ['label' => 'Facilities',      'icon' => 'meeting_room',   'url' => 'admin/rooms'],
-        'academic-years'       => ['label' => 'Academic Years',  'icon' => 'event',          'url' => 'admin/academic-years'],
-        'grading-scales'       => ['label' => 'Grading Scales',  'icon' => 'grade',          'url' => 'admin/grading-scales'],
-        'academic-settings'    => ['label' => 'Scheduling Rules', 'icon' => 'tune',          'url' => 'admin/academic-settings'],
-        'roles'                => ['label' => 'Roles',           'icon' => 'admin_panel_settings', 'url' => 'admin/roles'],
-        'audit-logs'           => ['label' => 'Audit Logs',      'icon' => 'history',        'url' => 'admin/audit-logs'],
-        'academic-health'      => ['label' => 'Academic Health', 'icon' => 'health_and_safety', 'url' => 'admin/academic-health'],
+        'rooms'                => ['label' => 'Facilities',      'icon' => 'meeting_room',   'url' => 'admin/rooms', 'help' => [
+            'title' => 'Facilities',
+            'text'  => "The rooms available for scheduling classes into — what chairpersons pick from when plotting a section's meeting times.",
+        ]],
+        'academic-years'       => ['label' => 'Academic Years',  'icon' => 'event',          'url' => 'admin/academic-years', 'help' => [
+            'title' => 'Academic Years',
+            'text'  => "Set the active academic year/term and the enrollment, grading, and enlistment windows that gate what students and faculty can do across the whole system.",
+        ]],
+        'grading-scales'       => ['label' => 'Grading Scales',  'icon' => 'grade',          'url' => 'admin/grading-scales', 'help' => [
+            'title' => 'Grading Scales',
+            'text'  => "Define the grade values (e.g. 1.00–5.00, or letter grades) and which ones count as passing — what faculty pick from when entering a grade.",
+        ]],
+        'academic-settings'    => ['label' => 'Scheduling Rules', 'icon' => 'tune',          'url' => 'admin/academic-settings', 'help' => [
+            'title' => 'Scheduling Rules',
+            'text'  => "System-wide scheduling limits, like the maximum teaching load per faculty member — read by the plotting and swap-approval flows so a chairperson can't exceed them.",
+        ]],
+        'roles'                => ['label' => 'Roles',           'icon' => 'admin_panel_settings', 'url' => 'admin/roles', 'help' => [
+            'title' => 'Roles',
+            'text'  => "The permission groups (admin, registrar, dean, chairperson, faculty, finance, student) and what each one can access.",
+        ]],
+        'audit-logs'           => ['label' => 'Audit Logs',      'icon' => 'history',        'url' => 'admin/audit-logs', 'help' => [
+            'title' => 'Audit Logs',
+            'text'  => "A searchable trail of sensitive actions across the system — grade changes, status changes, overrides — with who did it, when, and why.",
+        ]],
+        'academic-health'      => ['label' => 'Academic Health', 'icon' => 'health_and_safety', 'url' => 'admin/academic-health', 'help' => [
+            'title' => 'Academic Health',
+            'text'  => "System-wide data-integrity checks — students missing a curriculum, programs with no tuition rate set, and similar gaps worth fixing before they cause problems downstream.",
+        ]],
     ],
 ];
+
 $active        = $activeAdmin ?? '';
 $brandSub      = $brandSub ?? 'Admin Console';
 $username      = $userName ?? (auth()->user()->username ?? 'Administrator');
@@ -193,6 +248,35 @@ $notifRole = service('request')->getUri()->getSegment(1) ?: 'admin';
 $mustChangePassword = auth()->loggedIn()
     ? (bool) (db_connect()->table('users')->select('must_change_password')->where('id', auth()->id())->get()->getRowArray()['must_change_password'] ?? 0)
     : false;
+
+// The "?" help button's content: looked up from the current page's own
+// $navGroups entry (every portal's nav array — see the default below,
+// Finance/Registrar/DeanPortal::shell(), chairperson/_nav.php — can carry
+// an optional 'help' => ['title' => ..., 'text' => ...] on each item) so
+// it's specific to whatever page you're actually on, instead of one fixed
+// blurb everywhere. Falls back to a role-aware generic when a page hasn't
+// defined one yet.
+$pageHelp = null;
+foreach ($navGroups as $navItems) {
+    if (isset($navItems[$active]['help'])) {
+        $pageHelp = $navItems[$active]['help'];
+        break;
+    }
+}
+// Profile is in no sidebar — every portal reaches it from the account menu
+// in the top-right — so there is no nav entry to carry its help text, and
+// all six portals' profile pages are the same kind of page. One shared entry
+// covers them rather than six copies of the same paragraph.
+if ($pageHelp === null && $active === 'profile') {
+    $pageHelp = [
+        'title' => 'Profile',
+        'text'  => "Your account details: display name, email, and password. You reach this page from the account menu in the top-right corner, not the sidebar.\n\nA password change applies from your next sign-in. For a role change or a correction to your official record, contact your institution's administrator — those aren't self-service here.",
+    ];
+}
+$pageHelp ??= [
+    'title' => 'Using the ' . $brandSub,
+    'text'  => "Use the sidebar to move between the {$brandSub}'s tools. On smaller screens, open it with the menu button.\n\nFind a page searches the navigation available to your role.\n\nFor account access or record corrections, contact your institution's administrator.",
+];
 ?>
 
 <button class="ac-nav-backdrop" type="button" aria-label="Close navigation" hidden></button>
@@ -255,6 +339,7 @@ $mustChangePassword = auth()->loggedIn()
                 <button type="button" class="ac-topbar__iconbtn" title="Help" aria-label="Help" id="acHelpBtn">
                     <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
                 </button>
+                <script type="application/json" id="acHelpConfig"><?= json_encode($pageHelp, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
             </div>
 
             <?= $this->renderSection('headerActions') ?>

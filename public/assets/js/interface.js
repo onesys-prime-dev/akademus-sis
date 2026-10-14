@@ -125,7 +125,12 @@
         });
     };
     document.getElementById('acHelpBtn')?.addEventListener('click', () => {
-        window.acConfirm('Use the navigation to move between your campus services. On smaller screens, open it with the menu button.\n\nFind a page searches the navigation available to your role. Use Tab to move between controls and Escape to close a dialog.\n\nFor account access or record corrections, contact your institution’s administrator.', {title: 'Using Akademus', cancelLabel: 'Close', confirmLabel: 'Got it'});
+        const configEl = document.getElementById('acHelpConfig');
+        let help = null;
+        try { help = configEl ? JSON.parse(configEl.textContent) : null; } catch (e) { help = null; }
+        const title = help?.title || 'Using Akademus';
+        const text = help?.text || 'Use the navigation to move between your campus services. On smaller screens, open it with the menu button.\n\nFind a page searches the navigation available to your role. Use Tab to move between controls and Escape to close a dialog.\n\nFor account access or record corrections, contact your institution’s administrator.';
+        window.acConfirm(text, {title, cancelLabel: 'Close', confirmLabel: 'Got it'});
     });
 
     // Explicit data attributes replace native confirm without evaluating strings.

@@ -4,10 +4,22 @@
 $activeAdmin = 'schedule'; $pageTitle = 'My Schedule'; $brandSub = 'Faculty Portal';
 $userName = $user['name']; $userRoleLabel = $user['role'];
 $navGroups = ['' => [
-    'dashboard' => ['label' => 'Dashboard', 'icon' => 'dashboard', 'url' => 'faculty/dashboard'],
-    'schedule' => ['label' => 'Schedule', 'icon' => 'calendar_month', 'url' => 'faculty/schedule'],
-    'availability' => ['label' => 'Availability', 'icon' => 'event_available', 'url' => 'faculty/availability'],
-    'grading' => ['label' => 'Grading', 'icon' => 'grade', 'url' => 'faculty/grading'],
+    'dashboard' => ['label' => 'Dashboard', 'icon' => 'dashboard', 'url' => 'faculty/dashboard', 'help' => [
+        'title' => 'Teaching Loads',
+        'text'  => "Your assigned classes and units for the term, plus any loads still unassigned that you could pick up. Offer or request a swap with a colleague here — it only transfers once your chairperson approves it.",
+    ]],
+    'schedule' => ['label' => 'Schedule', 'icon' => 'calendar_month', 'url' => 'faculty/schedule', 'help' => [
+        'title' => 'My Schedule',
+        'text'  => "Your weekly teaching schedule — days, times, rooms, and sections for everything you're currently assigned.",
+    ]],
+    'availability' => ['label' => 'Availability', 'icon' => 'event_available', 'url' => 'faculty/availability', 'help' => [
+        'title' => 'Availability',
+        'text'  => "Set the times you're available to teach — what your chairperson sees when assigning you to a class while plotting the schedule.",
+    ]],
+    'grading' => ['label' => 'Grading', 'icon' => 'grade', 'url' => 'faculty/grading', 'help' => [
+        'title' => 'Grading',
+        'text'  => "Enter and submit grades for your classes. Once submitted, a class moves into the chair → dean → registrar approval chain and you can no longer edit it directly — use Correction Requests for that.",
+    ]],
 ]];
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
 
