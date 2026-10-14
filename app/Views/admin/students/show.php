@@ -414,6 +414,50 @@
         <?php endforeach ?>
         </tbody>
     </table>
+
+    <?php if (auth()->user()->can('documents.issue')): ?>
+    <div style="padding:16px 24px; border-top:1px solid var(--color-border, #e5e7eb);">
+        <h4 style="margin:0 0 8px; font-size:14px;">Certificate of Registration</h4>
+        <?php if ($corEligible): ?>
+            <form method="post" action="<?= site_url('registrar/documents/generate') ?>">
+                <?= csrf_field() ?>
+                <input type="hidden" name="student_id" value="<?= (int) $s['student_id'] ?>">
+                <input type="hidden" name="document_type" value="cor">
+                <button type="submit" class="ac-btn ac-btn-primary" data-confirm="Generate and release a COR for this student?">Generate COR</button>
+            </form>
+        <?php else: ?>
+            <p class="ac-muted" style="margin:0;"><?= esc($corReason) ?></p>
+        <?php endif ?>
+
+        <h4 style="margin:16px 0 8px; font-size:14px;">Certificate of Enrollment</h4>
+        <?php if ($coeEligible): ?>
+            <form method="post" action="<?= site_url('registrar/documents/generate') ?>">
+                <?= csrf_field() ?>
+                <input type="hidden" name="student_id" value="<?= (int) $s['student_id'] ?>">
+                <input type="hidden" name="document_type" value="certificate_enrollment">
+                <button type="submit" class="ac-btn ac-btn-primary" data-confirm="Generate and release a COE for this student?">Generate COE</button>
+            </form>
+        <?php else: ?>
+            <p class="ac-muted" style="margin:0;"><?= esc($coeReason) ?></p>
+        <?php endif ?>
+
+        <?php if (! empty($recentDocuments)): ?>
+            <h4 style="margin:16px 0 8px; font-size:13px;">Issued Documents</h4>
+            <table class="ac-table">
+                <thead><tr><th>Document</th><th>Issued</th><th></th></tr></thead>
+                <tbody>
+                    <?php foreach ($recentDocuments as $doc): ?>
+                        <tr>
+                            <td><?= esc(\App\Models\DocumentRequestModel::TYPE_LABELS[$doc['document_type']] ?? $doc['document_type']) ?></td>
+                            <td><?= esc(date('M j, Y', strtotime($doc['generated_at']))) ?></td>
+                            <td><a href="<?= site_url('registrar/documents/download/' . $doc['id']) ?>" class="ac-btn-outline">Download</a></td>
+                        </tr>
+                    <?php endforeach ?>
+                </tbody>
+            </table>
+        <?php endif ?>
+    </div>
+    <?php endif ?>
 </div>
 
 <?= $this->endSection() ?>

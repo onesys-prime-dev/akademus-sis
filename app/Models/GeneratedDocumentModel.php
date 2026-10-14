@@ -58,6 +58,12 @@ class GeneratedDocumentModel extends Model
                 if (! $eligibility['ok']) {
                     return $eligibility;
                 }
+            } elseif ($type === 'certificate_enrollment') {
+                $eligibility = $this->coeEligibility((int) $student['user_id']);
+
+                if (! $eligibility['ok']) {
+                    return $eligibility;
+                }
             } elseif ($assessment !== null && (float) $assessment['balance'] > 0) {
                 return ['ok' => false, 'error' => 'This student has an outstanding balance for the current term. Settle it with the Finance office before releasing this document.'];
             }
@@ -209,6 +215,30 @@ class GeneratedDocumentModel extends Model
     }
 
     /**
+     * A Certificate of Enrollment is looser still than COR: it only
+     * certifies enrollment status, not payment, so being officially
+     * enrolled for the active term is the whole rule — a balance, even an
+     * unpaid one, never blocks it (only an active hold, checked by the
+     * caller, does). Shared by generate()'s gate AND StudentDocuments::
+     * index()'s eligibility display.
+     *
+     * @return array{ok: bool, error?: string}
+     */
+    public function coeEligibility(int $userId): array
+    {
+        $activeYear = (new AcademicYearModel())->activeFormatted();
+
+        $enrolledNow = $activeYear !== null
+            && array_filter((new EnrollmentModel())->activeForStudent($userId), static fn (array $e) => $e['academic_year'] === $activeYear) !== [];
+
+        if (! $enrolledNow) {
+            return ['ok' => false, 'error' => 'This student is not currently enrolled for the active term.'];
+        }
+
+        return ['ok' => true];
+    }
+
+    /**
      * The student's enrolled subjects for $academicYear, enriched with
      * units/title from the subjects catalog — what cor_pdf's subjects table
      * needs. Separate from EnrollmentModel::activeForStudent() (used for
@@ -218,12 +248,16 @@ class GeneratedDocumentModel extends Model
     private function corEnrollments(int $userId, string $academicYear): array
     {
         return $this->db->table('enrollments e')
-            ->select('e.subject_code, sec.program, sec.year_level, sec.section, sub.subject_name, sub.units')
+            ->select("e.subject_code, sec.program, sec.year_level, sec.section, sub.subject_name, sub.units,
+                      GROUP_CONCAT(DISTINCT p.prof SEPARATOR ', ') AS prof,
+                      GROUP_CONCAT(DISTINCT p.room SEPARATOR ', ') AS room")
             ->join('sections sec', 'sec.section_id = e.section_id')
             ->join('subjects sub', 'sub.subject_code = e.subject_code', 'left')
+            ->join('plotted_schedules p', 'p.academic_year = sec.academic_year AND p.program = sec.program AND p.year_level = sec.year_level AND p.section = sec.section AND p.subject_code = e.subject_code', 'left')
             ->where('e.user_id', $userId)
             ->where('e.status', 'enrolled')
             ->where('sec.academic_year', $academicYear)
+            ->groupBy('e.subject_code, sec.program, sec.year_level, sec.section, sub.subject_name, sub.units')
             ->orderBy('e.subject_code')
             ->get()
             ->getResultArray();

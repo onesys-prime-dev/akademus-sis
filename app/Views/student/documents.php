@@ -52,6 +52,21 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     <?php endif ?>
 </div>
 
+<div class="ac-card" style="margin-bottom:20px; max-width:520px;">
+    <div class="ac-dept-name">Certificate of Enrollment</div>
+    <p style="font-size:12.5px; color:var(--color-text-secondary);">Available once you're officially enrolled for the current term — an outstanding balance does not block this one.</p>
+
+    <?php if ($coeEligible): ?>
+        <form method="post" action="<?= site_url('student/documents/request-coe') ?>" style="display:grid; gap:8px; margin-top:10px;">
+            <?= csrf_field() ?>
+            <input type="text" name="purpose" class="ac-input" placeholder="Purpose (optional)">
+            <button type="submit" class="ac-btn ac-btn-primary">Request COE</button>
+        </form>
+    <?php else: ?>
+        <div class="ac-empty-block" style="margin-top:10px;"><?= esc($coeReason) ?></div>
+    <?php endif ?>
+</div>
+
 <div class="ac-card" style="margin-bottom:20px;">
     <div class="ac-dept-name">My Requests</div>
     <?php if ($requests === []): ?>

@@ -8,6 +8,7 @@ use App\Models\AcademicYearModel;
 use App\Models\AuditLogModel;
 use App\Models\DepartmentModel;
 use App\Models\EnrollmentModel;
+use App\Models\GeneratedDocumentModel;
 use App\Models\GraduationClearanceModel;
 use App\Models\NotificationModel;
 use App\Models\ProgramModel;
@@ -98,6 +99,10 @@ class StudentRecordController extends BaseController
 
         $openClearance = (new GraduationClearanceModel())->where('student_id', (int) $id)->where('status', 'pending')->orderBy('id', 'DESC')->first();
 
+        $documents      = new GeneratedDocumentModel();
+        $corEligibility = $documents->corEligibility((int) $id, (int) $student['user_id']);
+        $coeEligibility = $documents->coeEligibility((int) $student['user_id']);
+
         return view('admin/students/show', [
             'pageTitle'     => $student['first_name'] . ' ' . $student['last_name'] . ' — Student Record',
             'student'       => $student,
@@ -105,6 +110,11 @@ class StudentRecordController extends BaseController
             'classOptions'  => $classOptions,
             'activeYear'    => $activeYear,
             'clearanceCase' => $openClearance,
+            'corEligible'   => $corEligibility['ok'],
+            'corReason'     => $corEligibility['error'] ?? null,
+            'coeEligible'   => $coeEligibility['ok'],
+            'coeReason'     => $coeEligibility['error'] ?? null,
+            'recentDocuments' => $documents->forStudent((int) $id),
         ] + $this->shell());
     }
 

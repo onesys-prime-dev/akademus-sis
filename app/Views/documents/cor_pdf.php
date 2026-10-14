@@ -44,11 +44,11 @@
 
     <table class="subjects">
         <thead>
-            <tr><th>Subject</th><th>Title</th><th>Units</th><th>Year/Section</th></tr>
+            <tr><th>Subject</th><th>Title</th><th>Units</th><th>Year/Section</th><th>Professor</th><th>Room</th></tr>
         </thead>
         <tbody>
             <?php if (empty($enrollments)): ?>
-                <tr><td colspan="4" style="text-align:center;">No enrolled subjects on record for this term.</td></tr>
+                <tr><td colspan="6" style="text-align:center;">No enrolled subjects on record for this term.</td></tr>
             <?php endif ?>
             <?php $totalUnits = 0; ?>
             <?php foreach ($enrollments as $e): ?>
@@ -58,10 +58,12 @@
                     <td><?= esc($e['subject_name'] ?? '—') ?></td>
                     <td><?= esc($e['units'] ?? '—') ?></td>
                     <td><?= esc($e['year_level']) ?> &middot; <?= esc($e['section']) ?></td>
+                    <td><?= esc($e['prof'] ?? '—') ?></td>
+                    <td><?= esc($e['room'] ?? '—') ?></td>
                 </tr>
             <?php endforeach ?>
             <?php if (! empty($enrollments)): ?>
-                <tr><td colspan="2" style="text-align:right;"><b>Total Units:</b></td><td colspan="2"><b><?= esc((string) $totalUnits) ?></b></td></tr>
+                <tr><td colspan="2" style="text-align:right;"><b>Total Units:</b></td><td colspan="4"><b><?= esc((string) $totalUnits) ?></b></td></tr>
             <?php endif ?>
         </tbody>
     </table>
