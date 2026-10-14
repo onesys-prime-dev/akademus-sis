@@ -290,13 +290,23 @@
 .ga-metric-bar { height:5px; border-radius:var(--radius-pill); background:var(--color-surface-sunken); }
 .ga-metric-bar > span { background:var(--color-success); border-radius:var(--radius-pill); }
 
-.ga-queue-card { border-top:1px solid var(--color-border); border-radius:var(--radius-lg); box-shadow:var(--shadow-xs); }
-.ga-tabs { gap:4px; padding:10px; background:var(--color-surface-sunken); border-bottom:0; }
-.ga-tabs button { min-height:42px; margin:0; padding:10px 16px; border-bottom:0; border-radius:var(--radius-md); font-size:12.5px; font-weight:600; color:var(--color-text-secondary); }
-.ga-tabs button:hover { background:var(--color-surface); color:var(--color-primary); }
-.ga-tabs button[aria-selected=true] { background:var(--color-surface); color:var(--color-primary); box-shadow:var(--shadow-xs); }
+.ga-queue-card { border-top:1px solid var(--color-border); border-radius:var(--radius-lg); box-shadow:var(--shadow-xs); overflow:hidden; }
+.ga-tabs { position:relative; gap:4px; padding:10px; background:var(--color-surface-sunken); border-bottom:0; }
+.ga-tabs button { position:relative; min-height:42px; margin:0; padding:10px 16px; border-bottom:0; border-radius:var(--radius-md); font-size:12.5px; font-weight:600; color:var(--color-text-secondary); background:transparent; transition:color .18s cubic-bezier(.4,0,.2,1); z-index:1; }
+.ga-tabs button:hover { color:var(--color-primary); }
+.ga-tabs button[aria-selected=true] { color:var(--color-primary); }
 .ga-tabs button[aria-selected=true] .ga-count { background:var(--color-primary-soft); color:var(--color-primary); }
-.ga-count { font-size:10px; font-weight:700; }
+.ga-count { font-size:10px; font-weight:700; transition:background-color .18s ease, color .18s ease; }
+
+/* Sliding active-tab pill — a single element JS moves under the selected
+   tab, instead of a background-color swap, so switching reads as motion. */
+.ga-tabs-indicator { position:absolute; top:10px; left:0; height:42px; border-radius:var(--radius-md); background:var(--color-surface); box-shadow:var(--shadow-xs); transition:transform .28s cubic-bezier(.65,0,.35,1), width .28s cubic-bezier(.65,0,.35,1); z-index:0; }
+
+/* Panel crossfade — [hidden] can't transition (display:none kills it), so
+   JS toggles these classes for one frame around the hidden flip instead. */
+[role=tabpanel] { opacity:1; transform:translateY(0); transition:opacity .22s cubic-bezier(.4,0,.2,1), transform .22s cubic-bezier(.4,0,.2,1); }
+[role=tabpanel].ga-panel-enter { opacity:0; transform:translateY(6px); }
+[role=tabpanel].ga-panel-leave { opacity:0; transform:translateY(-4px); }
 
 .ga-toolbar { padding:20px 24px 16px; }
 .ga-toolbar h2 { font-size:15px; font-weight:700; color:var(--color-text-primary); }

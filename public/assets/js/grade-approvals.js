@@ -5,13 +5,75 @@
     if (!root || !$('gaTabs')) return;
     const config = JSON.parse($('gaConfig').textContent);
     const tabs = [...root.querySelectorAll('[data-tab]')];
+    const prefersReducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Sliding pill behind the active tab — created once, repositioned on
+    // every activate() rather than toggling a background color per button.
+    const tabsBar = $('gaTabs');
+    const indicator = document.createElement('div');
+    indicator.className = 'ga-tabs-indicator';
+    indicator.setAttribute('aria-hidden', 'true');
+    tabsBar.insertBefore(indicator, tabsBar.firstChild);
+    function moveIndicatorTo(tab) {
+        // tab.offsetLeft is already relative to .ga-tabs's own padding box
+        // (its nearest positioned ancestor, since .ga-tabs is position:relative
+        // and the indicator shares that same reference frame) — no further
+        // offset math needed.
+        indicator.style.width = `${tab.offsetWidth}px`;
+        indicator.style.transform = `translateX(${tab.offsetLeft}px)`;
+    }
+
+    let currentPanel = null;
+    let isFirstActivate = true;
     function activate(tab, updateUrl = true) {
         tabs.forEach(button => {
             const active = button === tab;
             button.setAttribute('aria-selected', String(active)); button.tabIndex = active ? 0 : -1;
-            $(button.dataset.tab).hidden = !active;
         });
+        moveIndicatorTo(tab);
         if (updateUrl) history.replaceState(null, '', `#${tab.dataset.tab}`);
+
+        const nextPanel = $(tab.dataset.tab);
+        if (nextPanel === currentPanel) return;
+        const prevPanel = currentPanel;
+        currentPanel = nextPanel;
+
+        // The very first call just confirms the server-rendered hidden
+        // state (one panel already shown, the rest already [hidden]) — no
+        // real visual change happens, so animating it would be a flicker,
+        // not a transition.
+        if (isFirstActivate) {
+            isFirstActivate = false;
+            nextPanel.hidden = false;
+            return;
+        }
+
+        if (prefersReducedMotion) {
+            if (prevPanel) prevPanel.hidden = true;
+            nextPanel.hidden = false;
+            return;
+        }
+
+        const swapIn = () => {
+            nextPanel.hidden = false;
+            nextPanel.classList.add('ga-panel-enter');
+            // Force layout so the browser registers the pre-transition state
+            // before the class removal starts animating it — otherwise the
+            // two style changes coalesce into one frame and nothing moves.
+            void nextPanel.offsetWidth;
+            nextPanel.classList.remove('ga-panel-enter');
+            nextPanel.addEventListener('transitionend', () => nextPanel.classList.remove('ga-panel-enter'), { once: true });
+        };
+
+        if (prevPanel) {
+            prevPanel.classList.add('ga-panel-leave');
+            const finishLeave = () => { prevPanel.hidden = true; prevPanel.classList.remove('ga-panel-leave'); };
+            prevPanel.addEventListener('transitionend', finishLeave, { once: true });
+            setTimeout(finishLeave, 260); // fallback if transitionend never fires
+            setTimeout(swapIn, 90); // slight overlap reads as one motion, not two
+        } else {
+            swapIn();
+        }
     }
     tabs.forEach((tab, index) => {
         const panel = $(tab.dataset.tab);
@@ -22,6 +84,7 @@
             if (target !== null) { event.preventDefault(); activate(tabs[target]); tabs[target].focus(); }
         });
     });
+    addEventListener('resize', () => { const active = tabs.find(t => t.getAttribute('aria-selected') === 'true'); if (active) moveIndicatorTo(active); });
     function filter(panel) {
         const query = panel.querySelector('input[type=search]').value.trim().toLocaleLowerCase();
         const rows = [...panel.querySelectorAll('[data-search-row]')];
