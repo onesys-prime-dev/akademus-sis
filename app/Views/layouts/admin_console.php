@@ -74,6 +74,67 @@
 </head>
 <body class="ac-page">
 
+<div class="ac-progress-bar" id="acProgressBar" aria-hidden="true"></div>
+<script>
+    // A thin top-loading bar for full-page navigations — this app is a
+    // traditional server-rendered MPA (every sidebar/topbar link is a real
+    // <a href>, no client-side router), so there's no "old content" to keep
+    // showing while the next page loads like an SPA would have. A skeleton
+    // screen doesn't fit that model (you'd need to know the next page's
+    // layout in advance); a sweep-in progress bar gives the same "something
+    // is happening" feedback without faking content.
+    (function () {
+        var bar = document.getElementById('acProgressBar');
+        var hideTimer = null;
+
+        function start() {
+            clearTimeout(hideTimer);
+            bar.style.transition = 'none';
+            bar.style.width = '0%';
+            void bar.offsetWidth; // force reflow so the reset above actually applies before re-enabling the transition
+            bar.style.transition = '';
+            bar.classList.add('is-active');
+            requestAnimationFrame(function () { bar.style.width = '72%'; });
+        }
+
+        function finish() {
+            if (!bar.classList.contains('is-active')) return; // nothing in flight — avoid a flash on a page's own first load
+            bar.style.width = '100%';
+            hideTimer = setTimeout(function () {
+                bar.classList.remove('is-active');
+                bar.style.width = '0%';
+            }, 200);
+        }
+
+        // Fires on every normal load AND on back/forward-cache restores, so
+        // a bar left mid-animation when the user navigated away gets
+        // cleaned up correctly either way.
+        addEventListener('pageshow', finish);
+
+        document.addEventListener('click', function (event) {
+            var link = event.target.closest('a[href]');
+            if (!link || event.defaultPrevented || event.button !== 0) return;
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            if (link.target && link.target !== '_self') return;
+            if (link.hasAttribute('download')) return;
+            var href = link.getAttribute('href') || '';
+            if (href === '' || href.charAt(0) === '#' || /^(javascript|mailto|tel):/i.test(href)) return;
+            try {
+                var url = new URL(link.href, location.href);
+                if (url.origin !== location.origin) return;
+                if (url.pathname === location.pathname && url.search === location.search && url.hash) return; // pure in-page anchor jump
+            } catch (e) { return; }
+            start();
+        }, true);
+
+        document.addEventListener('submit', function (event) {
+            var form = event.target;
+            if (event.defaultPrevented || (form.target && form.target !== '_self')) return;
+            start();
+        }, true);
+    })();
+</script>
+
 <a class="ac-skip-link" href="#mainContent">Skip to content</a>
 
 <?php

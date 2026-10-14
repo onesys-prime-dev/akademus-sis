@@ -9,6 +9,19 @@ html { background: var(--color-background); }
 
 html, .ac-page { height: 100%; }
 
+.ac-progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    width: 0%;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-info));
+    opacity: 0;
+    z-index: 9999;
+    pointer-events: none;
+    transition: width .4s cubic-bezier(.4,0,.2,1), opacity .2s ease;
+}
+.ac-progress-bar.is-active { opacity: 1; }
+
 .ac-page {
     margin: 0;
     display: flex;
