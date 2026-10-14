@@ -26,16 +26,26 @@ class PlacementRequestController extends BaseController
         $userId = (int) auth()->id();
         $auth   = new SchedulingAuthorization();
 
-        $mine = (new OfferingPlacementRequestModel())
-            ->where('requested_by', $userId)
-            ->orderBy('created_at', 'DESC')
-            ->findAll();
+        // Joined so the view can show real subject/section/department names
+        // instead of raw IDs — left joins so an orphaned reference (an
+        // edge case, never expected in practice) still renders the request
+        // row instead of silently dropping it.
+        $mine = db_connect()->table('offering_placement_requests opr')
+            ->select('opr.*, s.subject_code, s.subject_name, sec.program AS section_program, sec.year_level AS section_year_level, sec.section AS section_label')
+            ->join('subjects s', 's.subject_id = opr.subject_id', 'left')
+            ->join('sections sec', 'sec.section_id = opr.section_id', 'left')
+            ->where('opr.requested_by', $userId)
+            ->orderBy('opr.created_at', 'DESC')
+            ->get()
+            ->getResultArray();
 
         $manageableSubDeptIds = $auth->authorizedSubDeptIds($userId);
 
         $toReview = $manageableSubDeptIds === [] ? [] : db_connect()->table('offering_placement_requests opr')
-            ->select('opr.*')
-            ->join('subjects s', 's.subject_id = opr.subject_id')
+            ->select('opr.*, s.subject_code, s.subject_name, sec.program AS section_program, sec.year_level AS section_year_level, sec.section AS section_label, sd.name AS requesting_dept_name')
+            ->join('subjects s', 's.subject_id = opr.subject_id', 'left')
+            ->join('sections sec', 'sec.section_id = opr.section_id', 'left')
+            ->join('sub_departments sd', 'sd.sub_dept_id = opr.requesting_sub_dept_id', 'left')
             ->whereIn('s.sub_department_id', $manageableSubDeptIds)
             ->where('opr.status', 'pending')
             ->orderBy('opr.created_at', 'ASC')

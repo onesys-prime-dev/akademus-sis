@@ -14,44 +14,63 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
 <style>
     .mc-card { padding: 0; }
-    .mc-schedule-form { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
-    .mc-schedule-form select, .mc-schedule-form input { font-size: 12px; padding: 4px 6px; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+    .mc-schedule-form { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+    .mc-schedule-form select, .mc-schedule-form input {
+        font-size: 12.5px; font-family: inherit; height: 34px; padding: 0 10px;
+        border: 1px solid var(--color-border-control); border-radius: var(--radius-md);
+        background: var(--color-surface); color: var(--color-text-primary);
+    }
+    .mc-schedule-form select:focus, .mc-schedule-form input:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+    .mc-schedule-form .btn { height: 34px; padding: 0 14px; }
 
-    .mc-card__head { padding: 20px 24px; border-bottom: 1px solid var(--color-border); }
+    .mc-card__head { display: flex; align-items: flex-start; gap: 14px; padding: 20px 24px; border-bottom: 1px solid var(--color-border); }
+    .mc-card__icon {
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        width: 40px; height: 40px; border-radius: var(--radius-md);
+        background: var(--color-primary-soft); color: var(--color-primary);
+    }
+    .mc-card__icon .material-symbols-outlined { font-size: 20px; }
     .mc-card__title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .mc-card__title-row h2 { margin: 0; font-size: 16px; font-weight: 800; color: var(--color-text-primary); }
+    .mc-card__title-row h2 { margin: 0; font-size: 15.5px; font-weight: 750; letter-spacing: -.01em; color: var(--color-text-primary); }
     .mc-card__head p { margin: 6px 0 0; font-size: 12.5px; color: var(--color-text-secondary); max-width: 640px; line-height: 1.5; }
 
     .mc-count { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--color-primary-soft); color: var(--color-primary); }
-    .mc-count--success { background: var(--color-success-soft); color: #166534; }
-    .mc-count--warn { background: var(--color-warning-soft, #fef3c7); color: var(--color-warning, #92400e); }
+    .mc-count--success { background: var(--color-success-soft); color: var(--color-success); }
+    .mc-count--warn { background: var(--color-warning-soft); color: var(--color-warning); }
+
+    .mc-plot-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 20px 24px; }
+    .mc-select { flex: 1; min-width: 260px; height: 40px; padding: 0 14px; border: 1px solid var(--color-border-control); border-radius: var(--radius-md); font-size: 13px; font-family: inherit; background: var(--color-surface); color: var(--color-text-primary); }
+    .mc-select:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
 
     .mc-row { padding: 20px 24px; border-bottom: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; transition: background-color var(--transition-fast); }
     .mc-row:last-child { border-bottom: none; }
     .mc-row:hover { background: var(--color-surface-secondary); }
     .mc-row__main { flex: 1; min-width: 280px; }
 
-    .mc-code { font-size: 15px; font-weight: 800; color: var(--color-text-primary); letter-spacing: -.01em; }
-    .mc-meta { font-size: 11.5px; color: var(--color-text-tertiary); font-weight: 600; margin: 3px 0 10px; }
+    .mc-code { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 750; color: var(--color-text-primary); letter-spacing: -.01em; }
+    .mc-code .material-symbols-outlined { font-size: 17px; color: var(--color-primary); }
+    .mc-meta { font-size: 11.5px; color: var(--color-text-tertiary); font-weight: 600; margin: 4px 0 10px; }
+    .mc-subsection-label { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--color-text-tertiary); margin: 18px 0 10px; }
 
     .mc-sections { display: flex; flex-wrap: wrap; gap: 8px; }
     .mc-sec-check { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--color-text-primary); transition: border-color var(--transition-fast), background-color var(--transition-fast); }
     .mc-sec-check:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
     .mc-sec-check input { accent-color: var(--color-primary); width: 15px; height: 15px; flex: none; }
 
-    .mc-cap-pill { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--color-surface-sunken); color: var(--color-text-secondary); white-space: nowrap; }
+    .mc-cap-pill { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: var(--radius-pill); background: var(--color-surface-sunken); color: var(--color-text-secondary); white-space: nowrap; }
 
     .mc-row__actions { display: flex; align-items: center; gap: 10px; }
-    .mc-row__actions input[type="number"] { width: 130px; padding: 9px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 13px; font-family: inherit; color: var(--color-text-primary); }
+    .mc-row__actions input[type="number"] { width: 130px; height: 38px; padding: 0 12px; border: 1px solid var(--color-border-control); border-radius: var(--radius-md); font-size: 13px; font-family: inherit; color: var(--color-text-primary); }
     .mc-row__actions input[type="number"]:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
 
     .mc-merged { padding: 20px 24px; }
-    .mc-merged-card { border: 1px solid var(--color-primary-soft); background: var(--color-surface); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 16px; }
+    .mc-merged-card { border: 1px solid var(--color-border); background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); padding: 18px 20px; margin-bottom: 16px; }
     .mc-merged-card:last-child { margin-bottom: 0; }
     .mc-merged-card__top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
-    .mc-merged-card__title { font-size: 14.5px; font-weight: 800; color: var(--color-text-primary); }
+    .mc-merged-card__title { display: inline-flex; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 750; color: var(--color-text-primary); }
+    .mc-merged-card__title .material-symbols-outlined { font-size: 18px; color: var(--color-primary); }
 
-    .mc-active-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--color-success-soft); color: #166534; }
+    .mc-active-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--color-success-soft); color: var(--color-success); }
     .mc-active-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); }
 
     .mc-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
@@ -68,9 +87,14 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     .mc-fill { height: 100%; background: var(--color-primary); border-radius: var(--radius-pill); }
     .mc-fill.is-over { background: var(--color-danger); }
 
+    .mc-components { margin-top: 16px; border-top: 1px dashed var(--color-border); padding-top: 14px; }
+    .mc-component-card { border: 1px solid var(--color-border); background: var(--color-surface-sunken); border-radius: var(--radius-md); padding: 16px 18px; margin-bottom: 10px; }
+    .mc-component-card:last-child { margin-bottom: 0; }
+
     @media (max-width: 640px) {
         .mc-row { flex-direction: column; align-items: stretch; }
         .mc-row__actions { justify-content: space-between; }
+        .mc-plot-row { flex-direction: column; align-items: stretch; }
     }
 </style>
 <?= $this->endSection() ?>
@@ -80,7 +104,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <div class="ac-page-header">
     <div>
         <h2 class="ac-page-header__title">Merged Classes</h2>
-        <p class="ac-page-header__sub">Combine the same subject across sections into one shared roster and capacity.</p>
+        <p class="ac-page-header__sub">When two or more of your own sections need the same subject, combine them into one shared class instead of running separate small sections — one roster, one capacity, one schedule to plot.</p>
     </div>
 </div>
 
@@ -97,11 +121,14 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
     <div class="panel mc-card">
         <div class="mc-card__head">
-            <div class="mc-card__title-row">
-                <h2>Needs Plotting</h2>
-                <span class="mc-count <?= count($needsPlotting) ? 'mc-count--warn' : '' ?>"><?= count($needsPlotting) ?> Waiting</span>
+            <span class="mc-card__icon"><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span></span>
+            <div>
+                <div class="mc-card__title-row">
+                    <h2>Needs Plotting</h2>
+                    <span class="mc-count <?= count($needsPlotting) ? 'mc-count--warn' : '' ?>"><?= count($needsPlotting) ?> Waiting</span>
+                </div>
+                <p>Classes from any department that require one of your subjects, with no offering yet — live demand, computed from current sectioning and enrollment. Pick one to create its offering and start plotting it with your own faculty.</p>
             </div>
-            <p>Classes from any department that require one of your subjects, with no offering yet — live demand, computed from current sectioning and enrollment. Pick one to create its offering and start plotting it with your own faculty.</p>
         </div>
 
         <?php if (empty($needsPlotting)): ?>
@@ -110,29 +137,30 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <p>Nothing is waiting — every class that needs one of your subjects already has an offering.</p>
             </div>
         <?php else: ?>
-            <div class="mc-row" style="flex-direction:column; align-items:stretch; gap:14px;">
-                <div class="mc-schedule-form" style="gap:10px;">
-                    <select id="needsPlottingSelect" style="flex:1; min-width:260px; padding:9px 12px; border:1px solid var(--color-border); border-radius:var(--radius-md); font-size:13px;">
-                        <?php foreach ($needsPlotting as $i => $np): ?>
-                            <option value="<?= $i ?>"><?= esc($np['subject_code']) ?> — <?= esc($np['section_label']) ?> (<?= esc($np['expected_count']) ?> student<?= $np['expected_count'] === 1 ? '' : 's' ?>)</option>
-                        <?php endforeach ?>
-                    </select>
-                    <button type="button" class="btn btn-primary" onclick="plotDemand()">
-                        <span class="material-symbols-outlined" style="font-size:18px;">add_task</span>
-                        Create &amp; Plot
-                    </button>
-                </div>
+            <div class="mc-plot-row">
+                <select id="needsPlottingSelect" class="mc-select">
+                    <?php foreach ($needsPlotting as $i => $np): ?>
+                        <option value="<?= $i ?>"><?= esc($np['subject_code']) ?> — <?= esc($np['section_label']) ?> (<?= esc($np['expected_count']) ?> student<?= $np['expected_count'] === 1 ? '' : 's' ?>)</option>
+                    <?php endforeach ?>
+                </select>
+                <button type="button" class="btn btn-primary" onclick="plotDemand()">
+                    <span class="material-symbols-outlined" style="font-size:18px;">add_task</span>
+                    Create &amp; Plot
+                </button>
             </div>
         <?php endif ?>
     </div>
 
     <div class="panel mc-card">
         <div class="mc-card__head">
-            <div class="mc-card__title-row">
-                <h2>Mergeable Subjects</h2>
-                <span class="mc-count"><?= count($candidates) ?> Available</span>
+            <span class="mc-card__icon"><span class="material-symbols-outlined" aria-hidden="true">call_merge</span></span>
+            <div>
+                <div class="mc-card__title-row">
+                    <h2>Mergeable Subjects</h2>
+                    <span class="mc-count"><?= count($candidates) ?> Available</span>
+                </div>
+                <p>A subject plotted for two or more of your sections in the same term. Merging combines their rosters into one class with one shared capacity — neither section's other subjects are affected.</p>
             </div>
-            <p>A subject plotted for two or more of your sections in the same term. Merging combines their rosters into one class with one shared capacity — neither section's other subjects are affected.</p>
         </div>
 
         <?php if (empty($candidates)): ?>
@@ -144,7 +172,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             <?php foreach ($candidates as $i => $c): ?>
                 <article class="mc-row">
                     <div class="mc-row__main">
-                        <span class="mc-code"><?= esc($c['subject_code']) ?></span>
+                        <span class="mc-code"><span class="material-symbols-outlined" aria-hidden="true">subject</span><?= esc($c['subject_code']) ?></span>
                         <div class="mc-meta"><?= esc($c['academic_year']) ?></div>
                         <div class="mc-sections">
                             <?php foreach ($c['sections'] as $s): ?>
@@ -170,11 +198,14 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
     <div class="panel mc-card">
         <div class="mc-card__head">
-            <div class="mc-card__title-row">
-                <h2>Merged Classes</h2>
-                <span class="mc-count mc-count--success"><?= count($offerings) ?> Active</span>
+            <span class="mc-card__icon"><span class="material-symbols-outlined" aria-hidden="true">dynamic_feed</span></span>
+            <div>
+                <div class="mc-card__title-row">
+                    <h2>Merged Classes</h2>
+                    <span class="mc-count mc-count--success"><?= count($offerings) ?> Active</span>
+                </div>
+                <p>Each card is one combined class instance. Removing a section returns its students to being counted against that section's own capacity — no one is dropped from the roster.</p>
             </div>
-            <p>Each card is one combined class instance. Removing a section returns its students to being counted against that section's own capacity — no one is dropped from the roster.</p>
         </div>
 
         <?php if (empty($offerings)): ?>
@@ -191,7 +222,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     ?>
                     <div class="mc-merged-card">
                         <div class="mc-merged-card__top">
-                            <span class="mc-merged-card__title"><?= esc($o['subject_code']) ?></span>
+                            <span class="mc-merged-card__title"><span class="material-symbols-outlined" aria-hidden="true">subject</span><?= esc($o['subject_code']) ?></span>
                             <span class="mc-active-badge"><span class="mc-active-dot"></span> Active Merged</span>
                             <span class="mc-meta" style="margin:0;"><?= esc($o['academic_year']) ?></span>
                             <?php if (! $o['can_manage']): ?>
@@ -225,7 +256,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                         <?php endif ?>
 
                         <div class="mc-schedule">
-                            <div class="mc-meta" style="margin:10px 0 6px;">Schedule — one class time for every attached section</div>
+                            <div class="mc-subsection-label">Schedule — one class time for every attached section</div>
                             <?php if (empty($o['meetings'])): ?>
                                 <div class="mc-meta">No meeting plotted yet.</div>
                             <?php else: ?>
@@ -259,8 +290,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                         </div>
 
                         <?php if (! empty($o['components'])): ?>
-                            <div class="mc-components" style="margin-top:14px; border-top:1px dashed var(--color-border); padding-top:12px;">
-                                <div class="mc-meta" style="margin-bottom:8px;">
+                            <div class="mc-components">
+                                <div class="mc-subsection-label" style="margin-top:0; display:flex; align-items:center; gap:8px;">
                                     Components
                                     <?php if ($o['completeness'] !== null): ?>
                                         <span class="mc-cap-pill" style="<?= $o['completeness']['complete'] ? '' : 'background:var(--color-danger-soft); color:var(--color-danger);' ?>">
@@ -269,7 +300,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                     <?php endif ?>
                                 </div>
                                 <?php foreach ($o['components'] as $c): ?>
-                                    <div class="mc-merged-card" style="background:var(--color-surface-sunken); margin-bottom:10px;">
+                                    <div class="mc-component-card">
                                         <div class="mc-merged-card__top">
                                             <span class="mc-merged-card__title" style="font-size:13px;"><?= esc($c['name'] ?: ('Component #' . $c['id'])) ?></span>
                                             <span class="mc-cap-pill"><?= $c['is_required'] ? 'Required' : 'Optional' ?> · <?= esc($c['roster_mode']) ?></span>
