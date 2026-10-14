@@ -8,6 +8,23 @@
 .ga-heading p { margin:0; font-size:13px; color:var(--ga-muted); line-height:1.6; }
 .ga-department { display:flex; align-items:center; gap:8px; font-size:11px; color:#61728b; }
 .ga-department .material-symbols-outlined { color:#8b9bb1; }
+
+.ga-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-bottom:22px; }
+.ga-metric { border:1px solid var(--ga-line); border-radius:var(--radius-lg); background:#fff; box-shadow:var(--shadow-xs); padding:16px 18px; display:flex; flex-direction:column; gap:10px; }
+.ga-metric-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.ga-metric-label { font-size:10.5px; font-weight:650; letter-spacing:.04em; text-transform:uppercase; color:#7d8ba0; }
+.ga-metric-icon { display:grid; place-items:center; width:30px; height:30px; border-radius:8px; background:#eef3fb; color:#345c93; }
+.ga-metric-icon .material-symbols-outlined { font-size:17px; }
+.ga-metric-icon.warn { background:#fdf1ea; color:#b0632f; }
+.ga-metric-icon.good { background:#edf6f1; color:#3c7a58; }
+.ga-metric-value { display:flex; align-items:baseline; gap:6px; }
+.ga-metric-value strong { font-size:26px; font-weight:700; letter-spacing:-.5px; line-height:1; color:var(--ga-ink); }
+.ga-metric-value span { font-size:11px; color:var(--ga-muted); }
+.ga-metric-sub { font-size:11px; color:var(--ga-muted); line-height:1.5; }
+.ga-metric-sub.urgent { color:#b0463f; font-weight:600; }
+.ga-metric-bar { width:100%; height:5px; border-radius:99px; background:#eef1f6; overflow:hidden; }
+.ga-metric-bar > span { display:block; height:100%; background:#345c93; border-radius:99px; }
+
 .ga-card { border:1px solid var(--ga-line); border-radius:var(--radius-lg); background:#fff; overflow:hidden; box-shadow:var(--shadow-xs); }
 .ga-tabs { display:flex; gap:28px; padding:0 26px; border-bottom:1px solid var(--ga-line); }
 .ga-tabs button { display:flex; align-items:center; gap:9px; padding:20px 0 17px; background:none; border:0; border-bottom:2px solid transparent; margin-bottom:-1px; font-size:12px; font-weight:550; color:var(--ga-muted); cursor:pointer; }
@@ -36,7 +53,12 @@
 .ga-number { font-variant-numeric:tabular-nums; font-weight:550; }
 .ga-status { display:inline-flex; align-items:center; gap:6px; border-radius:5px; padding:4px 7px; background:#f7f3eb; color:#8a714a; font-size:10px; white-space:nowrap; font-weight:500; }
 .ga-status::before { content:''; width:4px; height:4px; border-radius:50%; background:currentColor; }
-.ga-status.locked { color:#427762; background:#edf6f1; }
+.ga-status.locked { color:var(--color-success); background:var(--color-success-soft); }
+.ga-status.approved { color:var(--color-info); background:var(--color-info-soft); }
+.ga-table tr[data-status] { border-left:3px solid transparent; }
+.ga-table tr[data-status="noted"] { border-left-color:var(--color-warning); }
+.ga-table tr[data-status="approved"] { border-left-color:var(--color-info); }
+.ga-table tr[data-status="locked"] { border-left-color:var(--color-success); }
 .ga-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:9px 13px; min-height:36px; border:1px solid #dce4ef; border-radius:6px; color:#476080; background:#fff; font-size:11px !important; font-weight:550 !important; text-decoration:none; white-space:nowrap; cursor:pointer; }
 .ga-button:hover { border-color:#b4c5dc; background:#f6f8fc; }
 .ga-button--primary { background:#2c5084; border-color:#2c5084; color:#fff; }
@@ -232,6 +254,72 @@
 .ga-record-history-empty > .material-symbols-outlined { color:#4b816a; }
 .ga-record-history-empty strong { color:#34465f; font-size:11px; }
 .ga-record-history-empty p { margin:4px 0 0; color:#758196; font-size:10px; }
+
+/* ============================================================
+   Grade Approvals landing page — rebuilt to consume the app's
+   actual design tokens (public/assets/css/design-system/tokens.css),
+   the same ones the Finance/Student Records/Academic Years pages
+   already use, instead of one-off colors. Appended last so it wins
+   the cascade over the denser legacy rules above (still used by the
+   review/record-dialog pages).
+   ============================================================ */
+.ga-page { max-width:1400px; font-family:var(--font-family); }
+
+.ga-heading { justify-content:flex-start; align-items:center; gap:16px; margin:0 0 24px; padding-bottom:22px; }
+.ga-heading-icon { display:grid; place-items:center; flex-shrink:0; width:44px; height:44px; border-radius:var(--radius-lg); background:var(--color-primary); color:var(--color-text-on-primary); }
+.ga-heading-icon .material-symbols-outlined { font-size:22px; }
+.ga-eyebrow { color:var(--color-primary); font-size:11px; font-weight:700; letter-spacing:1.5px; }
+.ga-heading h1 { font: var(--text-display); color:var(--color-text-primary); letter-spacing:-.6px; }
+.ga-heading p { font-size:13px; color:var(--color-text-secondary); }
+
+.ga-metrics { grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:22px; }
+@media(min-width:1100px) { .ga-metrics { grid-template-columns:repeat(4,1fr); } }
+.ga-metric { padding:18px 20px; border:1px solid var(--color-border); border-radius:var(--radius-lg); background:var(--color-surface); box-shadow:var(--shadow-xs); gap:10px; }
+.ga-metric-label { font-size:11px; font-weight:650; letter-spacing:.03em; text-transform:uppercase; color:var(--color-text-tertiary); }
+.ga-metric-icon { width:34px; height:34px; border-radius:var(--radius-md); background:var(--color-warning-soft); color:var(--color-warning); }
+.ga-metric-icon .material-symbols-outlined { font-size:18px; }
+.ga-metric:nth-child(2) .ga-metric-icon { background:var(--color-info-soft); color:var(--color-info); }
+.ga-metric:nth-child(3) .ga-metric-icon { background:var(--color-success-soft); color:var(--color-success); }
+.ga-metric:nth-child(4) .ga-metric-icon { background:var(--color-surface-sunken); color:var(--color-text-secondary); }
+.ga-metric:nth-child(4).is-urgent .ga-metric-icon { background:var(--color-danger-soft); color:var(--color-danger); }
+.ga-metric-value strong { font-size:30px; font-weight:700; letter-spacing:-.8px; line-height:1; color:var(--color-text-primary); }
+.ga-metric-value span { font-size:12px; color:var(--color-text-secondary); }
+.ga-metric-sub { font-size:12px; color:var(--color-text-secondary); }
+.ga-metric-sub.urgent { color:var(--color-danger); font-weight:600; }
+.ga-text-danger { color:var(--color-danger) !important; }
+.ga-metric-bar { height:5px; border-radius:var(--radius-pill); background:var(--color-surface-sunken); }
+.ga-metric-bar > span { background:var(--color-success); border-radius:var(--radius-pill); }
+
+.ga-queue-card { border-top:1px solid var(--color-border); border-radius:var(--radius-lg); box-shadow:var(--shadow-xs); }
+.ga-tabs { gap:4px; padding:10px; background:var(--color-surface-sunken); border-bottom:0; }
+.ga-tabs button { min-height:42px; margin:0; padding:10px 16px; border-bottom:0; border-radius:var(--radius-md); font-size:12.5px; font-weight:600; color:var(--color-text-secondary); }
+.ga-tabs button:hover { background:var(--color-surface); color:var(--color-primary); }
+.ga-tabs button[aria-selected=true] { background:var(--color-surface); color:var(--color-primary); box-shadow:var(--shadow-xs); }
+.ga-tabs button[aria-selected=true] .ga-count { background:var(--color-primary-soft); color:var(--color-primary); }
+.ga-count { font-size:10px; font-weight:700; }
+
+.ga-toolbar { padding:20px 24px 16px; }
+.ga-toolbar h2 { font-size:15px; font-weight:700; color:var(--color-text-primary); }
+.ga-toolbar p { font-size:12px; }
+.ga-search { width:280px; border-radius:var(--radius-md); border-color:var(--color-border-control); }
+.ga-search input { font-size:12px; }
+
+.ga-table th { padding:11px 20px; font-size:10.5px; letter-spacing:.3px; background:var(--color-surface-header); color:var(--color-text-tertiary); }
+.ga-table td { padding:17px 20px; font-size:12.5px; }
+.ga-class-cell strong { color:var(--color-primary); font-size:13.5px; }
+.ga-number { color:var(--color-text-primary); }
+.ga-status { padding:5px 10px 5px 8px; font-size:10.5px; font-weight:650; background:var(--color-warning-soft); color:var(--color-warning); border-radius:var(--radius-pill); }
+.ga-button { min-height:38px; border-radius:var(--radius-md); font-size:12px !important; border-color:var(--color-border-control); color:var(--color-primary); }
+.ga-button--primary { background:var(--color-primary); border-color:var(--color-primary); }
+.ga-button--primary:hover { background:var(--color-primary-hover); border-color:var(--color-primary-hover); }
+
+.ga-policy { align-items:center; margin-top:16px; padding:14px 18px; border:1px solid var(--color-border); border-radius:var(--radius-lg); background:var(--color-surface); }
+.ga-policy > .material-symbols-outlined { display:grid; place-items:center; flex-shrink:0; width:32px; height:32px; border-radius:var(--radius-md); background:var(--color-primary-soft); color:var(--color-primary); font-size:17px; }
+
+@media(max-width:720px) {
+    .ga-metrics { grid-template-columns:1fr 1fr; }
+}
+@media(max-width:520px) { .ga-metrics { grid-template-columns:1fr; } }
 
 @media(max-width:720px) {
     .ga-review-meta { grid-template-columns:1fr; }

@@ -12,8 +12,50 @@ $classLink = static fn (array $c): string => site_url('registrar/grade-approvals
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <div class="ga-page" id="gradeApprovals">
-<header class="ga-heading"><div><span class="ga-eyebrow">ACADEMIC RECORDS</span><h1>Grade Approvals</h1><p>Final approval and official locking — institution-wide.</p></div></header>
+<header class="ga-heading"><span class="ga-heading-icon"><span class="material-symbols-outlined" aria-hidden="true">verified</span></span><div><span class="ga-eyebrow">ACADEMIC RECORDS</span><h1>Grade Approvals</h1><p>Final approval and official locking — institution-wide.</p></div></header>
 <div id="gaFeedback" class="ga-feedback" role="status" aria-live="polite" hidden></div>
+
+<?php
+$totalClasses = count($classes) + count($approvedClasses) + count($lockedClasses);
+$lockedPct    = $totalClasses > 0 ? round(count($lockedClasses) / $totalClasses * 100, 1) : 0;
+
+$deadlineSub = 'No grading deadline set';
+$deadlineUrgent = false;
+if (! empty($gradingClosesAt)) {
+    $daysLeft = (int) ceil((strtotime($gradingClosesAt) - time()) / 86400);
+    if ($daysLeft >= 0) {
+        $deadlineSub = $daysLeft === 0 ? 'Closes today' : $daysLeft . ' day' . ($daysLeft === 1 ? '' : 's') . ' remaining';
+        $deadlineUrgent = $daysLeft <= 3;
+    } else {
+        $deadlineSub = 'Grading window closed';
+        $deadlineUrgent = true;
+    }
+}
+?>
+<div class="ga-metrics">
+    <div class="ga-metric">
+        <div class="ga-metric-head"><span class="ga-metric-label">Awaiting Approval</span><span class="ga-metric-icon"><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span></span></div>
+        <div class="ga-metric-value"><strong><?= count($classes) ?></strong><span>classes</span></div>
+        <div class="ga-metric-sub">Noted by the dean, awaiting your review.</div>
+    </div>
+    <div class="ga-metric">
+        <div class="ga-metric-head"><span class="ga-metric-label">Approved &mdash; Ready to Lock</span><span class="ga-metric-icon"><span class="material-symbols-outlined" aria-hidden="true">lock_open</span></span></div>
+        <div class="ga-metric-value"><strong><?= count($approvedClasses) ?></strong><span>classes</span></div>
+        <div class="ga-metric-sub">Approved by you, not yet made official.</div>
+    </div>
+    <div class="ga-metric">
+        <div class="ga-metric-head"><span class="ga-metric-label">Locked Classes</span><span class="ga-metric-icon"><span class="material-symbols-outlined" aria-hidden="true">verified</span></span></div>
+        <div class="ga-metric-value"><strong><?= count($lockedClasses) ?></strong><span>classes</span></div>
+        <div class="ga-metric-bar"><span style="width:<?= esc((string) $lockedPct, 'attr') ?>%"></span></div>
+        <div class="ga-metric-sub"><?= esc((string) $lockedPct) ?>% of this term's classes official</div>
+    </div>
+    <div class="ga-metric<?= $deadlineUrgent ? ' is-urgent' : '' ?>">
+        <div class="ga-metric-head"><span class="ga-metric-label">Grading Deadline</span><span class="ga-metric-icon"><span class="material-symbols-outlined" aria-hidden="true">timer</span></span></div>
+        <div class="ga-metric-value"><strong class="<?= $deadlineUrgent ? 'ga-text-danger' : '' ?>"><?= ! empty($gradingClosesAt) ? esc(date('M j', strtotime($gradingClosesAt))) : '—' ?></strong></div>
+        <div class="ga-metric-sub<?= $deadlineUrgent ? ' urgent' : '' ?>"><?= esc($deadlineSub) ?></div>
+    </div>
+</div>
+
 <section class="ga-card ga-queue-card">
     <div class="ga-tabs" role="tablist" aria-label="Approval queues" id="gaTabs" hidden>
         <button type="button" role="tab" id="gaSubmissionsTab" aria-controls="gaSubmissions" aria-selected="true" data-tab="gaSubmissions">Awaiting approval <span class="ga-count"><?= count($classes) ?></span></button>
@@ -25,7 +67,7 @@ $classLink = static fn (array $c): string => site_url('registrar/grade-approvals
         <?php if ($classes !== []): ?>
         <div class="ga-table-scroll"><table class="ga-table"><caption class="ga-sr-only">Classes awaiting approval</caption><thead><tr><th scope="col">Class</th><th scope="col">Academic term</th><th scope="col">Students</th><th scope="col">Status</th><th scope="col"><span class="ga-sr-only">Review</span></th></tr></thead><tbody>
         <?php foreach ($classes as $c): ?>
-            <tr data-search-row><td data-label="Class" class="ga-class-cell"><strong><?= esc($c['subject_code']) ?></strong><span><?= esc($c['year_level']) ?> &middot; Section <?= esc($c['section']) ?></span><small><?= esc($c['program']) ?></small></td><td data-label="Academic term" class="ga-term-cell"><?= esc($c['academic_year']) ?></td><td data-label="Students" class="ga-number"><?= (int) $c['student_count'] ?></td><td data-label="Status"><span class="ga-status">Noted</span></td><td class="ga-row-action"><a class="ga-button ga-button--primary" href="<?= esc($classLink($c), 'attr') ?>">Review grades<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></td></tr>
+            <tr data-search-row data-status="noted"><td data-label="Class" class="ga-class-cell"><strong><?= esc($c['subject_code']) ?></strong><span><?= esc($c['year_level']) ?> &middot; Section <?= esc($c['section']) ?></span><small><?= esc($c['program']) ?></small></td><td data-label="Academic term" class="ga-term-cell"><?= esc($c['academic_year']) ?></td><td data-label="Students" class="ga-number"><?= (int) $c['student_count'] ?></td><td data-label="Status"><span class="ga-status">Noted</span></td><td class="ga-row-action"><a class="ga-button ga-button--primary" href="<?= esc($classLink($c), 'attr') ?>">Review grades<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></td></tr>
         <?php endforeach ?>
         </tbody></table></div>
         <?php else: ?><div class="ga-empty"><span class="material-symbols-outlined" aria-hidden="true">task_alt</span><div><h3>Nothing awaiting approval</h3><p>Classes the dean notes will appear here.</p></div></div><?php endif ?>
@@ -37,7 +79,7 @@ $classLink = static fn (array $c): string => site_url('registrar/grade-approvals
         <?php if ($approvedClasses !== []): ?>
         <div class="ga-table-scroll"><table class="ga-table"><caption class="ga-sr-only">Approved classes</caption><thead><tr><th scope="col">Class</th><th scope="col">Academic term</th><th scope="col">Students</th><th scope="col">Status</th><th scope="col"><span class="ga-sr-only">Review</span></th></tr></thead><tbody>
         <?php foreach ($approvedClasses as $c): ?>
-            <tr data-search-row><td data-label="Class" class="ga-class-cell"><strong><?= esc($c['subject_code']) ?></strong><span><?= esc($c['year_level']) ?> &middot; Section <?= esc($c['section']) ?></span><small><?= esc($c['program']) ?></small></td><td data-label="Academic term" class="ga-term-cell"><?= esc($c['academic_year']) ?></td><td data-label="Students" class="ga-number"><?= (int) $c['student_count'] ?></td><td data-label="Status"><span class="ga-status">Approved</span></td><td class="ga-row-action"><a class="ga-button ga-button--primary" href="<?= esc($classLink($c), 'attr') ?>">Lock grades<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></td></tr>
+            <tr data-search-row data-status="approved"><td data-label="Class" class="ga-class-cell"><strong><?= esc($c['subject_code']) ?></strong><span><?= esc($c['year_level']) ?> &middot; Section <?= esc($c['section']) ?></span><small><?= esc($c['program']) ?></small></td><td data-label="Academic term" class="ga-term-cell"><?= esc($c['academic_year']) ?></td><td data-label="Students" class="ga-number"><?= (int) $c['student_count'] ?></td><td data-label="Status"><span class="ga-status approved">Approved</span></td><td class="ga-row-action"><a class="ga-button ga-button--primary" href="<?= esc($classLink($c), 'attr') ?>">Lock grades<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></td></tr>
         <?php endforeach ?>
         </tbody></table></div>
         <?php else: ?><div class="ga-empty"><span class="material-symbols-outlined" aria-hidden="true">task_alt</span><div><h3>Nothing approved yet</h3><p>Classes you approve will appear here until locked.</p></div></div><?php endif ?>
@@ -49,7 +91,7 @@ $classLink = static fn (array $c): string => site_url('registrar/grade-approvals
         <?php if ($lockedClasses !== []): ?>
         <div class="ga-table-scroll"><table class="ga-table"><caption class="ga-sr-only">Locked classes</caption><thead><tr><th scope="col">Class</th><th scope="col">Academic term</th><th scope="col">Students</th><th scope="col">Status</th><th scope="col"><span class="ga-sr-only">View</span></th></tr></thead><tbody>
         <?php foreach ($lockedClasses as $c): ?>
-            <tr data-search-row><td data-label="Class" class="ga-class-cell"><strong><?= esc($c['subject_code']) ?></strong><span><?= esc($c['year_level']) ?> &middot; Section <?= esc($c['section']) ?></span><small><?= esc($c['program']) ?></small></td><td data-label="Academic term" class="ga-term-cell"><?= esc($c['academic_year']) ?></td><td data-label="Students" class="ga-number"><?= (int) $c['student_count'] ?></td><td data-label="Status"><span class="ga-status locked">Official</span></td><td class="ga-row-action"><a class="ga-button" href="<?= esc($classLink($c), 'attr') ?>">View grades<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></td></tr>
+            <tr data-search-row data-status="locked"><td data-label="Class" class="ga-class-cell"><strong><?= esc($c['subject_code']) ?></strong><span><?= esc($c['year_level']) ?> &middot; Section <?= esc($c['section']) ?></span><small><?= esc($c['program']) ?></small></td><td data-label="Academic term" class="ga-term-cell"><?= esc($c['academic_year']) ?></td><td data-label="Students" class="ga-number"><?= (int) $c['student_count'] ?></td><td data-label="Status"><span class="ga-status locked">Official</span></td><td class="ga-row-action"><a class="ga-button" href="<?= esc($classLink($c), 'attr') ?>">View grades<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a></td></tr>
         <?php endforeach ?>
         </tbody></table></div>
         <?php else: ?><div class="ga-empty"><span class="material-symbols-outlined" aria-hidden="true">lock_open</span><div><h3>Nothing locked yet</h3><p>Classes you lock will stay listed here for reference.</p></div></div><?php endif ?>

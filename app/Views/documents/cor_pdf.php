@@ -15,9 +15,6 @@
     table.subjects { width: 100%; border-collapse: collapse; margin-top: 8px; }
     table.subjects th, table.subjects td { border: 1px solid #999; padding: 4px 6px; font-size: 9.5px; }
     table.subjects th { background: #eee; }
-    .status-line { margin-top: 14px; font-size: 11px; }
-    .status-line b.paid { color: #166534; }
-    .status-line b.partial { color: #92400e; }
     .footer { position: fixed; bottom: 30px; left: 50px; right: 50px; font-size: 8.5px; color: #555; display: table; width: 100%; }
     .footer .qr { float: right; }
     .footer .code { float: left; margin-top: 30px; }
@@ -67,17 +64,6 @@
             <?php endif ?>
         </tbody>
     </table>
-
-    <p class="status-line">
-        <b>Account Status:</b>
-        <?php if (($assessment['status'] ?? null) === 'paid'): ?>
-            <b class="paid">Fully Paid</b> — &#8369;<?= esc(number_format((float) $assessment['amount_paid'], 2)) ?> of &#8369;<?= esc(number_format((float) $assessment['total_amount'], 2)) ?>
-        <?php elseif ($assessment !== null): ?>
-            <b class="partial">Partial Payment</b> — &#8369;<?= esc(number_format((float) $assessment['amount_paid'], 2)) ?> of &#8369;<?= esc(number_format((float) $assessment['total_amount'], 2)) ?> paid
-        <?php else: ?>
-            N/A
-        <?php endif ?>
-    </p>
 
     <div class="footer">
         <div class="qr"><img src="<?= $qrDataUri ?>" width="70" height="70"></div>

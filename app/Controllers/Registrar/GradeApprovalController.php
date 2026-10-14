@@ -3,6 +3,7 @@
 namespace App\Controllers\Registrar;
 
 use App\Controllers\BaseController;
+use App\Models\AcademicYearModel;
 use App\Models\GradeModel;
 
 /**
@@ -16,6 +17,7 @@ class GradeApprovalController extends BaseController
     public function index()
     {
         $gradeModel = new GradeModel();
+        $activeTerm = (new AcademicYearModel())->activeRow();
 
         return view('registrar/grade_approvals', [
             'pageTitle'      => 'Grade Approvals',
@@ -23,6 +25,7 @@ class GradeApprovalController extends BaseController
             'classes'        => $gradeModel->notedForRegistrar(),
             'approvedClasses' => $gradeModel->approvedForRegistrar(),
             'lockedClasses'  => $gradeModel->lockedClasses(),
+            'gradingClosesAt' => $activeTerm['grading_closes_at'] ?? null,
         ]);
     }
 
