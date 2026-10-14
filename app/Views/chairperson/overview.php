@@ -51,87 +51,76 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         }
     ?>
 
-    <header class="cd-hero">
-        <div class="cd-hero__main">
-            <p class="cd-hero__eyebrow">Chairperson Workspace</p>
-            <h1 class="cd-hero__title">Welcome back, <?= esc($user['name']) ?>.</h1>
-            <p class="cd-hero__sub">
-                Department overview for <strong><?= esc($deptName) ?></strong> — live tracking of class plotting and faculty teaching loads.
-            </p>
+    <div class="ac-page-header">
+        <div>
+            <h2 class="ac-page-header__title">Welcome back, <?= esc($user['name']) ?></h2>
+            <p class="ac-page-header__sub">Department overview for <strong><?= esc($deptName) ?></strong> &middot; Active term <strong><?= esc($activeYear) ?></strong></p>
         </div>
-        <div class="cd-hero__side">
-            <p class="cd-term">
-                <span class="cd-term__dot" aria-hidden="true"></span>
-                <span class="cd-term__meta">Active Term</span>
-                <span class="cd-term__sep" aria-hidden="true"></span>
-                <strong class="cd-term__value"><?= esc($activeYear) ?></strong>
-            </p>
-            <div class="cd-hero__actions">
-                <a class="cd-btn cd-btn--primary" href="<?= site_url('chairperson/dashboard') ?>">
-                    <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
-                    Schedule Plotting
-                </a>
-                <a class="cd-btn cd-btn--ghost" href="<?= site_url('chairperson/sections') ?>">
-                    <span class="material-symbols-outlined" aria-hidden="true">groups</span>
-                    Sections &amp; Roster
-                </a>
-            </div>
+        <div class="cd-header-actions">
+            <a class="ac-btn ac-btn-secondary" href="<?= site_url('chairperson/sections') ?>">
+                <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+                Sections &amp; Roster
+            </a>
+            <a class="ac-btn ac-btn-primary" href="<?= site_url('chairperson/dashboard') ?>">
+                <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                Schedule Plotting
+            </a>
         </div>
-    </header>
+    </div>
 
-    <section class="cd-stats" aria-label="Department at a glance">
+    <div class="ac-bento" aria-label="Department at a glance">
 
-        <article class="cd-stat">
-            <div class="cd-stat__top">
-                <span class="cd-stat__icon"><span class="material-symbols-outlined" aria-hidden="true">calendar_today</span></span>
+        <div class="ac-bento-card">
+            <div class="ac-bento-card__top">
+                <div class="ac-bento-card__icon ac-bento-card__icon--primary"><span class="material-symbols-outlined icon-fill" aria-hidden="true">calendar_today</span></div>
             </div>
-            <p class="cd-stat__value"><?= esc($stats['plotted_classes']) ?></p>
-            <p class="cd-stat__label">Classes plotted this term</p>
-        </article>
+            <p class="ac-bento-card__label">Classes plotted this term</p>
+            <h3 class="ac-bento-card__value"><?= esc($stats['plotted_classes']) ?></h3>
+        </div>
 
-        <article class="cd-stat">
-            <div class="cd-stat__top">
-                <span class="cd-stat__icon"><span class="material-symbols-outlined" aria-hidden="true">groups</span></span>
+        <div class="ac-bento-card">
+            <div class="ac-bento-card__top">
+                <div class="ac-bento-card__icon ac-bento-card__icon--tertiary"><span class="material-symbols-outlined icon-fill" aria-hidden="true">groups</span></div>
             </div>
-            <p class="cd-stat__value"><?= esc($stats['faculty_count']) ?></p>
-            <p class="cd-stat__label">Faculty in department</p>
-        </article>
+            <p class="ac-bento-card__label">Faculty in department</p>
+            <h3 class="ac-bento-card__value"><?= esc($stats['faculty_count']) ?></h3>
+        </div>
 
-        <article class="cd-stat">
-            <div class="cd-stat__top">
-                <span class="cd-stat__icon<?= $stats['pending_approvals'] > 0 ? ' cd-stat__icon--warn' : '' ?>"><span class="material-symbols-outlined" aria-hidden="true">swap_horiz</span></span>
+        <div class="ac-bento-card">
+            <div class="ac-bento-card__top">
+                <div class="ac-bento-card__icon<?= $stats['pending_approvals'] > 0 ? ' ac-bento-card__icon--warning' : ' ac-bento-card__icon--primary' ?>"><span class="material-symbols-outlined icon-fill" aria-hidden="true">swap_horiz</span></div>
                 <?php if ($stats['pending_approvals'] > 0): ?>
-                    <span class="cd-stat__flag cd-stat__flag--warn">Action required</span>
+                    <span class="ac-pill ac-pill--warning">Action required</span>
                 <?php else: ?>
-                    <span class="cd-stat__flag cd-stat__flag--ok">All clear</span>
+                    <span class="ac-pill ac-pill--success">All clear</span>
                 <?php endif ?>
             </div>
-            <p class="cd-stat__value"><?= esc($stats['pending_approvals']) ?></p>
-            <p class="cd-stat__label">Swap approvals pending</p>
-        </article>
+            <p class="ac-bento-card__label">Swap approvals pending</p>
+            <h3 class="ac-bento-card__value"><?= esc($stats['pending_approvals']) ?></h3>
+        </div>
 
-        <article class="cd-stat">
-            <div class="cd-stat__top">
-                <span class="cd-stat__icon"><span class="material-symbols-outlined" aria-hidden="true">menu_book</span></span>
+        <div class="ac-bento-card">
+            <div class="ac-bento-card__top">
+                <div class="ac-bento-card__icon ac-bento-card__icon--primary"><span class="material-symbols-outlined icon-fill" aria-hidden="true">menu_book</span></div>
             </div>
-            <p class="cd-stat__value"><?= esc($stats['curriculum_set']) ?><small> / <?= esc($stats['curriculum_slots']) ?></small></p>
-            <p class="cd-stat__label">Curriculum terms published</p>
-        </article>
+            <p class="ac-bento-card__label">Curriculum terms published</p>
+            <h3 class="ac-bento-card__value"><?= esc($stats['curriculum_set']) ?><small> / <?= esc($stats['curriculum_slots']) ?></small></h3>
+        </div>
 
-        <article class="cd-stat">
-            <div class="cd-stat__top">
-                <span class="cd-stat__icon<?= $stats['needs_plotting_count'] > 0 ? ' cd-stat__icon--warn' : '' ?>"><span class="material-symbols-outlined" aria-hidden="true">hub</span></span>
+        <div class="ac-bento-card">
+            <div class="ac-bento-card__top">
+                <div class="ac-bento-card__icon<?= $stats['needs_plotting_count'] > 0 ? ' ac-bento-card__icon--warning' : ' ac-bento-card__icon--primary' ?>"><span class="material-symbols-outlined icon-fill" aria-hidden="true">hub</span></div>
                 <?php if ($stats['needs_plotting_count'] > 0): ?>
-                    <span class="cd-stat__flag cd-stat__flag--warn">Action required</span>
+                    <span class="ac-pill ac-pill--warning">Action required</span>
                 <?php else: ?>
-                    <span class="cd-stat__flag cd-stat__flag--ok">All clear</span>
+                    <span class="ac-pill ac-pill--success">All clear</span>
                 <?php endif ?>
             </div>
-            <p class="cd-stat__value"><?= esc($stats['needs_plotting_count']) ?></p>
-            <p class="cd-stat__label">Classes needing your subjects</p>
-        </article>
+            <p class="ac-bento-card__label">Classes needing your subjects</p>
+            <h3 class="ac-bento-card__value"><?= esc($stats['needs_plotting_count']) ?></h3>
+        </div>
 
-    </section>
+    </div>
 
     <div class="cd-grid">
 
