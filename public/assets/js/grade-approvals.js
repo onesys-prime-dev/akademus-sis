@@ -102,6 +102,11 @@
     activate(requestedTab || tabs[0], false);
 
     const dialog = $('gaDecisionDialog');
+    // The registrar and dean portals reuse this same script for their
+    // read-only tabs but render no correction-decision dialog, so everything
+    // below — which assumes that dialog and its contents exist — has to be
+    // skipped there rather than throwing on a null element at page load.
+    if (!dialog) return;
     let pending = null, busy = false, returnFocus = null;
     root.addEventListener('click', event => {
         const button = event.target.closest('[data-decision]'); if (!button || busy) return;
