@@ -204,17 +204,20 @@ $mustChangePassword = auth()->loggedIn()
                 </button>
                 <div class="ac-user-menu__dropdown">
                     <div class="ac-user-menu__who">
-                        <p class="ac-user-menu__name"><?= esc($username) ?></p>
-                        <p class="ac-user-menu__role"><?= esc($userRoleLabel) ?></p>
+                        <span class="ac-avatar ac-avatar--primary ac-user-menu__who-avatar"><?= esc($initial) ?></span>
+                        <div class="ac-user-menu__who-text">
+                            <p class="ac-user-menu__name"><?= esc($username) ?></p>
+                            <span class="ac-user-menu__role"><?= esc($userRoleLabel) ?></span>
+                        </div>
                     </div>
                     <hr>
                     <a href="<?= site_url($notifRole === 'admin' ? 'admin/academic-settings' : $notifRole . '/profile') ?>" class="ac-user-menu__item">
-                        <span class="material-symbols-outlined"><?= $notifRole === 'admin' ? 'settings' : 'person' ?></span>
+                        <span class="ac-user-menu__item-icon material-symbols-outlined"><?= $notifRole === 'admin' ? 'settings' : 'person' ?></span>
                         <span><?= $notifRole === 'admin' ? 'Academic Settings' : 'Profile' ?></span>
                     </a>
                     <hr>
                     <a href="<?= site_url($logoutUrl) ?>" class="ac-user-menu__item ac-user-menu__item--danger">
-                        <span class="material-symbols-outlined">logout</span>
+                        <span class="ac-user-menu__item-icon material-symbols-outlined">logout</span>
                         <span>Logout</span>
                     </a>
                 </div>
