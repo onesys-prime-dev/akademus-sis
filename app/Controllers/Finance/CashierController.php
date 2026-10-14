@@ -4,6 +4,7 @@ namespace App\Controllers\Finance;
 
 use App\Controllers\BaseController;
 use App\Libraries\FinancePortal;
+use App\Models\NotificationModel;
 use App\Models\StudentModel;
 use App\Models\StudentPaymentModel;
 use App\Models\TuitionAssessmentModel;
@@ -96,6 +97,13 @@ class CashierController extends BaseController
         if (! $result['ok']) {
             return redirect()->to('/finance/cashier/student/' . $studentId)->with('errors', [$result['error']]);
         }
+
+        (new NotificationModel())->notify(
+            (int) $student['user_id'],
+            'payment_recorded',
+            'A payment of ' . number_format((float) $this->request->getPost('amount'), 2) . ' was recorded on your tuition account.',
+            site_url('student/tuition')
+        );
 
         return redirect()->to('/finance/cashier/student/' . $studentId)->with('message', 'Payment recorded. Official Receipt ' . $result['or_number'] . ' issued.');
     }

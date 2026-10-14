@@ -4,6 +4,7 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Models\DepartmentModel;
+use App\Models\NotificationModel;
 use App\Models\SectionModel;
 use App\Models\SubDepartmentModel;
 use CodeIgniter\Shield\Entities\User;
@@ -305,6 +306,13 @@ class UserController extends BaseController
             ->where('type', 'email_password')
             ->get()
             ->getRowArray()['secret'] ?? '';
+
+        (new NotificationModel())->notify(
+            (int) $id,
+            'password_reset',
+            'Your password was reset by an administrator. If you did not request this, contact the registrar immediately.',
+            null
+        );
 
         return redirect()
             ->to('/admin/users')

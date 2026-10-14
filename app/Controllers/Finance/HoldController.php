@@ -5,6 +5,7 @@ namespace App\Controllers\Finance;
 use App\Controllers\BaseController;
 use App\Libraries\FinancePortal;
 use App\Models\FinancialHoldModel;
+use App\Models\NotificationModel;
 use App\Models\StudentModel;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
@@ -90,6 +91,13 @@ class HoldController extends BaseController
             return redirect()->back()->with('errors', [$result['error']]);
         }
 
+        (new NotificationModel())->notify(
+            (int) $student['user_id'],
+            'hold_placed',
+            'A financial hold has been placed on your account: ' . (string) $this->request->getPost('reason') . '. This may block enrollment, dropping, or document requests until it is resolved.',
+            site_url('student/tuition')
+        );
+
         return redirect()->to('/finance/holds/student/' . $studentId)->with('message', 'Hold placed.');
     }
 
@@ -106,6 +114,17 @@ class HoldController extends BaseController
 
         if (! $result['ok']) {
             return redirect()->back()->with('errors', [$result['error']]);
+        }
+
+        $student = (new StudentModel())->find((int) $hold['student_id']);
+
+        if ($student !== null) {
+            (new NotificationModel())->notify(
+                (int) $student['user_id'],
+                'hold_released',
+                'A financial hold on your account has been lifted.',
+                site_url('student/tuition')
+            );
         }
 
         return redirect()->to('/finance/holds/student/' . $hold['student_id'])->with('message', 'Hold released.');

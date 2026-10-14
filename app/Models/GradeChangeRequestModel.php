@@ -343,7 +343,83 @@ class GradeChangeRequestModel extends Model
             $actorRole
         );
 
+        $grade = (new GradeModel())->find((int) $request['grade_id']);
+
+        if ($grade !== null) {
+            if ($toStatus === 'chair_recommended') {
+                $this->notifyDeanOfSection((int) $grade['section_id'], 'grade_change_request.chair_recommended', "A grade correction for {$grade['subject_code']} was recommended by the chairperson and is awaiting your recommendation.");
+            } elseif ($toStatus === 'dean_recommended') {
+                $this->notifyGroup('registrar', 'grade_change_request.dean_recommended', "A grade correction for {$grade['subject_code']} was recommended by the dean and is awaiting final registrar approval.");
+            }
+        }
+
         return ['ok' => true];
+    }
+
+    /**
+     * Notifies every user in the given Shield group — the "notify the whole
+     * office" idiom used wherever there's no single named actor (mirrors
+     * GradeModel::notifyGroup()).
+     */
+    private function notifyGroup(string $group, string $type, string $message): void
+    {
+        $userIds = array_unique(array_column(
+            $this->db->table('auth_groups_users')->select('user_id')->where('group', $group)->get()->getResultArray(),
+            'user_id'
+        ));
+
+        $notifications = new NotificationModel();
+
+        foreach ($userIds as $userId) {
+            $notifications->notify((int) $userId, $type, $message);
+        }
+    }
+
+    /**
+     * Notifies the dean(s) (primary + delegated) of the section's college —
+     * the single-section counterpart to GradeModel::notifyDeansOfCollegeFor().
+     */
+    private function notifyDeanOfSection(int $sectionId, string $type, string $message): void
+    {
+        $section = (new SectionModel())->find($sectionId);
+
+        if ($section === null || $section['program_id'] === null) {
+            return;
+        }
+
+        $collegeId = $this->db->table('programs')->select('sub_department_id')->where('program_id', $section['program_id'])->get()->getRowArray()['sub_department_id'] ?? null;
+
+        if ($collegeId === null) {
+            return;
+        }
+
+        $collegeId = $this->db->table('sub_departments')->select('college_id')->where('sub_dept_id', $collegeId)->get()->getRowArray()['college_id'] ?? null;
+
+        if ($collegeId === null) {
+            return;
+        }
+
+        $primary = $this->db->table('users u')
+            ->select('u.id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'dean')
+            ->where('u.department_id', $collegeId)
+            ->get()
+            ->getResultArray();
+
+        $delegated = $this->db->table('department_deans')
+            ->select('user_id')
+            ->where('dept_id', $collegeId)
+            ->get()
+            ->getResultArray();
+
+        $deanIds = array_unique(array_merge(array_column($primary, 'id'), array_column($delegated, 'user_id')));
+
+        $notifications = new NotificationModel();
+
+        foreach ($deanIds as $userId) {
+            $notifications->notify((int) $userId, $type, $message);
+        }
     }
 
     /**

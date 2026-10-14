@@ -5,6 +5,7 @@ namespace App\Controllers\Finance;
 use App\Controllers\BaseController;
 use App\Libraries\FinancePortal;
 use App\Models\DiscountTypeModel;
+use App\Models\NotificationModel;
 use App\Models\StudentDiscountModel;
 use App\Models\StudentModel;
 use App\Services\TuitionAssessmentService;
@@ -145,6 +146,15 @@ class DiscountController extends BaseController
         // recompute.
         $this->recomputeActiveTerm((int) $studentId);
 
+        $discountType = (new DiscountTypeModel())->find((int) $this->request->getPost('discount_type_id'));
+
+        (new NotificationModel())->notify(
+            (int) $student['user_id'],
+            'discount_granted',
+            ($discountType['name'] ?? 'A discount') . ' has been applied to your tuition account.',
+            site_url('student/tuition')
+        );
+
         return redirect()->to('/finance/discounts/student/' . $studentId)->with('message', 'Discount granted.');
     }
 
@@ -161,6 +171,18 @@ class DiscountController extends BaseController
 
         if (! $result['ok']) {
             return redirect()->back()->with('errors', [$result['error']]);
+        }
+
+        $student      = (new StudentModel())->find((int) $grant['student_id']);
+        $discountType = (new DiscountTypeModel())->find((int) $grant['discount_type_id']);
+
+        if ($student !== null) {
+            (new NotificationModel())->notify(
+                (int) $student['user_id'],
+                'discount_revoked',
+                ($discountType['name'] ?? 'A discount') . ' on your tuition account has been revoked.',
+                site_url('student/tuition')
+            );
         }
 
         return redirect()->to('/finance/discounts/student/' . $grant['student_id'])->with('message', 'Discount revoked.');

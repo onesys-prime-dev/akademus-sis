@@ -61,7 +61,46 @@ class DocumentRequestModel extends Model
             'purpose'       => $purpose,
         ]);
 
+        $this->notifyRegistrarStaff($studentId, $type);
+
         return ['ok' => true, 'id' => $this->getInsertID()];
+    }
+
+    /**
+     * Notifies every user in the 'registrar' Shield group (the only group
+     * with documents.issue — see AuthGroups) that a new document request is
+     * waiting in their queue. Mirrors GradeModel::notifyGroup()'s
+     * "notify the whole office" idiom — there's no single named actor for a
+     * request that lands in a shared queue.
+     */
+    private function notifyRegistrarStaff(int $studentId, string $type): void
+    {
+        $student = $this->db->table('students s')
+            ->select('u.username')
+            ->join('users u', 'u.id = s.user_id')
+            ->where('s.student_id', $studentId)
+            ->get()
+            ->getRowArray();
+
+        $label = self::TYPE_LABELS[$type] ?? $type;
+        $who   = $student['username'] ?? 'A student';
+
+        $userIds = array_unique(array_column(
+            $this->db->table('auth_groups_users')->select('user_id')->where('group', 'registrar')->get()->getResultArray(),
+            'user_id'
+        ));
+
+        helper('url');
+        $notifications = new NotificationModel();
+
+        foreach ($userIds as $userId) {
+            $notifications->notify(
+                (int) $userId,
+                'document_requested',
+                "{$who} requested a {$label}.",
+                site_url('registrar/documents')
+            );
+        }
     }
 
     public function pending(): array

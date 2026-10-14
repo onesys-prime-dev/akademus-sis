@@ -363,7 +363,86 @@ class StudentEnlistmentModel extends Model
             $actorRole
         );
 
+        if ($toStatus === 'chair_recommended') {
+            $this->notifyDeanOfStudent((int) $enlistment['student_id'], 'enlistment.chair_recommended', 'A student enlistment cart has been recommended by the chairperson and is awaiting your note.');
+        } elseif ($toStatus === 'dean_noted') {
+            $this->notifyGroup('registrar', 'enlistment.dean_noted', 'A student enlistment cart has been noted by the dean and is awaiting registrar approval.');
+        }
+
         return ['ok' => true];
+    }
+
+    /**
+     * Notifies every user in the given Shield group — the "notify the whole
+     * office" idiom used wherever there's no single named actor (mirrors
+     * GradeModel::notifyGroup()).
+     */
+    private function notifyGroup(string $group, string $type, string $message): void
+    {
+        helper('url');
+        $userIds = array_unique(array_column(
+            $this->db->table('auth_groups_users')->select('user_id')->where('group', $group)->get()->getResultArray(),
+            'user_id'
+        ));
+
+        $notifications = new NotificationModel();
+
+        foreach ($userIds as $userId) {
+            $notifications->notify((int) $userId, $type, $message, site_url('registrar/enlistments'));
+        }
+    }
+
+    /**
+     * Resolves and notifies the dean(s) (primary + delegated) of
+     * $studentId's program's college — the dean counterpart to
+     * notifyOwningChairs(), keyed off the student's program.
+     */
+    private function notifyDeanOfStudent(int $studentId, string $type, string $message): void
+    {
+        $student = (new StudentModel())->find($studentId);
+
+        if ($student === null || $student['program_id'] === null) {
+            return;
+        }
+
+        $subDeptId = $this->db->table('programs')->select('sub_department_id')->where('program_id', $student['program_id'])->get()->getRowArray()['sub_department_id'] ?? null;
+
+        if ($subDeptId === null) {
+            return;
+        }
+
+        $collegeId = $this->db->table('sub_departments')->select('college_id')->where('sub_dept_id', $subDeptId)->get()->getRowArray()['college_id'] ?? null;
+
+        if ($collegeId === null) {
+            return;
+        }
+
+        $primary = $this->db->table('users u')
+            ->select('u.id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'dean')
+            ->where('u.department_id', $collegeId)
+            ->get()
+            ->getResultArray();
+
+        $delegated = $this->db->table('department_deans')
+            ->select('user_id')
+            ->where('dept_id', $collegeId)
+            ->get()
+            ->getResultArray();
+
+        $deanIds = array_unique(array_merge(array_column($primary, 'id'), array_column($delegated, 'user_id')));
+
+        if ($deanIds === []) {
+            return;
+        }
+
+        helper('url');
+        $notifications = new NotificationModel();
+
+        foreach ($deanIds as $userId) {
+            $notifications->notify((int) $userId, $type, $message, site_url('dean/enlistment-approvals'));
+        }
     }
 
     public function forStudent(int $studentId): array

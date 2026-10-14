@@ -206,7 +206,55 @@ class GradeModel extends Model
             ->set(['status' => 'submitted', 'submitted_at' => date('Y-m-d H:i:s'), 'submitted_by' => $facultyId])
             ->update();
 
+        $this->notifyOwningChairs((int) $rows[0]['section_id'], 'grade_submitted', 'A class has been submitted by faculty and is awaiting your review.');
+
         return ['ok' => true];
+    }
+
+    /**
+     * Notifies the chairperson(s) (primary + delegated) owning the section's
+     * sub-department that a class needs their attention — the first-stage
+     * counterpart to notifyDeansOfCollegeFor()/notifyGroup() used at every
+     * later hand-off in this same chain. Mirrors
+     * GradeChangeRequestModel::notifyOwningChairs() (section -> owning
+     * sub-department -> its chairs, since there's no single authenticated
+     * actor to call authorizedSubDeptIds() against here).
+     */
+    private function notifyOwningChairs(int $sectionId, string $type, string $message): void
+    {
+        $section = (new SectionModel())->find($sectionId);
+
+        if ($section === null || $section['program_id'] === null) {
+            return;
+        }
+
+        $subDeptId = $this->db->table('programs')->select('sub_department_id')->where('program_id', $section['program_id'])->get()->getRowArray()['sub_department_id'] ?? null;
+
+        if ($subDeptId === null) {
+            return;
+        }
+
+        $primary = $this->db->table('users u')
+            ->select('u.id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'chairperson')
+            ->where('u.sub_department_id', $subDeptId)
+            ->get()
+            ->getResultArray();
+
+        $delegated = $this->db->table('sub_department_schedulers')
+            ->select('user_id')
+            ->where('sub_dept_id', $subDeptId)
+            ->get()
+            ->getResultArray();
+
+        $chairIds = array_unique(array_merge(array_column($primary, 'id'), array_column($delegated, 'user_id')));
+
+        $notifications = new NotificationModel();
+
+        foreach ($chairIds as $userId) {
+            $notifications->notify((int) $userId, $type, $message);
+        }
     }
 
     /**

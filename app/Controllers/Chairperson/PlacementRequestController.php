@@ -95,10 +95,21 @@ class PlacementRequestController extends BaseController
         $payload = $this->request->getJSON(true);
         $id      = (int) ($payload['id'] ?? 0);
 
-        $result = (new OfferingPlacementRequestModel())->cancel($id, (int) auth()->id());
+        $requests = new OfferingPlacementRequestModel();
+        $request  = $requests->find($id);
+
+        $result = $requests->cancel($id, (int) auth()->id());
 
         if (! $result['ok']) {
             return $this->fail($result['error']);
+        }
+
+        if ($request !== null) {
+            $this->notifyOwningSchedulers(
+                (int) $request['subject_id'],
+                'A shared-subject request was withdrawn by the requesting unit before you reviewed it.',
+                'placement_request_cancelled'
+            );
         }
 
         return $this->response->setJSON(['ok' => true]);

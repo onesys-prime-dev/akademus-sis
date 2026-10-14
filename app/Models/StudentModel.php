@@ -537,6 +537,16 @@ class StudentModel extends Model
 
         $db->transComplete();
 
+        if ($db->transStatus() !== false) {
+            helper('url');
+            (new NotificationModel())->notify(
+                (int) $student['user_id'],
+                'curriculum_changed',
+                "Your curriculum has been updated to {$curriculum['curriculum_name']}. This may change which subjects you can enroll in.",
+                site_url('student/profile')
+            );
+        }
+
         return ['ok' => $db->transStatus() !== false];
     }
 }

@@ -170,6 +170,17 @@ class TeachingLoads extends BaseController
             'status'                  => 'pending',
         ]);
 
+        $requesterName = auth()->user()->username ?? 'A colleague';
+
+        (new NotificationModel())->notify(
+            $targetId,
+            'swap_requested',
+            $requested !== null
+                ? "{$requesterName} proposes exchanging {$offered['subject_code']} for your {$requested['subject_code']}."
+                : "{$requesterName} wants to hand you their {$offered['subject_code']} load.",
+            site_url('faculty/dashboard')
+        );
+
         return $this->response->setJSON(['ok' => true]);
     }
 
@@ -246,7 +257,51 @@ class TeachingLoads extends BaseController
 
         $swaps->update($swapId, ['status' => 'accepted']);
 
+        $this->notifyOwningChairs(
+            (string) $offered['subject_code'],
+            'swap_awaiting_approval',
+            "A faculty swap involving {$offered['subject_code']} has been accepted by both sides and is awaiting your approval."
+        );
+
         return $this->response->setJSON(['ok' => true, 'status' => 'accepted']);
+    }
+
+    /**
+     * Notifies the chairperson(s) (primary + delegated) owning $subjectCode's
+     * sub-department — mirrors GradeChangeRequestModel::notifyOwningChairs(),
+     * keyed off a subject code since a swap has no single section.
+     */
+    private function notifyOwningChairs(string $subjectCode, string $type, string $message): void
+    {
+        $subject = (new SubjectModel())->where('subject_code', $subjectCode)->first();
+
+        if ($subject === null || $subject['sub_department_id'] === null) {
+            return;
+        }
+
+        $subDeptId = (int) $subject['sub_department_id'];
+
+        $primary = db_connect()->table('users u')
+            ->select('u.id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'chairperson')
+            ->where('u.sub_department_id', $subDeptId)
+            ->get()
+            ->getResultArray();
+
+        $delegated = db_connect()->table('sub_department_schedulers')
+            ->select('user_id')
+            ->where('sub_dept_id', $subDeptId)
+            ->get()
+            ->getResultArray();
+
+        $chairIds = array_unique(array_merge(array_column($primary, 'id'), array_column($delegated, 'user_id')));
+
+        $notifications = new NotificationModel();
+
+        foreach ($chairIds as $userId) {
+            $notifications->notify((int) $userId, $type, $message, site_url('chairperson/dashboard'));
+        }
     }
 
     /**
