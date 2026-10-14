@@ -14,6 +14,17 @@ $studentRecords = array_map(static function (array $row): array {
             'remarks' => $grade['remarks'],
             'status'  => $grade['status'],
         ],
+        'history'  => array_map(static fn (array $request): array => [
+            'current'      => $request['current_value'],
+            'requested'    => $request['requested_value'],
+            'reason'       => $request['reason'],
+            'status'       => $request['status'],
+            'requested_by' => $request['requested_by_username'] ?? 'Unknown user',
+            'reviewed_by'  => $request['reviewed_by_username'] ?? null,
+            'review_notes' => $request['review_notes'] ?? null,
+            'created_at'   => $request['created_at'] ?? null,
+            'reviewed_at'  => $request['reviewed_at'] ?? null,
+        ], $row['change_requests'] ?? []),
     ];
 }, $roster);
 ?>
@@ -89,6 +100,8 @@ $studentRecords = array_map(static function (array $row): array {
     <header class="ga-record-header"><div><span class="ga-eyebrow">STUDENT GRADE RECORD</span><h2 id="gaStudentDialogTitle"></h2><p><?= esc($context['subject_code']) ?> &middot; <?= esc($context['academic_year']) ?></p></div><button type="button" class="ga-record-close" id="gaCloseStudentDialog" aria-label="Close student record"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></header>
     <div class="ga-record-body">
         <section class="ga-record-summary" aria-label="Current grade"><div><span>Grade</span><strong id="gaRecordGrade"></strong></div><div><span>Remarks</span><strong id="gaRecordRemarks"></strong></div><div><span>Status</span><strong id="gaRecordStatus"></strong></div></section>
+        <div class="ga-record-history-heading"><div><h3>Change history</h3><p>Every correction request recorded for this grade.</p></div><span id="gaRecordHistoryCount"></span></div>
+        <div class="ga-record-history" id="gaRecordHistory"></div>
     </div>
     <footer class="ga-dialog-footer"><button type="button" class="ga-button" id="gaCloseStudentDialogFooter">Close</button></footer>
 </dialog>
@@ -103,6 +116,11 @@ $studentRecords = array_map(static function (array $row): array {
 
     const studentDialog = document.getElementById('gaStudentDialog');
     let studentDialogReturnFocus = null;
+    const formatRecordDate = value => {
+        if (!value) return '';
+        const date = new Date(value.replace(' ', 'T'));
+        return Number.isNaN(date.valueOf()) ? value : new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium' }).format(date);
+    };
     const titleCase = value => value ? value.charAt(0).toUpperCase() + value.slice(1) : 'Not available';
 
     function openStudentRecord(index, trigger) {
@@ -113,6 +131,62 @@ $studentRecords = array_map(static function (array $row): array {
         document.getElementById('gaRecordGrade').textContent = record.grade?.value ?? 'Not submitted';
         document.getElementById('gaRecordRemarks').textContent = record.grade?.remarks || 'No remarks';
         document.getElementById('gaRecordStatus').textContent = titleCase(record.grade?.status);
+        document.getElementById('gaRecordHistoryCount').textContent = `${record.history.length} ${record.history.length === 1 ? 'request' : 'requests'}`;
+        const history = document.getElementById('gaRecordHistory');
+        history.replaceChildren();
+        if (!record.history.length) {
+            const empty = document.createElement('div');
+            empty.className = 'ga-record-history-empty';
+            empty.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">verified</span><div><strong>No grade changes</strong><p>This grade has no correction requests on record.</p></div>';
+            history.append(empty);
+        } else {
+            record.history.forEach(item => {
+                const entry = document.createElement('article');
+                entry.className = 'ga-record-history-item';
+                const date = formatRecordDate(item.reviewed_at || item.created_at);
+                const header = document.createElement('header');
+                const change = document.createElement('div');
+                const values = document.createElement('strong');
+                values.textContent = `${item.current} → ${item.requested}`;
+                const status = document.createElement('span');
+                status.className = `ga-status ${item.status}`;
+                status.textContent = titleCase(item.status);
+                change.append(values, status);
+                header.append(change);
+                if (date) {
+                    const time = document.createElement('time');
+                    time.textContent = date;
+                    header.append(time);
+                }
+                const reason = document.createElement('p');
+                reason.textContent = item.reason;
+                const audit = document.createElement('dl');
+                audit.className = 'ga-record-audit';
+                const requested = document.createElement('div');
+                const requestedLabel = document.createElement('dt');
+                requestedLabel.textContent = 'Requested';
+                const requestedValue = document.createElement('dd');
+                requestedValue.textContent = `${item.requested_by} · ${formatRecordDate(item.created_at) || 'Date unavailable'}`;
+                requested.append(requestedLabel, requestedValue);
+                audit.append(requested);
+                const reviewed = document.createElement('div');
+                const reviewedLabel = document.createElement('dt');
+                reviewedLabel.textContent = item.status === 'approved' ? 'Approved and applied' : item.status === 'rejected' ? 'Rejected' : 'Review';
+                const reviewedValue = document.createElement('dd');
+                reviewedValue.textContent = item.reviewed_at ? `${item.reviewed_by || 'Unknown reviewer'} · ${formatRecordDate(item.reviewed_at)}` : 'Awaiting review';
+                reviewed.append(reviewedLabel, reviewedValue);
+                audit.append(reviewed);
+                entry.append(header, audit, reason);
+                if (item.review_notes) {
+                    const footer = document.createElement('footer');
+                    const label = document.createElement('span');
+                    label.textContent = 'Review note';
+                    footer.append(label, document.createTextNode(item.review_notes));
+                    entry.append(footer);
+                }
+                history.append(entry);
+            });
+        }
         studentDialog.showModal();
         document.getElementById('gaCloseStudentDialog').focus();
     }

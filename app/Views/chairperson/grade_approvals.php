@@ -15,11 +15,28 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <div class="ga-page" id="gradeApprovals">
-<header class="ga-heading"><div><span class="ga-eyebrow">ACADEMIC RECORDS</span><h1>Grade Approvals</h1><p>Review faculty submissions and decide requests to change official grades.</p></div><?php if ($deptName !== null): ?><span class="ga-department"><small>Department</small><strong><?= esc($deptName) ?></strong></span><?php endif ?></header>
+<header class="ga-heading"><span class="ga-heading-icon"><span class="material-symbols-outlined" aria-hidden="true">fact_check</span></span><div><span class="ga-eyebrow">ACADEMIC RECORDS</span><h1>Grade Approvals</h1><p>Review faculty submissions and decide requests to change official grades.</p></div><?php if ($deptName !== null): ?><span class="ga-department"><small>Department</small><strong><?= esc($deptName) ?></strong></span><?php endif ?></header>
 <?php if ($deptName === null): ?>
 <section class="ga-card ga-empty"><span class="material-symbols-outlined" aria-hidden="true">domain_disabled</span><div><h3>No department assigned</h3><p>Contact an administrator to assign a department to your account.</p></div></section>
 <?php else: ?>
 <div id="gaFeedback" class="ga-feedback" role="status" aria-live="polite" hidden></div>
+<div class="ga-metrics ga-metrics--three">
+    <div class="ga-metric">
+        <div class="ga-metric-head"><span class="ga-metric-label">To Review</span><span class="ga-metric-icon"><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span></span></div>
+        <div class="ga-metric-value"><strong><?= count($classes) ?></strong><span>classes</span></div>
+        <div class="ga-metric-sub">Submitted by faculty, awaiting your review.</div>
+    </div>
+    <div class="ga-metric">
+        <div class="ga-metric-head"><span class="ga-metric-label">Recommended</span><span class="ga-metric-icon"><span class="material-symbols-outlined" aria-hidden="true">forward_to_inbox</span></span></div>
+        <div class="ga-metric-value"><strong><?= count($recommendedClasses) ?></strong><span>classes</span></div>
+        <div class="ga-metric-sub">Sent on to the dean, not yet official.</div>
+    </div>
+    <div class="ga-metric<?= $changeRequests !== [] ? ' is-urgent' : '' ?>">
+        <div class="ga-metric-head"><span class="ga-metric-label">Corrections Pending</span><span class="ga-metric-icon"><span class="material-symbols-outlined" aria-hidden="true">history_edu</span></span></div>
+        <div class="ga-metric-value"><strong class="<?= $changeRequests !== [] ? 'ga-text-danger' : '' ?>"><?= count($changeRequests) ?></strong><span>requests</span></div>
+        <div class="ga-metric-sub<?= $changeRequests !== [] ? ' urgent' : '' ?>">Proposed changes to already-locked grades.</div>
+    </div>
+</div>
 <section class="ga-card ga-queue-card">
     <div class="ga-tabs" role="tablist" aria-label="Approval queues" id="gaTabs" hidden><button type="button" role="tab" id="gaSubmissionsTab" aria-controls="gaSubmissions" aria-selected="true" data-tab="gaSubmissions">To review <span class="ga-count"><?= count($classes) ?></span></button><button type="button" role="tab" id="gaLockedTab" aria-controls="gaLocked" aria-selected="false" tabindex="-1" data-tab="gaLocked">Recommended <span class="ga-count"><?= count($recommendedClasses) ?></span></button><button type="button" role="tab" id="gaCorrectionsTab" aria-controls="gaCorrections" aria-selected="false" tabindex="-1" data-tab="gaCorrections">Corrections <span class="ga-count" id="gaCorrectionCount"><?= count($changeRequests) ?></span></button></div>
     <section id="gaSubmissions" aria-labelledby="gaSubmissionsTitle" data-noun-singular="class" data-noun-plural="classes" data-count-suffix=" awaiting review">
