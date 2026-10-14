@@ -406,6 +406,9 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->post('enlistment/add-item', 'StudentEnlistment::addItem');
     $routes->post('enlistment/remove-item', 'StudentEnlistment::removeItem');
     $routes->post('enlistment/submit', 'StudentEnlistment::submit');
+    $routes->get('documents', 'StudentDocuments::index');
+    $routes->post('documents/request-cor', 'StudentDocuments::requestCor');
+    $routes->get('documents/download/(:num)', 'StudentDocuments::download/$1');
     $routes->get('grades', 'StudentGrades::index');
     $routes->get('tuition', 'StudentController::tuition');
     $routes->post('tuition/proof/upload', 'StudentController::uploadProof');

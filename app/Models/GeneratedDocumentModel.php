@@ -52,7 +52,13 @@ class GeneratedDocumentModel extends Model
             $activeYear = (new AcademicYearModel())->activeFormatted();
             $assessment = $activeYear !== null ? (new TuitionAssessmentModel())->forStudentYear($studentId, $activeYear) : null;
 
-            if ($assessment !== null && (float) $assessment['balance'] > 0) {
+            if ($type === 'cor') {
+                $eligibility = $this->corEligibility($studentId, (int) $student['user_id']);
+
+                if (! $eligibility['ok']) {
+                    return $eligibility;
+                }
+            } elseif ($assessment !== null && (float) $assessment['balance'] > 0) {
                 return ['ok' => false, 'error' => 'This student has an outstanding balance for the current term. Settle it with the Finance office before releasing this document.'];
             }
         }
@@ -66,13 +72,21 @@ class GeneratedDocumentModel extends Model
             margin: 8
         ))->build();
 
-        $viewName = $type === 'tor' ? 'documents/tor_pdf' : 'documents/certificate_pdf';
+        $viewName = match ($type) {
+            'tor'   => 'documents/tor_pdf',
+            'cor'   => 'documents/cor_pdf',
+            default => 'documents/certificate_pdf',
+        };
+
+        $corActiveYear = $type === 'cor' ? (new AcademicYearModel())->activeFormatted() : null;
 
         $html = view($viewName, [
             'student'           => $student,
             'type'              => $type,
             'typeLabel'         => DocumentRequestModel::TYPE_LABELS[$type],
             'grades'            => $type === 'tor' ? (new GradeModel())->forStudent((int) $student['user_id']) : [],
+            'enrollments'       => $type === 'cor' && $corActiveYear !== null ? $this->corEnrollments((int) $student['user_id'], $corActiveYear) : [],
+            'assessment'        => $type === 'cor' && $corActiveYear !== null ? (new TuitionAssessmentModel())->forStudentYear($studentId, $corActiveYear) : null,
             'verificationCode'  => $verificationCode,
             'qrDataUri'         => $qr->getDataUri(),
             'issuedAt'          => date('F j, Y'),
@@ -161,5 +175,57 @@ class GeneratedDocumentModel extends Model
     public function filePath(array $row): string
     {
         return WRITEPATH . 'uploads/generated_documents/' . $row['stored_filename'];
+    }
+
+    /**
+     * A COR is deliberately looser than TOR/certificates: a downpayment is
+     * enough, full payment isn't required — only an active hold (checked by
+     * the caller) or having paid NOTHING at all blocks it. "Currently
+     * enrolled" is checked explicitly rather than inferred from the
+     * assessment existing, since that's the two-part condition this was
+     * asked for. Shared by generate()'s gate AND StudentDocuments::index()'s
+     * eligibility display, so the rule lives in exactly one place.
+     *
+     * @return array{ok: bool, error?: string}
+     */
+    public function corEligibility(int $studentId, int $userId): array
+    {
+        $activeYear = (new AcademicYearModel())->activeFormatted();
+
+        $enrolledNow = $activeYear !== null
+            && array_filter((new EnrollmentModel())->activeForStudent($userId), static fn (array $e) => $e['academic_year'] === $activeYear) !== [];
+
+        if (! $enrolledNow) {
+            return ['ok' => false, 'error' => 'This student is not currently enrolled for the active term.'];
+        }
+
+        $assessment = (new TuitionAssessmentModel())->forStudentYear($studentId, $activeYear);
+
+        if ($assessment === null || (float) $assessment['amount_paid'] <= 0) {
+            return ['ok' => false, 'error' => 'This student has not made any payment for the current term yet.'];
+        }
+
+        return ['ok' => true];
+    }
+
+    /**
+     * The student's enrolled subjects for $academicYear, enriched with
+     * units/title from the subjects catalog — what cor_pdf's subjects table
+     * needs. Separate from EnrollmentModel::activeForStudent() (used for
+     * the plain "is enrolled" boolean check in generate()) since this needs
+     * richer columns for display.
+     */
+    private function corEnrollments(int $userId, string $academicYear): array
+    {
+        return $this->db->table('enrollments e')
+            ->select('e.subject_code, sec.program, sec.year_level, sec.section, sub.subject_name, sub.units')
+            ->join('sections sec', 'sec.section_id = e.section_id')
+            ->join('subjects sub', 'sub.subject_code = e.subject_code', 'left')
+            ->where('e.user_id', $userId)
+            ->where('e.status', 'enrolled')
+            ->where('sec.academic_year', $academicYear)
+            ->orderBy('e.subject_code')
+            ->get()
+            ->getResultArray();
     }
 }
