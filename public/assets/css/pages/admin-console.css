@@ -335,24 +335,17 @@ html, .ac-page { height: 100%; }
 }
 
 .ac-user-menu__item-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-sunken);
     color: var(--color-text-secondary);
-    font-size: 15px !important;
+    font-size: 17px !important;
     flex-shrink: 0;
-    transition: background-color .14s ease, color .14s ease;
+    transition: color .14s ease;
 }
 
 .ac-user-menu__item:hover { background: var(--color-surface-sunken); transform: translateX(1px); }
-.ac-user-menu__item:hover .ac-user-menu__item-icon { background: var(--color-primary-soft); color: var(--color-primary); }
+.ac-user-menu__item:hover .ac-user-menu__item-icon { color: var(--color-primary); }
 .ac-user-menu__item--danger { color: var(--color-danger); }
 .ac-user-menu__item--danger:hover { background: var(--color-danger-soft); }
-.ac-user-menu__item--danger:hover .ac-user-menu__item-icon { background: var(--color-surface); color: var(--color-danger); }
+.ac-user-menu__item--danger:hover .ac-user-menu__item-icon { color: var(--color-danger); }
 
 /* Main area */
 
