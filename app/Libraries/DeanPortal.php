@@ -25,7 +25,6 @@ class DeanPortal
                     'grade-approvals' => ['label' => 'Grade Approvals', 'icon' => 'grade',     'url' => 'dean/grade-approvals'],
                     'grade-change-requests' => ['label' => 'Correction Requests', 'icon' => 'history_edu', 'url' => 'dean/grade-change-requests'],
                     'enlistment-approvals' => ['label' => 'Enlistment Approvals', 'icon' => 'playlist_add_check', 'url' => 'dean/enlistment-approvals'],
-                    'profile'         => ['label' => 'Profile',         'icon' => 'person',    'url' => 'dean/profile'],
                 ],
             ],
         ];

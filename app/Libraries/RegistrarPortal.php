@@ -31,7 +31,6 @@ class RegistrarPortal
                     'clearance' => ['label' => 'Graduation Clearance', 'icon' => 'checklist', 'url' => 'registrar/clearance'],
                     'documents' => ['label' => 'Document Requests', 'icon' => 'description', 'url' => 'registrar/documents'],
                     'students'  => ['label' => 'Student Records', 'icon' => 'school',    'url' => 'registrar/students'],
-                    'profile'   => ['label' => 'Profile',         'icon' => 'person',    'url' => 'registrar/profile'],
                 ],
             ],
         ];

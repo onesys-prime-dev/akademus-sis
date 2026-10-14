@@ -16,7 +16,6 @@ $userRoleLabel = 'Faculty';
 $navGroups     = [
     '' => [
         'dashboard'    => ['label' => 'Dashboard',    'icon' => 'dashboard',        'url' => 'faculty/dashboard'],
-        'profile'      => ['label' => 'Profile',      'icon' => 'person',           'url' => 'faculty/profile'],
         'schedule'     => ['label' => 'Schedule',     'icon' => 'calendar_month',   'url' => 'faculty/schedule'],
         'availability' => ['label' => 'Availability', 'icon' => 'event_available',  'url' => 'faculty/availability'],
         'grading'      => ['label' => 'Grading',      'icon' => 'grade',            'url' => 'faculty/grading'],

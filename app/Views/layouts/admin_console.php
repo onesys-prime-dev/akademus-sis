@@ -191,9 +191,6 @@ $mustChangePassword = auth()->loggedIn()
                         </div>
                     </div>
                 </div>
-                <a class="ac-topbar__iconbtn" href="<?= site_url($notifRole === 'admin' ? 'admin/academic-settings' : $notifRole . '/profile') ?>" title="<?= $notifRole === 'admin' ? 'Academic settings' : 'Your profile' ?>" aria-label="<?= $notifRole === 'admin' ? 'Academic settings' : 'Your profile' ?>">
-                    <span class="material-symbols-outlined" aria-hidden="true">settings</span>
-                </a>
                 <button type="button" class="ac-topbar__iconbtn" title="Help" aria-label="Help" id="acHelpBtn">
                     <span class="material-symbols-outlined" aria-hidden="true">help_outline</span>
                 </button>
@@ -210,6 +207,11 @@ $mustChangePassword = auth()->loggedIn()
                         <p class="ac-user-menu__name"><?= esc($username) ?></p>
                         <p class="ac-user-menu__role"><?= esc($userRoleLabel) ?></p>
                     </div>
+                    <hr>
+                    <a href="<?= site_url($notifRole === 'admin' ? 'admin/academic-settings' : $notifRole . '/profile') ?>" class="ac-user-menu__item">
+                        <span class="material-symbols-outlined"><?= $notifRole === 'admin' ? 'settings' : 'person' ?></span>
+                        <span><?= $notifRole === 'admin' ? 'Academic Settings' : 'Profile' ?></span>
+                    </a>
                     <hr>
                     <a href="<?= site_url($logoutUrl) ?>" class="ac-user-menu__item ac-user-menu__item--danger">
                         <span class="material-symbols-outlined">logout</span>

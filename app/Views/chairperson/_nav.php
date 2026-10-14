@@ -13,7 +13,6 @@
 return [
     '' => [
         'overview'                => ['label' => 'Dashboard',               'icon' => 'home',              'url' => 'chairperson/overview'],
-        'profile'                 => ['label' => 'Profile',                 'icon' => 'person',             'url' => 'chairperson/profile'],
         'schedule'                => ['label' => 'Schedule Plotting',       'icon' => 'calendar_month',     'url' => 'chairperson/dashboard'],
         'curriculum'              => ['label' => 'Curriculum Builder',      'icon' => 'menu_book',          'url' => 'chairperson/curriculum'],
         'subject-ownership'       => ['label' => 'Subject Ownership',       'icon' => 'inventory_2',        'url' => 'chairperson/subject-ownership'],

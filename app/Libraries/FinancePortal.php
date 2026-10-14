@@ -30,7 +30,6 @@ class FinancePortal
                     'reports'         => ['label' => 'Reports',            'icon' => 'bar_chart',      'url' => 'finance/reports'],
                     'tuition-rates'   => ['label' => 'Tuition Rates',      'icon' => 'payments',       'url' => 'finance/tuition-rates'],
                     'fee-types'       => ['label' => 'Fee Types',         'icon' => 'sell',            'url' => 'finance/fee-types'],
-                    'profile'         => ['label' => 'Profile',           'icon' => 'person',          'url' => 'finance/profile'],
                 ],
             ],
         ];
