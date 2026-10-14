@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Akademus Deliverables Checklist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  /* Layout: top meta bar, then one section per role, each a sticky-headed table grouped by module via rowspan. */
+  :root{
+    --bg:#f6f7fb; --surface:#ffffff; --surface-sunken:#eef1f7;
+    --ink:#161b2c; --ink-soft:#4b5468; --ink-faint:#8891a3;
+    --line:#e2e5ee; --accent:#1d3f99; --accent-soft:#eaf0fd;
+    --done:#1a7f4e; --done-soft:#e3f6ec;
+    --ongoing:#b2680a; --ongoing-soft:#fdf0dd;
+    --hold:#6b3fa0; --hold-soft:#f1e9fa;
+    --empty:#8891a3; --empty-soft:#eef1f6;
+    --font-display:'Sora',system-ui,sans-serif;
+    --font-body:'Inter',system-ui,sans-serif;
+    --font-mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;padding-block:40px;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.5;}
+  .wrap{max-width:1180px;margin:0 auto;padding-inline:20px;}
+  .masthead{margin-bottom:28px;}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);}
+  h1{font-family:var(--font-display);font-size:clamp(26px,4vw,36px);font-weight:800;letter-spacing:-.5px;margin:6px 0 10px;text-wrap:balance;}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:14px;}
+  .meta b{color:var(--ink);font-weight:600;}
+  .meta span{white-space:nowrap;}
+
+  .print-bar{position:sticky;top:0;z-index:10;display:flex;justify-content:flex-end;padding:10px 20px;background:var(--bg);}
+  .print-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;font:inherit;font-weight:600;font-size:13px;cursor:pointer;}
+  .print-btn:hover{background:#15307a;}
+
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 30px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:600;}
+  .chip::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .chip.done{background:var(--done-soft);color:var(--done);}
+  .chip.ongoing{background:var(--ongoing-soft);color:var(--ongoing);}
+  .chip.hold{background:var(--hold-soft);color:var(--hold);}
+  .chip.empty{background:var(--empty-soft);color:var(--empty);}
+
+  nav.roles{position:sticky;top:48px;z-index:5;display:flex;gap:4px;flex-wrap:wrap;background:var(--bg);padding:10px 0 16px;margin-bottom:6px;border-bottom:1px solid var(--line);}
+  nav.roles a{font-size:12.5px;font-weight:600;color:var(--ink-soft);text-decoration:none;padding:7px 13px;border-radius:8px;border:1px solid transparent;}
+  nav.roles a:hover{background:var(--surface-sunken);color:var(--ink);}
+
+  section.role{margin:44px 0 10px;scroll-margin-top:62px;}
+  .role-head{display:flex;align-items:baseline;gap:12px;margin-bottom:4px;}
+  .role-head .num{font-family:var(--font-mono);font-size:12px;color:var(--accent);background:var(--accent-soft);width:26px;height:26px;border-radius:7px;display:inline-grid;place-items:center;flex-shrink:0;}
+  .role-head h2{font-family:var(--font-display);font-size:20px;font-weight:700;margin:0;}
+  .role-sub{font-size:12.5px;color:var(--ink-soft);margin:4px 0 16px 38px;max-width:760px;line-height:1.6;}
+  .role-sub a{color:var(--accent);}
+
+  .table-card{border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden;box-shadow:0 1px 2px rgba(16,20,40,.03);}
+  table{width:100%;border-collapse:collapse;}
+  caption{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+  thead th{position:sticky;top:98px;background:var(--surface-sunken);text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-faint);padding:11px 16px;border-bottom:1px solid var(--line);}
+  td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13px;}
+  tbody tr:last-child td{border-bottom:0;}
+  td.module{font-weight:700;color:var(--ink);white-space:nowrap;}
+  td.desc{color:var(--ink-soft);font-size:12px;line-height:1.6;max-width:230px;min-width:150px;}
+  td.task{min-width:220px;}
+  td.week{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-soft);white-space:nowrap;}
+  td.status{white-space:nowrap;}
+  tbody tr.group-start td.module,tbody tr.group-start td.desc,tbody tr.group-start td.week{border-top:2px solid var(--line);}
+  tbody tr.group-start:first-child td{border-top:0;}
+
+  @media screen and (max-width:860px){
+    .table-card{overflow-x:auto;}
+    table{min-width:760px;}
+  }
+  @media screen and (max-width:520px){
+    .role-sub{margin-left:0;}
+  }
+
+  @page{ size: A4 landscape; margin: 12mm; }
+  @media print{
+    .print-bar{display:none;}
+    nav.roles{position:static;}
+    thead th{position:static;}
+    body{padding-block:0;background:#fff;font-size:11px;}
+    .wrap{max-width:none;padding-inline:0;}
+    .table-card{box-shadow:none;overflow:visible;}
+    table{min-width:0;width:100%;}
+    td{padding:8px 10px;}
+    td.desc{max-width:180px;}
+    td.task{min-width:0;}
+    section.role{break-inside:avoid-page;}
+    a{color:inherit;text-decoration:none;}
+  }
+</style>
+</head>
+<body>
+<div class="print-bar"><button class="print-btn" onclick="window.print()">Save as PDF</button></div>
+<div class="wrap">
+  <header class="masthead">
+    <div class="eyebrow">Project tracker &middot; CodeIgniter 4 / MySQL</div>
+    <h1>Akademus SIS — Deliverables Checklist</h1>
+    <div class="meta">
+      <span><b>Timeline</b> Jun 8 – Jul 31, 2026</span>
+      <span><b>Dependency order</b> UI/UX + Backend &rarr; Frontend (per module)</span>
+      <span><b>Docs</b> runs in parallel</span>
+      <span><b>Admissions</b> excluded — existing system, integration only</span>
+      <span><b>Scheduling</b> extended to 2 weeks for AI integration</span>
+    </div>
+    <p style="margin:10px 0 0;font-size:12px;color:var(--ink-faint);">Backend and Frontend statuses below were audited directly against the live codebase. UI/UX and Documentation statuses reflect the original plan only — Figma files and diagrams can't be verified from code.</p>
+  </header>
+
+  <div class="legend">
+    <span class="chip done">Done</span>
+    <span class="chip ongoing">Ongoing</span>
+    <span class="chip hold">Hold</span>
+    <span class="chip empty">Not started</span>
+  </div>
+
+  <nav class="roles">
+    <a href="#uiux">01 · UI/UX Designer</a>
+    <a href="#backend">02 · Backend Developer</a>
+    <a href="#frontend">03 · Frontend Developer</a>
+    <a href="#docs">04 · Project Lead &amp; Documentation</a>
+  </nav>
+
+  <!-- ============== 1. UI/UX ============== -->
+  <section class="role" id="uiux">
+    <div class="role-head"><span class="num">01</span><h2>UI/UX Designer</h2></div>
+    <p class="role-sub">Figma designs for every screen below. Each screen reaches high fidelity before the Frontend Developer implements it. Target week = design completion deadline.</p>
+    <div class="table-card">
+      <table>
+        <caption>UI/UX deliverables</caption>
+        <thead><tr><th>Module</th><th>Description</th><th>Task / Deliverable</th><th>Target Week</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr class="group-start"><td class="module" rowspan="3">Authentication</td><td class="desc" rowspan="3">Secure login, account management, and role-based access control for students, faculty, and administrators.</td><td class="task">Login screen with variants for student, faculty, and admin</td><td class="week" rowspan="3">Jun 8–14</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Forgot password / reset password screen</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Role-based layout shells (sidebar and nav per role)</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Student Records</td><td class="desc" rowspan="3">Maintains comprehensive student information including personal details, academic history, enrollment records, and status.</td><td class="task">Student profile screen with personal and academic info</td><td class="week" rowspan="3">Jun 8–14</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Academic history view (grades, enrollment per term)</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Record detail modal</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Course Management</td><td class="desc" rowspan="3">Manages academic programs, subjects, curricula, prerequisites, course offerings, and faculty assignments.</td><td class="task">Programs and subjects list screen</td><td class="week" rowspan="3">Jun 15–21</td><td class="status"><span class="chip hold">Hold</span></td></tr>
+          <tr><td class="task">Subject detail screen with prerequisites</td><td class="status"><span class="chip hold">Hold</span></td></tr>
+          <tr><td class="task">Faculty assignment view per subject/section</td><td class="status"><span class="chip hold">Hold</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Enrollment</td><td class="desc" rowspan="3">Allows students to register for courses, select subjects, and complete enrollment requirements per academic term.</td><td class="task">Subject selection screen with unit counter</td><td class="week" rowspan="3">Jun 15–21</td><td class="status"><span class="chip hold">Hold</span></td></tr>
+          <tr><td class="task">Enrollment summary and confirmation screen</td><td class="status"><span class="chip hold">Hold</span></td></tr>
+          <tr><td class="task">Enrollment period status banner</td><td class="status"><span class="chip hold">Hold</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="5">Scheduling</td><td class="desc" rowspan="5">Creates and manages class schedules, room assignments, and faculty timetables with AI-assisted conflict resolution and schedule optimization.</td><td class="task">Timetable grid UI (weekly view per student/faculty)</td><td class="week" rowspan="5">Jun 22–Jul 5</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Room assignment management screen</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Conflict indicator and warning design</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">AI schedule suggestion UI — display AI-generated schedule options</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Schedule override/manual adjustment screen</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Attendance</td><td class="desc" rowspan="3">Records and monitors student attendance per class session with tracking and reporting tools for instructors and admins.</td><td class="task">Attendance marking screen for faculty (per class session)</td><td class="week" rowspan="3">Jun 22–28</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Attendance summary screen for students and admins</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Attendance report view with filters</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Grading</td><td class="desc" rowspan="3">Enables instructors to record, calculate, and submit grades while allowing students to view their academic performance.</td><td class="task">Grade entry form for faculty per subject/section</td><td class="week" rowspan="3">Jun 29–Jul 5</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Grade viewing screen for students</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Grade submission confirmation screen</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="4">Billing &amp; Payments</td><td class="desc" rowspan="4">Handles tuition fees, miscellaneous charges, payment tracking, invoicing, and payment verification.</td><td class="task">Billing statement screen with fee breakdown</td><td class="week" rowspan="4">Jun 29–Jul 5</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Payment submission UI (upload proof, select method)</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Payment history screen</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Invoice/receipt view</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Document Management</td><td class="desc" rowspan="3">Stores and manages digital documents such as transcripts, certificates, enrollment forms, and student requirements.</td><td class="task">Document list screen with status per doc type</td><td class="week" rowspan="3">Jul 6–12</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">File upload form UI</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Document status indicators (submitted/verified/missing)</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Notifications</td><td class="desc" rowspan="3">Delivers real-time announcements, reminders, and updates via email, SMS, or in-app alerts.</td><td class="task">Notification bell icon with dropdown preview</td><td class="week" rowspan="3">Jul 6–12</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Full notification center screen</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Email notification template designs</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Student Portal</td><td class="desc" rowspan="3">Self-service access for students to view schedules, grades, enrollment status, billing info, and announcements.</td><td class="task">Student dashboard layout with widgets</td><td class="week" rowspan="3">Jul 13–19</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Announcements section</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Quick access links to grades, schedule, billing, and documents</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Faculty Portal</td><td class="desc" rowspan="3">Allows instructors to manage classes, attendance, grades, course materials, and communication with students.</td><td class="task">Faculty dashboard layout</td><td class="week" rowspan="3">Jul 13–19</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Class list and student roster screen</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Communication/messaging panel UI</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Reports &amp; Analytics</td><td class="desc" rowspan="3">Generates reports on enrollment, academic performance, attendance, and finances to support decision-making.</td><td class="task">Report dashboard layout with filter controls</td><td class="week" rowspan="3">Jul 20–26</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Chart and graph components (enrollment, grades, attendance, finance)</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Export button design (CSV/PDF)</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Graduation Management</td><td class="desc" rowspan="3">Tracks completion of academic requirements, evaluates graduation eligibility, and manages graduation applications and clearances.</td><td class="task">Graduation eligibility checklist screen</td><td class="week" rowspan="3">Jul 20–26</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Clearance status screen per department</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Graduation application form screen</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============== 2. BACKEND ============== -->
+  <section class="role" id="backend">
+    <div class="role-head"><span class="num">02</span><h2>Backend Developer</h2></div>
+    <p class="role-sub">CI4 controllers, models, and services. Every endpoint is tested and documented before the Frontend Developer integrates it. Runs in parallel with the UI/UX track. Test cases: <a href="https://docs.google.com/spreadsheets/d/1t5xeNA02cm9w06QwS8qa8CNsLKyUYL9Mhuj72YI3Aaw/edit?usp=sharing">shared spreadsheet</a>.</p>
+    <div class="table-card">
+      <table>
+        <caption>Backend deliverables</caption>
+        <thead><tr><th>Module</th><th>Description</th><th>Task / Deliverable</th><th>Target Week</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr class="group-start"><td class="module" rowspan="7">Authentication</td><td class="desc" rowspan="7">Secure login, account management, and role-based access control for students, faculty, and administrators.</td><td class="task">POST /auth/login — validate credentials, return session/token</td><td class="week" rowspan="7">Jun 8–14</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">POST /auth/logout — destroy session</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Role-based middleware/route guards (student, faculty, admin)</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">POST /auth/forgot-password</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">SMTP email delivery for password reset requests</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">POST /auth/reset-password</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Remember me authentication</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="9">API Integration</td><td class="desc" rowspan="9">Enables secure system-to-system communication between Akademus Admission and SIS through authenticated REST APIs for student promotion and data synchronization.</td><td class="task">API Foundation</td><td class="week" rowspan="9">&mdash;</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">POST /api/students/promote — receive applicant data from Admission System</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">API Auth — API key authentication and request validation</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Payload Validation — JSON payload parsing and required field validation</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Integration Testing — Admission-to-SIS API communication testing (PowerShell/Thunder Client)</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+          <tr><td class="task">Student Promotion — POST /api/students/promote creates Shield user and student record</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+          <tr><td class="task">GET /api/students/{id} — retrieve student information</td><td class="status"><span class="chip hold">Hold</span></td></tr>
+          <tr><td class="task">PUT /api/students/{id} — synchronize student updates</td><td class="status"><span class="chip hold">Hold</span></td></tr>
+          <tr><td class="task">Webhook/event-based synchronization with Admission System</td><td class="status"><span class="chip hold">Hold</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Student Records</td><td class="desc" rowspan="3">Maintains comprehensive student information including personal details, academic history, enrollment records, and status.</td><td class="task">GET /students/:id — full profile including personal details and academic history</td><td class="week" rowspan="3">Jun 8–14</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+          <tr><td class="task">PATCH /students/:id — update personal information</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+          <tr><td class="task">GET /students/:id/records — enrollment records and grade history per term</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="9">Course Management</td><td class="desc" rowspan="9">Manages academic programs, subjects, curricula, prerequisites, course offerings, and faculty assignments.</td><td class="task">CRUD Programs / Subjects / Curriculum, curriculum–subject assignment, subject prerequisite management</td><td class="week" rowspan="9">Jun 15–21</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Program and subject validation rules</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Program and subject status toggle (active/inactive)</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Soft delete / record deactivation</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Flash messages and form error handling</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Admin-only access control</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">GET /courses/offerings — subjects offered per academic term</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">POST /courses/assign-faculty — link faculty to subject/section</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+          <tr><td class="task">Prerequisite chain validation before saving subject config</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="4">Enrollment</td><td class="desc" rowspan="4">Allows students to register for courses, select subjects, and complete enrollment requirements per academic term.</td><td class="task">GET /enrollment/subjects — available subjects per term with section info</td><td class="week" rowspan="4">Jun 15–21</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">POST /enrollment/register — enroll student in selected subjects</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">GET /enrollment/status/:student_id — current enrollment status</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Prerequisite and conflict validation logic</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="7">Scheduling</td><td class="desc" rowspan="7">Creates and manages class schedules, room assignments, and faculty timetables with AI-assisted conflict resolution and schedule optimization.</td><td class="task">POST /schedules — create or update class schedule entries</td><td class="week" rowspan="7">Jun 22–Jul 5</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">GET /schedules/student/:id — personal timetable for current term</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">GET /schedules/faculty/:id and /schedules/room/:id</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Conflict detection service — check room, faculty, and student overlaps</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">AI integration — connect scheduling engine to LLM/AI solver for automated schedule generation</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">POST /schedules/ai-generate — trigger AI schedule generation given constraints (rooms, faculty load, time slots)</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+          <tr><td class="task">POST /schedules/override — allow manual adjustment after AI suggestion</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="4">Attendance</td><td class="desc" rowspan="4">Records and monitors student attendance per class session with tracking and reporting tools for instructors and admins.</td><td class="task">POST /attendance/mark — instructor submits attendance per session</td><td class="week" rowspan="4">Jun 22–28</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">GET /attendance/student/:id — complete attendance record per subject</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">GET /attendance/report — summary for admin and faculty with filters</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Absent threshold alert — trigger notification when limit is exceeded</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="4">Grading</td><td class="desc" rowspan="4">Enables instructors to record, calculate, and submit grades while allowing students to view their academic performance.</td><td class="task">POST /grades/submit — instructor submits final or midterm grades</td><td class="week" rowspan="4">Jun 29–Jul 5</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">GET /grades/student/:id — grades per term and subject</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Grade calculation logic — GWA and final grade formula</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+          <tr><td class="task">Grade locking — prevent edits after submission deadline</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="4">Billing &amp; Payments</td><td class="desc" rowspan="4">Handles tuition fees, miscellaneous charges, payment tracking, invoicing, and payment verification.</td><td class="task">GET /billing/:student_id — generate billing statement with fee breakdown</td><td class="week" rowspan="4">Jun 29–Jul 5</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">POST /payments/submit — upload proof of payment and log transaction</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">PATCH /payments/:id/verify — admin confirms and approves payment</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Fee computation logic based on program, units, and miscellaneous charges</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="4">Document Management</td><td class="desc" rowspan="4">Stores and manages digital documents such as transcripts, certificates, enrollment forms, and student requirements.</td><td class="task">POST /documents/upload — store file and record metadata (built as server-side document generation: TOR/COR/COE/certificates, QR-verifiable, not arbitrary upload)</td><td class="week" rowspan="4">Jul 6–12</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">GET /documents/student/:id — list all documents with status per type</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">GET /documents/:id/download — serve file for authorized users</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">File type and size validation on upload</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="4">Notifications</td><td class="desc" rowspan="4">Delivers real-time announcements, reminders, and updates via email, SMS, or in-app alerts.</td><td class="task">PHPMailer/SMTP integration for transactional emails</td><td class="week" rowspan="4">Jul 6–12</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+          <tr><td class="task">POST /notifications/send — trigger email or in-app notification</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Notification queue for batch sends on mass events</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">GET /notifications/:user_id — fetch unread notifications</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Student Portal</td><td class="desc" rowspan="3">Self-service access for students to view schedules, grades, enrollment status, billing info, and announcements.</td><td class="task">GET /portal/student/:id/dashboard — aggregate data from grades, schedule, billing, notifications</td><td class="week" rowspan="3">Jul 13–19</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">GET /portal/announcements — fetch active announcements</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Ensure all portal endpoints return lightweight summarized responses</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Faculty Portal</td><td class="desc" rowspan="3">Allows instructors to manage classes, attendance, grades, course materials, and communication with students.</td><td class="task">GET /portal/faculty/:id/dashboard — class list and today's schedule</td><td class="week" rowspan="3">Jul 13–19</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">GET /portal/faculty/:id/classes — student roster per handled class</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">POST /messages/send and GET /messages/:thread_id — messaging endpoints</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="5">Reports &amp; Analytics</td><td class="desc" rowspan="5">Generates reports on enrollment, academic performance, attendance, and finances to support decision-making.</td><td class="task">GET /reports/enrollment — stats per term, program, and section</td><td class="week" rowspan="5">Jul 20–26</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">GET /reports/grades — academic performance analytics</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">GET /reports/attendance — summary per class and per student</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">GET /reports/finance — payment collection and outstanding balance summary</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Export endpoint — generate CSV or PDF from report data</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="4">Graduation Management</td><td class="desc" rowspan="4">Tracks completion of academic requirements, evaluates graduation eligibility, and manages graduation applications and clearances.</td><td class="task">GET /graduation/eligibility/:student_id — evaluate completion of required units</td><td class="week" rowspan="4">Jul 20–26</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+          <tr><td class="task">POST /graduation/apply — submit graduation application record (built as registrar-initiated clearance, not student self-apply)</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">GET /graduation/clearance/:id — checklist of department clearances</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">PATCH /graduation/:id/approve — finalize approval and trigger notification</td><td class="status"><span class="chip done">Done</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============== 3. FRONTEND ============== -->
+  <section class="role" id="frontend">
+    <div class="role-head"><span class="num">03</span><h2>Frontend Developer</h2></div>
+    <p class="role-sub">CI4 views. Implementation on a module starts the week after the UI/UX and Backend deliverables for it are complete.</p>
+    <div class="table-card">
+      <table>
+        <caption>Frontend deliverables</caption>
+        <thead><tr><th>Module</th><th>Description</th><th>Task / Deliverable</th><th>Target Week</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr class="group-start"><td class="module" rowspan="4">Authentication</td><td class="desc" rowspan="4">Secure login, account management, and role-based access control for students, faculty, and administrators.</td><td class="task">Login form with email and password fields</td><td class="week" rowspan="4">Jun 15–21</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Role-based redirect after login (student/faculty/admin)</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Forgot password and reset password flow UI</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Session/token storage and auth guards on protected routes</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Student Records</td><td class="desc" rowspan="3">Maintains comprehensive student information including personal details, academic history, enrollment records, and status.</td><td class="task">Student profile page with personal and academic info</td><td class="week" rowspan="3">Jun 15–21</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Academic history table per term</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Edit personal info form with save and cancel (only username is editable today, not full personal info)</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Course Management</td><td class="desc" rowspan="3">Manages academic programs, subjects, curricula, prerequisites, course offerings, and faculty assignments.</td><td class="task">Programs and subjects list page</td><td class="week" rowspan="3">Jun 22–28</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Subject detail view with prerequisites and section info</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Faculty assignment display per subject</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="4">Enrollment</td><td class="desc" rowspan="4">Allows students to register for courses, select subjects, and complete enrollment requirements per academic term.</td><td class="task">Subject selection screen with unit counter and section display</td><td class="week" rowspan="4">Jun 22–28</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Prerequisite and conflict error display</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Enrollment confirmation and summary screen</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Fetch available subjects from enrollment API</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="5">Scheduling</td><td class="desc" rowspan="5">Creates and manages class schedules, room assignments, and faculty timetables with AI-assisted conflict resolution and schedule optimization.</td><td class="task">Timetable grid component — weekly view with time slots</td><td class="week" rowspan="5">Jul 6–12</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Room assignment display</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Conflict warning UI — highlight overlapping entries</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">AI schedule suggestion display — show AI-generated options with accept/reject actions (built as a rule-based heuristic suggester, not an LLM/AI solver)</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+          <tr><td class="task">Manual override form — adjust AI-generated schedule entries</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Attendance</td><td class="desc" rowspan="3">Records and monitors student attendance per class session with tracking and reporting tools for instructors and admins.</td><td class="task">Attendance marking interface for faculty — present/absent/late per student</td><td class="week" rowspan="3">Jun 29–Jul 5</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Attendance summary page for students per subject</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Absent/present/late status badge components</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Grading</td><td class="desc" rowspan="3">Enables instructors to record, calculate, and submit grades while allowing students to view their academic performance.</td><td class="task">Grade entry form for faculty per student per subject</td><td class="week" rowspan="3">Jul 6–12</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Grade view page for students per term</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">GWA and grade summary display</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="4">Billing &amp; Payments</td><td class="desc" rowspan="4">Handles tuition fees, miscellaneous charges, payment tracking, invoicing, and payment verification.</td><td class="task">Billing statement page with itemized fee breakdown</td><td class="week" rowspan="4">Jul 6–12</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Payment upload form with method selector</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Payment history table with status badges</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Invoice/receipt view screen</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Document Management</td><td class="desc" rowspan="3">Stores and manages digital documents such as transcripts, certificates, enrollment forms, and student requirements.</td><td class="task">Document list with status indicator per document type</td><td class="week" rowspan="3">Jul 13–19</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">File upload component with validation feedback (not applicable — documents are generated server-side, not uploaded by students)</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Download button per uploaded document</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Notifications</td><td class="desc" rowspan="3">Delivers real-time announcements, reminders, and updates via email, SMS, or in-app alerts.</td><td class="task">Notification bell with unread count badge</td><td class="week" rowspan="3">Jul 13–19</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Notification dropdown preview</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Full notification center page with mark as read (dropdown panel only — no dedicated full-page center yet)</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="2">Student Portal</td><td class="desc" rowspan="2">Self-service access for students to view schedules, grades, enrollment status, billing info, and announcements.</td><td class="task">Student dashboard with widgets: schedule preview, grade summary, billing balance, announcements</td><td class="week" rowspan="2">Jul 20–26</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Fetch and display data from portal dashboard API (server-rendered in one pass today, not a separate client-fetched API)</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Faculty Portal</td><td class="desc" rowspan="3">Allows instructors to manage classes, attendance, grades, course materials, and communication with students.</td><td class="task">Faculty dashboard with today's schedule and class list</td><td class="week" rowspan="3">Jul 20–26</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Class roster component with student list per section</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Quick-action links to attendance marking and grade entry (grading link exists; no attendance module to link to)</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Reports &amp; Analytics</td><td class="desc" rowspan="3">Generates reports on enrollment, academic performance, attendance, and finances to support decision-making.</td><td class="task">Report dashboard with date range and program/section filters (finance reports only — no institution-wide academic reports exist yet)</td><td class="week" rowspan="3">Jul 27–31</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Charts for enrollment, grade distribution, attendance, and finance</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Export to CSV and PDF button</td><td class="status"><span class="chip ongoing">Ongoing</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Graduation Management</td><td class="desc" rowspan="3">Tracks completion of academic requirements, evaluates graduation eligibility, and manages graduation applications and clearances.</td><td class="task">Graduation eligibility checklist page (registrar/finance side only — no student-facing clearance status view yet)</td><td class="week" rowspan="3">Jul 27–31</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Graduation application form with submit action (built as registrar-initiated, not student self-apply)</td><td class="status"><span class="chip empty">Not started</span></td></tr>
+          <tr><td class="task">Clearance status display per department</td><td class="status"><span class="chip done">Done</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============== 4. DOCS ============== -->
+  <section class="role" id="docs">
+    <div class="role-head"><span class="num">04</span><h2>Project Lead &amp; Documentation</h2></div>
+    <p class="role-sub">UML diagrams, user stories, ERDs, data dictionaries, and specs. Runs in parallel with the UI/UX and Backend tracks for each module.</p>
+    <div class="table-card">
+      <table>
+        <caption>Documentation deliverables</caption>
+        <thead><tr><th>Module</th><th>Description</th><th>Task / Deliverable</th><th>Target Week</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr class="group-start"><td class="module" rowspan="3">Authentication</td><td class="desc" rowspan="3">Secure login, account management, and role-based access control for students, faculty, and administrators.</td><td class="task">Use case diagram: login, logout, and password reset per role</td><td class="week" rowspan="3">Jun 8–14</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Sequence diagram: login and session flow</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: student login, faculty login, admin login, forgot password</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Student Records</td><td class="desc" rowspan="3">Maintains comprehensive student information including personal details, academic history, enrollment records, and status.</td><td class="task">ERD: students, academic_history, programs, enrollment_records tables</td><td class="week" rowspan="3">Jun 8–14</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Data dictionary: all fields in student records module</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: view profile, edit personal info, view academic history</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Course Management</td><td class="desc" rowspan="3">Manages academic programs, subjects, curricula, prerequisites, course offerings, and faculty assignments.</td><td class="task">ERD: courses, programs, curricula, subjects, prerequisites tables</td><td class="week" rowspan="3">Jun 15–21</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Class diagram: Course, Program, Subject, Curriculum entities</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: add/edit subject, assign faculty, configure prerequisites</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="4">Enrollment</td><td class="desc" rowspan="4">Allows students to register for courses, select subjects, and complete enrollment requirements per academic term.</td><td class="task">Use case diagram: student enrollment process</td><td class="week" rowspan="4">Jun 15–21</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Sequence diagram: subject registration and conflict validation flow</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: browse subjects, enroll, view status, handle conflicts</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">ERD: enrollment, subjects, sections, prerequisites tables</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="6">Scheduling</td><td class="desc" rowspan="6">Creates and manages class schedules, room assignments, and faculty timetables with AI-assisted conflict resolution and schedule optimization.</td><td class="task">ERD: schedules, rooms, sections, time_slots tables</td><td class="week" rowspan="6">Jun 22–Jul 5</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Activity diagram: manual schedule creation and conflict detection flow</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Sequence diagram: AI schedule generation flow (input constraints &rarr; AI solver &rarr; output &rarr; admin review)</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: create schedule manually, trigger AI generation, review AI suggestions, override schedule</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">AI integration notes: constraints fed to the AI (faculty load, room capacity, time slot availability, no-conflict rules)</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Research spike: evaluate AI/solver approach (constraint satisfaction, LLM-based, or hybrid)</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Attendance</td><td class="desc" rowspan="3">Records and monitors student attendance per class session with tracking and reporting tools for instructors and admins.</td><td class="task">Use case diagram: attendance marking and viewing per role</td><td class="week" rowspan="3">Jun 22–28</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Sequence diagram: attendance marking and absent alert flow</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: mark attendance, view summary, generate report</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Grading</td><td class="desc" rowspan="3">Enables instructors to record, calculate, and submit grades while allowing students to view their academic performance.</td><td class="task">Use case diagram: grade submission and viewing per role</td><td class="week" rowspan="3">Jun 29–Jul 5</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Sequence diagram: grade submission, calculation, and locking flow</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: submit grades, view GWA, lock grades after deadline</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Billing &amp; Payments</td><td class="desc" rowspan="3">Handles tuition fees, miscellaneous charges, payment tracking, invoicing, and payment verification.</td><td class="task">ERD: billing_statements, payments, fee_types, payment_methods tables</td><td class="week" rowspan="3">Jun 29–Jul 5</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Activity diagram: payment submission and verification flow</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: view billing, submit payment, verify payment, view receipt</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="2">Document Management</td><td class="desc" rowspan="2">Stores and manages digital documents such as transcripts, certificates, enrollment forms, and student requirements.</td><td class="task">Documentation notes (source entry incomplete)</td><td class="week" rowspan="2">Jul 6–12</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: upload document, view status, download, verify (admin)</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="2">Notifications</td><td class="desc" rowspan="2">Delivers real-time announcements, reminders, and updates via email, SMS, or in-app alerts.</td><td class="task">Sequence diagram: notification trigger flow for enrollment, payment, grade events</td><td class="week" rowspan="2">Jul 6–12</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: receive notification, view in-app alert, mark as read</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="2">Student Portal</td><td class="desc" rowspan="2">Self-service access for students to view schedules, grades, enrollment status, billing info, and announcements.</td><td class="task">System context diagram: portal and its data sources</td><td class="week" rowspan="2">Jul 13–19</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: view dashboard, check announcements, access modules</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="2">Faculty Portal</td><td class="desc" rowspan="2">Allows instructors to manage classes, attendance, grades, course materials, and communication with students.</td><td class="task">Use case diagram: faculty portal actions</td><td class="week" rowspan="2">Jul 13–19</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: view class list, mark attendance, submit grades from portal</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="3">Reports &amp; Analytics</td><td class="desc" rowspan="3">Generates reports on enrollment, academic performance, attendance, and finances to support decision-making.</td><td class="task">List of required reports per stakeholder (admin, registrar, finance)</td><td class="week" rowspan="3">Jul 20–26</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: generate enrollment report, export grade report, view finance summary</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Sample report format descriptions per report type</td><td class="status"><span class="chip done">Done</span></td></tr>
+
+          <tr class="group-start"><td class="module" rowspan="4">Graduation Management</td><td class="desc" rowspan="4">Tracks completion of academic requirements, evaluates graduation eligibility, and manages graduation applications and clearances.</td><td class="task">Use case diagram: graduation workflow for student, registrar, department heads</td><td class="week" rowspan="4">Jul 20–26</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">Activity diagram: clearance processing and eligibility evaluation</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">User stories: apply for graduation, check eligibility, process clearance, approve</td><td class="status"><span class="chip done">Done</span></td></tr>
+          <tr><td class="task">ERD: graduation_applications, clearance_items, graduation_requirements tables</td><td class="status"><span class="chip done">Done</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+</body>
+</html>
