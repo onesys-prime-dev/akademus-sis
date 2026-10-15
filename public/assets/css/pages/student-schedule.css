@@ -381,11 +381,15 @@
        lost, but a stat can no longer be cut off by the card's bottom edge. */
     .ss-overview { grid-template-columns: repeat(3, 1fr); overflow: visible; }
     .ss-overview-intro { grid-column: 1 / -1; min-height: auto; padding: 16px 18px; border-bottom: 1px solid var(--ss-line); }
-    /* The 24px stat numbers were sitting only ~18px off the card's bottom, which
-       read as "cut off" at 1-2x. Give the row real breathing room so the digits
-       sit comfortably inside the card instead of hugging its bottom edge. */
+    /* A little extra room above the label and below the number so the 24px
+       digits sit comfortably inside the card rather than near its edges. */
     .ss-stat { min-height: 92px; padding: 16px 12px; }
-    .ss-stat:nth-child(2) { border-left: 0; }
+    /* The desktop pass sets the card's own padding to 0 and lets each stat
+       supply it, but the older compact block still zeroes the first stat's
+       padding-left — and :nth-child() outranks the plain .ss-stat rule, so
+       "SUBJECTS"/"7" sat flush against the card's left edge. Restore the same
+       inset the other columns get. */
+    .ss-stat:nth-child(2) { border-left: 0; padding-left: 12px; }
     .ss-board-heading { padding: 18px 16px 15px; }
     .ss-board-actions { width: 100%; }
     .ss-board-actions > .ss-button { margin-left: auto; }
