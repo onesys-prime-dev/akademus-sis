@@ -236,7 +236,16 @@ class StudentController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
-        return $this->response->download($path, null)->setFileName($receipt['or_number'] . '.pdf');
+        if ($this->request->getGet('download') !== null) {
+            return $this->response->download($path, null)->setFileName($receipt['or_number'] . '.pdf');
+        }
+
+        $disposition = 'inline; filename="' . $receipt['or_number'] . '.pdf"';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', $disposition)
+            ->setBody(file_get_contents($path));
     }
 
     public function updateProfile()

@@ -240,7 +240,7 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
             <p>No payments recorded yet.</p>
         </div>
     <?php else: ?>
-        <div class="tf-table-scroll" role="region" aria-label="Payment details" tabindex="0"><table class="grade-table">
+        <div class="tf-table-scroll" role="region" aria-label="Payment details" tabindex="0"><table class="grade-table tf-history-table">
             <thead>
                 <tr><th>Date</th><th class="tf-money">Amount</th><th>Method</th><th>Reference</th><th>Receipt</th></tr>
             </thead>
@@ -253,7 +253,7 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
                         <td><?= $p['reference_no'] !== null ? esc($p['reference_no']) : '—' ?></td>
                         <td>
                             <?php if (! empty($p['or_number'])): ?>
-                                <a href="<?= site_url('student/tuition/receipt/' . $p['receipt_id']) ?>" target="_blank"><?= esc($p['or_number']) ?></a>
+                                <button type="button" class="tf-receipt-link" onclick="tfOpenReceipt('<?= site_url('student/tuition/receipt/' . $p['receipt_id']) ?>', '<?= esc($p['or_number'], 'js') ?>')"><?= esc($p['or_number']) ?></button>
                             <?php else: ?>
                                 —
                             <?php endif ?>
@@ -288,4 +288,51 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
 <?php endif ?>
 
 </div>
+
+<div class="ac-modal tf-receipt-modal" id="tfReceiptModal">
+    <div class="ac-modal__panel">
+        <div class="ac-modal__header">
+            <div>
+                <div class="ac-modal__title" id="tfReceiptModalTitle">Official Receipt</div>
+            </div>
+            <button type="button" onclick="acCloseModal('tfReceiptModal')" class="ac-modal__close">
+                <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+        </div>
+        <div class="ac-modal__body">
+            <iframe id="tfReceiptFrame" class="tf-receipt-frame" title="Official receipt preview"></iframe>
+            <div class="ac-modal__actions">
+                <a id="tfReceiptDownload" href="#" class="ac-btn ac-btn-secondary"><span class="material-symbols-outlined" aria-hidden="true">download</span>Download</a>
+                <button type="button" class="ac-btn ac-btn-primary" onclick="tfPrintReceipt()"><span class="material-symbols-outlined" aria-hidden="true">print</span>Print</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function tfOpenReceipt(url, orNumber) {
+    var frame = document.getElementById('tfReceiptFrame');
+    var download = document.getElementById('tfReceiptDownload');
+    var title = document.getElementById('tfReceiptModalTitle');
+    title.textContent = 'Official Receipt — ' + orNumber;
+    frame.src = url;
+    download.href = url + (url.indexOf('?') === -1 ? '?' : '&') + 'download=1';
+    acOpenModal('tfReceiptModal');
+}
+function tfPrintReceipt() {
+    var frame = document.getElementById('tfReceiptFrame');
+    if (frame && frame.contentWindow) {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+    }
+}
+(function () {
+    var modal = document.getElementById('tfReceiptModal');
+    new MutationObserver(function () {
+        if (!modal.classList.contains('is-open')) {
+            document.getElementById('tfReceiptFrame').src = '';
+        }
+    }).observe(modal, { attributes: true, attributeFilter: ['class'] });
+})();
+</script>
 <?= $this->endSection() ?>
