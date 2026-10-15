@@ -175,7 +175,7 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
 
 <section class="panel tf-upload" id="payment-proof" tabindex="-1">
     <header class="tf-section-heading"><div><h2>Submit payment proof</h2><p>Send a receipt after completing a payment.</p></div></header>
-    <form method="post" action="<?= site_url('student/tuition/proof/upload') ?>" enctype="multipart/form-data" class="tf-upload-form">
+    <form method="post" action="<?= site_url('student/tuition/proof/upload') ?>" enctype="multipart/form-data" class="tf-upload-form" id="tfUploadForm">
         <?= csrf_field() ?>
         <?php if (!empty($schedule)): ?>
         <div class="ac-field" style="margin:0;">
@@ -195,11 +195,185 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
         </div>
         <div class="ac-field" style="margin:0;">
             <label for="tf-proof">Receipt or proof of payment</label>
-            <div class="tf-file-field"><input id="tf-proof" type="file" name="proof" accept=".jpg,.jpeg,.png,.pdf" aria-describedby="tf-file-help" required><small id="tf-file-help">JPG, PNG, or PDF · Maximum 5 MB</small></div>
+            <div class="tf-dropzone" id="tfDropzone">
+                <div class="tf-dropzone__prompt" id="tfDropzonePrompt">
+                    <input id="tf-proof" type="file" name="proof" accept=".jpg,.jpeg,.png,.pdf" aria-describedby="tf-file-help" required>
+                    <small id="tf-file-help">JPG, PNG, or PDF · Maximum 5 MB · Drag a file here or click to browse</small>
+                </div>
+                <div class="tf-file-preview" id="tfFilePreview" hidden>
+                    <div class="tf-file-preview__thumb" id="tfFilePreviewThumb"><span class="material-symbols-outlined" aria-hidden="true">description</span></div>
+                    <div class="tf-file-preview__meta">
+                        <strong id="tfFilePreviewName"></strong>
+                        <span id="tfFilePreviewSize"></span>
+                    </div>
+                    <button type="button" class="tf-file-preview__action" id="tfFileReplace">Replace</button>
+                    <button type="button" class="tf-file-preview__action tf-file-preview__action--danger" id="tfFileRemove">Remove</button>
+                </div>
+                <div class="tf-upload-progress" id="tfUploadProgress" hidden>
+                    <div class="tf-upload-progress__row">
+                        <span id="tfUploadProgressLabel">Uploading…</span>
+                        <span id="tfUploadProgressPercent">0%</span>
+                    </div>
+                    <div class="tf-upload-progress__bar"><div class="tf-upload-progress__fill" id="tfUploadProgressFill"></div></div>
+                    <p class="tf-upload-progress__error" id="tfUploadError" hidden></p>
+                    <button type="button" class="ac-btn ac-btn-secondary" id="tfUploadRetry" hidden>Retry upload</button>
+                </div>
+            </div>
         </div>
-        <button type="submit" class="ac-btn ac-btn-primary"><span class="material-symbols-outlined" aria-hidden="true">upload</span>Submit for review</button>
+        <button type="submit" class="ac-btn ac-btn-primary" id="tfUploadSubmit"><span class="material-symbols-outlined" aria-hidden="true">upload</span><span id="tfUploadSubmitLabel">Submit for review</span></button>
         <p class="tf-form-help">Your submission will be reviewed by the cashier before it is reflected in your balance.</p>
     </form>
+    <script>
+    (function () {
+        var form         = document.getElementById('tfUploadForm');
+        var dropzone      = document.getElementById('tfDropzone');
+        var fileInput     = document.getElementById('tf-proof');
+        var promptEl      = document.getElementById('tfDropzonePrompt');
+        var preview       = document.getElementById('tfFilePreview');
+        var previewThumb  = document.getElementById('tfFilePreviewThumb');
+        var previewName   = document.getElementById('tfFilePreviewName');
+        var previewSize   = document.getElementById('tfFilePreviewSize');
+        var removeBtn     = document.getElementById('tfFileRemove');
+        var replaceBtn    = document.getElementById('tfFileReplace');
+        var progress      = document.getElementById('tfUploadProgress');
+        var progressFill  = document.getElementById('tfUploadProgressFill');
+        var progressPct   = document.getElementById('tfUploadProgressPercent');
+        var progressLabel = document.getElementById('tfUploadProgressLabel');
+        var errorMsg      = document.getElementById('tfUploadError');
+        var retryBtn      = document.getElementById('tfUploadRetry');
+        var submitBtn     = document.getElementById('tfUploadSubmit');
+        var submitLabel   = document.getElementById('tfUploadSubmitLabel');
+
+        var MAX_BYTES = 5 * 1024 * 1024;
+        var ALLOWED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function showFile(file) {
+            if (file.size > MAX_BYTES) {
+                resetSelection();
+                window.alert('That file is too large — maximum is 5 MB.');
+                return;
+            }
+            if (ALLOWED_TYPES.indexOf(file.type) === -1) {
+                resetSelection();
+                window.alert('Only JPG, PNG, or PDF files are accepted.');
+                return;
+            }
+            promptEl.hidden = true;
+            preview.hidden = false;
+            previewName.textContent = file.name;
+            previewSize.textContent = formatSize(file.size) + ' · ' + (file.type || 'file');
+            previewThumb.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">description</span>';
+            if (file.type.indexOf('image/') === 0) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    previewThumb.innerHTML = '<img src="' + e.target.result + '" alt="">';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function resetSelection() {
+            fileInput.value = '';
+            promptEl.hidden = false;
+            preview.hidden = true;
+        }
+
+        fileInput.addEventListener('change', function () {
+            if (fileInput.files && fileInput.files[0]) showFile(fileInput.files[0]);
+        });
+
+        removeBtn.addEventListener('click', resetSelection);
+        replaceBtn.addEventListener('click', function () { fileInput.click(); });
+
+        ['dragenter', 'dragover'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                dropzone.classList.add('is-dragover');
+            });
+        });
+        ['dragleave', 'drop'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                dropzone.classList.remove('is-dragover');
+            });
+        });
+        dropzone.addEventListener('drop', function (e) {
+            var file = e.dataTransfer.files && e.dataTransfer.files[0];
+            if (!file) return;
+            fileInput.files = e.dataTransfer.files;
+            showFile(file);
+        });
+
+        var lastFormData = null;
+
+        function startUpload() {
+            progress.hidden = false;
+            errorMsg.hidden = true;
+            retryBtn.hidden = true;
+            progressLabel.textContent = 'Uploading…';
+            progressFill.style.width = '0%';
+            progressPct.textContent = '0%';
+            submitBtn.disabled = true;
+            submitBtn.classList.add('is-loading');
+            submitLabel.textContent = 'Uploading…';
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', form.action, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+            xhr.upload.addEventListener('progress', function (e) {
+                if (!e.lengthComputable) return;
+                var pct = Math.round((e.loaded / e.total) * 100);
+                progressFill.style.width = pct + '%';
+                progressPct.textContent = pct + '%';
+            });
+
+            xhr.addEventListener('load', function () {
+                if (xhr.status >= 200 && xhr.status < 400) {
+                    progressLabel.textContent = 'Done — redirecting…';
+                    progressFill.style.width = '100%';
+                    progressPct.textContent = '100%';
+                    window.location.href = xhr.responseURL || form.action;
+                } else {
+                    failUpload('The server rejected this upload. Please try again.');
+                }
+            });
+
+            xhr.addEventListener('error', function () {
+                failUpload('Upload failed — check your connection and try again.');
+            });
+
+            xhr.send(lastFormData);
+        }
+
+        function failUpload(message) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('is-loading');
+            submitLabel.textContent = 'Submit for review';
+            progressLabel.textContent = 'Upload failed';
+            errorMsg.textContent = message;
+            errorMsg.hidden = false;
+            retryBtn.hidden = false;
+        }
+
+        retryBtn.addEventListener('click', function () {
+            if (lastFormData) startUpload();
+        });
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (!form.reportValidity()) return;
+            lastFormData = new FormData(form);
+            startUpload();
+        });
+    })();
+    </script>
 
     <?php if (!empty($proofs)): ?>
         <h3 class="tf-subheading">Submitted proofs</h3>
