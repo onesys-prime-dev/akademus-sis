@@ -406,9 +406,9 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
                                 </span>
                             </button>
                         </td>
-                        <td><?= ! empty($p['schedule_label']) ? esc($p['schedule_label']) : '<span class="tf-muted">General Payment</span>' ?></td>
-                        <td><?= esc(date('M j, Y', strtotime($p['created_at']))) ?></td>
-                        <td>
+                        <td data-label="Covers"><?= ! empty($p['schedule_label']) ? esc($p['schedule_label']) : '<span class="tf-muted">General Payment</span>' ?></td>
+                        <td data-label="Uploaded"><?= esc(date('M j, Y', strtotime($p['created_at']))) ?></td>
+                        <td data-label="Status">
                             <?php if ($p['status'] === 'approved'): ?>
                                 <span class="pass-pill pass">Approved</span>
                             <?php elseif ($p['status'] === 'rejected'): ?>
@@ -417,7 +417,7 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
                                 <span class="pass-pill">Pending</span>
                             <?php endif ?>
                         </td>
-                        <td><?= $p['cashier_remarks'] !== null ? esc($p['cashier_remarks']) : '—' ?></td>
+                        <td data-label="Cashier Remarks"><?= $p['cashier_remarks'] !== null ? esc($p['cashier_remarks']) : '—' ?></td>
                     </tr>
                 <?php endforeach ?>
             </tbody>
@@ -443,12 +443,12 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
             <tbody>
                 <?php foreach ($payments as $p): ?>
                     <tr>
-                        <td><?= esc(date('M j, Y', strtotime($p['payment_date']))) ?></td>
-                        <td><?= ! empty($p['schedule_label']) ? esc($p['schedule_label']) : '<span class="tf-muted">General Payment</span>' ?></td>
-                        <td class="tf-money">&#8369;<?= number_format((float) $p['amount'], 2) ?></td>
-                        <td><?= esc(ucfirst(str_replace('_', ' ', $p['method']))) ?></td>
-                        <td><?= $p['reference_no'] !== null ? esc($p['reference_no']) : '—' ?></td>
-                        <td>
+                        <td data-label="Date"><?= esc(date('M j, Y', strtotime($p['payment_date']))) ?></td>
+                        <td data-label="Covers"><?= ! empty($p['schedule_label']) ? esc($p['schedule_label']) : '<span class="tf-muted">General Payment</span>' ?></td>
+                        <td data-label="Amount" class="tf-money">&#8369;<?= number_format((float) $p['amount'], 2) ?></td>
+                        <td data-label="Method"><?= esc(ucfirst(str_replace('_', ' ', $p['method']))) ?></td>
+                        <td data-label="Reference"><?= $p['reference_no'] !== null ? esc($p['reference_no']) : '—' ?></td>
+                        <td data-label="Receipt">
                             <?php if (! empty($p['or_number'])): ?>
                                 <button type="button" class="tf-receipt-link" onclick="tfOpenFile('<?= site_url('student/tuition/receipt/' . $p['receipt_id']) ?>', 'Official Receipt — <?= esc($p['or_number'], 'js') ?>')"><?= esc($p['or_number']) ?></button>
                             <?php else: ?>
@@ -472,11 +472,11 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
         <tbody>
             <?php foreach (array_slice($assessments, 1) as $a): ?>
                 <tr>
-                    <td><?= esc($a['academic_year']) ?></td>
-                    <td class="tf-money">&#8369;<?= number_format((float) $a['total_amount'], 2) ?></td>
-                    <td class="tf-money">&#8369;<?= number_format((float) $a['amount_paid'], 2) ?></td>
-                    <td class="tf-money">&#8369;<?= number_format((float) $a['balance'], 2) ?></td>
-                    <td><?= esc(ucfirst($a['status'])) ?></td>
+                    <td data-label="Academic Year"><?= esc($a['academic_year']) ?></td>
+                    <td data-label="Total" class="tf-money">&#8369;<?= number_format((float) $a['total_amount'], 2) ?></td>
+                    <td data-label="Paid" class="tf-money">&#8369;<?= number_format((float) $a['amount_paid'], 2) ?></td>
+                    <td data-label="Balance" class="tf-money">&#8369;<?= number_format((float) $a['balance'], 2) ?></td>
+                    <td data-label="Status"><?= esc(ucfirst($a['status'])) ?></td>
                 </tr>
             <?php endforeach ?>
         </tbody>

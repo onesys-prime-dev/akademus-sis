@@ -165,6 +165,23 @@
     .tf-page .panel { padding: 20px 16px; }
     .tf-layout, .tf-side { gap: 18px; }
     .tf-fee-items { margin-left: 18px; }
+
+    /* Every grade-table on this page becomes a stack of cards: one line
+       per field (small caption above, value below) rather than squeezing
+       a label and value onto the same row, which is what clipped long
+       labels like "Cashier Remarks" against a narrow value. */
+    .tf-page .tf-table-scroll { overflow: visible; }
+    .tf-page .grade-table, .tf-page .grade-table tbody, .tf-page .grade-table tr, .tf-page .grade-table td { display: block; width: 100%; }
+    .tf-page .grade-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .tf-page .grade-table tbody { display: grid; gap: 10px; }
+    .tf-page .grade-table tr { padding: 13px 14px; border: 1px solid var(--tf-line); border-radius: 7px; background: #fff; }
+    .tf-page .grade-table td { padding: 7px 0; border: 0; text-align: left; white-space: normal; }
+    .tf-page .grade-table td.tf-money { text-align: left; }
+    .tf-page .grade-table td + td { border-top: 1px solid var(--tf-line); }
+    .tf-page .grade-table td::before { display: block; margin-bottom: 3px; color: #738096; font-size: 9px; font-weight: 650; letter-spacing: .3px; text-transform: uppercase; content: attr(data-label); }
+    .tf-page .grade-table td:not([data-label])::before { content: none; }
+    .tf-page .grade-table td:not([data-label]) { border-top: 0; padding-bottom: 10px; }
+    .tf-proof-file { max-width: 100%; }
 }
 
 @media (max-width: 560px) {
@@ -175,13 +192,6 @@
     .tf-action { width: 100%; justify-content: center; }
     .tf-fee-items { padding: 3px 9px; }
     .tf-fee-items > div { gap: 10px; }
-    .tf-schedule .tf-table-scroll { overflow: visible; }
-    .tf-schedule .grade-table, .tf-schedule .grade-table tbody, .tf-schedule .grade-table tr, .tf-schedule .grade-table td { display: block; width: 100%; }
-    .tf-schedule .grade-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-    .tf-schedule .grade-table tbody { display: grid; gap: 10px; }
-    .tf-schedule .grade-table tr { padding: 13px 14px; border: 1px solid var(--tf-line); border-radius: 7px; background: #fff; }
-    .tf-schedule .grade-table td { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 5px 0; border: 0; text-align: right; white-space: normal; }
-    .tf-schedule .grade-table td::before { flex: 0 0 auto; color: #738096; font-size: 9px; font-weight: 650; letter-spacing: .3px; text-transform: uppercase; content: attr(data-label); }
 }
 
 @media (prefers-reduced-motion: reduce) {
