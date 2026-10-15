@@ -71,6 +71,7 @@
     <script src="<?= base_url('assets/js/session-guard.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/session-guard.js') ?>" data-login-url="<?= esc(site_url('login'), 'attr') ?>"></script>
     <script defer src="<?= base_url('assets/js/interface.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/interface.js') ?>"></script>
     <script src="<?= base_url('assets/js/unsaved-changes.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/unsaved-changes.js') ?>"></script>
+    <script defer src="<?= base_url('assets/js/connection-guard.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/connection-guard.js') ?>"></script>
 </head>
 <body class="ac-page">
 

@@ -1157,6 +1157,8 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 }
 
 .ac-toast--error { border-left-color: var(--color-danger); }
+.ac-toast--offline { border-left-color: var(--color-warning); }
+.ac-toast--offline .material-symbols-outlined { font-size: 19px; color: var(--color-warning); flex-shrink: 0; }
 
 .ac-toast__text { font-size: 12.5px; color: #334155; line-height: 1.35; }
 
