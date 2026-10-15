@@ -151,23 +151,31 @@ foreach ($byYear as $term => $rows) {
             <strong id="sgGwaValue">&mdash;</strong>
         </section>
 
+        <?php $markings = [
+            'I'      => 'Incomplete',
+            'IP'     => 'In Progress',
+            'FW'     => 'Unauthorized Withdrawal',
+            'NC'     => 'No Credit',
+            'W'      => 'Withdraw',
+            'D'      => 'Dropped',
+            'FA'     => 'Failure Due Absences',
+            'Pass'   => 'Pass',
+            'Failed' => 'Failed',
+            'CE'     => 'Currently Enrolled',
+        ]; ?>
         <details class="sg-card sg-legend">
             <summary>
-                <span>Grade markings reference</span>
+                <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+                <span>Grade markings reference<small>What each code on this page means</small></span>
                 <span class="material-symbols-outlined sg-legend__chevron" aria-hidden="true">expand_more</span>
             </summary>
-            <dl>
-                <div><dt>I</dt><dd>Incomplete</dd></div>
-                <div><dt>IP</dt><dd>In Progress</dd></div>
-                <div><dt>FW</dt><dd>Unauthorized Withdrawal</dd></div>
-                <div><dt>NC</dt><dd>No Credit</dd></div>
-                <div><dt>W</dt><dd>Withdraw</dd></div>
-                <div><dt>D</dt><dd>Dropped</dd></div>
-                <div><dt>FA</dt><dd>Failure Due Absences</dd></div>
-                <div><dt>Pass</dt><dd>Pass</dd></div>
-                <div><dt>Failed</dt><dd>Failed</dd></div>
-                <div><dt>CE</dt><dd>Currently Enrolled</dd></div>
-            </dl>
+            <div class="sg-legend-body">
+                <dl>
+                    <?php foreach ($markings as $code => $label): ?>
+                        <div><dt><?= esc($code) ?></dt><dd><?= esc($label) ?></dd></div>
+                    <?php endforeach ?>
+                </dl>
+            </div>
         </details>
     <?php endif ?>
 </div>

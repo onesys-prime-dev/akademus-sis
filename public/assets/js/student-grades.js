@@ -18,6 +18,54 @@
     var courseCount = document.getElementById('sgCourseCount');
     var unitCount = document.getElementById('sgUnitCount');
 
+    // "Grade markings reference" opens onto a brief shimmer pass, then the
+    // definitions arrive on a stagger — same treatment "My enrolled
+    // subjects" uses on the schedule page (see student-schedule.js).
+    // Reduced-motion / no-JS users skip straight to the plain list.
+    var legend = document.querySelector('.sg-legend');
+    if (legend) {
+        var legendBody = legend.querySelector('.sg-legend-body');
+        var legendList = legendBody ? legendBody.querySelector('dl') : null;
+        var legendRows = legendList ? [].slice.call(legendList.children) : [];
+        legendRows.forEach(function (row, index) { row.style.setProperty('--row', Math.min(index, 8)); });
+        var legendReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        var LEGEND_LOAD_MS = 420;
+        var legendTimer = null, legendSkeleton = null;
+        var buildLegendSkeleton = function () {
+            legendSkeleton = document.createElement('div');
+            legendSkeleton.className = 'sg-legend-skeleton';
+            legendSkeleton.setAttribute('aria-hidden', 'true');
+            legendRows.forEach(function () {
+                var row = document.createElement('div');
+                row.className = 'sg-legend-skeleton-row';
+                row.innerHTML = '<span class="sg-legend-skeleton-bar sg-legend-skeleton-bar--code"></span><span class="sg-legend-skeleton-bar sg-legend-skeleton-bar--label"></span>';
+                legendSkeleton.appendChild(row);
+            });
+            legendBody.appendChild(legendSkeleton);
+        };
+        var resetLegend = function () { window.clearTimeout(legendTimer); legendBody.classList.remove('is-loading', 'is-revealed'); };
+        var runLegendReveal = function () {
+            if (legendReduceMotion.matches) return;
+            if (!legendSkeleton) buildLegendSkeleton();
+            legendBody.classList.remove('is-revealed');
+            legendBody.classList.add('is-loading');
+            window.clearTimeout(legendTimer);
+            legendTimer = window.setTimeout(function () {
+                legendBody.classList.remove('is-loading');
+                legendBody.classList.add('is-revealed');
+            }, LEGEND_LOAD_MS);
+        };
+        if (legendBody && legendList && legendRows.length) {
+            // `open` still holds the pre-click state here, so this fires
+            // before the details actually opens (mouse and keyboard both
+            // dispatch click).
+            legend.querySelector('summary').addEventListener('click', function () {
+                if (legend.open) resetLegend(); else runLegendReveal();
+            });
+            legendReduceMotion.addEventListener('change', function (event) { if (event.matches) resetLegend(); });
+        }
+    }
+
     function uniqueInOrder(values) {
         var seen = {};
         var out = [];
@@ -115,6 +163,7 @@
 
     yearSelect.addEventListener('change', function () {
         fillSelect(semesterSelect, semestersForYear(yearSelect.value));
+        if (semesterPicker) semesterPicker.sync();
         render();
     });
     semesterSelect.addEventListener('change', render);
@@ -122,4 +171,10 @@
     fillSelect(yearSelect, years);
     fillSelect(semesterSelect, semestersForYear(years[0]));
     render();
+
+    // Same animated floating-listbox dropdown every other filter in the
+    // portal uses (see student-schedule.js) instead of the OS-rendered
+    // native <select> popup.
+    var yearPicker = window.enhanceSelect ? window.enhanceSelect(yearSelect) : null;
+    var semesterPicker = window.enhanceSelect ? window.enhanceSelect(semesterSelect) : null;
 })();

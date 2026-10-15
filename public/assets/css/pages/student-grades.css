@@ -24,6 +24,14 @@
 .sg-filter select { height:40px; padding:0 36px 0 12px; border:1px solid #ccd7e8; border-radius:7px; background-color:#fbfcff; color:var(--color-text-primary); font:inherit; font-size:13px; cursor:pointer; transition:border-color .15s,box-shadow .15s,background .15s; }
 .sg-filter select:hover { border-color:#aebed5; background:#fff; }
 .sg-filter select:focus { outline:none; border-color:#0b57d0; background:#fff; box-shadow:0 0 0 3px rgba(11,87,208,.12); }
+/* Enhanced by enhanceSelect() (student-grades.js) into the same animated
+   floating-listbox dropdown every other filter in the portal uses — see
+   .cs-select in design-system/components.css. The plain `select` rules
+   above remain the no-JS fallback. */
+.sg-filter .cs-select { width:100%; }
+.sg-filter .cs-select__trigger { height:40px; padding:0 12px; border-color:#ccd7e8; border-radius:7px; background:#fbfcff; font-size:13px; }
+.sg-filter .cs-select__trigger:hover { border-color:#aebed5; background:#fff; }
+.sg-filter .cs-select.is-open .cs-select__trigger { border-color:#0b57d0; background:#fff; box-shadow:0 0 0 3px rgba(11,87,208,.12); }
 
 .sg-table-card { overflow:hidden; }
 .sg-table-head { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; padding:17px 18px 14px; border-bottom:1px solid #e2e8f1; background:#fff; }
@@ -65,16 +73,36 @@
 .sg-gwa > strong { color:#062a70; font-size:27px; font-weight:750; letter-spacing:-.03em; }
 
 .sg-legend { padding:0; overflow:hidden; }
-.sg-legend summary { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 18px; color:var(--color-text-primary); font-size:12.5px; font-weight:650; cursor:pointer; list-style:none; }
+.sg-legend > summary { display:flex; align-items:center; gap:13px; padding:15px 18px; color:var(--color-text-primary); font-size:12.5px; font-weight:650; cursor:pointer; list-style:none; }
 .sg-legend summary::-webkit-details-marker { display:none; }
-.sg-legend summary > span:first-child { display:inline-flex; align-items:center; gap:8px; }
-.sg-legend summary .material-symbols-outlined { color:#58708f; font-size:18px; }
-.sg-legend__chevron { transition:transform .18s; }
+.sg-legend > summary > .material-symbols-outlined:first-child { color:#58708f; font-size:18px; }
+.sg-legend summary small { display:block; margin-top:3px; font-size:10.5px; color:var(--color-text-secondary); font-weight:400; }
+.sg-legend__chevron { margin-left:auto; transition:transform .18s; }
 .sg-legend[open] .sg-legend__chevron { transform:rotate(180deg); }
+.sg-legend-body { position:relative; }
 .sg-legend dl { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px 18px; margin:0; padding:0 18px 17px; border-top:1px solid #e7ebf1; }
 .sg-legend dl > div { display:flex; gap:7px; padding-top:10px; color:var(--color-text-secondary); font-size:11.5px; }
 .sg-legend dt { min-width:30px; color:var(--color-text-primary); font-weight:750; }
 .sg-legend dd { margin:0; }
+
+/* "Grade markings reference" opens onto a brief shimmer pass, then the
+   definitions arrive on a stagger — same treatment "My enrolled subjects"
+   uses on the schedule page (see .ss-enroll-skeleton in
+   student-schedule.css / the matching block in student-schedule.js). The
+   skeleton is injected by JS and overlays the real list, which keeps its
+   box while hidden, so nothing shifts. Without JS, or with reduced motion,
+   the list is simply visible as-is. */
+.sg-legend-skeleton { position:absolute; inset:0; display:none; overflow:hidden; background:#fff; padding:0 18px 17px; border-top:1px solid #e7ebf1; }
+.sg-legend-skeleton-row { display:flex; align-items:center; gap:10px; padding-top:10px; }
+.sg-legend-skeleton-bar { height:11px; border-radius:5px; background:linear-gradient(100deg,#eef2f8 20%,#f8fafc 50%,#eef2f8 80%); background-size:220% 100%; animation:sgShimmer 1.15s linear infinite; }
+.sg-legend-skeleton-bar--code { width:26px; }
+.sg-legend-skeleton-bar--label { flex:1; max-width:140px; }
+.sg-legend-body.is-loading dl { visibility:hidden; }
+.sg-legend-body.is-loading .sg-legend-skeleton { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); animation:sgContentIn var(--motion-fast) var(--ease-standard); }
+.sg-legend-body.is-revealed dl > div { animation:sgPopIn var(--motion-normal) var(--ease-enter) both; animation-delay:calc(var(--row, 0) * 34ms); }
+@keyframes sgContentIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+@keyframes sgShimmer { from { background-position:120% 0; } to { background-position:-120% 0; } }
+@keyframes sgPopIn { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
 
 @media (max-width:900px) {
     .sg-filters { align-items:flex-start; flex-direction:column; }
@@ -108,4 +136,4 @@
     .sg-gwa { grid-template-columns:1fr; padding:15px 16px; }
     .sg-gwa > strong { grid-column:1; }
 }
-@media (prefers-reduced-motion:reduce) { .sg-legend__chevron,.sg-table tbody tr { transition:none; } }
+@media (prefers-reduced-motion:reduce) { .sg-legend__chevron,.sg-table tbody tr { transition:none; } .sg-legend-skeleton-bar,.sg-legend-body.is-loading .sg-legend-skeleton,.sg-legend-body.is-revealed dl > div { animation:none; } }
