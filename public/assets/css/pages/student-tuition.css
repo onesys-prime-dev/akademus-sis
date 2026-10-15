@@ -128,16 +128,20 @@
 .tf-upload-form textarea { min-height: 76px; resize: vertical; }
 .tf-dropzone { padding: 15px; border: 1px dashed #b9c7d9; border-radius: 7px; background: #f8fafc; transition: border-color .15s, background .15s; overflow: hidden; }
 .tf-dropzone.is-dragover { border-color: #5b83c4; background: #eef3fb; }
-.tf-dropzone__prompt { text-align: center; }
-.tf-dropzone__cta { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 0 4px; color: #304b73; font-weight: 600; font-size: 12px; cursor: pointer; }
+.tf-dropzone__prompt { position: relative; text-align: center; }
+.tf-dropzone__cta { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 0 4px; color: #304b73; font-weight: 600; font-size: 12px; }
 .tf-dropzone__cta .material-symbols-outlined { font-size: 22px; color: #5b83c4; }
 .tf-dropzone__prompt small { display: block; margin-top: 8px; color: #738097; font-size: 10px; }
 
 /* Native file inputs can ignore width/max-width on narrow mobile viewports
    and render wider than their container, silently forcing the whole page
-   to scroll horizontally — visually hidden (not display:none, so it stays
-   keyboard/screen-reader reachable) and triggered via the label above. */
-.tf-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+   to scroll horizontally — so the real input is kept but made invisible
+   and overlaid on top of the custom-styled prompt above, at full size
+   (never clipped to 1px: a focused near-zero-size offscreen input made the
+   browser's focus scroll-into-view fight with scroll-behavior:smooth on
+   html, leaving the scrollable panel visually broken after the file picker
+   closed). */
+.tf-file-overlay { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; }
 
 .tf-file-preview { display: flex; align-items: center; gap: 12px; }
 .tf-file-preview[hidden] { display: none; }

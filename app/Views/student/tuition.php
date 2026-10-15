@@ -197,11 +197,11 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
             <label for="tf-proof">Receipt or proof of payment</label>
             <div class="tf-dropzone" id="tfDropzone">
                 <div class="tf-dropzone__prompt" id="tfDropzonePrompt">
-                    <label for="tf-proof" class="tf-dropzone__cta">
+                    <div class="tf-dropzone__cta">
                         <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
                         <span>Click to browse, or drag a file here</span>
-                    </label>
-                    <input id="tf-proof" type="file" name="proof" accept=".jpg,.jpeg,.png,.pdf" aria-describedby="tf-file-help" required class="tf-visually-hidden">
+                    </div>
+                    <input id="tf-proof" type="file" name="proof" accept=".jpg,.jpeg,.png,.pdf" aria-describedby="tf-file-help" class="tf-file-overlay">
                     <small id="tf-file-help">JPG, PNG, or PDF · Maximum 5 MB</small>
                 </div>
                 <div class="tf-file-preview" id="tfFilePreview" hidden>
@@ -383,6 +383,10 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             if (!form.reportValidity()) return;
+            if (!currentFile) {
+                window.alert('Please attach a receipt or proof of payment.');
+                return;
+            }
             lastFormData = new FormData(form);
             startUpload();
         });
