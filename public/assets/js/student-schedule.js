@@ -36,8 +36,11 @@
             else merged.push({ ...m, classId: c.id });
         });
         c.meetings = merged;
-        c.tone = [...c.code].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 5;
-        merged.forEach(m => { m.id = meetings.length; m.tone = c.tone; meetings.push(m); });
+        // Same accent the chairperson assigned when plotting this class (see
+        // TeachingLoads::ACCENTS) — not an independently hashed color, so a
+        // subject reads as the same color here as on the faculty's own board.
+        c.accent = merged[0]?.accent || 'blue';
+        merged.forEach(m => { m.id = meetings.length; m.accent = c.accent; meetings.push(m); });
     });
     const terms = [...new Set(classList.map(c => c.term))];
     $('ssTerm').replaceChildren(...terms.map(term => new Option(term, term)));
@@ -95,14 +98,14 @@
             return `<div class="ss-day-column" style="height:${height}px">${!list.length ? '<span class="ss-free-day">No classes</span>' : ''}${list.map(m => {
                 const duration = m.to - m.from;
                 const label = `${m.code}, ${m.title}, ${days[m.day]}, ${range(m)}, ${m.room || 'Room to be assigned'}. View class details.`;
-                return `<button type="button" class="ss-class ss-tone-${m.tone} ${duration <= 30 ? 'ss-class--short' : ''} ${selected?.classId === m.classId ? 'is-selected' : ''}" data-meeting="${m.id}" aria-haspopup="dialog" aria-label="${escape(label)}" title="${escape(label)}" style="top:${(m.from - start) * scale + 2}px;height:${Math.max(20, duration * scale - 4)}px;left:calc(${m.lane / m.lanes * 100}% + 4px);width:calc(${100 / m.lanes}% - 8px)"><span class="ss-class-code">${escape(m.code)}<span class="material-symbols-outlined" aria-hidden="true">arrow_outward</span></span><span class="ss-class-title">${escape(m.title)}</span><span class="ss-class-time">${range(m)}</span><span class="ss-class-room">${escape(m.room || 'Room to be assigned')}</span></button>`;
+                return `<button type="button" class="ss-class ss-accent-${m.accent} ${duration <= 30 ? 'ss-class--short' : ''} ${selected?.classId === m.classId ? 'is-selected' : ''}" data-meeting="${m.id}" aria-haspopup="dialog" aria-label="${escape(label)}" title="${escape(label)}" style="top:${(m.from - start) * scale + 2}px;height:${Math.max(20, duration * scale - 4)}px;left:calc(${m.lane / m.lanes * 100}% + 4px);width:calc(${100 / m.lanes}% - 8px)"><span class="ss-class-code">${escape(m.code)}<span class="material-symbols-outlined" aria-hidden="true">arrow_outward</span></span><span class="ss-class-title">${escape(m.title)}</span><span class="ss-class-time">${range(m)}</span><span class="ss-class-room">${escape(m.room || 'Room to be assigned')}</span></button>`;
             }).join('')}</div>`;
         }).join('');
         $('ssCalendar').innerHTML = `<div class="ss-grid ${shownDays.length === 1 ? 'ss-grid--single' : ''}" style="--ss-days:${shownDays.length};--ss-hour:${60 * scale}px"><div class="ss-grid-head ss-grid-corner">GMT+8</div>${shownDays.map(index => `<div class="ss-grid-head"><strong>${days[index]}</strong><span>${visible.filter(m => m.day === index).length} meetings</span></div>`).join('')}<div class="ss-time-column">${timeLabels}</div>${columns}</div>`;
         $('ssAgenda').innerHTML = shownDays.map(index => {
             const list = visible.filter(m => m.day === index).sort((a, b) => a.from - b.from);
             if (!list.length) return '';
-            return `<section class="ss-agenda-day"><header><h3>${days[index]}</h3><span>${list.length} ${list.length === 1 ? 'meeting' : 'meetings'} · ${hours(totalMinutes(list))} hours</span></header>${list.map(m => `<button type="button" class="ss-agenda-class ss-tone-${m.tone} ${selected?.classId === m.classId ? 'is-selected' : ''}" data-meeting="${m.id}" aria-haspopup="dialog"><span class="ss-agenda-time">${time(m.from)}<small>${time(m.to)}</small></span><span class="ss-agenda-subject"><strong>${escape(m.code)}</strong><span>${escape(m.title)}</span></span><span class="ss-agenda-room"><span class="material-symbols-outlined" aria-hidden="true">location_on</span>${escape(m.room || 'Room to be assigned')}</span><span class="material-symbols-outlined ss-agenda-arrow" aria-hidden="true">arrow_forward</span></button>`).join('')}</section>`;
+            return `<section class="ss-agenda-day"><header><h3>${days[index]}</h3><span>${list.length} ${list.length === 1 ? 'meeting' : 'meetings'} · ${hours(totalMinutes(list))} hours</span></header>${list.map(m => `<button type="button" class="ss-agenda-class ss-accent-${m.accent} ${selected?.classId === m.classId ? 'is-selected' : ''}" data-meeting="${m.id}" aria-haspopup="dialog"><span class="ss-agenda-time">${time(m.from)}<small>${time(m.to)}</small></span><span class="ss-agenda-subject"><strong>${escape(m.code)}</strong><span>${escape(m.title)}</span></span><span class="ss-agenda-room"><span class="material-symbols-outlined" aria-hidden="true">location_on</span>${escape(m.room || 'Room to be assigned')}</span><span class="material-symbols-outlined ss-agenda-arrow" aria-hidden="true">arrow_forward</span></button>`).join('')}</section>`;
         }).join('');
         $('ssResultCount').textContent = `${visible.length} ${visible.length === 1 ? 'meeting' : 'meetings'} · ${hours(totalMinutes(visible))} hours${day !== 'all' ? ` · ${days[Number(day)]}` : ' this week'}`;
     }
@@ -112,7 +115,7 @@
         if (!selected) return;
         if (trigger) returnFocus = trigger;
         const c = classList[selected.classId];
-        dialog.className = `ss-dialog ss-tone-${selected.tone}`;
+        dialog.className = `ss-dialog ss-accent-${selected.accent}`;
         $('ssDetailCode').textContent = selected.code;
         $('ssDetailTitle').textContent = selected.title;
         $('ssDetailSubtitle').textContent = selected.term;
@@ -145,7 +148,7 @@
         const context = [...new Set(list.map(m => `${m.program} · ${m.year} · Section ${m.section}`))].join(' / ');
         const date = new Intl.DateTimeFormat('en-PH', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Manila' }).format(new Date());
         const labels = Array.from({ length: span / 60 }, (_, i) => `<span style="top:${i * 60 / span * 100}%">${time(start + i * 60).replace(':00', '')}</span>`).join('');
-        const columns = days.slice(0, dayCount).map((_, index) => `<div class="ss-print-column">${positionMeetings(list.filter(m => m.day === index)).map(m => `<div class="ss-print-class ss-tone-${m.tone} ${m.to - m.from <= 60 ? 'is-short' : ''} ${m.to - m.from <= 30 ? 'is-tiny' : ''}" style="top:calc(${(m.from - start) / span * 100}% + 1px);height:calc(${(m.to - m.from) / span * 100}% - 2px);left:calc(${m.lane / m.lanes * 100}% + 2px);width:calc(${100 / m.lanes}% - 4px)"><small>${range(m)}</small><strong>${escape(m.code)}</strong><span>${escape(m.room || 'Room to be assigned')}</span><span class="ss-print-faculty">${escape(m.faculty || 'Instructor to be assigned')}</span></div>`).join('')}</div>`).join('');
+        const columns = days.slice(0, dayCount).map((_, index) => `<div class="ss-print-column">${positionMeetings(list.filter(m => m.day === index)).map(m => `<div class="ss-print-class ss-accent-${m.accent} ${m.to - m.from <= 60 ? 'is-short' : ''} ${m.to - m.from <= 30 ? 'is-tiny' : ''}" style="top:calc(${(m.from - start) / span * 100}% + 1px);height:calc(${(m.to - m.from) / span * 100}% - 2px);left:calc(${m.lane / m.lanes * 100}% + 2px);width:calc(${100 / m.lanes}% - 4px)"><small>${range(m)}</small><strong>${escape(m.code)}</strong><span>${escape(m.room || 'Room to be assigned')}</span><span class="ss-print-faculty">${escape(m.faculty || 'Instructor to be assigned')}</span></div>`).join('')}</div>`).join('');
         documentNode.innerHTML = `<header class="ss-print-header"><div class="ss-print-brand"><strong>Akademus <span> / Student Portal</span></strong><span>WEEKLY TIMETABLE</span></div><h1>My class schedule</h1><p>${escape($('ssTerm').value)}</p><p>${escape(context)}</p><div class="ss-print-meta"><span>${new Set(list.map(m => m.code)).size} subjects · ${list.length} meetings · ${hours(totalMinutes(list))} hours / week</span><span>Printed ${escape(date)}</span></div></header><div class="ss-print-grid" style="--ss-days:${dayCount};--ss-print-hour:${124 * 60 / span}mm"><div class="ss-print-head">Time</div>${days.slice(0, dayCount).map(d => `<div class="ss-print-head">${d}</div>`).join('')}<div class="ss-print-times">${labels}</div>${columns}</div><footer class="ss-print-footer"><span>All times are in Philippine Standard Time (GMT+8).</span><span>Akademus SIS · Student schedule</span></footer>`;
         // Dense/short meetings get a readable continuation instead of losing
         // their room or instructor details inside a small timetable cell.

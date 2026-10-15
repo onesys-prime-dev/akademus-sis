@@ -35,12 +35,17 @@ $navGroups = [
 ];
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
 $dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+// Same plotting-theme → accent mapping TeachingLoads::ACCENTS uses, so a
+// class reads as the same color here as it does on the faculty's teaching
+// load board — not an independently-invented palette.
+$accents = ['blue' => 'blue', 'purple' => 'purple', 'cyan' => 'blue', 'red' => 'red', 'green' => 'green', 'yellow' => 'gold'];
 $scheduleData = array_map(static fn (array $m) => [
     'day' => (int) $m['day'], 'code' => $m['subject_code'], 'title' => $m['subject_title'],
     'start' => substr($m['start_time'], 0, 5), 'end' => substr($m['end_time'], 0, 5),
     'room' => $m['room'] ?? '', 'faculty' => $m['prof'] ?? '',
     'term' => $m['academic_year'], 'program' => $m['program'],
     'year' => $m['year_level'], 'section' => $m['section'],
+    'accent' => $accents[$m['theme'] ?? 'blue'] ?? 'blue',
 ], $meetings);
 ?>
 <?= $this->section('styles') ?>

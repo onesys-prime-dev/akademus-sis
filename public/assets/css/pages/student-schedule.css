@@ -34,7 +34,7 @@
 .ss-day-filters { display: flex; gap: 4px; overflow-x: auto; padding: 3px; }
 .ss-day-filters button { padding: 8px 11px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #6f7d92; font-size: 11px; white-space: nowrap; }
 .ss-day-filters button:hover { background: #f4f7fc; color: #355983; }
-.ss-day-filters button[aria-pressed=true] { border-color: #dce5f4; background: #edf3fc; color: #315785; font-weight: 600; }
+.ss-day-filters button[aria-pressed=true] { border-color: #dce5f4; background: #edf3fc; color: var(--color-primary); font-weight: 600; }
 .ss-subject-filter { display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #e0e6ef; border-radius: 7px; color: #8290a6; max-width: 280px; }
 .ss-subject-filter select { min-width: 0; max-width: 100%; border: 0; background: #fff; font-size: 11px; color: #50627b; }
 .ss-subject-filter .material-symbols-outlined { font-size: 16px; }
@@ -49,11 +49,16 @@
 .ss-time-label { border-bottom: 1px solid #e7edf4; padding: 6px 8px 0 0; text-align: right; font-size: 9px; color: #7c8ba2; }
 .ss-day-column { position: relative; border-left: 1px solid #e7edf4; background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--ss-hour) - 1px), #e7edf4 calc(var(--ss-hour) - 1px), #e7edf4 var(--ss-hour)); }
 .ss-free-day { position: absolute; top: 28px; left: 0; right: 0; text-align: center; color: #8f9bb0; font-size: 10px; }
-.ss-tone-0 { --ss-accent: #5279b1; --ss-soft: #eff4fc; --ss-edge: #dce6f5; }
-.ss-tone-1 { --ss-accent: #55867a; --ss-soft: #edf6f3; --ss-edge: #dcece7; }
-.ss-tone-2 { --ss-accent: #87709f; --ss-soft: #f4f0f8; --ss-edge: #e7e0ef; }
-.ss-tone-3 { --ss-accent: #a17b48; --ss-soft: #faf5ec; --ss-edge: #efe3d1; }
-.ss-tone-4 { --ss-accent: #7687a1; --ss-soft: #f0f3f8; --ss-edge: #dfe6ef; }
+/* Same five plotting accents the faculty teaching-loads board uses (see
+   .tt-block.acc-* in teaching_loads/index.php and TeachingLoads::ACCENTS) —
+   a class reads as the same color here as it does on that board, instead of
+   an independently hashed rainbow that happened to not match the rest of
+   the system. */
+.ss-accent-blue   { --ss-accent: #2563eb; --ss-soft: var(--color-info-soft); --ss-edge: #cddbef; }
+.ss-accent-purple { --ss-accent: #9333ea; --ss-soft: #f1e6ff; --ss-edge: #e0c9fa; }
+.ss-accent-red    { --ss-accent: #ef4444; --ss-soft: var(--color-danger-soft); --ss-edge: var(--color-danger-border); }
+.ss-accent-green  { --ss-accent: #16a34a; --ss-soft: var(--color-success-soft); --ss-edge: #bbf7d0; }
+.ss-accent-gold   { --ss-accent: #f59e0b; --ss-soft: var(--color-warning-soft); --ss-edge: #fde3a8; }
 .ss-page .ss-class { position: absolute; display: flex; flex-direction: column; align-items: stretch; text-align: left; gap: 3px; padding: 8px 9px; border: 1px solid var(--ss-edge); border-left: 3px solid var(--ss-accent); border-radius: 6px; background: var(--ss-soft); color: #43536c; overflow: hidden; transition: box-shadow .15s, border-color .15s; }
 .ss-class:hover { box-shadow: 0 3px 12px #243a6220; border-color: var(--ss-accent); z-index: 1; }
 .ss-class.is-selected { box-shadow: inset 0 0 0 1px var(--ss-accent); }
@@ -87,8 +92,8 @@
 .ss-empty p { margin: 0 auto 18px; max-width: 420px; font-size: 12px; line-height: 1.7; color: var(--ss-muted); }
 .ss-button { display: inline-flex; justify-content: center; align-items: center; gap: 7px; min-height: 38px; padding: 9px 13px; border: 1px solid #dce4ee; border-radius: 7px; background: #fff; color: #496080; font-size: 11px !important; font-weight: 550 !important; white-space: nowrap; }
 .ss-button:hover { background: #f4f7fc; border-color: #b9c9e1; }
-.ss-button--primary { background: #2c5798; color: #fff; border-color: #2c5798; }
-.ss-button--primary:hover { background: #23477d; border-color: #23477d; }
+.ss-button--primary { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.ss-button--primary:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); }
 .ss-button--drop { color: #9b5257; font-size: 10px !important; }
 .ss-icon-button { display: inline-grid; place-items: center; width: 34px; height: 34px; border: 1px solid #e3e8f0; border-radius: 8px; background: #fff; color: #76879f; }
 .ss-icon-button:hover { background: #f0f4fa; color: #34547f; }
@@ -208,20 +213,20 @@
     .ss-stat > span { margin: 0; color: #6c788b; font-size: 9px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; }
 
     .ss-card { border-radius: 10px; box-shadow: 0 5px 18px -18px rgba(18, 37, 69, .55); }
-    .ss-workspace { border-top: 3px solid #153f86; }
+    .ss-workspace { border-top: 3px solid var(--color-primary); }
     .ss-board-heading { padding: 20px 24px 17px; border-bottom: 1px solid var(--ss-line); }
     .ss-board-heading h2 { color: #15223a; font-size: 15px; font-weight: 680; }
     .ss-board-heading p { line-height: 1.55; }
     .ss-board-actions { gap: 9px; }
     .ss-view-toggle { padding: 3px; border-color: #dfe5ed; border-radius: 7px; background: #f3f5f8; }
     .ss-view-toggle button { padding: 6px 11px; border-radius: 5px; font-size: 10px; font-weight: 650; }
-    .ss-view-toggle button[aria-pressed=true] { color: #174f9f; box-shadow: 0 1px 3px rgba(18, 37, 69, .12); }
+    .ss-view-toggle button[aria-pressed=true] { color: var(--color-primary); box-shadow: 0 1px 3px rgba(18, 37, 69, .12); }
     .ss-button { min-height: 36px; border-color: #ced8e6; border-radius: 7px; color: #274b7d; font-weight: 650 !important; }
 
     .ss-toolbar { margin: 0 24px; padding: 15px 0; border-bottom: 1px solid var(--ss-line); }
     .ss-day-filters { gap: 2px; padding: 0; }
     .ss-day-filters button { padding: 7px 10px; border-radius: 5px; color: #68758a; font-size: 10px; }
-    .ss-day-filters button[aria-pressed=true] { border-color: #cbd8eb; background: #f3f7fd; color: #174f9f; }
+    .ss-day-filters button[aria-pressed=true] { border-color: #cbd8eb; background: #f3f7fd; color: var(--color-primary); }
     .ss-subject-filter { padding: 7px 10px; border-color: #d9e1eb; border-radius: 6px; }
     .ss-subject-filter select { color: #43536b; font-size: 10px; font-weight: 600; }
 
@@ -234,11 +239,11 @@
     .ss-day-column { border-color: #e1e7ef; background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--ss-hour) - 1px), #e5eaf1 calc(var(--ss-hour) - 1px), #e5eaf1 var(--ss-hour)); }
     .ss-free-day { color: #98a3b2; }
 
-    .ss-tone-0 { --ss-accent: #3d6ba8; --ss-soft: #edf3fb; --ss-edge: #cddbef; }
-    .ss-tone-1 { --ss-accent: #357568; --ss-soft: #edf7f3; --ss-edge: #cbe6dc; }
-    .ss-tone-2 { --ss-accent: #75588f; --ss-soft: #f3eef7; --ss-edge: #dfd3e8; }
-    .ss-tone-3 { --ss-accent: #9a6a2d; --ss-soft: #faf3e8; --ss-edge: #ead8ba; }
-    .ss-tone-4 { --ss-accent: #586f91; --ss-soft: #eef2f7; --ss-edge: #d5deea; }
+    .ss-accent-blue   { --ss-accent: #2563eb; --ss-soft: var(--color-info-soft); --ss-edge: #cddbef; }
+    .ss-accent-purple { --ss-accent: #9333ea; --ss-soft: #f1e6ff; --ss-edge: #e0c9fa; }
+    .ss-accent-red    { --ss-accent: #ef4444; --ss-soft: var(--color-danger-soft); --ss-edge: var(--color-danger-border); }
+    .ss-accent-green  { --ss-accent: #16a34a; --ss-soft: var(--color-success-soft); --ss-edge: #bbf7d0; }
+    .ss-accent-gold   { --ss-accent: #f59e0b; --ss-soft: var(--color-warning-soft); --ss-edge: #fde3a8; }
     .ss-page .ss-class { gap: 4px; padding: 9px 10px; border-left-width: 3px; border-radius: 6px; color: #34445b; box-shadow: 0 1px 2px rgba(18, 37, 69, .06); }
     .ss-class:hover { z-index: 2; border-color: var(--ss-accent); box-shadow: 0 7px 18px -9px rgba(18, 37, 69, .4); }
     .ss-class-code { color: #223b60; font-weight: 700; }
