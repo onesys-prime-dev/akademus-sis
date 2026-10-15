@@ -396,7 +396,7 @@ class TuitionAssessmentService
     private function recalculateLedger(int $assessmentId): void
     {
         $assessments = new TuitionAssessmentModel();
-        $assessment  = $assessments->find($assessmentId);
+        $assessment  = $assessments->lockForUpdate($assessmentId);
 
         $totalPaid = (float) (db_connect()->table('student_payments')
             ->select('COALESCE(SUM(amount), 0) AS total')

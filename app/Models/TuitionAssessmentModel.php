@@ -37,4 +37,19 @@ class TuitionAssessmentModel extends Model
     {
         return $this->where('student_id', $studentId)->orderBy('academic_year', 'DESC')->findAll();
     }
+
+    /**
+     * Row-locks the assessment for the duration of the enclosing transaction so
+     * concurrent payment postings against it serialize instead of racing on the
+     * amount_paid/balance recalculation. FOR UPDATE is only valid under MySQL
+     * (production); it's a no-op elsewhere (the SQLite test connection is
+     * single-process anyway).
+     */
+    public function lockForUpdate(int $assessmentId): ?array
+    {
+        $db     = $this->db;
+        $suffix = $db->DBDriver === 'MySQLi' ? ' FOR UPDATE' : '';
+
+        return $db->query("SELECT * FROM tuition_assessments WHERE assessment_id = ?{$suffix}", [$assessmentId])->getRowArray();
+    }
 }

@@ -1862,26 +1862,46 @@ class ChairpersonController extends BaseController
             }
         }
 
-        // Against every other section in the same AY: rooms and professors
-        // cannot be in two places at once.
-        $schedules = new PlottedScheduleModel();
-        $others    = array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section']));
+        // Two chairpersons saving different sections of the same academic
+        // year concurrently could both read the "others" conflict set before
+        // either writes, both pass the check, and both commit into the same
+        // room/faculty slot. An advisory lock scoped to the academic year
+        // serializes the conflict-check-then-write below across requests;
+        // MySQL-only (production), a no-op elsewhere since the SQLite test
+        // connection is single-process anyway.
+        $db      = db_connect();
+        $useLock = $db->DBDriver === 'MySQLi';
+        $lockKey = 'schedule_sync:' . $context['academic_year'];
 
-        foreach ($blocks as $block) {
-            foreach ($others as $other) {
-                if (! ScheduleOverlap::clashes($block, $other)) {
-                    continue;
-                }
+        if ($useLock) {
+            $acquired = (int) ($db->query('SELECT GET_LOCK(?, 10) AS acquired', [$lockKey])->getRowArray()['acquired'] ?? 0);
 
-                if ($block['room'] === $other['room']) {
-                    return $this->fail("Room conflict: {$other['room']} is used by {$other['code']} ({$other['section']}) at {$other['time_label']}.");
-                }
-
-                if ($block['prof'] !== null && $block['prof'] !== '' && $block['prof'] === $other['prof']) {
-                    return $this->fail("Faculty conflict: {$other['prof']} teaches {$other['code']} ({$other['section']}) at {$other['time_label']}.");
-                }
+            if ($acquired !== 1) {
+                return $this->fail('Another save is in progress for this academic year. Please try again.');
             }
         }
+
+        try {
+            // Against every other section in the same AY: rooms and professors
+            // cannot be in two places at once.
+            $schedules = new PlottedScheduleModel();
+            $others    = array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section']));
+
+            foreach ($blocks as $block) {
+                foreach ($others as $other) {
+                    if (! ScheduleOverlap::clashes($block, $other)) {
+                        continue;
+                    }
+
+                    if ($block['room'] === $other['room']) {
+                        return $this->fail("Room conflict: {$other['room']} is used by {$other['code']} ({$other['section']}) at {$other['time_label']}.");
+                    }
+
+                    if ($block['prof'] !== null && $block['prof'] !== '' && $block['prof'] === $other['prof']) {
+                        return $this->fail("Faculty conflict: {$other['prof']} teaches {$other['code']} ({$other['section']}) at {$other['time_label']}.");
+                    }
+                }
+            }
 
         // replaceDraft() below replaces this section's ENTIRE stored set with
         // whatever is submitted — if the client simply omits a block (e.g.
@@ -1947,7 +1967,6 @@ class ChairpersonController extends BaseController
         // One transaction covers the schedule replace, the section anchor,
         // and any faculty assignment upserts — a plot and its assignment
         // must land together or not at all.
-        $db = db_connect();
         $db->transException(true)->transStart();
 
         $schedules->replaceDraft(
@@ -2026,6 +2045,11 @@ class ChairpersonController extends BaseController
             // Subjects removed because they're no longer in this term's curriculum.
             'dropped' => array_keys($dropped),
         ]);
+        } finally {
+            if ($useLock) {
+                $db->query('SELECT RELEASE_LOCK(?)', [$lockKey]);
+            }
+        }
     }
 
     /**

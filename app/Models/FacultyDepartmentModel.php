@@ -159,10 +159,21 @@ class FacultyDepartmentModel extends Model
             return ['ok' => false, 'error' => 'Department not found.'];
         }
 
+        // Two concurrent affiliation changes for the same faculty member
+        // (e.g. addAffiliation racing setPrimaryDepartment, or two admins
+        // acting at once) must serialize on that user — otherwise both can
+        // read "no current primary" and both write is_primary=1, leaving
+        // two active primaries. Lock the user's row before re-checking.
+        $db = $this->db;
+        $db->transStart();
+        $this->lockUserForUpdate($userId);
+
         $existing = $this->where('user_id', $userId)->where('sub_dept_id', $subDeptId)->first();
         $hasAnyPrimary = $this->where('user_id', $userId)->where('is_primary', 1)->where('status', 'active')->countAllResults() > 0;
 
         if ($existing !== null && $existing['status'] === 'active') {
+            $db->transComplete();
+
             return ['ok' => false, 'error' => 'This faculty member is already affiliated with that department.'];
         }
 
@@ -171,12 +182,12 @@ class FacultyDepartmentModel extends Model
         if ($makePrimary && $hasAnyPrimary && $asPrimary) {
             // Caller explicitly asked for primary but one already exists —
             // route through the dedicated transactional swap instead of
-            // creating a second primary here.
+            // creating a second primary here. Release this lock first so
+            // setPrimaryDepartment's own lock+transaction isn't nested.
+            $db->transComplete();
+
             return $this->setPrimaryDepartment($userId, $subDeptId, $actorId, $actorRole, 'Set via addAffiliation');
         }
-
-        $db = $this->db;
-        $db->transStart();
 
         if ($existing !== null) {
             $this->update($existing['id'], ['status' => 'active', 'is_primary' => $makePrimary ? 1 : 0]);
@@ -263,14 +274,17 @@ class FacultyDepartmentModel extends Model
             return ['ok' => false, 'error' => 'Department not found.'];
         }
 
+        $db = $this->db;
+        $db->transStart();
+        $this->lockUserForUpdate($userId);
+
         $currentPrimary = $this->where('user_id', $userId)->where('is_primary', 1)->where('status', 'active')->first();
 
         if ($currentPrimary !== null && (int) $currentPrimary['sub_dept_id'] === $subDeptId) {
+            $db->transComplete();
+
             return ['ok' => false, 'error' => 'That is already the primary department.'];
         }
-
-        $db = $this->db;
-        $db->transStart();
 
         if ($currentPrimary !== null) {
             $this->update($currentPrimary['id'], ['is_primary' => 0]);
@@ -306,6 +320,21 @@ class FacultyDepartmentModel extends Model
         );
 
         return ['ok' => true];
+    }
+
+    /**
+     * Row-locks the faculty member's users row for the duration of the
+     * enclosing transaction so concurrent affiliation/primary changes for
+     * them serialize. FOR UPDATE is only valid under MySQL (production);
+     * it's a no-op elsewhere (the SQLite test connection is single-process
+     * anyway).
+     */
+    private function lockUserForUpdate(int $userId): ?array
+    {
+        $db     = $this->db;
+        $suffix = $db->DBDriver === 'MySQLi' ? ' FOR UPDATE' : '';
+
+        return $db->query("SELECT id FROM users WHERE id = ?{$suffix}", [$userId])->getRowArray();
     }
 
     private function syncPrimaryToUser(int $userId, int $subDeptId): void

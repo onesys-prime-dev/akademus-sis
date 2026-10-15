@@ -44,12 +44,22 @@ class DocumentRequestModel extends Model
             return ['ok' => false, 'error' => 'Invalid document type.'];
         }
 
+        // Lock the student row so a double-submit (or two concurrent
+        // requests) can't both pass the pending-duplicate check before
+        // either inserts.
+        $db     = $this->db;
+        $suffix = $db->DBDriver === 'MySQLi' ? ' FOR UPDATE' : '';
+        $db->transStart();
+        $db->query("SELECT student_id FROM students WHERE student_id = ?{$suffix}", [$studentId]);
+
         $hasPending = $this->where('student_id', $studentId)
             ->where('document_type', $type)
             ->where('status', 'pending')
             ->countAllResults() > 0;
 
         if ($hasPending) {
+            $db->transComplete();
+
             return ['ok' => false, 'error' => 'You already have a pending request for this document.'];
         }
 
@@ -61,9 +71,16 @@ class DocumentRequestModel extends Model
             'purpose'       => $purpose,
         ]);
 
+        $id = $this->getInsertID();
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return ['ok' => false, 'error' => 'Could not submit this request. Please retry.'];
+        }
+
         $this->notifyRegistrarStaff($studentId, $type);
 
-        return ['ok' => true, 'id' => $this->getInsertID()];
+        return ['ok' => true, 'id' => $id];
     }
 
     /**

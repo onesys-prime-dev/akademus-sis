@@ -29,18 +29,25 @@ class GraduationClearanceModel extends Model
      */
     public function initiate(int $studentId, string $academicYear, int $initiatedBy): array
     {
-        if ($this->where('student_id', $studentId)->where('status', 'pending')->countAllResults() > 0) {
-            return ['ok' => false, 'error' => 'A clearance case is already in progress for this student.'];
-        }
-
         $requirements = (new ClearanceRequirementModel())->active();
 
         if ($requirements === []) {
             return ['ok' => false, 'error' => 'No clearance requirements are configured. Contact an administrator.'];
         }
 
-        $db = $this->db;
+        // Lock the student row so two concurrent initiate() calls for the
+        // same student can't both pass the open-case check before either
+        // inserts, which would open two overlapping clearance cases.
+        $db     = $this->db;
+        $suffix = $db->DBDriver === 'MySQLi' ? ' FOR UPDATE' : '';
         $db->transStart();
+        $db->query("SELECT student_id FROM students WHERE student_id = ?{$suffix}", [$studentId]);
+
+        if ($this->where('student_id', $studentId)->where('status', 'pending')->countAllResults() > 0) {
+            $db->transComplete();
+
+            return ['ok' => false, 'error' => 'A clearance case is already in progress for this student.'];
+        }
 
         $this->insert([
             'student_id'    => $studentId,

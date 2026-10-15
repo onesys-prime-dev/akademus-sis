@@ -158,9 +158,23 @@ class OfferingComponentModel extends Model
             return ['ok' => false, 'error' => 'This student is not currently enrolled in the parent offering.'];
         }
 
-        $currentCount = $this->db->table('offering_component_students')->where('offering_component_id', $offeringComponentId)->countAllResults();
+        // Capacity and the 'one_of' sibling check both reason about every
+        // component under this offering, so two concurrent assignStudent()
+        // calls for the same offering (even against different sibling
+        // components) must serialize on the offering row — otherwise both
+        // can read "capacity available" / "no sibling membership" before
+        // either inserts, and both commit past the limit.
+        $db = $this->db;
+        $db->transStart();
+
+        $suffix = $db->DBDriver === 'MySQLi' ? ' FOR UPDATE' : '';
+        $db->query("SELECT offering_id FROM course_offerings WHERE offering_id = ?{$suffix}", [(int) $component['offering_id']]);
+
+        $currentCount = $db->table('offering_component_students')->where('offering_component_id', $offeringComponentId)->countAllResults();
 
         if ($component['capacity'] !== null && $currentCount >= (int) $component['capacity']) {
+            $db->transComplete();
+
             return ['ok' => false, 'error' => 'This component is at capacity.'];
         }
 
@@ -179,27 +193,37 @@ class OfferingComponentModel extends Model
                 ));
 
                 if ($siblingIds !== []) {
-                    $already = $this->db->table('offering_component_students')
+                    $already = $db->table('offering_component_students')
                         ->whereIn('offering_component_id', $siblingIds)
                         ->where('user_id', $userId)
                         ->countAllResults() > 0;
 
                     if ($already) {
+                        $db->transComplete();
+
                         return ['ok' => false, 'error' => 'This student already belongs to another instance of this required component — each student may belong to only one.'];
                     }
                 }
             }
         }
 
-        if ($this->db->table('offering_component_students')->where('offering_component_id', $offeringComponentId)->where('user_id', $userId)->countAllResults() > 0) {
+        if ($db->table('offering_component_students')->where('offering_component_id', $offeringComponentId)->where('user_id', $userId)->countAllResults() > 0) {
+            $db->transComplete();
+
             return ['ok' => false, 'error' => 'This student is already a member of this component.'];
         }
 
-        $this->db->table('offering_component_students')->insert([
+        $db->table('offering_component_students')->insert([
             'offering_component_id' => $offeringComponentId,
             'user_id'                => $userId,
             'created_at'             => date('Y-m-d H:i:s'),
         ]);
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return ['ok' => false, 'error' => 'Could not assign this student. Please retry.'];
+        }
 
         return ['ok' => true];
     }

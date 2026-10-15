@@ -189,20 +189,29 @@ class SubDepartmentController extends BaseController
             $user->addGroup('chairperson');
         }
 
-        // A department has exactly one chairperson at a time — clear whoever
-        // currently holds that slot (primary or delegated) before handing it
-        // to this account. See clearDepartmentChair().
+        // A department has exactly one chairperson at a time. Lock the
+        // department row for the duration of this transaction so a
+        // concurrent assignment to the same department can't interleave
+        // between clearing the old chair and setting the new one.
+        $db = db_connect();
+        $db->transStart();
+        $this->subDeptModel->lockForUpdate($id);
+
+        // Clear whoever currently holds that slot (primary or delegated)
+        // before handing it to this account. See clearDepartmentChair().
         $this->clearDepartmentChair($id, $user->id);
 
         // sub_department_id scopes them to this department; department_id keeps the
         // parent college in sync, since scheduling (ChairpersonController/TeachingLoads)
         // still scopes chairpersons/faculty by college via users.department_id.
-        db_connect()->table('users')
+        $db->table('users')
             ->where('id', $user->id)
             ->update([
                 'sub_department_id' => $id,
                 'department_id'     => $department['college_id'],
             ]);
+
+        $db->transComplete();
 
         $message = "{$username} assigned as chairperson of {$department['name']}.";
 
@@ -240,9 +249,15 @@ class SubDepartmentController extends BaseController
             $user->addGroup('chairperson');
         }
 
+        // Lock the department row for the duration of this transaction so a
+        // concurrent assignment to the same department can't interleave
+        // between clearing the old chair and setting the new one.
+        $db = db_connect();
+        $db->transStart();
+        $this->subDeptModel->lockForUpdate($id);
+
         $this->clearDepartmentChair($id, $userId);
 
-        $db = db_connect();
         $currentSubDept = $db->table('users')->select('sub_department_id')->where('id', $user->id)->get()->getRowArray()['sub_department_id'] ?? null;
 
         if ($currentSubDept === null || (int) $currentSubDept === $id) {
@@ -270,6 +285,8 @@ class SubDepartmentController extends BaseController
 
             $message = "{$user->username} is already chairperson of another department, so they weren't moved — they've been granted additional chairperson access to {$department['name']} as well. Both departments remain under their management.";
         }
+
+        $db->transComplete();
 
         return redirect()
             ->to("/admin/sub-departments/{$id}")

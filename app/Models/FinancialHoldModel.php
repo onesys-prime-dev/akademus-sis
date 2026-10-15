@@ -26,7 +26,17 @@ class FinancialHoldModel extends Model
             return ['ok' => false, 'error' => 'Invalid hold type.'];
         }
 
+        // Lock the student row so two concurrent place() calls for the same
+        // student can't both pass the isOnHold() check before either
+        // inserts, which would create two active holds.
+        $db     = $this->db;
+        $suffix = $db->DBDriver === 'MySQLi' ? ' FOR UPDATE' : '';
+        $db->transStart();
+        $db->query("SELECT student_id FROM students WHERE student_id = ?{$suffix}", [$studentId]);
+
         if ($this->isOnHold($studentId)) {
+            $db->transComplete();
+
             return ['ok' => false, 'error' => 'This student already has an active hold.'];
         }
 
@@ -39,7 +49,14 @@ class FinancialHoldModel extends Model
             'placed_at'  => date('Y-m-d H:i:s'),
         ]);
 
-        return ['ok' => true, 'id' => $this->getInsertID()];
+        $id = $this->getInsertID();
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return ['ok' => false, 'error' => 'Could not place this hold. Please retry.'];
+        }
+
+        return ['ok' => true, 'id' => $id];
     }
 
     public function release(int $holdId, int $releasedBy): array

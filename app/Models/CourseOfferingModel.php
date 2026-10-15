@@ -285,19 +285,35 @@ class CourseOfferingModel extends Model
      */
     public function attachSection(int $offeringId, int $sectionId, string $subjectCode, bool $allowOverCapacity = false): array
     {
-        $offering = $this->find($offeringId);
+        // Every check below (duplicate-attach, schedule conflict, capacity)
+        // must be re-verified AFTER the offering row is locked — two
+        // concurrent attachSection() calls for the same offering could
+        // otherwise both read a stale roster/attachment state, both pass,
+        // and both write, over-filling the offering or double-attaching a
+        // section. Locking first, then checking, inside one transaction
+        // closes that gap (same pattern as EnrollmentModel::lockSection()).
+        $db = $this->db;
+        $db->transStart();
+
+        $offering = $this->lockForUpdate($offeringId);
 
         if ($offering === null) {
+            $db->transComplete();
+
             return ['ok' => false, 'error' => 'Offering not found.'];
         }
 
         if ($this->offeringForSection($sectionId, $subjectCode) !== null) {
+            $db->transComplete();
+
             return ['ok' => false, 'error' => "Section #{$sectionId} is already attached to an offering for {$subjectCode}."];
         }
 
         $scheduleCheck = (new SchedulingConflictService())->attachConflicts($offeringId, $sectionId);
 
         if (! $scheduleCheck['ok']) {
+            $db->transComplete();
+
             return [
                 'ok'                 => false,
                 'error'              => 'This section has a schedule conflict with the offering\'s existing class time.',
@@ -305,7 +321,7 @@ class CourseOfferingModel extends Model
             ];
         }
 
-        $incoming = $this->db->table('enrollments')
+        $incoming = $db->table('enrollments')
             ->where('subject_code', $subjectCode)
             ->where('section_id', $sectionId)
             ->where('status', 'enrolled')
@@ -316,6 +332,8 @@ class CourseOfferingModel extends Model
         $wouldExceed        = $capacity !== null && $prospectiveRoster > $capacity;
 
         if ($wouldExceed && ! $allowOverCapacity) {
+            $db->transComplete();
+
             return [
                 'ok'                  => false,
                 'error'               => 'Attaching this section would exceed the offering\'s capacity.',
@@ -324,9 +342,6 @@ class CourseOfferingModel extends Model
                 'capacity'            => $capacity,
             ];
         }
-
-        $db = $this->db;
-        $db->transStart();
 
         $db->table('offering_sections')->insert([
             'offering_id'  => $offeringId,
@@ -350,6 +365,20 @@ class CourseOfferingModel extends Model
             'ok'            => true,
             'over_capacity' => $wouldExceed,
         ];
+    }
+
+    /**
+     * Row-locks the offering for the duration of the enclosing transaction
+     * so concurrent attachSection() calls against it serialize. FOR UPDATE
+     * is only valid under MySQL (production); it's a no-op elsewhere (the
+     * SQLite test connection is single-process anyway).
+     */
+    private function lockForUpdate(int $offeringId): ?array
+    {
+        $db     = $this->db;
+        $suffix = $db->DBDriver === 'MySQLi' ? ' FOR UPDATE' : '';
+
+        return $db->query("SELECT * FROM course_offerings WHERE offering_id = ?{$suffix}", [$offeringId])->getRowArray();
     }
 
     /**
