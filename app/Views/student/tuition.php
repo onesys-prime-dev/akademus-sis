@@ -206,6 +206,7 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
                         <strong id="tfFilePreviewName"></strong>
                         <span id="tfFilePreviewSize"></span>
                     </div>
+                    <button type="button" class="tf-file-preview__action" id="tfFileView">View</button>
                     <button type="button" class="tf-file-preview__action" id="tfFileReplace">Replace</button>
                     <button type="button" class="tf-file-preview__action tf-file-preview__action--danger" id="tfFileRemove">Remove</button>
                 </div>
@@ -233,8 +234,10 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
         var previewThumb  = document.getElementById('tfFilePreviewThumb');
         var previewName   = document.getElementById('tfFilePreviewName');
         var previewSize   = document.getElementById('tfFilePreviewSize');
+        var viewBtn       = document.getElementById('tfFileView');
         var removeBtn     = document.getElementById('tfFileRemove');
         var replaceBtn    = document.getElementById('tfFileReplace');
+        var currentFile   = null;
         var progress      = document.getElementById('tfUploadProgress');
         var progressFill  = document.getElementById('tfUploadProgressFill');
         var progressPct   = document.getElementById('tfUploadProgressPercent');
@@ -264,6 +267,7 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
                 window.alert('Only JPG, PNG, or PDF files are accepted.');
                 return;
             }
+            currentFile = file;
             promptEl.hidden = true;
             preview.hidden = false;
             previewName.textContent = file.name;
@@ -279,6 +283,7 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
         }
 
         function resetSelection() {
+            currentFile = null;
             fileInput.value = '';
             promptEl.hidden = false;
             preview.hidden = true;
@@ -288,6 +293,11 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
             if (fileInput.files && fileInput.files[0]) showFile(fileInput.files[0]);
         });
 
+        viewBtn.addEventListener('click', function () {
+            if (!currentFile) return;
+            var url = URL.createObjectURL(currentFile);
+            tfOpenFile(url, currentFile.name, { downloadName: currentFile.name });
+        });
         removeBtn.addEventListener('click', resetSelection);
         replaceBtn.addEventListener('click', function () { fileInput.click(); });
 
@@ -379,12 +389,24 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
         <h3 class="tf-subheading">Submitted proofs</h3>
         <div class="tf-table-scroll" role="region" aria-label="Payment details" tabindex="0"><table class="grade-table">
             <thead>
-                <tr><th>File</th><th>Uploaded</th><th>Status</th><th>Cashier Remarks</th></tr>
+                <tr><th>File</th><th>Covers</th><th>Uploaded</th><th>Status</th><th>Cashier Remarks</th></tr>
             </thead>
             <tbody>
-                <?php foreach ($proofs as $p): ?>
+                <?php foreach ($proofs as $p):
+                    $ext = strtolower(pathinfo($p['original_filename'], PATHINFO_EXTENSION));
+                    $fileIcon = $ext === 'pdf' ? 'picture_as_pdf' : 'image';
+                ?>
                     <tr>
-                        <td><a href="<?= site_url('student/tuition/proof/' . $p['proof_id']) ?>" target="_blank" rel="noopener"><?= esc($p['original_filename']) ?></a></td>
+                        <td>
+                            <button type="button" class="tf-proof-file" onclick="tfOpenFile('<?= site_url('student/tuition/proof/' . $p['proof_id']) ?>', '<?= esc($p['original_filename'], 'js') ?>')" title="<?= esc($p['original_filename'], 'attr') ?>">
+                                <span class="material-symbols-outlined tf-proof-file__icon" aria-hidden="true"><?= $fileIcon ?></span>
+                                <span class="tf-proof-file__meta">
+                                    <span class="tf-proof-file__name"><?= esc($p['original_filename']) ?></span>
+                                    <?php if (! empty($p['remarks'])): ?><span class="tf-proof-file__remarks"><?= esc($p['remarks']) ?></span><?php endif ?>
+                                </span>
+                            </button>
+                        </td>
+                        <td><?= ! empty($p['schedule_label']) ? esc($p['schedule_label']) : '<span class="tf-muted">General Payment</span>' ?></td>
                         <td><?= esc(date('M j, Y', strtotime($p['created_at']))) ?></td>
                         <td>
                             <?php if ($p['status'] === 'approved'): ?>
@@ -428,7 +450,7 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
                         <td><?= $p['reference_no'] !== null ? esc($p['reference_no']) : '—' ?></td>
                         <td>
                             <?php if (! empty($p['or_number'])): ?>
-                                <button type="button" class="tf-receipt-link" onclick="tfOpenReceipt('<?= site_url('student/tuition/receipt/' . $p['receipt_id']) ?>', '<?= esc($p['or_number'], 'js') ?>')"><?= esc($p['or_number']) ?></button>
+                                <button type="button" class="tf-receipt-link" onclick="tfOpenFile('<?= site_url('student/tuition/receipt/' . $p['receipt_id']) ?>', 'Official Receipt — <?= esc($p['or_number'], 'js') ?>')"><?= esc($p['or_number']) ?></button>
                             <?php else: ?>
                                 —
                             <?php endif ?>
@@ -464,48 +486,67 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
 
 </div>
 
-<div class="ac-modal tf-receipt-modal" id="tfReceiptModal">
+<div class="ac-modal tf-receipt-modal" id="tfFileModal">
     <div class="ac-modal__panel">
         <div class="ac-modal__header">
             <div>
-                <div class="ac-modal__title" id="tfReceiptModalTitle">Official Receipt</div>
+                <div class="ac-modal__title" id="tfFileModalTitle">Document preview</div>
             </div>
-            <button type="button" onclick="acCloseModal('tfReceiptModal')" class="ac-modal__close">
+            <button type="button" onclick="acCloseModal('tfFileModal')" class="ac-modal__close">
                 <span class="material-symbols-outlined" aria-hidden="true">close</span>
             </button>
         </div>
         <div class="ac-modal__body">
-            <iframe id="tfReceiptFrame" class="tf-receipt-frame" title="Official receipt preview"></iframe>
+            <iframe id="tfFileFrame" class="tf-receipt-frame" title="Document preview"></iframe>
             <div class="ac-modal__actions">
-                <a id="tfReceiptDownload" href="#" class="ac-btn ac-btn-secondary"><span class="material-symbols-outlined" aria-hidden="true">download</span>Download</a>
-                <button type="button" class="ac-btn ac-btn-primary" onclick="tfPrintReceipt()"><span class="material-symbols-outlined" aria-hidden="true">print</span>Print</button>
+                <a id="tfFileDownload" href="#" class="ac-btn ac-btn-secondary"><span class="material-symbols-outlined" aria-hidden="true">download</span>Download</a>
+                <button type="button" class="ac-btn ac-btn-primary" onclick="tfPrintFile()"><span class="material-symbols-outlined" aria-hidden="true">print</span>Print</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function tfOpenReceipt(url, orNumber) {
-    var frame = document.getElementById('tfReceiptFrame');
-    var download = document.getElementById('tfReceiptDownload');
-    var title = document.getElementById('tfReceiptModalTitle');
-    title.textContent = 'Official Receipt — ' + orNumber;
+var tfFileModalBlobUrl = null;
+
+// opts.downloadName set => url is a local blob: preview (a file picked but
+// not uploaded yet), so the download link must use the `download` attribute
+// instead of a '?download=1' query string, which only a real server route
+// understands.
+function tfOpenFile(url, title, opts) {
+    opts = opts || {};
+    var frame = document.getElementById('tfFileFrame');
+    var download = document.getElementById('tfFileDownload');
+    var titleEl = document.getElementById('tfFileModalTitle');
+    titleEl.textContent = title;
     frame.src = url;
-    download.href = url + (url.indexOf('?') === -1 ? '?' : '&') + 'download=1';
-    acOpenModal('tfReceiptModal');
+    if (opts.downloadName) {
+        download.href = url;
+        download.setAttribute('download', opts.downloadName);
+        tfFileModalBlobUrl = url;
+    } else {
+        download.href = url + (url.indexOf('?') === -1 ? '?' : '&') + 'download=1';
+        download.removeAttribute('download');
+        tfFileModalBlobUrl = null;
+    }
+    acOpenModal('tfFileModal');
 }
-function tfPrintReceipt() {
-    var frame = document.getElementById('tfReceiptFrame');
+function tfPrintFile() {
+    var frame = document.getElementById('tfFileFrame');
     if (frame && frame.contentWindow) {
         frame.contentWindow.focus();
         frame.contentWindow.print();
     }
 }
 (function () {
-    var modal = document.getElementById('tfReceiptModal');
+    var modal = document.getElementById('tfFileModal');
     new MutationObserver(function () {
         if (!modal.classList.contains('is-open')) {
-            document.getElementById('tfReceiptFrame').src = '';
+            document.getElementById('tfFileFrame').src = '';
+            if (tfFileModalBlobUrl) {
+                URL.revokeObjectURL(tfFileModalBlobUrl);
+                tfFileModalBlobUrl = null;
+            }
         }
     }).observe(modal, { attributes: true, attributeFilter: ['class'] });
 })();

@@ -211,7 +211,18 @@ class StudentController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
-        return $this->response->download($path, null)->setFileName($proof['original_filename']);
+        if ($this->request->getGet('download') !== null) {
+            return $this->response->download($path, null)->setFileName($proof['original_filename']);
+        }
+
+        $mimes = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'pdf' => 'application/pdf'];
+        $ext   = strtolower(pathinfo($proof['stored_filename'], PATHINFO_EXTENSION));
+        $mime  = $mimes[$ext] ?? 'application/octet-stream';
+
+        return $this->response
+            ->setHeader('Content-Type', $mime)
+            ->setHeader('Content-Disposition', 'inline; filename="' . $proof['original_filename'] . '"')
+            ->setBody(file_get_contents($path));
     }
 
     public function viewReceipt(int $id)

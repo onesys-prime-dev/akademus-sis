@@ -30,7 +30,13 @@ class PaymentProofModel extends Model
 
     public function forStudent(int $studentId): array
     {
-        return $this->where('student_id', $studentId)->orderBy('created_at', 'DESC')->findAll();
+        return $this->db->table('payment_proofs pp')
+            ->select('pp.*, ps.label AS schedule_label')
+            ->join('payment_schedules ps', 'ps.schedule_id = pp.schedule_id', 'left')
+            ->where('pp.student_id', $studentId)
+            ->orderBy('pp.created_at', 'DESC')
+            ->get()
+            ->getResultArray();
     }
 
     /** Every pending proof, oldest first — the staff review queue. */

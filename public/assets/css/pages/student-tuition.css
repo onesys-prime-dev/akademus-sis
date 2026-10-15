@@ -102,6 +102,13 @@
 
 .tf-receipt-link { background: none; border: none; padding: 0; color: #245597; font: inherit; cursor: pointer; }
 .tf-receipt-link:hover { text-decoration: underline; }
+
+.tf-proof-file { display: flex; align-items: center; gap: 9px; max-width: 260px; background: none; border: none; padding: 0; text-align: left; cursor: pointer; }
+.tf-proof-file__icon { flex: 0 0 auto; font-size: 20px; color: #5b6b85; background: #e8edf5; border-radius: 6px; padding: 5px; }
+.tf-proof-file__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.tf-proof-file__name { color: #245597; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tf-proof-file:hover .tf-proof-file__name { text-decoration: underline; }
+.tf-proof-file__remarks { color: #8a97ab; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tf-receipt-modal .ac-modal__panel { max-width: 560px; width: 100%; }
 .tf-receipt-frame { width: 100%; height: 65vh; border: 1px solid #e8edf3; border-radius: 6px; background: #f6f8fb; }
 
