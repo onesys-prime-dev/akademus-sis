@@ -168,9 +168,34 @@
 .ss-enrollments[open] .ss-enrollment-count { background: var(--color-primary-soft); color: var(--color-primary); border-color: transparent; }
 .ss-enrollment-body { padding: 0 26px 20px; animation: ssContentIn .22s var(--ease-enter); }
 .ss-enrollment-body > p { margin: 0 0 15px; color: var(--ss-muted); font-size: 11px; }
+/* "My enrolled subjects" opens onto a brief shimmer, then the rows arrive on a
+   stagger — the table is built, not just blinked into place. Because the data
+   is server-rendered there's no real network wait to cover, so this is a short,
+   deliberate beat (see ENROLL_LOAD_MS in student-schedule.js) rather than a
+   spinner. The skeleton is injected by JS and overlays the real table, which
+   keeps its box while hidden, so nothing shifts. Without JS, or with reduced
+   motion, the table is simply visible as before. */
+.ss-enrollment-table { position: relative; }
+.ss-enroll-skeleton { position: absolute; inset: 0; display: none; overflow: hidden; background: #fff; }
+.ss-enroll-skeleton-row { display: grid; grid-template-columns: minmax(72px, .9fr) 1.8fr 1.4fr 110px; align-items: center; gap: 12px; padding: 13px 12px; border-top: 1px solid var(--ss-line); }
+.ss-enroll-skeleton-row--head { padding: 11px 12px; border-top: 0; background: #f8fafc; }
+.ss-enroll-skeleton-bar { height: 11px; border-radius: 5px; background: linear-gradient(100deg, #eef2f8 20%, #f8fafc 50%, #eef2f8 80%); background-size: 220% 100%; animation: ssShimmer 1.15s linear infinite; }
+.ss-enroll-skeleton-row--head .ss-enroll-skeleton-bar { height: 8px; background: #e7ebf2; animation: none; }
+.ss-enroll-skeleton-bar--action { justify-self: end; width: 88px; height: 30px; border-radius: 7px; }
+.ss-enroll-skeleton-bar.ss-skeleton-w1 { width: 58%; }
+.ss-enroll-skeleton-bar.ss-skeleton-w2 { width: 82%; }
+.ss-enroll-skeleton-bar.ss-skeleton-w3 { width: 70%; }
+.ss-enrollment-body.is-loading .ss-table-scroll { visibility: hidden; }
+.ss-enrollment-body.is-loading .ss-enroll-skeleton { display: block; animation: ssContentIn var(--motion-fast) var(--ease-standard); }
+.ss-enrollment-body.is-revealed .ss-table tbody td { animation: ssEnrollRow var(--motion-normal) var(--ease-enter) both; animation-delay: calc(var(--row, 0) * 34ms); }
+.ss-enrollments[open] .ss-enrollment-count { animation: ssCountPop var(--motion-normal) var(--ease-spring); }
+@keyframes ssShimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@keyframes ssEnrollRow { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+@keyframes ssCountPop { from { transform: scale(.62); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) {
     .ss-enrollments > summary > .material-symbols-outlined:last-child, .ss-enrollment-count { transition: none; }
     .ss-enrollment-body { animation: none; }
+    .ss-enroll-skeleton-bar, .ss-enrollment-body.is-loading .ss-enroll-skeleton, .ss-enrollment-body.is-revealed .ss-table tbody td, .ss-enrollments[open] .ss-enrollment-count { animation: none; }
 }
 .ss-table-scroll { overflow-x: auto; }
 .ss-table { width: 100%; min-width: 620px; border-collapse: collapse; text-align: left; font-size: 11px; }

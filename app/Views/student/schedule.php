@@ -95,12 +95,12 @@ $scheduleData = array_map(static fn (array $m) => [
     <?php endif ?>
     <?php if (!empty($enrolled)): ?>
         <details class="ss-card ss-enrollments"><summary><span class="material-symbols-outlined" aria-hidden="true">school</span><span>My enrolled subjects<small>Enrollment information and subject management</small></span><span class="ss-enrollment-count"><?= count($enrolled) ?></span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></summary>
-            <div class="ss-enrollment-body"><p>You can drop a subject in the active term until a grade is recorded for it.</p><div class="ss-table-scroll" role="region" aria-label="Enrolled subjects" tabindex="0"><table class="ss-table"><thead><tr><th scope="col">Subject</th><th scope="col">Section</th><th scope="col">Term</th><th scope="col"><span class="ss-sr-only">Actions</span></th></tr></thead><tbody>
+            <div class="ss-enrollment-body"><p>You can drop a subject in the active term until a grade is recorded for it.</p><div class="ss-enrollment-table"><div class="ss-table-scroll" role="region" aria-label="Enrolled subjects" tabindex="0"><table class="ss-table"><thead><tr><th scope="col">Subject</th><th scope="col">Section</th><th scope="col">Term</th><th scope="col"><span class="ss-sr-only">Actions</span></th></tr></thead><tbody>
             <?php foreach ($enrolled as $e): ?><tr><td><strong><?= esc($e['subject_code']) ?></strong></td><td><?= esc($e['program']) ?> &middot; <?= esc($e['year_level']) ?> &middot; <?= esc($e['section']) ?></td><td><?= esc($e['academic_year']) ?></td><td>
                 <?php if ($e['can_drop']): ?><form method="post" action="<?= site_url('student/enrollments/drop') ?>" data-drop-code="<?= esc($e['subject_code'], 'attr') ?>"><?= csrf_field() ?><input type="hidden" name="enrollment_id" value="<?= (int) $e['enrollment_id'] ?>"><button type="submit" class="ss-button ss-button--drop">Drop subject</button></form>
                 <?php elseif ((int) $e['grade_count'] > 0): ?><span class="ss-enrollment-status">Graded</span><?php else: ?><span class="ss-enrollment-status">Past term</span><?php endif ?>
             </td></tr><?php endforeach ?>
-            </tbody></table></div></div>
+            </tbody></table></div></div></div>
         </details>
     <?php endif ?>
 </div>

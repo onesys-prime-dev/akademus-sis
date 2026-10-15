@@ -8,6 +8,58 @@
             if (!window.confirm(`Drop ${form.dataset.dropCode}? You can re-enroll later if a seat is available.`)) event.preventDefault();
         });
     });
+    // "My enrolled subjects" opens onto a brief shimmer pass, then the rows
+    // arrive on a stagger, so the table reads as built rather than blinked into
+    // place. Placed before the `!raw.length` early-exit below so it still runs
+    // for a student who has enrolled subjects but no plotted meetings yet.
+    // Reduced-motion / no-JS users skip straight to the plain table.
+    const enrollments = root.querySelector('.ss-enrollments');
+    if (enrollments) {
+        const enrollBody = enrollments.querySelector('.ss-enrollment-body');
+        const enrollTable = enrollBody?.querySelector('.ss-enrollment-table');
+        const enrollRows = [...(enrollBody?.querySelectorAll('.ss-table tbody tr') || [])];
+        enrollRows.forEach((row, index) => row.style.setProperty('--row', Math.min(index, 8)));
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const ENROLL_LOAD_MS = 420;
+        const skeletonCells = '<span class="ss-enroll-skeleton-bar ss-skeleton-w1"></span><span class="ss-enroll-skeleton-bar ss-skeleton-w2"></span><span class="ss-enroll-skeleton-bar ss-skeleton-w3"></span>';
+        let enrollTimer = null, skeleton = null;
+        const buildSkeleton = () => {
+            skeleton = document.createElement('div');
+            skeleton.className = 'ss-enroll-skeleton';
+            skeleton.setAttribute('aria-hidden', 'true');
+            const head = document.createElement('div');
+            head.className = 'ss-enroll-skeleton-row ss-enroll-skeleton-row--head';
+            head.innerHTML = skeletonCells + '<span></span>';
+            skeleton.appendChild(head);
+            enrollRows.forEach(() => {
+                const row = document.createElement('div');
+                row.className = 'ss-enroll-skeleton-row';
+                row.innerHTML = skeletonCells + '<span class="ss-enroll-skeleton-bar ss-enroll-skeleton-bar--action"></span>';
+                skeleton.appendChild(row);
+            });
+            enrollTable.appendChild(skeleton);
+        };
+        const resetEnrollments = () => { window.clearTimeout(enrollTimer); enrollBody.classList.remove('is-loading', 'is-revealed'); };
+        const runEnrollmentReveal = () => {
+            if (reduceMotion.matches) return;
+            if (!skeleton) buildSkeleton();
+            enrollBody.classList.remove('is-revealed');
+            enrollBody.classList.add('is-loading');
+            window.clearTimeout(enrollTimer);
+            enrollTimer = window.setTimeout(() => {
+                enrollBody.classList.remove('is-loading');
+                enrollBody.classList.add('is-revealed');
+            }, ENROLL_LOAD_MS);
+        };
+        if (enrollBody && enrollTable && enrollRows.length) {
+            // `open` still holds the pre-click state here, so this fires before
+            // the details actually opens (mouse and keyboard both dispatch click).
+            enrollments.querySelector('summary')?.addEventListener('click', () => {
+                if (enrollments.open) resetEnrollments(); else runEnrollmentReveal();
+            });
+            reduceMotion.addEventListener('change', event => { if (event.matches) resetEnrollments(); });
+        }
+    }
     const raw = JSON.parse(config.textContent).meetings;
     if (!raw.length) return;
     const $ = id => document.getElementById(id);
