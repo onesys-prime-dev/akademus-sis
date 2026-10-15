@@ -376,9 +376,15 @@
 }
 
 @media screen and (max-width: 700px) {
-    .ss-overview { grid-template-columns: repeat(3, 1fr); }
+    /* `overflow: visible` so the card never slices its own content: the rounded
+       corners are painted from border-radius regardless, so nothing visual is
+       lost, but a stat can no longer be cut off by the card's bottom edge. */
+    .ss-overview { grid-template-columns: repeat(3, 1fr); overflow: visible; }
     .ss-overview-intro { grid-column: 1 / -1; min-height: auto; padding: 16px 18px; border-bottom: 1px solid var(--ss-line); }
-    .ss-stat { min-height: 72px; padding: 14px 12px; }
+    /* The 24px stat numbers were sitting only ~18px off the card's bottom, which
+       read as "cut off" at 1-2x. Give the row real breathing room so the digits
+       sit comfortably inside the card instead of hugging its bottom edge. */
+    .ss-stat { min-height: 92px; padding: 16px 12px; }
     .ss-stat:nth-child(2) { border-left: 0; }
     .ss-board-heading { padding: 18px 16px 15px; }
     .ss-board-actions { width: 100%; }
@@ -387,4 +393,42 @@
     .ss-subject-filter { max-width: 100%; }
     .ss-agenda { padding: 15px 16px 2px; }
     .ss-board-footer { padding: 13px 16px; }
+}
+
+/* Mobile: everything fits the viewport — no horizontal scrolling anywhere.
+   The seven-day grid can't stay readable on a phone, so the calendar renders a
+   single day there (narrowDay()/render() in student-schedule.js) and the day
+   chips sit in one even row (no wrap, no scroll); the enrolled-subjects table
+   becomes a stack of cards for the same reason. Kept last so it wins over the
+   blocks above. */
+@media screen and (max-width: 700px) {
+    .ss-toolbar { gap: 8px; }
+    /* One even row of day chips: "All days" sizes to its text, the seven days
+       split the rest equally — so the row never wraps (no orphaned "Sun") and
+       never scrolls sideways. */
+    .ss-day-filters { display: grid; grid-template-columns: auto repeat(7, minmax(0, 1fr)); flex: 1 1 100%; width: 100%; max-width: 100%; gap: 2px; overflow: visible; }
+    .ss-day-filters button { width: 100%; padding: 7px 3px; }
+    .ss-calendar-scroll { overflow-x: hidden; }
+    .ss-grid--single { grid-template-columns: 50px minmax(0, 1fr); }
+
+    /* Enrolled subjects: one card per subject instead of a 620px-wide table. */
+    .ss-table-scroll { overflow-x: visible; }
+    .ss-table { min-width: 0; font-size: 12px; }
+    .ss-table thead { display: none; }
+    .ss-table, .ss-table tbody, .ss-table tr, .ss-table td { display: block; width: 100%; }
+    .ss-table tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; padding: 15px 0; border-top: 1px solid var(--ss-line); }
+    .ss-table tbody tr:first-child { border-top: 0; }
+    .ss-table td { border-top: 0; padding: 0; }
+    .ss-table td:nth-child(1) { grid-column: 1; grid-row: 1; font-size: 13px; }
+    .ss-table td:nth-child(2) { grid-column: 1; grid-row: 2; color: var(--ss-muted); font-size: 11px; }
+    .ss-table td:nth-child(3) { grid-column: 1; grid-row: 3; color: var(--ss-muted); font-size: 11px; }
+    .ss-table td:nth-child(4) { grid-column: 2; grid-row: 1 / span 3; justify-self: end; }
+
+    /* Match the enrolment skeleton's rows to the card layout it stands in for. */
+    .ss-enroll-skeleton-row { grid-template-columns: minmax(0, 1fr) auto; gap: 7px 12px; padding: 15px 0; }
+    .ss-enroll-skeleton-row--head { display: none; }
+    .ss-enroll-skeleton-row > .ss-enroll-skeleton-bar:nth-child(1) { grid-column: 1; width: 40%; }
+    .ss-enroll-skeleton-row > .ss-enroll-skeleton-bar:nth-child(2) { grid-column: 1; width: 78%; }
+    .ss-enroll-skeleton-row > .ss-enroll-skeleton-bar:nth-child(3) { grid-column: 1; width: 55%; }
+    .ss-enroll-skeleton-row > .ss-enroll-skeleton-bar--action { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
 }

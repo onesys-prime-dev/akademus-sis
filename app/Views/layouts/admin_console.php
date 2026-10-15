@@ -394,8 +394,9 @@ $pageHelp ??= [
     // as opposed to sidebar links, which are full page navigations and
     // can't share this kind of continuity). Pages call
     // acInitSegmented(container, { indicatorClass, buttonSelector }) once
-    // per group; the container just needs position:relative and an
-    // ".active" class already on the initially-selected button.
+    // per group; the container just needs position:relative, and the
+    // initially-selected button should carry either an ".active" class or
+    // aria-pressed="true".
     //
     // Defined in its OWN script block here, before renderSection('scripts')
     // — pages' own scripts (which call this) render before the layout's
@@ -440,7 +441,16 @@ $pageHelp ??= [
         }
 
         function moveToActive(animate) {
-            move(root.querySelector(buttonSelector + '.active') || root.querySelector(buttonSelector), animate);
+            // Prefer an explicit ".active" class; otherwise use the button that
+            // announces itself as selected via aria-pressed (the schedule view
+            // toggle and day chips use that instead of a class), and only then
+            // fall back to the first button. Without the aria-pressed step the
+            // pill sat on whichever button happened to be first after a resize
+            // or the webfont swap — e.g. on a phone the agenda view showed with
+            // the pill stuck under "Day".
+            move(root.querySelector(buttonSelector + '.active')
+                || root.querySelector(buttonSelector + '[aria-pressed="true"]')
+                || root.querySelector(buttonSelector), animate);
         }
 
         moveToActive(false);

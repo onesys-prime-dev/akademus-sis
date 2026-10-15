@@ -104,6 +104,20 @@
     const termMeetings = () => meetings.filter(m => m.term === $('ssTerm').value);
     const matchesSubject = m => $('ssSubject').value === 'all' || m.classId === Number($('ssSubject').value);
 
+    // On a phone the seven-day grid can't stay readable without horizontal
+    // scrolling, so the calendar shows a single day there and the day chips
+    // (one even row, no scroll) switch between days — see render() and the
+    // handlers below.
+    const narrowMq = window.matchMedia('(max-width: 700px)');
+    const isNarrow = () => narrowMq.matches;
+    const calendarViewButton = $('ssViewToggle').querySelector('[data-view="calendar"]');
+    const syncViewLabel = () => { if (calendarViewButton) calendarViewButton.textContent = isNarrow() ? 'Day' : 'Week'; };
+    const narrowDay = list => {
+        const today = (new Date().getDay() + 6) % 7; // our columns are Monday-first
+        if (list.some(m => m.day === today)) return today;
+        return list.map(m => m.day).sort((a, b) => a - b)[0] ?? 0;
+    };
+
     function updateSubjects() {
         const options = classList.filter(c => c.term === $('ssTerm').value).sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
         $('ssSubject').replaceChildren(new Option('All subjects', 'all'), ...options.map(c => {
@@ -174,6 +188,9 @@
 
     function render() {
         const all = termMeetings();
+        // A phone calendar can't show a whole week, so if "All days" is selected
+        // while it's showing, pin the chips to the single day actually rendered.
+        if (view === 'calendar' && isNarrow() && day === 'all') day = String(narrowDay(all.filter(matchesSubject)));
         const visible = all.filter(m => matchesSubject(m) && (day === 'all' || m.day === Number(day)));
         // Always show the full Monday–Sunday week, same as the chairperson's
         // plotting calendar — not just the days that happen to have a class.
@@ -295,11 +312,26 @@
     });
     $('ssViewToggle').addEventListener('click', event => {
         const button = event.target.closest('[data-view]');
-        if (button) { view = button.dataset.view; render(); if (viewToggleIndicator) viewToggleIndicator.move(button, true); }
+        if (!button) return;
+        view = button.dataset.view;
+        render();
+        if (viewToggleIndicator) viewToggleIndicator.move(button, true);
+        if (dayFilterIndicator) dayFilterIndicator.move($('ssDayFilters').querySelector(`[data-day="${day}"]`), true);
     });
     $('ssDayFilters').addEventListener('click', event => {
         const button = event.target.closest('[data-day]');
-        if (button) { day = button.dataset.day; render(); $('ssDayFilters').querySelector(`[data-day="${day}"]`).focus({ preventScroll: true }); if (dayFilterIndicator) dayFilterIndicator.move(button, true); }
+        if (!button) return;
+        day = button.dataset.day;
+        // A one-day grid can't represent "all days" on a phone; hand that
+        // request to the agenda, which lists the whole week.
+        if (day === 'all' && view === 'calendar' && isNarrow()) {
+            view = 'agenda';
+            const agendaButton = $('ssViewToggle').querySelector('[data-view="agenda"]');
+            if (viewToggleIndicator && agendaButton) viewToggleIndicator.move(agendaButton, true);
+        }
+        render();
+        button.focus({ preventScroll: true });
+        if (dayFilterIndicator) dayFilterIndicator.move(button, true);
     });
     $('ssSubject').addEventListener('change', render);
     $('ssTerm').addEventListener('change', () => { selected = null; day = 'all'; updateSubjects(); render(); });
@@ -309,6 +341,15 @@
         (subjectPicker ? subjectPicker.trigger : $('ssSubject')).focus();
     });
     ['ssTermField', 'ssOverview', 'ssViewToggle', 'ssToolbar', 'ssFooter', 'ssPrint'].forEach(id => { $(id).hidden = false; });
+    syncViewLabel();
+    // Crossing the phone/desktop line changes what the calendar can show, so
+    // relabel the toggle, re-pin "All days" if needed, and redraw.
+    narrowMq.addEventListener('change', () => {
+        syncViewLabel();
+        render();
+        if (viewToggleIndicator) viewToggleIndicator.move($('ssViewToggle').querySelector(`[data-view="${view}"]`), false);
+        if (dayFilterIndicator) dayFilterIndicator.move($('ssDayFilters').querySelector(`[data-day="${day}"]`), false);
+    });
     // Same sliding-pill mechanism (and animation) every other segmented
     // control in the app uses — see acInitSegmented in layouts/admin_console.php.
     if (window.acInitSegmented) {
@@ -320,4 +361,9 @@
         subjectPicker = window.enhanceSelect($('ssSubject'));
     }
     updateSubjects(); render();
+    // The server-rendered aria-pressed reflects the desktop default (Week),
+    // while the initial view can differ on a phone — put both pills on the
+    // control that's actually selected before the first paint.
+    if (viewToggleIndicator) viewToggleIndicator.move($('ssViewToggle').querySelector(`[data-view="${view}"]`), false);
+    if (dayFilterIndicator) dayFilterIndicator.move($('ssDayFilters').querySelector(`[data-day="${day}"]`), false);
 })();
