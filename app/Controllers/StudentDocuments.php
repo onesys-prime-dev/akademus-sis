@@ -79,7 +79,33 @@ class StudentDocuments extends BaseController
 
     public function download(int $id)
     {
-        $document = (new GeneratedDocumentModel())->find($id);
+        [$document, $path] = $this->authorizedDocument($id);
+
+        return $this->response->download($path, null)->setFileName($document['document_type'] . '_' . $document['verification_code'] . '.pdf');
+    }
+
+    /**
+     * Same authorization/file as download(), but served inline (not as an
+     * attachment) so the student's "View" button can load it straight into
+     * an <iframe> inside a modal instead of leaving the page.
+     */
+    public function view(int $id)
+    {
+        [$document, $path] = $this->authorizedDocument($id);
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'inline; filename="' . $document['document_type'] . '_' . $document['verification_code'] . '.pdf"')
+            ->setBody(file_get_contents($path));
+    }
+
+    /**
+     * @return array{0: array, 1: string} the document row and its file path
+     */
+    private function authorizedDocument(int $id): array
+    {
+        $documents = new GeneratedDocumentModel();
+        $document  = $documents->find($id);
 
         if ($document === null) {
             throw PageNotFoundException::forPageNotFound();
@@ -93,12 +119,12 @@ class StudentDocuments extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
-        $path = (new GeneratedDocumentModel())->filePath($document);
+        $path = $documents->filePath($document);
 
         if (! is_file($path)) {
             throw PageNotFoundException::forPageNotFound();
         }
 
-        return $this->response->download($path, null)->setFileName($document['document_type'] . '_' . $document['verification_code'] . '.pdf');
+        return [$document, $path];
     }
 }
