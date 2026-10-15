@@ -98,8 +98,28 @@
 .ss-button--drop { color: #9b5257; font-size: 10px !important; }
 .ss-icon-button { display: inline-grid; place-items: center; width: 34px; height: 34px; border: 1px solid #e3e8f0; border-radius: 8px; background: #fff; color: #76879f; }
 .ss-icon-button:hover { background: #f0f4fa; color: #34547f; }
-.ss-dialog { position: fixed; inset: 12px 12px 12px auto; width: min(460px, calc(100vw - 24px)); height: calc(100dvh - 24px); max-height: none; max-width: none; margin: 0; padding: 0; border: 1px solid #e1e7f0; border-radius: 16px; background: #fff; color: var(--ss-ink); box-shadow: 0 20px 80px #1b2e5240; overflow-y: auto; }
-.ss-dialog::backdrop { background: #172c4b55; backdrop-filter: blur(2px); }
+.ss-dialog {
+    position: fixed; inset: 12px 12px 12px auto; width: min(460px, calc(100vw - 24px)); height: calc(100dvh - 24px); max-height: none; max-width: none; margin: 0; padding: 0; border: 1px solid #e1e7f0; border-radius: 16px; background: #fff; color: var(--ss-ink); box-shadow: 0 20px 80px #1b2e5240; overflow-y: auto;
+    transform: translateX(24px) scale(.97);
+    opacity: 0;
+    transition: transform var(--motion-slow) var(--ease-enter), opacity var(--motion-slow) var(--ease-enter), overlay var(--motion-slow) var(--ease-enter) allow-discrete, display var(--motion-slow) var(--ease-enter) allow-discrete;
+}
+.ss-dialog[open] { transform: translateX(0) scale(1); opacity: 1; }
+@starting-style {
+    .ss-dialog[open] { transform: translateX(24px) scale(.97); opacity: 0; }
+}
+.ss-dialog::backdrop {
+    background: #172c4b55; backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity var(--motion-slow) var(--ease-enter), overlay var(--motion-slow) var(--ease-enter) allow-discrete, display var(--motion-slow) var(--ease-enter) allow-discrete;
+}
+.ss-dialog[open]::backdrop { opacity: 1; }
+@starting-style {
+    .ss-dialog[open]::backdrop { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ss-dialog, .ss-dialog::backdrop { transition: none; }
+}
 .ss-dialog-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--ss-line); }
 .ss-dialog-body { padding: 28px 26px; }
 .ss-detail-code { display: inline-block; padding: 5px 9px; border-radius: 5px; background: var(--ss-soft); color: var(--ss-accent); font-size: 11px; font-weight: 650; }
