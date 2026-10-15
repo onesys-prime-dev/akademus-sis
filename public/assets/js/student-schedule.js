@@ -74,7 +74,9 @@
     function render() {
         const all = termMeetings();
         const visible = all.filter(m => matchesSubject(m) && (day === 'all' || m.day === Number(day)));
-        const dayCount = all.some(m => m.day === 6) ? 7 : 6;
+        // Always show the full Monday–Sunday week, same as the chairperson's
+        // plotting calendar — not just the days that happen to have a class.
+        const dayCount = 7;
         $('ssSubjectCount').textContent = new Set(all.map(m => m.code)).size;
         $('ssHours').textContent = hours(totalMinutes(all));
         $('ssDays').textContent = new Set(all.map(m => m.day)).size;
@@ -134,7 +136,7 @@
     function preparePrint() {
         // Print all meetings in this term, independently of the screen filters.
         const list = termMeetings();
-        const dayCount = list.some(m => m.day === 6) ? 7 : 6;
+        const dayCount = 7;
         const start = Math.floor(Math.min(420, ...list.map(m => m.from)) / 60) * 60;
         const end = Math.ceil(Math.max(1080, ...list.map(m => m.to)) / 60) * 60;
         const span = end - start;
