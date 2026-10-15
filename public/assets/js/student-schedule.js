@@ -92,7 +92,11 @@
         const end = Math.ceil(Math.max(1080, ...all.map(m => m.to)) / 60) * 60;
         const scale = 1.1, height = (end - start) * scale;
         const shownDays = day === 'all' ? Array.from({ length: dayCount }, (_, i) => i) : [Number(day)];
-        const timeLabels = Array.from({ length: (end - start) / 60 }, (_, i) => `<div class="ss-time-label" style="height:${60 * scale}px">${time(start + i * 60).replace(':00', '')}</div>`).join('');
+        const timeLabels = Array.from({ length: (end - start) / 30 }, (_, i) => {
+            const t = start + i * 30;
+            const onHour = t % 60 === 0;
+            return `<div class="ss-time-label ${onHour ? 'is-hour' : ''}" style="height:${30 * scale}px">${onHour ? time(t).replace(':00', '') : time(t)}</div>`;
+        }).join('');
         const columns = shownDays.map(index => {
             const list = positionMeetings(visible.filter(m => m.day === index));
             return `<div class="ss-day-column" style="height:${height}px">${!list.length ? '<span class="ss-free-day">No classes</span>' : ''}${list.map(m => {
@@ -101,7 +105,7 @@
                 return `<button type="button" class="ss-class ss-accent-${m.accent} ${duration <= 30 ? 'ss-class--short' : ''} ${selected?.classId === m.classId ? 'is-selected' : ''}" data-meeting="${m.id}" aria-haspopup="dialog" aria-label="${escape(label)}" title="${escape(label)}" style="top:${(m.from - start) * scale + 2}px;height:${Math.max(20, duration * scale - 4)}px;left:calc(${m.lane / m.lanes * 100}% + 4px);width:calc(${100 / m.lanes}% - 8px)"><span class="ss-class-code">${escape(m.code)}<span class="material-symbols-outlined" aria-hidden="true">arrow_outward</span></span><span class="ss-class-title">${escape(m.title)}</span><span class="ss-class-time">${range(m)}</span><span class="ss-class-room">${escape(m.room || 'Room to be assigned')}</span></button>`;
             }).join('')}</div>`;
         }).join('');
-        $('ssCalendar').innerHTML = `<div class="ss-grid ${shownDays.length === 1 ? 'ss-grid--single' : ''}" style="--ss-days:${shownDays.length};--ss-hour:${60 * scale}px"><div class="ss-grid-head ss-grid-corner">GMT+8</div>${shownDays.map(index => `<div class="ss-grid-head"><strong>${days[index]}</strong><span>${visible.filter(m => m.day === index).length} meetings</span></div>`).join('')}<div class="ss-time-column">${timeLabels}</div>${columns}</div>`;
+        $('ssCalendar').innerHTML = `<div class="ss-grid ${shownDays.length === 1 ? 'ss-grid--single' : ''}" style="--ss-days:${shownDays.length};--ss-hour:${30 * scale}px"><div class="ss-grid-head ss-grid-corner">GMT+8</div>${shownDays.map(index => `<div class="ss-grid-head"><strong>${days[index]}</strong><span>${visible.filter(m => m.day === index).length} meetings</span></div>`).join('')}<div class="ss-time-column">${timeLabels}</div>${columns}</div>`;
         $('ssAgenda').innerHTML = shownDays.map(index => {
             const list = visible.filter(m => m.day === index).sort((a, b) => a.from - b.from);
             if (!list.length) return '';
@@ -147,9 +151,13 @@
         if (!documentNode) { documentNode = document.createElement('article'); documentNode.id = 'ssPrintDocument'; document.body.appendChild(documentNode); }
         const context = [...new Set(list.map(m => `${m.program} · ${m.year} · Section ${m.section}`))].join(' / ');
         const date = new Intl.DateTimeFormat('en-PH', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Manila' }).format(new Date());
-        const labels = Array.from({ length: span / 60 }, (_, i) => `<span style="top:${i * 60 / span * 100}%">${time(start + i * 60).replace(':00', '')}</span>`).join('');
+        const labels = Array.from({ length: span / 30 }, (_, i) => {
+            const t = start + i * 30;
+            const onHour = t % 60 === 0;
+            return `<span class="${onHour ? 'is-hour' : ''}" style="top:${i * 30 / span * 100}%">${onHour ? time(t).replace(':00', '') : time(t)}</span>`;
+        }).join('');
         const columns = days.slice(0, dayCount).map((_, index) => `<div class="ss-print-column">${positionMeetings(list.filter(m => m.day === index)).map(m => `<div class="ss-print-class ss-accent-${m.accent} ${m.to - m.from <= 60 ? 'is-short' : ''} ${m.to - m.from <= 30 ? 'is-tiny' : ''}" style="top:calc(${(m.from - start) / span * 100}% + 1px);height:calc(${(m.to - m.from) / span * 100}% - 2px);left:calc(${m.lane / m.lanes * 100}% + 2px);width:calc(${100 / m.lanes}% - 4px)"><small>${range(m)}</small><strong>${escape(m.code)}</strong><span>${escape(m.room || 'Room to be assigned')}</span><span class="ss-print-faculty">${escape(m.faculty || 'Instructor to be assigned')}</span></div>`).join('')}</div>`).join('');
-        documentNode.innerHTML = `<header class="ss-print-header"><div class="ss-print-brand"><strong>Akademus <span> / Student Portal</span></strong><span>WEEKLY TIMETABLE</span></div><h1>My class schedule</h1><p>${escape($('ssTerm').value)}</p><p>${escape(context)}</p><div class="ss-print-meta"><span>${new Set(list.map(m => m.code)).size} subjects · ${list.length} meetings · ${hours(totalMinutes(list))} hours / week</span><span>Printed ${escape(date)}</span></div></header><div class="ss-print-grid" style="--ss-days:${dayCount};--ss-print-hour:${124 * 60 / span}mm"><div class="ss-print-head">Time</div>${days.slice(0, dayCount).map(d => `<div class="ss-print-head">${d}</div>`).join('')}<div class="ss-print-times">${labels}</div>${columns}</div><footer class="ss-print-footer"><span>All times are in Philippine Standard Time (GMT+8).</span><span>Akademus SIS · Student schedule</span></footer>`;
+        documentNode.innerHTML = `<header class="ss-print-header"><div class="ss-print-brand"><strong>Akademus <span> / Student Portal</span></strong><span>WEEKLY TIMETABLE</span></div><h1>My class schedule</h1><p>${escape($('ssTerm').value)}</p><p>${escape(context)}</p><div class="ss-print-meta"><span>${new Set(list.map(m => m.code)).size} subjects · ${list.length} meetings · ${hours(totalMinutes(list))} hours / week</span><span>Printed ${escape(date)}</span></div></header><div class="ss-print-grid" style="--ss-days:${dayCount};--ss-print-hour:${124 * 30 / span}mm"><div class="ss-print-head">Time</div>${days.slice(0, dayCount).map(d => `<div class="ss-print-head">${d}</div>`).join('')}<div class="ss-print-times">${labels}</div>${columns}</div><footer class="ss-print-footer"><span>All times are in Philippine Standard Time (GMT+8).</span><span>Akademus SIS · Student schedule</span></footer>`;
         // Dense/short meetings get a readable continuation instead of losing
         // their room or instructor details inside a small timetable cell.
         const dense = days.some((_, index) => positionMeetings(list.filter(m => m.day === index)).some(m => m.lanes > 1));

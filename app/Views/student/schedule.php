@@ -90,7 +90,7 @@ $scheduleData = array_map(static fn (array $m) => [
                 <div class="ss-meetings-heading"><h3>Weekly meetings</h3><span id="ssDetailHours"></span></div><div class="ss-detail-meetings" id="ssDetailMeetings"></div>
                 <p class="ss-detail-note">Meeting times follow your academic timetable.</p>
             </div>
-            <footer class="ss-dialog-footer"><button type="button" class="ss-button ss-button--primary" id="ssShowSubject"><span class="material-symbols-outlined" aria-hidden="true">calendar_view_week</span>Show this class in my schedule</button></footer>
+            <footer class="ss-dialog-footer"><button type="button" class="ss-button ss-button--primary" id="ssShowSubject"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>Show this class in my schedule</button></footer>
         </dialog>
     <?php endif ?>
     <?php if (!empty($enrolled)): ?>

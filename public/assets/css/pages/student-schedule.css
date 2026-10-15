@@ -47,6 +47,7 @@
 .ss-grid-corner { display: grid; align-items: center; left: 0; z-index: 4; font-size: 8px; color: #8896aa; border-left: 0; }
 .ss-time-column { position: sticky; left: 0; z-index: 2; background: #fbfcfe; }
 .ss-time-label { border-bottom: 1px solid #e7edf4; padding: 6px 8px 0 0; text-align: right; font-size: 9px; color: #7c8ba2; }
+.ss-time-label.is-hour { font-weight: 650; color: #44536a; }
 .ss-day-column { position: relative; border-left: 1px solid #e7edf4; background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--ss-hour) - 1px), #e7edf4 calc(var(--ss-hour) - 1px), #e7edf4 var(--ss-hour)); }
 .ss-free-day { position: absolute; top: 28px; left: 0; right: 0; text-align: center; color: #8f9bb0; font-size: 10px; }
 /* Same five plotting accents the faculty teaching-loads board uses (see
@@ -168,6 +169,7 @@
     .ss-print-times { background: #fafbfd; }
     .ss-print-column { border-left: 1px solid #dfe5ee; background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--ss-print-hour) - 1px), #e3e8ef calc(var(--ss-print-hour) - 1px), #e3e8ef var(--ss-print-hour)); }
     .ss-print-times > span { position: absolute; right: 2mm; font-size: 6.5pt; color: #6b7a90; }
+    .ss-print-times > span.is-hour { font-weight: 700; color: #3d4c62; }
     .ss-print-class { position: absolute; box-sizing: border-box; border: 1px solid #d5deeb; border-left: 2px solid var(--ss-accent); border-radius: 1mm; background: var(--ss-soft); padding: 1mm; overflow: hidden; color: #4f627e; font-size: 6.5pt; line-height: 1.25; }
     .ss-print-class strong { display: block; color: #2d4566; font-size: 7.5pt; }
     .ss-print-class span { display: block; overflow-wrap: anywhere; }
@@ -222,6 +224,7 @@
     .ss-view-toggle button { padding: 6px 11px; border-radius: 5px; font-size: 10px; font-weight: 650; }
     .ss-view-toggle button[aria-pressed=true] { color: var(--color-primary); box-shadow: 0 1px 3px rgba(18, 37, 69, .12); }
     .ss-button { min-height: 36px; border-color: #ced8e6; border-radius: 7px; color: #274b7d; font-weight: 650 !important; }
+    .ss-button--primary { color: #fff; }
 
     .ss-toolbar { margin: 0 24px; padding: 15px 0; border-bottom: 1px solid var(--ss-line); }
     .ss-day-filters { gap: 2px; padding: 0; }
@@ -236,6 +239,7 @@
     .ss-grid-head span { color: #8591a2; }
     .ss-time-column { background: #fafbfd; }
     .ss-time-label { color: #7a879a; }
+    .ss-time-label.is-hour { color: #3d4c62; }
     .ss-day-column { border-color: #e1e7ef; background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--ss-hour) - 1px), #e5eaf1 calc(var(--ss-hour) - 1px), #e5eaf1 var(--ss-hour)); }
     .ss-free-day { color: #98a3b2; }
 
