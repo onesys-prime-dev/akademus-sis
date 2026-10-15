@@ -64,9 +64,9 @@ $hasAssessment = $assessment !== null && $assessment['status'] !== 'unassessed';
                 <a class="sd-next-link" href="<?= site_url('student/schedule') ?>">Open class schedule<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
             </section>
             <section class="sd-card" aria-labelledby="sdAgendaTitle">
-                <header class="sd-section-header sd-agenda-header"><div><h2 id="sdAgendaTitle">Class schedule</h2><p>Today and tomorrow at a glance.</p></div><div class="sd-days" id="sdDayToggle" role="group" aria-label="Choose schedule day" hidden><button type="button" data-day-panel="sdToday" aria-controls="sdToday" aria-pressed="true">Today</button><button type="button" data-day-panel="sdTomorrow" aria-controls="sdTomorrow" aria-pressed="false">Tomorrow</button></div></header>
+                <header class="sd-section-header sd-agenda-header"><div><h2 id="sdAgendaTitle">Class schedule</h2><p>Today and tomorrow at a glance.</p></div><div class="sd-days" id="sdDayToggle" role="group" aria-label="Choose schedule day" hidden><button type="button" class="active" data-day-panel="sdToday" aria-controls="sdToday" aria-pressed="true">Today</button><button type="button" data-day-panel="sdTomorrow" aria-controls="sdTomorrow" aria-pressed="false">Tomorrow</button></div></header>
                 <?php foreach ([['sdToday', $now, $week['today']], ['sdTomorrow', $tomorrow, $tomorrowMeetings]] as [$panelId, $date, $dayMeetings]): ?>
-                <div id="<?= $panelId ?>" aria-label="<?= esc($date->format('l, F j'), 'attr') ?>"><p class="sd-agenda-date"><?= esc($date->format('l, F j')) ?> &middot; <?= count($dayMeetings) ?> <?= count($dayMeetings) === 1 ? 'class' : 'classes' ?></p>
+                <div id="<?= $panelId ?>" class="sd-day-panel" aria-label="<?= esc($date->format('l, F j'), 'attr') ?>"><p class="sd-agenda-date"><?= esc($date->format('l, F j')) ?> &middot; <?= count($dayMeetings) ?> <?= count($dayMeetings) === 1 ? 'class' : 'classes' ?></p>
                     <?php if ($dayMeetings === []): ?><div class="sd-empty"><span class="material-symbols-outlined" aria-hidden="true">event_available</span><div><h3><?= $week['meetings'] !== [] ? 'No classes scheduled' : 'No meetings to show yet' ?></h3><p><?= $week['meetings'] !== [] ? 'You have a clear timetable for this day. Check your full schedule to plan ahead.' : 'Scheduled meetings for your enrolled classes will appear here.' ?></p></div></div>
                     <?php else: ?>
                         <?php foreach ($dayMeetings as $meeting): $state = $meeting['state'] ?? 'Upcoming'; ?>
@@ -118,15 +118,30 @@ $hasAssessment = $assessment !== null && $assessment['status'] !== 'unassessed';
 (() => {
     const toggle = document.getElementById('sdDayToggle');
     if (!toggle) return;
+
     toggle.hidden = false;
     document.getElementById('sdTomorrow').hidden = true;
+
+    // Same sliding-pill mechanism (and animation) every other segmented
+    // control in the app uses — see acInitSegmented in layouts/admin_console.php.
+    if (window.acInitSegmented) window.acInitSegmented(toggle);
+
     toggle.addEventListener('click', event => {
         const button = event.target.closest('[data-day-panel]');
         if (!button) return;
         toggle.querySelectorAll('button').forEach(item => {
             const selected = item === button;
+            item.classList.toggle('active', selected);
             item.setAttribute('aria-pressed', String(selected));
-            document.getElementById(item.dataset.dayPanel).hidden = !selected;
+            const panel = document.getElementById(item.dataset.dayPanel);
+            panel.hidden = !selected;
+            if (selected) {
+                // Restart the CSS entrance animation — toggling `hidden` alone
+                // won't replay it since the class was already applied.
+                panel.style.animation = 'none';
+                void panel.offsetWidth;
+                panel.style.animation = '';
+            }
         });
     });
 })();

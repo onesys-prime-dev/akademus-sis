@@ -66,9 +66,21 @@
 .sd-stats-caption { margin: 0; padding: 12px 18px; border-top: 1px solid var(--sd-line); color: #7c8899; font-size: 10px; }
 
 .sd-agenda-date { margin: 0; padding: 11px 24px; border-bottom: 1px solid var(--sd-line); background: var(--sd-soft); color: #657287; font-size: 10px; font-weight: 650; }
-.sd-days { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--sd-line); border-radius: 7px; background: #f3f5f8; }
-.sd-days button { padding: 6px 10px; border: 0; border-radius: 5px; background: transparent; color: #647187; cursor: pointer; font: inherit; font-size: 10px; font-weight: 650; }
-.sd-days button[aria-pressed=true] { background: #fff; color: #174f9f; box-shadow: 0 1px 3px rgba(18, 37, 69, .12); }
+.sd-days { position: relative; display: flex; gap: 2px; padding: 3px; border: 1px solid var(--sd-line); border-radius: 7px; background: #f3f5f8; }
+/* Positioning/motion come from the shared .ac-segmented__indicator base
+   (see acInitSegmented in layouts/admin_console.php) — only color/shape
+   here, same convention every other segmented control on the site follows. */
+.sd-days .ac-segmented__indicator { background: #fff; border-radius: 5px; box-shadow: 0 1px 3px rgba(18, 37, 69, .12); }
+.sd-days button { position: relative; z-index: 1; padding: 6px 10px; border: 0; border-radius: 5px; background: transparent; color: #647187; cursor: pointer; font: inherit; font-size: 10px; font-weight: 650; transition: color .18s ease; }
+.sd-days button[aria-pressed=true] { color: #174f9f; }
+
+.sd-day-panel { animation: sdPanelIn .22s ease; }
+@keyframes sdPanelIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+    .sd-days button { transition: none; }
+    .sd-days .ac-segmented__indicator { transition: none; }
+    .sd-day-panel { animation: none; }
+}
 .sd-meeting { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 17px 24px; border-bottom: 1px solid #e9edf3; color: var(--sd-ink); text-decoration: none; }
 .sd-meeting:hover { background: #f9fafc; }
 .sd-meeting-time { color: #263650; font-size: 11px; font-variant-numeric: tabular-nums; font-weight: 680; }
