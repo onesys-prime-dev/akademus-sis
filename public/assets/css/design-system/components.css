@@ -216,11 +216,17 @@ textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
 .cs-select.is-open .cs-select__chevron { transform: rotate(180deg); }
 
 .cs-select__panel {
-    position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60;
+    /* Anchored to the right edge (same convention as the account menu and
+       notifications panel) and sized to fit its own content instead of
+       being stretched to match a possibly much narrower trigger — that
+       stretch was forcing option text like "AY 2026 - 2027 · 1st Semester"
+       to wrap across several lines, making the panel look oversized. */
+    position: absolute; top: calc(100% + 6px); right: 0; left: auto; z-index: 60;
+    min-width: 100%; width: max-content; max-width: min(280px, calc(100vw - 32px));
     max-height: 280px; overflow-y: auto;
     background: var(--color-surface); border: 1px solid var(--color-border-control);
     border-radius: var(--radius-sm); box-shadow: var(--shadow-md); padding: 4px;
-    transform-origin: top center;
+    transform-origin: top right;
     opacity: 0; transform: scale(.96) translateY(-4px); pointer-events: none;
     transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-spring), visibility 0s linear var(--motion-fast);
     visibility: hidden;
@@ -228,8 +234,8 @@ textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
 .cs-select.is-open .cs-select__panel { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; visibility: visible; transition-delay: 0s; }
 
 .cs-select__option {
-    padding: 8px 10px; border-radius: var(--radius-sm); font-size: 13px; color: var(--color-text-primary);
-    cursor: pointer; line-height: 1.4;
+    padding: 7px 10px; border-radius: var(--radius-sm); font-size: 12px; color: var(--color-text-primary);
+    cursor: pointer; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .cs-select__option:hover, .cs-select__option.is-active { background: var(--color-surface-sunken); }
 .cs-select__option.is-selected { background: var(--color-primary-soft); color: var(--color-primary); font-weight: 600; }

@@ -10,7 +10,9 @@
 .ss-heading h1 { font-size: clamp(28px, 2.5vw, 34px); font-weight: 650; letter-spacing: -1px; line-height: 1.25; margin: 8px 0; }
 .ss-heading p { margin: 0; color: var(--ss-muted); font-size: 13px; }
 .ss-term { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid #dde4ee; border-radius: 8px; background: #fff; color: #7a8ba5; max-width: 100%; }
-.ss-term select { font-size: 11px; border: 0; background: transparent; color: #4b5d78; max-width: 100%; min-width: 0; }
+.ss-term .cs-select { flex: 1 1 auto; min-width: 0; }
+.ss-term .cs-select__trigger { min-height: auto; padding: 0; border: 0; background: transparent; font-size: 11px; color: #4b5d78; }
+.ss-term .cs-select__chevron { font-size: 18px; }
 .ss-term .material-symbols-outlined { font-size: 18px; }
 .ss-overview { display: grid; grid-template-columns: 1fr repeat(3, minmax(100px, .25fr)); gap: 24px; align-items: center; padding: 22px 26px; border: 1px solid var(--ss-line); border-radius: 14px; background: linear-gradient(110deg, #f7f9ff, #fff 65%); margin-bottom: 24px; }
 .ss-overview-intro { display: flex; align-items: center; gap: 13px; }
@@ -38,7 +40,9 @@
 .ss-day-filters button:hover { color: #355983; }
 .ss-day-filters button[aria-pressed=true] { color: var(--color-primary); font-weight: 600; }
 .ss-subject-filter { display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #e0e6ef; border-radius: 7px; color: #8290a6; max-width: 280px; }
-.ss-subject-filter select { min-width: 0; max-width: 100%; border: 0; background: #fff; font-size: 11px; color: #50627b; }
+.ss-subject-filter .cs-select { flex: 1 1 auto; min-width: 0; }
+.ss-subject-filter .cs-select__trigger { min-height: auto; padding: 0; border: 0; background: #fff; font-size: 11px; color: #50627b; }
+.ss-subject-filter .cs-select__chevron { font-size: 16px; }
 .ss-subject-filter .material-symbols-outlined { font-size: 16px; }
 .ss-calendar-scroll { overflow: auto; max-height: 690px; margin: 0 26px; border: 1px solid var(--ss-line); border-radius: 9px; scrollbar-width: thin; scrollbar-color: #cbd5e4 #f8fafc; }
 .ss-grid { display: grid; grid-template-columns: 56px repeat(var(--ss-days), minmax(132px, 1fr)); min-width: calc(56px + var(--ss-days) * 132px); animation: ssContentIn .2s var(--ease-enter); }
@@ -228,7 +232,7 @@
     .ss-heading p { line-height: 1.55; }
     .ss-term { display: grid; gap: 3px; padding: 0; border: 0; background: transparent; color: #78859a; text-align: right; }
     .ss-term > span { font-size: 9px; font-weight: 600; letter-spacing: .35px; text-transform: uppercase; }
-    .ss-term select { padding: 0 18px 0 0; color: #263650; font-size: 11px; font-weight: 650; text-align: right; }
+    .ss-term .cs-select__trigger { justify-content: flex-end; color: #263650; font-size: 11px; font-weight: 650; }
 
     .ss-overview { grid-template-columns: minmax(210px, 1fr) repeat(3, minmax(110px, .32fr)); gap: 0; margin-bottom: 22px; padding: 0; overflow: hidden; border-radius: 9px; background: #fff; box-shadow: 0 5px 18px -18px rgba(18, 37, 69, .55); }
     .ss-overview-intro { min-height: 82px; padding: 19px 22px; }
@@ -259,7 +263,7 @@
     .ss-day-filters button { padding: 7px 10px; border-radius: 5px; color: #68758a; font-size: 10px; }
     .ss-day-filters button[aria-pressed=true] { color: var(--color-primary); }
     .ss-subject-filter { padding: 7px 10px; border-color: #d9e1eb; border-radius: 6px; }
-    .ss-subject-filter select { color: #43536b; font-size: 10px; font-weight: 600; }
+    .ss-subject-filter .cs-select__trigger { color: #43536b; font-size: 10px; font-weight: 600; }
 
     .ss-calendar-scroll { max-height: 680px; margin: 16px 24px 0; border-color: #d9e1eb; border-radius: 7px; }
     .ss-grid-head { padding: 12px 6px 10px; border-color: #dce4ee; background: #f6f8fb; }
@@ -304,7 +308,7 @@
 @media screen and (max-width: 1100px) {
     .ss-heading { align-items: flex-start; }
     .ss-term { text-align: left; }
-    .ss-term select { text-align: left; }
+    .ss-term .cs-select__trigger { justify-content: flex-start; }
 }
 
 @media screen and (max-width: 700px) {
