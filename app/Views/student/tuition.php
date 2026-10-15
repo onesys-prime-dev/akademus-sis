@@ -228,6 +228,33 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
         <button type="submit" class="ac-btn ac-btn-primary" id="tfUploadSubmit"><span class="material-symbols-outlined" aria-hidden="true">upload</span><span id="tfUploadSubmitLabel">Submit for review</span></button>
         <p class="tf-form-help">Your submission will be reviewed by the cashier before it is reflected in your balance.</p>
     </form>
+
+    <div class="ac-modal" id="tfConfirmUploadModal">
+        <div class="ac-modal__panel">
+            <div class="ac-modal__header">
+                <div>
+                    <div class="ac-modal__title">Confirm submission</div>
+                    <div class="ac-modal__subtitle">Review the details before sending this to the cashier.</div>
+                </div>
+                <button type="button" onclick="acCloseModal('tfConfirmUploadModal')" class="ac-modal__close">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </div>
+            <div class="ac-modal__body">
+                <dl class="tf-confirm-facts">
+                    <div><dt>Payment for</dt><dd id="tfConfirmSchedule"></dd></div>
+                    <div><dt>Reference / remarks</dt><dd id="tfConfirmRemarks"></dd></div>
+                    <div><dt>Attached file</dt><dd id="tfConfirmFile"></dd></div>
+                </dl>
+                <p class="tf-form-help">Your submission will be reviewed by the cashier before it is reflected in your balance.</p>
+                <div class="ac-modal__actions">
+                    <button type="button" class="ac-btn ac-btn-secondary" onclick="acCloseModal('tfConfirmUploadModal')">Cancel</button>
+                    <button type="button" class="ac-btn ac-btn-primary" id="tfConfirmUploadBtn"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>Confirm &amp; submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
     (function () {
         if (window.enhanceSelect) window.enhanceSelect(document.getElementById('tf-schedule'));
@@ -389,6 +416,20 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
                 window.alert('Please attach a receipt or proof of payment.');
                 return;
             }
+
+            var scheduleSelect = document.getElementById('tf-schedule');
+            var scheduleLabel = scheduleSelect
+                ? (scheduleSelect.options[scheduleSelect.selectedIndex].textContent || 'General Payment')
+                : 'General Payment';
+            document.getElementById('tfConfirmSchedule').textContent = scheduleLabel;
+            document.getElementById('tfConfirmRemarks').textContent = document.getElementById('tf-remarks').value;
+            document.getElementById('tfConfirmFile').textContent = currentFile.name + ' (' + formatSize(currentFile.size) + ')';
+
+            acOpenModal('tfConfirmUploadModal');
+        });
+
+        document.getElementById('tfConfirmUploadBtn').addEventListener('click', function () {
+            acCloseModal('tfConfirmUploadModal');
             lastFormData = new FormData(form);
             startUpload();
         });
