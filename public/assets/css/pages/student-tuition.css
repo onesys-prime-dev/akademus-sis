@@ -9,6 +9,7 @@
     max-width: 1320px;
     margin: 0 auto;
     color: var(--tf-ink);
+    overflow-x: hidden;
 }
 
 .tf-page *, .tf-page *::before, .tf-page *::after { box-sizing: border-box; }
@@ -103,14 +104,17 @@
 .tf-receipt-link { background: none; border: none; padding: 0; color: #245597; font: inherit; cursor: pointer; }
 .tf-receipt-link:hover { text-decoration: underline; }
 
-.tf-proof-file { display: flex; align-items: center; gap: 9px; max-width: 260px; background: none; border: none; padding: 0; text-align: left; cursor: pointer; }
-.tf-proof-file__icon { flex: 0 0 auto; font-size: 20px; color: #5b6b85; background: #e8edf5; border-radius: 6px; padding: 5px; }
-.tf-proof-file__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.tf-proof-file__name { color: #245597; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tf-proof-file:hover .tf-proof-file__name { text-decoration: underline; }
-.tf-proof-file__remarks { color: #8a97ab; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tf-receipt-modal .ac-modal__panel { max-width: 560px; width: 100%; }
+.tf-receipt-modal .ac-modal__header { gap: 12px; }
+.tf-receipt-modal .ac-modal__header > div { min-width: 0; flex: 1 1 auto; }
+.tf-receipt-modal .ac-modal__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tf-receipt-modal .ac-modal__close { flex: 0 0 auto; }
 .tf-receipt-frame { width: 100%; height: 65vh; border: 1px solid #e8edf3; border-radius: 6px; background: #f6f8fb; }
+
+@media (max-width: 560px) {
+    .tf-receipt-frame { height: 55vh; }
+    .tf-receipt-modal .ac-modal__actions { flex-direction: column-reverse; }
+}
 
 #tfUploadSubmit.is-loading .material-symbols-outlined { animation: tfSpin .8s linear infinite; }
 @keyframes tfSpin { to { transform: rotate(360deg); } }
@@ -122,11 +126,18 @@
 .tf-upload-form .ac-input:hover { border-color: #b8c5d7; }
 .tf-upload-form .ac-input:focus { border-color: #5b83c4; }
 .tf-upload-form textarea { min-height: 76px; resize: vertical; }
-.tf-dropzone { padding: 15px; border: 1px dashed #b9c7d9; border-radius: 7px; background: #f8fafc; transition: border-color .15s, background .15s; }
+.tf-dropzone { padding: 15px; border: 1px dashed #b9c7d9; border-radius: 7px; background: #f8fafc; transition: border-color .15s, background .15s; overflow: hidden; }
 .tf-dropzone.is-dragover { border-color: #5b83c4; background: #eef3fb; }
-.tf-dropzone__prompt input { width: 100%; max-width: 100%; color: #56667f; font: inherit; font-size: 11px; }
-.tf-dropzone__prompt input::file-selector-button { margin-right: 10px; padding: 8px 11px; border: 1px solid #d4dce8; border-radius: 6px; background: #fff; color: #304b73; font: inherit; font-weight: 600; cursor: pointer; }
-.tf-dropzone__prompt small { display: block; margin-top: 10px; color: #738097; font-size: 10px; }
+.tf-dropzone__prompt { text-align: center; }
+.tf-dropzone__cta { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 0 4px; color: #304b73; font-weight: 600; font-size: 12px; cursor: pointer; }
+.tf-dropzone__cta .material-symbols-outlined { font-size: 22px; color: #5b83c4; }
+.tf-dropzone__prompt small { display: block; margin-top: 8px; color: #738097; font-size: 10px; }
+
+/* Native file inputs can ignore width/max-width on narrow mobile viewports
+   and render wider than their container, silently forcing the whole page
+   to scroll horizontally — visually hidden (not display:none, so it stays
+   keyboard/screen-reader reachable) and triggered via the label above. */
+.tf-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 .tf-file-preview { display: flex; align-items: center; gap: 12px; }
 .tf-file-preview[hidden] { display: none; }
@@ -147,7 +158,6 @@
 #tfUploadRetry[hidden] { display: none; }
 .tf-upload-form .ac-btn { min-height: 42px; border-radius: 7px; gap: 8px; justify-content: center; font-size: 12px; font-weight: 650; }
 .tf-form-help { margin: -5px 0 0; color: var(--tf-muted); font-size: 10px; line-height: 1.65; }
-.tf-subheading { margin: 24px 0 12px; font-size: 12px; font-weight: 650; }
 .tf-page .empty-state { padding: 26px 20px; font-size: 12px; }
 .tf-page .empty-state .material-symbols-outlined { color: #7186a8; font-size: 28px; opacity: .8; }
 
@@ -181,7 +191,6 @@
     .tf-page .grade-table td::before { display: block; margin-bottom: 3px; color: #738096; font-size: 9px; font-weight: 650; letter-spacing: .3px; text-transform: uppercase; content: attr(data-label); }
     .tf-page .grade-table td:not([data-label])::before { content: none; }
     .tf-page .grade-table td:not([data-label]) { border-top: 0; padding-bottom: 10px; }
-    .tf-proof-file { max-width: 100%; }
 }
 
 @media (max-width: 560px) {

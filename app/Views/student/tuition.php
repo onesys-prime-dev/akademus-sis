@@ -197,8 +197,12 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
             <label for="tf-proof">Receipt or proof of payment</label>
             <div class="tf-dropzone" id="tfDropzone">
                 <div class="tf-dropzone__prompt" id="tfDropzonePrompt">
-                    <input id="tf-proof" type="file" name="proof" accept=".jpg,.jpeg,.png,.pdf" aria-describedby="tf-file-help" required>
-                    <small id="tf-file-help">JPG, PNG, or PDF · Maximum 5 MB · Drag a file here or click to browse</small>
+                    <label for="tf-proof" class="tf-dropzone__cta">
+                        <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
+                        <span>Click to browse, or drag a file here</span>
+                    </label>
+                    <input id="tf-proof" type="file" name="proof" accept=".jpg,.jpeg,.png,.pdf" aria-describedby="tf-file-help" required class="tf-visually-hidden">
+                    <small id="tf-file-help">JPG, PNG, or PDF · Maximum 5 MB</small>
                 </div>
                 <div class="tf-file-preview" id="tfFilePreview" hidden>
                     <div class="tf-file-preview__thumb" id="tfFilePreviewThumb"><span class="material-symbols-outlined" aria-hidden="true">description</span></div>
@@ -384,48 +388,39 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
         });
     })();
     </script>
-
-    <?php if (!empty($proofs)): ?>
-        <h3 class="tf-subheading">Submitted proofs</h3>
-        <div class="tf-table-scroll" role="region" aria-label="Payment details" tabindex="0"><table class="grade-table">
-            <thead>
-                <tr><th>File</th><th>Covers</th><th>Uploaded</th><th>Status</th><th>Cashier Remarks</th></tr>
-            </thead>
-            <tbody>
-                <?php foreach ($proofs as $p):
-                    $ext = strtolower(pathinfo($p['original_filename'], PATHINFO_EXTENSION));
-                    $fileIcon = $ext === 'pdf' ? 'picture_as_pdf' : 'image';
-                ?>
-                    <tr>
-                        <td>
-                            <button type="button" class="tf-proof-file" onclick="tfOpenFile('<?= site_url('student/tuition/proof/' . $p['proof_id']) ?>', '<?= esc($p['original_filename'], 'js') ?>')" title="<?= esc($p['original_filename'], 'attr') ?>">
-                                <span class="material-symbols-outlined tf-proof-file__icon" aria-hidden="true"><?= $fileIcon ?></span>
-                                <span class="tf-proof-file__meta">
-                                    <span class="tf-proof-file__name"><?= esc($p['original_filename']) ?></span>
-                                    <?php if (! empty($p['remarks'])): ?><span class="tf-proof-file__remarks"><?= esc($p['remarks']) ?></span><?php endif ?>
-                                </span>
-                            </button>
-                        </td>
-                        <td data-label="Covers"><?= ! empty($p['schedule_label']) ? esc($p['schedule_label']) : '<span class="tf-muted">General Payment</span>' ?></td>
-                        <td data-label="Uploaded"><?= esc(date('M j, Y', strtotime($p['created_at']))) ?></td>
-                        <td data-label="Status">
-                            <?php if ($p['status'] === 'approved'): ?>
-                                <span class="pass-pill pass">Approved</span>
-                            <?php elseif ($p['status'] === 'rejected'): ?>
-                                <span class="pass-pill fail">Rejected</span>
-                            <?php else: ?>
-                                <span class="pass-pill">Pending</span>
-                            <?php endif ?>
-                        </td>
-                        <td data-label="Cashier Remarks"><?= $p['cashier_remarks'] !== null ? esc($p['cashier_remarks']) : '—' ?></td>
-                    </tr>
-                <?php endforeach ?>
-            </tbody>
-        </table></div>
-    <?php endif ?>
 </section>
 </div>
 </div>
+
+<?php if (!empty($proofs)): ?>
+<div class="panel">
+    <header class="tf-section-heading"><div><h2>Submitted proofs</h2><p>Receipts you've sent in for review.</p></div></header>
+    <div class="tf-table-scroll" role="region" aria-label="Payment details" tabindex="0"><table class="grade-table">
+        <thead>
+            <tr><th>File</th><th>Covers</th><th>Uploaded</th><th>Status</th><th>Cashier Remarks</th></tr>
+        </thead>
+        <tbody>
+            <?php foreach ($proofs as $p): ?>
+                <tr>
+                    <td data-label="File"><button type="button" class="tf-receipt-link" onclick="tfOpenFile('<?= site_url('student/tuition/proof/' . $p['proof_id']) ?>', '<?= esc($p['original_filename'], 'js') ?>')" title="<?= esc($p['original_filename'], 'attr') ?>"><?= esc($p['original_filename']) ?></button></td>
+                    <td data-label="Covers"><?= ! empty($p['schedule_label']) ? esc($p['schedule_label']) : '<span class="tf-muted">General Payment</span>' ?></td>
+                    <td data-label="Uploaded"><?= esc(date('M j, Y', strtotime($p['created_at']))) ?></td>
+                    <td data-label="Status">
+                        <?php if ($p['status'] === 'approved'): ?>
+                            <span class="pass-pill pass">Approved</span>
+                        <?php elseif ($p['status'] === 'rejected'): ?>
+                            <span class="pass-pill fail">Rejected</span>
+                        <?php else: ?>
+                            <span class="pass-pill">Pending</span>
+                        <?php endif ?>
+                    </td>
+                    <td data-label="Cashier Remarks"><?= $p['cashier_remarks'] !== null ? esc($p['cashier_remarks']) : '—' ?></td>
+                </tr>
+            <?php endforeach ?>
+        </tbody>
+    </table></div>
+</div>
+<?php endif ?>
 <?php endif ?>
 
 <div class="panel">
@@ -519,6 +514,7 @@ function tfOpenFile(url, title, opts) {
     var download = document.getElementById('tfFileDownload');
     var titleEl = document.getElementById('tfFileModalTitle');
     titleEl.textContent = title;
+    titleEl.title = title;
     frame.src = url;
     if (opts.downloadName) {
         download.href = url;
