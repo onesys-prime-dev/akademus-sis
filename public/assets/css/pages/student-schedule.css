@@ -161,11 +161,17 @@
 .ss-enrollments > summary { display: flex; align-items: center; gap: 13px; padding: 22px 26px; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600; }
 .ss-enrollments summary::-webkit-details-marker { display: none; }
 .ss-enrollments > summary > .material-symbols-outlined { color: #8598b3; }
+.ss-enrollments > summary > .material-symbols-outlined:last-child { transition: transform var(--motion-fast) var(--ease-standard); }
 .ss-enrollments small { display: block; margin-top: 4px; font-size: 10px; color: var(--ss-muted); font-weight: 400; }
-.ss-enrollment-count { margin-left: auto; padding: 3px 8px; border: 1px solid #e4eaf3; border-radius: 5px; font-size: 11px; color: #7c8da5; }
+.ss-enrollment-count { margin-left: auto; padding: 3px 8px; border: 1px solid #e4eaf3; border-radius: 5px; font-size: 11px; color: #7c8da5; transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
 .ss-enrollments[open] > summary > .material-symbols-outlined:last-child { transform: rotate(180deg); }
-.ss-enrollment-body { padding: 0 26px 20px; }
+.ss-enrollments[open] .ss-enrollment-count { background: var(--color-primary-soft); color: var(--color-primary); border-color: transparent; }
+.ss-enrollment-body { padding: 0 26px 20px; animation: ssContentIn .22s var(--ease-enter); }
 .ss-enrollment-body > p { margin: 0 0 15px; color: var(--ss-muted); font-size: 11px; }
+@media (prefers-reduced-motion: reduce) {
+    .ss-enrollments > summary > .material-symbols-outlined:last-child, .ss-enrollment-count { transition: none; }
+    .ss-enrollment-body { animation: none; }
+}
 .ss-table-scroll { overflow-x: auto; }
 .ss-table { width: 100%; min-width: 620px; border-collapse: collapse; text-align: left; font-size: 11px; }
 .ss-table th { padding: 11px 12px; background: #f8fafc; font-size: 10px; font-weight: 550; color: #70829a; }
