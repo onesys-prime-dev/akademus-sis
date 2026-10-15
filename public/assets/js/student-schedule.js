@@ -46,6 +46,7 @@
     $('ssTerm').replaceChildren(...terms.map(term => new Option(term, term)));
     let view = window.matchMedia('(max-width: 700px)').matches ? 'agenda' : 'calendar';
     let day = 'all', selected = null, returnFocus = null;
+    let viewToggleIndicator = null, dayFilterIndicator = null;
     const dialog = $('ssClassDialog');
     const termMeetings = () => meetings.filter(m => m.term === $('ssTerm').value);
     const matchesSubject = m => $('ssSubject').value === 'all' || m.classId === Number($('ssSubject').value);
@@ -83,7 +84,7 @@
         $('ssSubjectCount').textContent = new Set(all.map(m => m.code)).size;
         $('ssHours').textContent = hours(totalMinutes(all));
         $('ssDays').textContent = new Set(all.map(m => m.day)).size;
-        $('ssDayFilters').innerHTML = [{ value: 'all', label: 'All days' }, ...days.slice(0, dayCount).map((name, i) => ({ value: String(i), label: name.slice(0, 3) }))].map(d => `<button type="button" data-day="${d.value}" aria-pressed="${day === d.value}">${d.label}</button>`).join('');
+        root.querySelectorAll('[data-day]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.day === day)));
         root.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
         $('ssCalendar').hidden = view !== 'calendar' || !visible.length;
         $('ssAgenda').hidden = view !== 'agenda' || !visible.length;
@@ -194,15 +195,21 @@
     });
     $('ssViewToggle').addEventListener('click', event => {
         const button = event.target.closest('[data-view]');
-        if (button) { view = button.dataset.view; render(); }
+        if (button) { view = button.dataset.view; render(); if (viewToggleIndicator) viewToggleIndicator.move(button, true); }
     });
     $('ssDayFilters').addEventListener('click', event => {
         const button = event.target.closest('[data-day]');
-        if (button) { day = button.dataset.day; render(); $('ssDayFilters').querySelector(`[data-day="${day}"]`).focus({ preventScroll: true }); }
+        if (button) { day = button.dataset.day; render(); $('ssDayFilters').querySelector(`[data-day="${day}"]`).focus({ preventScroll: true }); if (dayFilterIndicator) dayFilterIndicator.move(button, true); }
     });
     $('ssSubject').addEventListener('change', render);
     $('ssTerm').addEventListener('change', () => { selected = null; day = 'all'; updateSubjects(); render(); });
     $('ssReset').addEventListener('click', () => { day = 'all'; $('ssSubject').value = 'all'; render(); $('ssSubject').focus(); });
     ['ssTermField', 'ssOverview', 'ssViewToggle', 'ssToolbar', 'ssFooter', 'ssPrint'].forEach(id => { $(id).hidden = false; });
+    // Same sliding-pill mechanism (and animation) every other segmented
+    // control in the app uses — see acInitSegmented in layouts/admin_console.php.
+    if (window.acInitSegmented) {
+        viewToggleIndicator = window.acInitSegmented($('ssViewToggle'));
+        dayFilterIndicator = window.acInitSegmented($('ssDayFilters'));
+    }
     updateSubjects(); render();
 })();

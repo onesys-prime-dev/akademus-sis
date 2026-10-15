@@ -113,7 +113,7 @@
 
         document.addEventListener('click', function (event) {
             var link = event.target.closest('a[href]');
-            if (!link || event.defaultPrevented || event.button !== 0) return;
+            if (!link || event.button !== 0) return;
             if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
             if (link.target && link.target !== '_self') return;
             if (link.hasAttribute('download')) return;
@@ -124,13 +124,21 @@
                 if (url.origin !== location.origin) return;
                 if (url.pathname === location.pathname && url.search === location.search && url.hash) return; // pure in-page anchor jump
             } catch (e) { return; }
-            start();
+            // Deferred, not checked inline: this listener runs on document in
+            // the CAPTURE phase, which fires before the link's own handlers
+            // (confirm() dialogs, SPA-style interception) get a chance to
+            // call preventDefault() during the target/bubble phase. Checking
+            // event.defaultPrevented here would always see it as false even
+            // when the click is about to be cancelled, leaving the bar
+            // started with no matching finish() — a setTimeout(0) waits
+            // until the event has fully finished dispatching first.
+            setTimeout(function () { if (!event.defaultPrevented) start(); }, 0);
         }, true);
 
         document.addEventListener('submit', function (event) {
             var form = event.target;
-            if (event.defaultPrevented || (form.target && form.target !== '_self')) return;
-            start();
+            if (form.target && form.target !== '_self') return;
+            setTimeout(function () { if (!event.defaultPrevented) start(); }, 0);
         }, true);
     })();
 </script>

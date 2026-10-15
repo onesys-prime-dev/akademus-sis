@@ -67,7 +67,7 @@ $scheduleData = array_map(static fn (array $m) => [
         <section class="ss-card ss-workspace" aria-labelledby="ssBoardTitle">
             <header class="ss-board-heading"><div><h2 id="ssBoardTitle">Weekly timetable</h2><p>Select a class to view its full schedule and details.</p></div><div class="ss-board-actions"><div class="ss-view-toggle" id="ssViewToggle" role="group" aria-label="Schedule view" hidden><button type="button" data-view="calendar" aria-pressed="true">Week</button><button type="button" data-view="agenda" aria-pressed="false">Agenda</button></div><button type="button" class="ss-button" id="ssPrint" title="Print the complete schedule for the selected term" hidden><span class="material-symbols-outlined" aria-hidden="true">print</span>Print</button></div></header>
             <div class="ss-toolbar" id="ssToolbar" hidden>
-                <div class="ss-day-filters" id="ssDayFilters" role="group" aria-label="Filter by day"></div>
+                <div class="ss-day-filters" id="ssDayFilters" role="group" aria-label="Filter by day"><button type="button" data-day="all" aria-pressed="true">All days</button><?php foreach ($dayNames as $i => $name): ?><button type="button" data-day="<?= $i ?>" aria-pressed="false"><?= esc(substr($name, 0, 3)) ?></button><?php endforeach ?></div>
                 <div class="ss-subject-filter"><label class="ss-sr-only" for="ssSubject">Filter by subject</label><select id="ssSubject"><option value="all">All subjects</option></select></div>
             </div>
             <div class="ss-calendar-scroll" id="ssCalendar" role="region" aria-label="Weekly class calendar" tabindex="0" hidden></div>

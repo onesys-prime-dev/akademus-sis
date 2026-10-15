@@ -26,15 +26,17 @@
 .ss-board-heading h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.3px; }
 .ss-board-heading p { margin: 5px 0 0; color: var(--ss-muted); font-size: 11px; }
 .ss-board-actions { display: flex; align-items: center; gap: 12px; }
-.ss-view-toggle { display: flex; padding: 4px; gap: 3px; border: 1px solid #e9edf3; border-radius: 8px; background: #f5f7fa; }
-.ss-view-toggle button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border: 0; border-radius: 5px; background: transparent; color: #6a7890; font-size: 11px; font-weight: 550; }
-.ss-view-toggle button[aria-pressed=true] { background: #fff; color: #33578b; box-shadow: 0 1px 4px #1d34561a; }
+.ss-view-toggle { position: relative; display: flex; padding: 4px; gap: 3px; border: 1px solid #e9edf3; border-radius: 8px; background: #f5f7fa; }
+.ss-view-toggle .ac-segmented__indicator { background: #fff; border-radius: 5px; box-shadow: 0 1px 4px #1d34561a; }
+.ss-view-toggle button { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border: 0; border-radius: 5px; background: transparent; color: #6a7890; font-size: 11px; font-weight: 550; transition: color var(--motion-fast) var(--ease-standard); }
+.ss-view-toggle button[aria-pressed=true] { color: #33578b; }
 .ss-view-toggle .material-symbols-outlined { font-size: 17px; }
 .ss-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 26px 20px; }
-.ss-day-filters { display: flex; gap: 4px; overflow-x: auto; padding: 3px; }
-.ss-day-filters button { padding: 8px 11px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #6f7d92; font-size: 11px; white-space: nowrap; }
-.ss-day-filters button:hover { background: #f4f7fc; color: #355983; }
-.ss-day-filters button[aria-pressed=true] { border-color: #dce5f4; background: #edf3fc; color: var(--color-primary); font-weight: 600; }
+.ss-day-filters { position: relative; display: flex; gap: 4px; overflow-x: auto; padding: 3px; }
+.ss-day-filters .ac-segmented__indicator { border: 1px solid #dce5f4; background: #edf3fc; border-radius: 6px; }
+.ss-day-filters button { position: relative; z-index: 1; padding: 8px 11px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #6f7d92; font-size: 11px; white-space: nowrap; transition: color var(--motion-fast) var(--ease-standard); }
+.ss-day-filters button:hover { color: #355983; }
+.ss-day-filters button[aria-pressed=true] { color: var(--color-primary); font-weight: 600; }
 .ss-subject-filter { display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #e0e6ef; border-radius: 7px; color: #8290a6; max-width: 280px; }
 .ss-subject-filter select { min-width: 0; max-width: 100%; border: 0; background: #fff; font-size: 11px; color: #50627b; }
 .ss-subject-filter .material-symbols-outlined { font-size: 16px; }
@@ -241,15 +243,17 @@
     .ss-board-heading p { line-height: 1.55; }
     .ss-board-actions { gap: 9px; }
     .ss-view-toggle { padding: 3px; border-color: #dfe5ed; border-radius: 7px; background: #f3f5f8; }
+    .ss-view-toggle .ac-segmented__indicator { box-shadow: 0 1px 3px rgba(18, 37, 69, .12); }
     .ss-view-toggle button { padding: 6px 11px; border-radius: 5px; font-size: 10px; font-weight: 650; }
-    .ss-view-toggle button[aria-pressed=true] { color: var(--color-primary); box-shadow: 0 1px 3px rgba(18, 37, 69, .12); }
+    .ss-view-toggle button[aria-pressed=true] { color: var(--color-primary); }
     .ss-button { min-height: 36px; border-color: #ced8e6; border-radius: 7px; color: #274b7d; font-weight: 650 !important; }
     .ss-button--primary { color: #fff; }
 
     .ss-toolbar { margin: 0 24px; padding: 15px 0; border-bottom: 1px solid var(--ss-line); }
     .ss-day-filters { gap: 2px; padding: 0; }
+    .ss-day-filters .ac-segmented__indicator { border-color: #cbd8eb; background: #f3f7fd; }
     .ss-day-filters button { padding: 7px 10px; border-radius: 5px; color: #68758a; font-size: 10px; }
-    .ss-day-filters button[aria-pressed=true] { border-color: #cbd8eb; background: #f3f7fd; color: var(--color-primary); }
+    .ss-day-filters button[aria-pressed=true] { color: var(--color-primary); }
     .ss-subject-filter { padding: 7px 10px; border-color: #d9e1eb; border-radius: 6px; }
     .ss-subject-filter select { color: #43536b; font-size: 10px; font-weight: 600; }
 
