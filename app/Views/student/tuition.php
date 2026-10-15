@@ -183,7 +183,8 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
             <select id="tf-schedule" name="schedule_id" class="ac-input">
                 <option value="">General Payment</option>
                 <?php foreach ($schedule as $row): ?>
-                    <option value="<?= $row['schedule_id'] ?>"><?= esc($row['label']) ?> (<?= number_format((float) $row['amount'], 2) ?>)</option>
+                    <?php if ((float) $row['balance'] <= 0) continue; ?>
+                    <option value="<?= $row['schedule_id'] ?>"><?= esc($row['label']) ?> (<?= number_format((float) $row['balance'], 2) ?> due)</option>
                 <?php endforeach ?>
             </select>
         </div>
