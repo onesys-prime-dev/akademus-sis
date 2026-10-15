@@ -278,7 +278,7 @@ class TuitionAssessmentService
      *
      * @return array{ok: bool, error?: string, assessment?: array, or_number?: string}
      */
-    public function recordPayment(int $studentId, string $academicYear, float $amount, string $method, ?string $referenceNo, ?int $recordedBy): array
+    public function recordPayment(int $studentId, string $academicYear, float $amount, string $method, ?string $referenceNo, ?int $recordedBy, ?int $scheduleId = null): array
     {
         $assessments = new TuitionAssessmentModel();
         $assessment  = $assessments->forStudentYear($studentId, $academicYear);
@@ -293,6 +293,7 @@ class TuitionAssessmentService
         $payments = new StudentPaymentModel();
         $payments->insert([
             'assessment_id' => (int) $assessment['assessment_id'],
+            'schedule_id'   => $scheduleId,
             'student_id'    => $studentId,
             'amount'        => $amount,
             'payment_date'  => date('Y-m-d H:i:s'),
@@ -348,7 +349,8 @@ class TuitionAssessmentService
             $amount,
             'Uploaded Proof',
             'PROOF-' . $proofId,
-            $reviewedBy
+            $reviewedBy,
+            $proof['schedule_id'] !== null ? (int) $proof['schedule_id'] : null
         );
 
         if (! $result['ok']) {

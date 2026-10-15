@@ -18,6 +18,7 @@ class StudentPaymentModel extends Model
 
     protected $allowedFields = [
         'assessment_id',
+        'schedule_id',
         'student_id',
         'amount',
         'payment_date',
@@ -40,8 +41,9 @@ class StudentPaymentModel extends Model
     public function historyFor(int $studentId): array
     {
         return $this->db->table('student_payments sp')
-            ->select('sp.*, r.id AS receipt_id, r.or_number, r.status AS receipt_status')
+            ->select('sp.*, r.id AS receipt_id, r.or_number, r.status AS receipt_status, ps.label AS schedule_label')
             ->join('official_receipts r', 'r.payment_id = sp.payment_id', 'left')
+            ->join('payment_schedules ps', 'ps.schedule_id = sp.schedule_id', 'left')
             ->where('sp.student_id', $studentId)
             ->orderBy('sp.payment_date', 'DESC')
             ->get()
