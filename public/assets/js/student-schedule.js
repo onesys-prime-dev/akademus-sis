@@ -47,6 +47,7 @@
     let view = window.matchMedia('(max-width: 700px)').matches ? 'agenda' : 'calendar';
     let day = 'all', selected = null, returnFocus = null;
     let viewToggleIndicator = null, dayFilterIndicator = null;
+    let termPicker = null, subjectPicker = null;
     const dialog = $('ssClassDialog');
     const termMeetings = () => meetings.filter(m => m.term === $('ssTerm').value);
     const matchesSubject = m => $('ssSubject').value === 'all' || m.classId === Number($('ssSubject').value);
@@ -190,8 +191,10 @@
     dialog.addEventListener('close', () => { if (returnFocus?.isConnected && !returnFocus.closest('[hidden]')) returnFocus.focus({ preventScroll: true }); });
     $('ssShowSubject').addEventListener('click', () => {
         $('ssSubject').value = String(selected.classId); day = 'all'; render();
-        returnFocus = $('ssSubject'); dialog.close();
-        $('ssSubject').focus();
+        if (subjectPicker) subjectPicker.sync();
+        var focusTarget = subjectPicker ? subjectPicker.trigger : $('ssSubject');
+        returnFocus = focusTarget; dialog.close();
+        focusTarget.focus();
     });
     $('ssViewToggle').addEventListener('click', event => {
         const button = event.target.closest('[data-view]');
@@ -203,13 +206,21 @@
     });
     $('ssSubject').addEventListener('change', render);
     $('ssTerm').addEventListener('change', () => { selected = null; day = 'all'; updateSubjects(); render(); });
-    $('ssReset').addEventListener('click', () => { day = 'all'; $('ssSubject').value = 'all'; render(); $('ssSubject').focus(); });
+    $('ssReset').addEventListener('click', () => {
+        day = 'all'; $('ssSubject').value = 'all'; render();
+        if (subjectPicker) subjectPicker.sync();
+        (subjectPicker ? subjectPicker.trigger : $('ssSubject')).focus();
+    });
     ['ssTermField', 'ssOverview', 'ssViewToggle', 'ssToolbar', 'ssFooter', 'ssPrint'].forEach(id => { $(id).hidden = false; });
     // Same sliding-pill mechanism (and animation) every other segmented
     // control in the app uses — see acInitSegmented in layouts/admin_console.php.
     if (window.acInitSegmented) {
         viewToggleIndicator = window.acInitSegmented($('ssViewToggle'));
         dayFilterIndicator = window.acInitSegmented($('ssDayFilters'));
+    }
+    if (window.enhanceSelect) {
+        termPicker = window.enhanceSelect($('ssTerm'));
+        subjectPicker = window.enhanceSelect($('ssSubject'));
     }
     updateSubjects(); render();
 })();

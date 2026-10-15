@@ -188,6 +188,56 @@ textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
     .ac-notif__loading > span { animation: none; }
 }
 
+/* ==========================================================================
+   Custom select — a styled, animated stand-in for a native <select>
+   (see assets/js/custom-select.js). A native select's own popup is
+   rendered by the OS and can't be styled or animated in any browser, so
+   this swaps in a real floating listbox with the same scale/fade/spring
+   entrance every other dropdown in the shell (account menu, notifications)
+   already uses. The original <select> stays in the DOM (display:none) as
+   the actual value holder — anything reading/writing .value or listening
+   for 'change' keeps working unmodified.
+   ========================================================================== */
+.cs-select { position: relative; }
+.cs-select__native { display: none; }
+.cs-select__trigger {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: 100%; min-height: var(--control-height); padding: 9px 12px;
+    border: 1px solid var(--color-border-control); border-radius: var(--radius-sm);
+    background: var(--color-surface); color: var(--color-text-primary); font: var(--text-body);
+    text-align: left; cursor: pointer;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.cs-select__trigger:hover { border-color: var(--color-border-medium); }
+.cs-select__trigger:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.cs-select.is-open .cs-select__trigger { border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+.cs-select__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-select__chevron { font-size: 18px; color: var(--color-text-tertiary); flex-shrink: 0; transition: transform var(--motion-fast) var(--ease-standard); }
+.cs-select.is-open .cs-select__chevron { transform: rotate(180deg); }
+
+.cs-select__panel {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60;
+    max-height: 280px; overflow-y: auto;
+    background: var(--color-surface); border: 1px solid var(--color-border-control);
+    border-radius: var(--radius-sm); box-shadow: var(--shadow-md); padding: 4px;
+    transform-origin: top center;
+    opacity: 0; transform: scale(.96) translateY(-4px); pointer-events: none;
+    transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-spring), visibility 0s linear var(--motion-fast);
+    visibility: hidden;
+}
+.cs-select.is-open .cs-select__panel { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; visibility: visible; transition-delay: 0s; }
+
+.cs-select__option {
+    padding: 8px 10px; border-radius: var(--radius-sm); font-size: 13px; color: var(--color-text-primary);
+    cursor: pointer; line-height: 1.4;
+}
+.cs-select__option:hover, .cs-select__option.is-active { background: var(--color-surface-sunken); }
+.cs-select__option.is-selected { background: var(--color-primary-soft); color: var(--color-primary); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+    .cs-select__panel, .cs-select__chevron { transition: none; }
+}
+
 /* While the window is being resized, layout must snap to each width instead of
    animating toward it (drawer/sidebar would otherwise "chase" the cursor when a
    breakpoint is crossed). Set by the shell script, cleared once resizing stops. */

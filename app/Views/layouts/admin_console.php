@@ -72,6 +72,7 @@
     <script defer src="<?= base_url('assets/js/interface.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/interface.js') ?>"></script>
     <script src="<?= base_url('assets/js/unsaved-changes.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/unsaved-changes.js') ?>"></script>
     <script defer src="<?= base_url('assets/js/connection-guard.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/connection-guard.js') ?>"></script>
+    <script src="<?= base_url('assets/js/custom-select.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/custom-select.js') ?>"></script>
 </head>
 <body class="ac-page">
 

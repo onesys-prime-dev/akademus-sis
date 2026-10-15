@@ -230,6 +230,8 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
     </form>
     <script>
     (function () {
+        if (window.enhanceSelect) window.enhanceSelect(document.getElementById('tf-schedule'));
+
         var form         = document.getElementById('tfUploadForm');
         var dropzone      = document.getElementById('tfDropzone');
         var fileInput     = document.getElementById('tf-proof');
