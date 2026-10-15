@@ -70,6 +70,7 @@ $scheduleData = array_map(static fn (array $m) => [
                 <div class="ss-day-filters" id="ssDayFilters" role="group" aria-label="Filter by day"><button type="button" data-day="all" aria-pressed="true">All days</button><?php foreach ($dayNames as $i => $name): ?><button type="button" data-day="<?= $i ?>" aria-pressed="false"><?= esc(substr($name, 0, 3)) ?></button><?php endforeach ?></div>
                 <div class="ss-subject-filter"><label class="ss-sr-only" for="ssSubject">Filter by subject</label><select id="ssSubject"><option value="all">All subjects</option></select></div>
             </div>
+            <div class="ss-board-body" id="ssBoardBody">
             <div class="ss-calendar-scroll" id="ssCalendar" role="region" aria-label="Weekly class calendar" tabindex="0" hidden></div>
             <div class="ss-agenda" id="ssAgenda">
                 <?php foreach ($dayNames as $day => $label): ?>
@@ -79,6 +80,7 @@ $scheduleData = array_map(static fn (array $m) => [
                 <?php endforeach ?>
             </div>
             <div class="ss-empty" id="ssFilteredEmpty" hidden><span class="material-symbols-outlined" aria-hidden="true">event_available</span><h3>No classes in this view</h3><p>Choose another day or subject to see more of your week.</p><button type="button" class="ss-button" id="ssReset">Show all classes</button></div>
+            </div>
             <footer class="ss-board-footer" id="ssFooter" hidden><span id="ssResultCount" role="status" aria-live="polite"></span><span>Select any class for full details</span></footer>
             <noscript><p class="ss-noscript">Enable JavaScript to use the interactive calendar and class details.</p></noscript>
         </section>

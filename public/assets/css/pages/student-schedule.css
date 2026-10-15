@@ -192,10 +192,43 @@
 @keyframes ssShimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
 @keyframes ssEnrollRow { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
 @keyframes ssCountPop { from { transform: scale(.62); } to { transform: none; } }
+
+/* "Weekly timetable" first paint: a skeleton of the current view (Agenda or
+   Week), then the classes pop in on a stagger — see revealBoard() in
+   student-schedule.js. Later renders skip the skeleton and only replay the
+   pop, so filtering/day-switching never looks like a reload. */
+.ss-board-body { position: relative; }
+.ss-board-skeleton { position: absolute; inset: 0; display: none; overflow: hidden; background: #fff; }
+.ss-board-body.is-loading .ss-calendar-scroll, .ss-board-body.is-loading .ss-agenda, .ss-board-body.is-loading .ss-empty { visibility: hidden; }
+.ss-board-body.is-loading .ss-board-skeleton { display: block; animation: ssContentIn var(--motion-fast) var(--ease-standard); }
+.ss-bsk-bar, .ss-bsk-block { border-radius: 5px; background: linear-gradient(100deg, #eef2f8 20%, #f8fafc 50%, #eef2f8 80%); background-size: 220% 100%; animation: ssShimmer 1.15s linear infinite; }
+.ss-bsk-bar { height: 10px; }
+.ss-bsk-bar--a { width: 60px; }
+.ss-bsk-bar--b { width: 38%; }
+.ss-bsk-bar--c { width: 92px; }
+.ss-bsk-dot { justify-self: end; width: 16px; height: 16px; border-radius: 5px; background: #eef2f8; }
+.ss-board-skeleton--agenda { padding: 4px 26px 8px; }
+.ss-bsk-day { margin-bottom: 22px; }
+.ss-bsk-head { display: flex; justify-content: space-between; padding: 10px 0; }
+.ss-bsk-card { display: grid; grid-template-columns: 110px minmax(120px, 1fr) minmax(130px, .45fr) 22px; align-items: center; gap: 20px; padding: 17px 20px; margin-bottom: 8px; border: 1px solid var(--ss-line); border-left: 3px solid #e7ebf2; border-radius: 8px; }
+.ss-bsk-grid .ss-bsk-head { display: grid; grid-template-columns: 56px repeat(7, 1fr); align-items: center; padding: 13px 6px 11px; border-bottom: 1px solid #dde5ef; background: #f8fafc; }
+.ss-bsk-grid .ss-bsk-head .ss-bsk-bar { justify-self: center; width: 44px; }
+.ss-bsk-grid-body { display: grid; grid-template-columns: 56px repeat(7, 1fr); min-height: 440px; }
+.ss-bsk-rail { display: grid; align-content: space-around; justify-items: end; padding: 12px 8px; border-right: 1px solid #e7edf4; background: #fbfcfe; }
+.ss-bsk-rail .ss-bsk-bar { width: 26px; }
+.ss-bsk-col { display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 14px 12px; border-left: 1px solid #e7edf4; }
+.ss-board-body.is-revealed .ss-agenda-class, .ss-board-body.is-revealed .ss-class { animation: ssPopIn var(--motion-normal) var(--ease-enter) both; animation-delay: calc(var(--row, 0) * 34ms); }
+@keyframes ssPopIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 700px) {
+    .ss-board-skeleton--agenda { padding: 4px 16px 8px; }
+    .ss-bsk-card { grid-template-columns: 80px minmax(90px, 1fr) 16px; padding: 14px 12px; gap: 12px; }
+    .ss-bsk-card .ss-bsk-dot { display: none; }
+}
 @media (prefers-reduced-motion: reduce) {
     .ss-enrollments > summary > .material-symbols-outlined:last-child, .ss-enrollment-count { transition: none; }
     .ss-enrollment-body { animation: none; }
-    .ss-enroll-skeleton-bar, .ss-enrollment-body.is-loading .ss-enroll-skeleton, .ss-enrollment-body.is-revealed .ss-table tbody td, .ss-enrollments[open] .ss-enrollment-count { animation: none; }
+    .ss-enroll-skeleton-bar, .ss-enrollment-body.is-loading .ss-enroll-skeleton, .ss-enrollment-body.is-revealed .ss-table tbody td, .ss-enrollments[open] .ss-enrollment-count, .ss-bsk-bar, .ss-bsk-block, .ss-board-body.is-loading .ss-board-skeleton, .ss-board-body.is-revealed .ss-agenda-class, .ss-board-body.is-revealed .ss-class { animation: none; }
 }
 .ss-table-scroll { overflow-x: auto; }
 .ss-table { width: 100%; min-width: 620px; border-collapse: collapse; text-align: left; font-size: 11px; }

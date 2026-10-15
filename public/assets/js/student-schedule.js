@@ -128,6 +128,50 @@
         return sorted;
     }
 
+    // "Weekly timetable" first paint lands on a skeleton of whatever view is
+    // current (Agenda or Week), then the classes pop in on a stagger. Later
+    // renders — term/day/subject filters, Week↔Agenda — skip the skeleton and
+    // just replay the pop, so the board never looks like it reloads mid-use.
+    const boardBody = $('ssBoardBody');
+    const boardReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const BOARD_LOAD_MS = 520;
+    const boardBar = (variant = '') => `<span class="ss-bsk-bar ${variant}"></span>`;
+    let boardTimer = null, boardIntroDone = false, boardSkeleton = null;
+    function buildBoardSkeleton() {
+        boardSkeleton = document.createElement('div');
+        boardSkeleton.className = `ss-board-skeleton ss-board-skeleton--${view}`;
+        boardSkeleton.setAttribute('aria-hidden', 'true');
+        if (view === 'agenda') {
+            const card = `<div class="ss-bsk-card">${boardBar('ss-bsk-bar--a')}${boardBar('ss-bsk-bar--b')}${boardBar('ss-bsk-bar--c')}<span class="ss-bsk-dot"></span></div>`;
+            boardSkeleton.innerHTML = Array.from({ length: 3 }, () => `<div class="ss-bsk-day"><div class="ss-bsk-head">${boardBar('ss-bsk-bar--a')}${boardBar('ss-bsk-bar--c')}</div>${card.repeat(3)}</div>`).join('');
+        } else {
+            const head = `<div class="ss-bsk-head">${boardBar('ss-bsk-bar--a').repeat(8)}</div>`;
+            const rail = `<div class="ss-bsk-rail">${boardBar('ss-bsk-bar--a').repeat(6)}</div>`;
+            const cols = Array.from({ length: 7 }, (_, d) => `<div class="ss-bsk-col">${d % 2 ? '<span class="ss-bsk-block" style="height:128px"></span><span class="ss-bsk-block" style="height:74px"></span>' : '<span class="ss-bsk-block" style="height:164px"></span><span class="ss-bsk-block" style="height:96px"></span>'}</div>`).join('');
+            boardSkeleton.innerHTML = `<div class="ss-bsk-grid">${head}<div class="ss-bsk-grid-body">${rail}${cols}</div></div>`;
+        }
+        boardBody.appendChild(boardSkeleton);
+    }
+    // Stagger index per rendered card (capped so a packed week still settles fast).
+    function revealBoard() {
+        if (!boardBody) return;
+        $('ssAgenda').querySelectorAll('.ss-agenda-class').forEach((el, i) => el.style.setProperty('--row', Math.min(i, 12)));
+        $('ssCalendar').querySelectorAll('.ss-class').forEach((el, i) => el.style.setProperty('--row', Math.min(i, 12)));
+        if (boardIntroDone || boardReduceMotion.matches) return;
+        boardIntroDone = true;
+        if (!boardSkeleton) buildBoardSkeleton();
+        boardBody.classList.remove('is-revealed');
+        boardBody.classList.add('is-loading');
+        window.clearTimeout(boardTimer);
+        boardTimer = window.setTimeout(() => {
+            boardBody.classList.remove('is-loading');
+            boardBody.classList.add('is-revealed');
+        }, BOARD_LOAD_MS);
+    }
+    boardReduceMotion.addEventListener('change', event => {
+        if (event.matches && boardBody) { window.clearTimeout(boardTimer); boardBody.classList.remove('is-loading', 'is-revealed'); }
+    });
+
     function render() {
         const all = termMeetings();
         const visible = all.filter(m => matchesSubject(m) && (day === 'all' || m.day === Number(day)));
@@ -166,6 +210,7 @@
             return `<section class="ss-agenda-day"><header><h3>${days[index]}</h3><span>${list.length} ${list.length === 1 ? 'meeting' : 'meetings'} · ${hours(totalMinutes(list))} hours</span></header>${list.map(m => `<button type="button" class="ss-agenda-class ss-accent-${m.accent} ${selected?.classId === m.classId ? 'is-selected' : ''}" data-meeting="${m.id}" aria-haspopup="dialog"><span class="ss-agenda-time">${time(m.from)}<small>${time(m.to)}</small></span><span class="ss-agenda-subject"><strong>${escape(m.code)}</strong><span>${escape(m.title)}</span></span><span class="ss-agenda-room"><span class="material-symbols-outlined" aria-hidden="true">location_on</span>${escape(m.room || 'Room to be assigned')}</span><span class="material-symbols-outlined ss-agenda-arrow" aria-hidden="true">arrow_forward</span></button>`).join('')}</section>`;
         }).join('');
         $('ssResultCount').textContent = `${visible.length} ${visible.length === 1 ? 'meeting' : 'meetings'} · ${hours(totalMinutes(visible))} hours${day !== 'all' ? ` · ${days[Number(day)]}` : ' this week'}`;
+        revealBoard();
     }
 
     function openDetails(id, trigger) {
