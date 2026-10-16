@@ -24,6 +24,20 @@ use CodeIgniter\HotReloader\HotReloader;
  */
 
 Events::on('pre_system', static function (): void {
+    // PHP's actual default timezone (what every raw date()/time()/
+    // strtotime() call in this app uses — Config\App::$appTimezone only
+    // feeds the app_timezone() helper, it does NOT set this) was silently
+    // following the server/php.ini default (Europe/Berlin on this box),
+    // six-plus hours behind the Asia/Manila time every date picker in the
+    // UI and every "now" comparison (enlistment/registration/grading
+    // window checks, timestamps) implicitly assumes. That's why a
+    // chairperson could set an enlistment window that had already started
+    // by PHT and still see it reported as "not yet open" — the server
+    // thought it was still hours before the opens_at time. Set once, here,
+    // for every request (HTTP and CLI alike, since pre_system fires for
+    // both) rather than patching every individual date() call site.
+    date_default_timezone_set('Asia/Manila');
+
     if (ENVIRONMENT !== 'testing') {
         $value = ini_get('zlib.output_compression');
 
