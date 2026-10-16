@@ -329,6 +329,132 @@ class EnrollmentModel extends Model
     }
 
     /**
+     * Every place $subjectCode is actually scheduled this term within
+     * $programName — the subject-keyed counterpart to classOptions(), for
+     * the student enlistment screen's curriculum-driven subject list (a
+     * subject the student's curriculum says they need, not a section they
+     * happened to browse). Meetings are never collapsed (a subject can have
+     * more than one meeting block) and capacity/roster resolution follows
+     * the exact same offering-vs-section branch checkEligibility() uses, so
+     * the numbers shown here always match what will actually be enforced
+     * when the student tries to add the subject to their cart.
+     *
+     * @return list<array{
+     *     section_id: int, section_label: string, offering_id: ?int,
+     *     capacity: ?int, roster_count: int, available: ?int,
+     *     meetings: list<array{day: int, start: string, end: string, room: ?string, prof: ?string}>
+     * }>
+     */
+    public function subjectOfferings(string $subjectCode, string $programName, string $academicYear): array
+    {
+        $sectionModel = new SectionModel();
+        $offerings    = [];
+
+        // Legacy-identity rows: this subject plotted directly against one of
+        // this program's sections (offering_id IS NULL on the row).
+        $legacyRows = $this->db->table('plotted_schedules')
+            ->where('offering_id', null)
+            ->where('academic_year', $academicYear)
+            ->where('program', $programName)
+            ->where('subject_code', $subjectCode)
+            ->get()
+            ->getResultArray();
+
+        $legacyByTuple = [];
+
+        foreach ($legacyRows as $row) {
+            $key = $row['year_level'] . '|' . $row['section'];
+            $legacyByTuple[$key]['year_level'] ??= $row['year_level'];
+            $legacyByTuple[$key]['section'] ??= $row['section'];
+            $legacyByTuple[$key]['meetings'][] = [
+                'day'   => (int) $row['day'],
+                'start' => substr($row['start_time'], 0, 5),
+                'end'   => substr($row['end_time'], 0, 5),
+                'room'  => $row['room'] ?: null,
+                'prof'  => $row['prof'] ?: null,
+            ];
+        }
+
+        foreach ($legacyByTuple as $tuple) {
+            $section = $sectionModel->forContext($academicYear, $programName, $tuple['year_level'], $tuple['section']);
+
+            if ($section === null) {
+                continue;
+            }
+
+            $sectionId   = (int) $section['section_id'];
+            $capacity    = $section['capacity'];
+            $rosterCount = $this->rosterCount($sectionId);
+
+            usort($tuple['meetings'], static fn (array $a, array $b): int => [$a['day'], $a['start']] <=> [$b['day'], $b['start']]);
+
+            $offerings[] = [
+                'section_id'    => $sectionId,
+                'section_label' => $tuple['year_level'] . ' · ' . $tuple['section'],
+                'offering_id'   => null,
+                'capacity'      => $capacity !== null ? (int) $capacity : null,
+                'roster_count'  => $rosterCount,
+                'available'     => $capacity !== null ? (int) $capacity - $rosterCount : null,
+                'meetings'      => $tuple['meetings'],
+            ];
+        }
+
+        // Offering-identity rows: this subject merged into a course_offering
+        // reachable through at least one of this program's sections.
+        $courseOfferings = (new CourseOfferingModel())
+            ->where('subject_code', $subjectCode)
+            ->where('academic_year', $academicYear)
+            ->findAll();
+
+        $offeringModel = new CourseOfferingModel();
+
+        foreach ($courseOfferings as $offering) {
+            $offeringId      = (int) $offering['offering_id'];
+            $linkedSectionIds = $offeringModel->sectionIdsFor($offeringId);
+
+            if ($linkedSectionIds === []) {
+                continue;
+            }
+
+            $linkedSections = $sectionModel->whereIn('section_id', $linkedSectionIds)->where('program', $programName)->findAll();
+
+            if ($linkedSections === []) {
+                continue;
+            }
+
+            $representative = $linkedSections[0];
+            $label = count($linkedSections) === 1
+                ? $representative['year_level'] . ' · ' . $representative['section']
+                : implode(', ', array_map(static fn (array $s): string => $s['year_level'] . ' · ' . $s['section'], $linkedSections));
+
+            $meetings = array_map(static fn (array $m): array => [
+                'day'   => (int) $m['day'],
+                'start' => substr($m['start_time'], 0, 5),
+                'end'   => substr($m['end_time'], 0, 5),
+                'room'  => $m['room'] ?: null,
+                'prof'  => $m['prof'] ?: null,
+            ], (new PlottedScheduleModel())->forOffering($offeringId));
+
+            usort($meetings, static fn (array $a, array $b): int => [$a['day'], $a['start']] <=> [$b['day'], $b['start']]);
+
+            $capacity    = $offering['capacity'];
+            $rosterCount = $offeringModel->rosterCount($offeringId);
+
+            $offerings[] = [
+                'section_id'    => (int) $representative['section_id'],
+                'section_label' => $label,
+                'offering_id'   => $offeringId,
+                'capacity'      => $capacity !== null ? (int) $capacity : null,
+                'roster_count'  => $rosterCount,
+                'available'     => $capacity !== null ? (int) $capacity - $rosterCount : null,
+                'meetings'      => $meetings,
+            ];
+        }
+
+        return $offerings;
+    }
+
+    /**
      * Drops one enrollment: status -> 'dropped', row kept as history, change
      * logged. Never a hard delete.
      *
@@ -651,6 +777,74 @@ class EnrollmentModel extends Model
 
             if (array_intersect($acceptableCodes, $passedCodes) === []) {
                 $missing[] = $prereq['subject_code'];
+            }
+        }
+
+        return $missing;
+    }
+
+    /**
+     * Corequisites of $subjectCode that are NOT yet satisfied for this
+     * student+term. Unlike unmetPrerequisites(), satisfaction is about
+     * CONCURRENCY, not prior completion: a corequisite is satisfied if it's
+     * already passed, already actively enrolled this academic year, or
+     * already sitting in the student's own open enlistment cart for this
+     * term (so either half of a pair can be added first — see
+     * StudentEnlistmentModel::submit()'s corequisite gate, the only place
+     * this is actually enforced; the enlistment subject list only displays
+     * it informationally, never excludes on it, to avoid a chicken-and-egg
+     * deadlock for subjects whose corequisite is also not yet started).
+     *
+     * @return string[]
+     */
+    public function unmetCorequisites(int $userId, string $subjectCode, string $academicYear): array
+    {
+        $subject = (new SubjectModel())->where('subject_code', $subjectCode)->first();
+
+        if ($subject === null) {
+            return [];
+        }
+
+        $coreqIds = array_column(
+            (new SubjectCorequisiteModel())->where('subject_id', $subject['subject_id'])->findAll(),
+            'corequisite_subject_id'
+        );
+
+        if ($coreqIds === []) {
+            return [];
+        }
+
+        $coreqSubjects = (new SubjectModel())->whereIn('subject_id', $coreqIds)->findAll();
+
+        $passedCodes = array_column(
+            $this->db->table('grades')
+                ->select('subject_code')
+                ->where('user_id', $userId)
+                ->where('status', 'locked')
+                ->where('is_passing', 1)
+                ->distinct()
+                ->get()
+                ->getResultArray(),
+            'subject_code'
+        );
+
+        $enrolledCodes = array_column(
+            array_filter($this->activeForStudent($userId), static fn (array $e): bool => $e['academic_year'] === $academicYear),
+            'subject_code'
+        );
+
+        $student = (new StudentModel())->where('user_id', $userId)->first();
+        $cartCodes = $student !== null
+            ? (new StudentEnlistmentModel())->cartSubjectCodes((int) $student['student_id'], $academicYear)
+            : [];
+
+        $satisfiedCodes = array_merge($passedCodes, $enrolledCodes, $cartCodes);
+
+        $missing = [];
+
+        foreach ($coreqSubjects as $coreq) {
+            if (! in_array($coreq['subject_code'], $satisfiedCodes, true)) {
+                $missing[] = $coreq['subject_code'];
             }
         }
 

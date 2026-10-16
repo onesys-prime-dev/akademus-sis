@@ -49,7 +49,12 @@
             .then(function (blob) {
                 if (token !== requestToken) return; // a newer open() superseded this one
                 blobUrl = URL.createObjectURL(blob);
-                frame.src = blobUrl;
+                // Open params for Chromium's built-in PDF viewer: fit the page to
+                // the iframe's width and hide its own toolbar/side panel, since
+                // our dialog header already has Download/Close — the native
+                // toolbar was redundant and, on narrow screens, defaulted to a
+                // zoomed-in view that cut the page off on the side.
+                frame.src = blobUrl + '#toolbar=0&navpanes=0&zoom=page-width';
                 loading.hidden = true;
                 frame.hidden = false;
             })

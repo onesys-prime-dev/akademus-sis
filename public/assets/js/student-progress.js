@@ -32,10 +32,15 @@
         }).join('') + '</ul>';
     }
 
-    function render(student, progress) {
+    var currentStudentId = null;
+
+    function render(student, progress, academicYear, overrides) {
         var fullName = (student.last_name || '') + ', ' + (student.first_name || '');
         nameEl.textContent = fullName;
         metaEl.textContent = [student.student_number, student.program_name, student.curriculum_code].filter(Boolean).join(' · ');
+
+        var overrideByCode = {};
+        (overrides || []).forEach(function (o) { overrideByCode[o.subject_code] = o; });
 
         var pct = progress.completion_pct;
         var pctLabel = pct === null ? 'No curriculum assigned' : pct + '% complete';
@@ -58,9 +63,27 @@
         var notStarted = progress.remaining.filter(function (r) { return r.status === 'not_started'; });
         html += '<section class="sp-detail-section"><h3>Not yet started <span>' + notStarted.length + '</span></h3>' +
             subjectList(notStarted, 'Nothing left to start.', function (i) {
-                if (i.missing_prerequisites && i.missing_prerequisites.length) {
-                    return '<span class="sp-pill sp-pill--warn">Needs ' + i.missing_prerequisites.map(escapeHtml).join(', ') + '</span>';
+                var override = overrideByCode[i.code];
+
+                if (override) {
+                    return '<span class="sp-extra">' +
+                        '<span class="sp-pill sp-pill--ready">Requirement Waived</span>' +
+                        '<button type="button" class="sp-link-btn" data-revoke-override="' + override.id + '">Revoke</button>' +
+                        '</span>';
                 }
+
+                if (i.missing_prerequisites && i.missing_prerequisites.length) {
+                    var needsPill = '<span class="sp-pill sp-pill--warn">Needs ' + i.missing_prerequisites.map(escapeHtml).join(', ') + '</span>';
+
+                    if (!academicYear) {
+                        return needsPill;
+                    }
+
+                    return '<span class="sp-extra">' + needsPill +
+                        '<button type="button" class="sp-link-btn" data-grant-override="' + escapeHtml(i.code) + '">Grant Override</button>' +
+                        '</span>';
+                }
+
                 return '<span class="sp-pill sp-pill--ready">Eligible to enroll</span>';
             }) + '</section>';
 
@@ -70,34 +93,99 @@
         bodyEl.innerHTML = html;
     }
 
-    document.addEventListener('click', function (e) {
-        var btn = e.target.closest('.sp-view-btn');
-        if (!btn) return;
-
-        var studentId = btn.getAttribute('data-student-id');
-
-        bodyEl.innerHTML = '<p class="sp-list-empty">Loading…</p>';
-        nameEl.textContent = '';
-        metaEl.textContent = '';
-
-        if (typeof dialog.showModal === 'function') {
-            dialog.showModal();
-        } else {
-            dialog.setAttribute('open', 'open');
-        }
-
-        fetch(config.detailUrl + '?student_id=' + encodeURIComponent(studentId), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    function reloadDetail(studentId) {
+        return fetch(config.detailUrl + '?student_id=' + encodeURIComponent(studentId), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (!data.ok) {
                     bodyEl.innerHTML = '<p class="sp-list-empty">' + escapeHtml(data.error || 'Could not load this student.') + '</p>';
                     return;
                 }
-                render(data.student, data.progress);
-            })
-            .catch(function () {
+                render(data.student, data.progress, data.academicYear, data.overrides);
+            });
+    }
+
+    document.addEventListener('click', function (e) {
+        var viewBtn = e.target.closest('.sp-view-btn');
+
+        if (viewBtn) {
+            currentStudentId = viewBtn.getAttribute('data-student-id');
+
+            bodyEl.innerHTML = '<p class="sp-list-empty">Loading…</p>';
+            nameEl.textContent = '';
+            metaEl.textContent = '';
+
+            if (typeof dialog.showModal === 'function') {
+                dialog.showModal();
+            } else {
+                dialog.setAttribute('open', 'open');
+            }
+
+            reloadDetail(currentStudentId).catch(function () {
                 bodyEl.innerHTML = '<p class="sp-list-empty">Could not load this student.</p>';
             });
+            return;
+        }
+
+        var grantBtn = e.target.closest('[data-grant-override]');
+
+        if (grantBtn && currentStudentId) {
+            var subjectCode = grantBtn.getAttribute('data-grant-override');
+            var reason = window.prompt('Reason for granting ' + subjectCode + ' to this student (required):');
+
+            if (!reason || !reason.trim()) return;
+
+            grantBtn.disabled = true;
+
+            fetch(config.grantUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: 'student_id=' + encodeURIComponent(currentStudentId) + '&subject_code=' + encodeURIComponent(subjectCode) + '&reason=' + encodeURIComponent(reason.trim())
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data.ok) {
+                        window.alert(data.error || 'Could not grant this override.');
+                        grantBtn.disabled = false;
+                        return;
+                    }
+                    reloadDetail(currentStudentId);
+                })
+                .catch(function () {
+                    window.alert('Could not grant this override.');
+                    grantBtn.disabled = false;
+                });
+            return;
+        }
+
+        var revokeBtn = e.target.closest('[data-revoke-override]');
+
+        if (revokeBtn && currentStudentId) {
+            var overrideId = revokeBtn.getAttribute('data-revoke-override');
+
+            if (!window.confirm('Revoke this override? The subject will become blocked again.')) return;
+
+            revokeBtn.disabled = true;
+
+            fetch(config.revokeUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: 'override_id=' + encodeURIComponent(overrideId)
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data.ok) {
+                        window.alert(data.error || 'Could not revoke this override.');
+                        revokeBtn.disabled = false;
+                        return;
+                    }
+                    reloadDetail(currentStudentId);
+                })
+                .catch(function () {
+                    window.alert('Could not revoke this override.');
+                    revokeBtn.disabled = false;
+                });
+        }
     });
 
     if (closeBtn) {

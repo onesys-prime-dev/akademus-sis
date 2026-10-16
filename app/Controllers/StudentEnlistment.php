@@ -2,11 +2,16 @@
 
 namespace App\Controllers;
 
+use App\Libraries\StudentProgressService;
 use App\Models\AcademicYearModel;
 use App\Models\DepartmentModel;
+use App\Models\EnlistmentOverrideModel;
 use App\Models\EnrollmentModel;
+use App\Models\GeneratedDocumentModel;
 use App\Models\StudentEnlistmentModel;
 use App\Models\StudentModel;
+use App\Models\SubjectModel;
+use App\Models\TuitionAssessmentModel;
 
 /**
  * The student-facing cart wizard: info confirm -> course selection -> review
@@ -33,16 +38,22 @@ class StudentEnlistment extends BaseController
 
         if ($activeTerm === null) {
             return view('student/enlistment', [
-                'pageTitle'   => 'Enlistment',
-                'windowOpen'  => false,
-                'activeTerm'  => null,
-                'enlistment'  => null,
-                'items'       => [],
-                'options'     => [],
-                'cap'         => (int) (setting('Academic.maxStudentUnits') ?? 24),
-                'unitsUsed'   => 0,
+                'pageTitle'          => 'Enlistment',
+                'windowOpen'         => false,
+                'activeTerm'         => null,
+                'enlistment'         => null,
+                'items'              => [],
+                'dueSubjects'        => [],
+                'eligible'           => true,
+                'balance'            => 0.0,
+                'cap'                => (int) (setting('Academic.maxStudentUnits') ?? 24),
+                'unitsUsed'          => 0,
             ]);
         }
+
+        $assessment = (new TuitionAssessmentModel())->forStudentYear((int) $student['student_id'], $activeTerm);
+        $balance    = (float) ($assessment['balance'] ?? 0);
+        $eligible   = ! ($balance > 0 && ! (bool) (setting('Finance.allowEnlistmentWithBalance') ?? true));
 
         $model      = new StudentEnlistmentModel();
         $enlistment = $model->openOrCreate((int) $student['student_id'], $activeTerm);
@@ -50,17 +61,54 @@ class StudentEnlistment extends BaseController
         $unitsUsed  = array_sum(array_column($items, 'units'));
 
         $programName = $student['program_id'] !== null ? DepartmentModel::programNameById((int) $student['program_id']) : null;
-        $options     = $programName !== null ? (new EnrollmentModel())->classOptions($programName, $activeTerm) : [];
+        $dueSubjects = [];
+
+        if ($programName !== null) {
+            $enrollments = new EnrollmentModel();
+            $overrides   = new EnlistmentOverrideModel();
+            $progress    = (new StudentProgressService())->forStudent((int) $student['student_id']);
+
+            foreach ($progress['remaining'] ?? [] as $item) {
+                if ($item['status'] === 'in_progress') {
+                    continue;
+                }
+
+                $overrideGranted = false;
+
+                if ($item['status'] === 'not_started' && ! empty($item['missing_prerequisites'])) {
+                    if (! $overrides->hasOverride((int) $student['student_id'], $item['code'], $activeTerm)) {
+                        continue;
+                    }
+
+                    $overrideGranted = true;
+                }
+
+                $catalog  = (new SubjectModel())->where('subject_code', $item['code'])->first();
+                $lecUnits = $catalog['lecture_units'] ?? null;
+                $labUnits = $catalog['laboratory_units'] ?? null;
+                $isLab    = (bool) ($catalog['is_laboratory'] ?? false);
+
+                $item['has_lecture']      = $catalog !== null ? ($lecUnits !== null ? (float) $lecUnits > 0 : ! $isLab) : false;
+                $item['has_lab']          = $catalog !== null ? ($labUnits !== null ? (float) $labUnits > 0 : $isLab) : false;
+                $item['override_granted'] = $overrideGranted;
+                $item['corequisites']     = $enrollments->unmetCorequisites($userId, $item['code'], $activeTerm);
+                $item['offerings']        = $enrollments->subjectOfferings($item['code'], $programName, $activeTerm);
+
+                $dueSubjects[] = $item;
+            }
+        }
 
         return view('student/enlistment', [
-            'pageTitle'  => 'Enlistment',
-            'windowOpen' => $windowOpen,
-            'activeTerm' => $activeTerm,
-            'enlistment' => $enlistment,
-            'items'      => $items,
-            'options'    => $options,
-            'cap'        => (int) (setting('Academic.maxStudentUnits') ?? 24),
-            'unitsUsed'  => $unitsUsed,
+            'pageTitle'   => 'Enlistment',
+            'windowOpen'  => $windowOpen,
+            'activeTerm'  => $activeTerm,
+            'enlistment'  => $enlistment,
+            'items'       => $items,
+            'dueSubjects' => $dueSubjects,
+            'eligible'    => $eligible,
+            'balance'     => $balance,
+            'cap'         => (int) (setting('Academic.maxStudentUnits') ?? 24),
+            'unitsUsed'   => $unitsUsed,
         ]);
     }
 
@@ -136,5 +184,49 @@ class StudentEnlistment extends BaseController
         }
 
         return redirect()->to('/student/enlistment')->with('message', 'Your enlistment cart was submitted for review.');
+    }
+
+    public function sendReminder()
+    {
+        $userId  = (int) auth()->id();
+        $student = (new StudentModel())->where('user_id', $userId)->first();
+
+        if ($student === null) {
+            return redirect()->to('/student/enlistment')->with('errors', ['No student record is linked to your account.']);
+        }
+
+        $enlistmentId = (int) $this->request->getPost('enlistment_id');
+        $result       = (new StudentEnlistmentModel())->sendReminder($enlistmentId, (int) $student['student_id']);
+
+        if (! $result['ok']) {
+            return redirect()->to('/student/enlistment')->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to('/student/enlistment')->with('message', 'Reminder sent.');
+    }
+
+    public function printForm()
+    {
+        $userId  = (int) auth()->id();
+        $student = (new StudentModel())->where('user_id', $userId)->first();
+
+        if ($student === null) {
+            return redirect()->to('/student/enlistment')->with('errors', ['No student record is linked to your account.']);
+        }
+
+        $documents   = new GeneratedDocumentModel();
+        $eligibility = $documents->coeEligibility($userId);
+
+        if (! $eligibility['ok']) {
+            return redirect()->to('/student/enlistment')->with('errors', [$eligibility['error']]);
+        }
+
+        $result = $documents->generate((int) $student['student_id'], 'student_form', $userId);
+
+        if (! $result['ok']) {
+            return redirect()->to('/student/enlistment')->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to('/student/documents/view/' . $result['id']);
     }
 }

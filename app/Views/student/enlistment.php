@@ -39,20 +39,14 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 $STEPS = ['draft' => 1, 'submitted' => 2, 'chair_recommended' => 2, 'dean_noted' => 3, 'enrolled' => 4, 'conversion_failed' => 4];
 $status = $enlistment['status'] ?? null;
 $itemIds = array_map(static fn ($i) => $i['section_id'] . '|' . $i['subject_code'], $items);
+$DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 ?>
 
+<?= $this->section('styles') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/student-enlistment.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/student-enlistment.css') ?>">
+<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
-<style>
-    .en-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill); }
-    .en-pill.draft { background: var(--color-warning-soft); color: #713f12; }
-    .en-pill.submitted, .en-pill.chair_recommended, .en-pill.dean_noted { background: #dff8fb; color: #164e63; }
-    .en-pill.enrolled { background: var(--color-success-soft); color: #14532d; }
-    .en-pill.conversion_failed { background: var(--color-danger-soft); color: #7f1d1d; }
-    .en-steps { display:flex; gap:8px; margin:14px 0 20px; flex-wrap:wrap; }
-    .en-step { flex:1; min-width:120px; padding:10px 12px; border-radius:var(--radius-md); border:1px solid var(--color-border); font-size:12px; font-weight:600; color:var(--color-text-tertiary); }
-    .en-step.is-active { border-color:#60a5fa; background:#eff6ff; color:#1d4ed8; }
-    .en-step.is-done { border-color:#86efac; background:var(--color-success-soft); color:#14532d; }
-</style>
 
 <div class="ac-page-header">
     <div><h2 class="ac-page-header__title">Online Enlistment</h2><p class="ac-page-header__sub"><?= esc($activeTerm ?? 'No active term') ?></p></div>
@@ -94,42 +88,109 @@ $itemIds = array_map(static fn ($i) => $i['section_id'] . '|' . $i['subject_code
 
     <?php if ($status === 'draft'): ?>
         <?php if (! $windowOpen): ?>
-            <div class="ac-empty-block">Online enlistment is currently closed. Check back when the window opens.</div>
+            <div class="en-splash">
+                <span class="material-symbols-outlined en-splash__icon" aria-hidden="true">event_busy</span>
+                <h3>Enlistment is not yet open</h3>
+                <p>Online enlistment hasn't started for this term yet. Check back once the window opens.</p>
+            </div>
+        <?php elseif (! $eligible): ?>
+            <div class="en-splash en-splash--blocked">
+                <span class="material-symbols-outlined en-splash__icon" aria-hidden="true">block</span>
+                <h3>Unable to enlist online</h3>
+                <p class="en-splash__warning">You have an outstanding balance of &#8369;<?= number_format($balance, 2) ?>.</p>
+                <p>Please settle your balance with the Finance office, or contact the registrar, before enlisting online.</p>
+            </div>
         <?php else: ?>
             <!-- Step 2: Course Selection -->
             <div class="ac-card" style="margin-bottom:16px;">
                 <div class="ac-dept-name">2. Course Selection</div>
-                <p style="font-size:12.5px; color:var(--color-text-secondary);">Units: <?= esc((string) $unitsUsed) ?> / <?= esc((string) $cap) ?></p>
+                <p class="en-units-note">Subjects your curriculum says you still need. Units: <?= esc((string) $unitsUsed) ?> / <?= esc((string) $cap) ?></p>
 
-                <?php if ($options === []): ?>
-                    <div class="ac-empty-block">No course offerings found for your program yet.</div>
+                <?php if ($dueSubjects === []): ?>
+                    <div class="ac-empty-block">Nothing left to enlist in right now — either you're all caught up, or no curriculum is assigned to your record yet.</div>
                 <?php else: ?>
-                    <table class="ac-table">
-                        <thead><tr><th>Subject</th><th>Title</th><th>Year/Section</th><th></th></tr></thead>
-                        <tbody>
-                        <?php foreach ($options as $opt): ?>
-                            <?php $inCart = in_array($opt['section_id'] . '|' . $opt['subject_code'], $itemIds, true); ?>
-                            <tr>
-                                <td><?= esc($opt['subject_code']) ?></td>
-                                <td><?= esc($opt['subject_title']) ?></td>
-                                <td><?= esc($opt['year_level']) ?> &middot; <?= esc($opt['section']) ?></td>
-                                <td>
-                                    <?php if ($inCart): ?>
-                                        <span class="ac-pill ac-pill--success">In cart</span>
-                                    <?php else: ?>
-                                        <form method="post" action="<?= site_url('student/enlistment/add-item') ?>" style="display:inline;">
-                                            <?= csrf_field() ?>
-                                            <input type="hidden" name="enlistment_id" value="<?= (int) $enlistment['id'] ?>">
-                                            <input type="hidden" name="section_id" value="<?= (int) $opt['section_id'] ?>">
-                                            <input type="hidden" name="subject_code" value="<?= esc($opt['subject_code'], 'attr') ?>">
-                                            <button type="submit" class="ac-btn-outline">Add</button>
-                                        </form>
+                    <?php foreach ($dueSubjects as $subj): ?>
+                        <?php
+                            $subjectInCartIds = array_filter($itemIds, static fn (string $id): bool => str_ends_with($id, '|' . $subj['code']));
+                            $subjectInCart    = $subjectInCartIds !== [];
+                        ?>
+                        <div class="en-subject">
+                            <div class="en-subject__head">
+                                <div>
+                                    <span class="en-subject__code"><?= esc($subj['code']) ?></span>
+                                    <span class="en-subject__title"><?= esc($subj['title']) ?></span>
+                                    <span class="en-subject__units"><?= esc((string) $subj['units']) ?> units</span>
+                                </div>
+                                <div class="en-subject__badges">
+                                    <?php if ($subj['has_lecture']): ?><span class="en-check" aria-label="Has lecture">L</span><?php endif ?>
+                                    <?php if ($subj['has_lab']): ?><span class="en-check en-check--lab" aria-label="Has laboratory">Lab</span><?php endif ?>
+                                    <?php if (in_array($subj['status'], ['failed', 'unresolved'], true)): ?>
+                                        <span class="en-badge en-badge--retake">Retake</span>
                                     <?php endif ?>
-                                </td>
-                            </tr>
-                        <?php endforeach ?>
-                        </tbody>
-                    </table>
+                                    <?php if (! empty($subj['override_granted'])): ?>
+                                        <span class="en-badge en-badge--waived">Requirement Waived</span>
+                                    <?php endif ?>
+                                </div>
+                            </div>
+                            <?php if (! empty($subj['corequisites'])): ?>
+                                <p class="en-coreq-note">Pairs with: <?= esc(implode(', ', $subj['corequisites'])) ?> — must be added to your cart together.</p>
+                            <?php endif ?>
+
+                            <?php if ($subj['offerings'] === []): ?>
+                                <div class="en-muted" style="padding:10px 0;">Not yet offered this term.</div>
+                            <?php else: ?>
+                                <div class="en-table-scroll">
+                                <table class="ac-table en-class-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Section</th>
+                                            <th>Day &amp; Time</th><th>Room</th><th>Instructor</th>
+                                            <th>Slots</th><th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php foreach ($subj['offerings'] as $off): ?>
+                                        <?php $rowInCart = in_array($off['section_id'] . '|' . $subj['code'], $itemIds, true); ?>
+                                        <tr>
+                                            <td><?= esc($off['section_label']) ?></td>
+                                            <td>
+                                                <?php if ($off['meetings'] === []): ?><span class="en-muted">TBA</span><?php endif ?>
+                                                <?php foreach ($off['meetings'] as $m): ?>
+                                                    <div class="en-meeting"><?= esc($DAY_NAMES[$m['day']] ?? '?') ?> <?= esc($m['start']) ?>&ndash;<?= esc($m['end']) ?></div>
+                                                <?php endforeach ?>
+                                            </td>
+                                            <td><?php foreach ($off['meetings'] as $m): ?><div class="en-meeting"><?= esc($m['room'] ?: 'Room to be assigned') ?></div><?php endforeach ?></td>
+                                            <td><?php foreach ($off['meetings'] as $m): ?><div class="en-meeting"><?= esc($m['prof'] ?: 'Instructor to be assigned') ?></div><?php endforeach ?></td>
+                                            <td>
+                                                <?php if ($off['capacity'] === null): ?>
+                                                    <span class="ac-pill ac-pill--neutral">Unlimited</span>
+                                                <?php else: ?>
+                                                    <span class="ac-pill <?= $off['available'] <= 0 ? 'en-slots--full' : '' ?>"><?= esc((string) max(0, $off['available'])) ?> / <?= esc((string) $off['capacity']) ?></span>
+                                                <?php endif ?>
+                                            </td>
+                                            <td>
+                                                <?php if ($rowInCart): ?>
+                                                    <span class="ac-pill ac-pill--success">In cart</span>
+                                                <?php elseif ($subjectInCart): ?>
+                                                    <span class="en-muted">&mdash;</span>
+                                                <?php else: ?>
+                                                    <form method="post" action="<?= site_url('student/enlistment/add-item') ?>" style="display:inline;">
+                                                        <?= csrf_field() ?>
+                                                        <input type="hidden" name="enlistment_id" value="<?= (int) $enlistment['id'] ?>">
+                                                        <input type="hidden" name="section_id" value="<?= (int) $off['section_id'] ?>">
+                                                        <input type="hidden" name="subject_code" value="<?= esc($subj['code'], 'attr') ?>">
+                                                        <button type="submit" class="ac-btn-outline">Add</button>
+                                                    </form>
+                                                <?php endif ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach ?>
+                                    </tbody>
+                                </table>
+                                </div>
+                            <?php endif ?>
+                        </div>
+                    <?php endforeach ?>
                 <?php endif ?>
             </div>
 
@@ -181,11 +242,17 @@ $itemIds = array_map(static fn ($i) => $i['section_id'] . '|' . $i['subject_code
                 <?php endforeach ?>
                 </tbody>
             </table>
+            <form method="post" action="<?= site_url('student/enlistment/send-reminder') ?>" style="margin-top:12px;">
+                <?= csrf_field() ?>
+                <input type="hidden" name="enlistment_id" value="<?= (int) $enlistment['id'] ?>">
+                <button type="submit" class="ac-btn-outline">Send Reminder</button>
+            </form>
         </div>
     <?php elseif ($status === 'enrolled'): ?>
         <div class="ac-card">
             <div class="ac-dept-name">Enrolled</div>
             <p style="font-size:12.5px; color:var(--color-text-secondary);">Your approved subjects are now on <a href="<?= site_url('student/schedule') ?>">My Schedule</a>, and your tuition assessment is on <a href="<?= site_url('student/tuition') ?>">Tuition &amp; Fees</a>.</p>
+            <a href="<?= site_url('student/enlistment/print-form') ?>" target="_blank" class="ac-btn ac-btn-primary" style="margin-top:10px;">Print Student Form</a>
         </div>
     <?php elseif ($status === 'conversion_failed'): ?>
         <div class="ac-empty-block">Your enlistment was approved but could not be converted to enrollments. Check your notifications for details, or contact the registrar.</div>

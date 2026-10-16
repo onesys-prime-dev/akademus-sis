@@ -1,0 +1,67 @@
+/* Student Enlistment — status pills/stepper, section filter, and the
+   per-section class detail table (slots, lec/lab, meetings). Layers on top
+   of the shared .ac-* primitives and design tokens from admin-console.css /
+   design-system/tokens.css — nothing here redefines those. */
+
+.en-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill); }
+.en-pill.draft { background: var(--color-warning-soft); color: #713f12; }
+.en-pill.submitted, .en-pill.chair_recommended, .en-pill.dean_noted { background: #dff8fb; color: #164e63; }
+.en-pill.enrolled { background: var(--color-success-soft); color: #14532d; }
+.en-pill.conversion_failed { background: var(--color-danger-soft); color: #7f1d1d; }
+
+.en-steps { display:flex; gap:8px; margin:14px 0 20px; flex-wrap:wrap; }
+.en-step { flex:1; min-width:120px; padding:10px 12px; border-radius:var(--radius-md); border:1px solid var(--color-border); font-size:12px; font-weight:600; color:var(--color-text-tertiary); }
+.en-step.is-active { border-color:#60a5fa; background:#eff6ff; color:#1d4ed8; }
+.en-step.is-done { border-color:#86efac; background:var(--color-success-soft); color:#14532d; }
+
+.en-units-note { margin:0 0 12px; font-size:12.5px; color:var(--color-text-secondary); }
+
+.en-subject { padding:16px 0; border-top:1px solid var(--color-border); }
+.en-subject:first-of-type { padding-top:4px; border-top:0; }
+.en-subject__head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.en-subject__code { font-weight:700; color:var(--color-text-primary); font-size:13.5px; }
+.en-subject__title { margin-left:8px; font-size:13px; color:var(--color-text-secondary); }
+.en-subject__units { margin-left:8px; font-size:11.5px; color:var(--color-text-tertiary); }
+.en-subject__badges { display:flex; align-items:center; gap:6px; }
+
+.en-badge { font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:var(--radius-pill); }
+.en-badge--retake { background:var(--color-warning-soft); color:#713f12; }
+.en-badge--waived { background:var(--color-success-soft); color:#14532d; }
+
+.en-coreq-note { margin:6px 0 0; font-size:12px; color:var(--color-text-secondary); font-style:italic; }
+
+.en-table-scroll { overflow-x:auto; margin-top:10px; }
+.en-class-table { min-width:620px; }
+.en-class-table th, .en-class-table td { vertical-align:top; }
+
+.en-check {
+    display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 7px; border-radius:var(--radius-pill);
+    font-weight:700; font-size:11px; background:var(--color-primary-soft); color:var(--color-primary);
+}
+.en-check--lab { background:var(--color-lab-soft); color:var(--color-lab); border:1px solid var(--color-lab-border); }
+
+.en-meeting { font-size:12px; line-height:1.5; color:var(--color-text-primary); }
+.en-meeting + .en-meeting { margin-top:2px; padding-top:2px; border-top:1px dashed var(--color-border); }
+
+.en-muted { color:var(--color-text-tertiary); font-size:12px; }
+
+.en-slots--full { color:var(--color-danger); background:var(--color-danger-soft); }
+
+/* Full-width splash for "window closed" / "ineligible" states — a bigger
+   variant of student-documents.css's .sd-empty icon-badge-above-message
+   idiom (the closest existing precedent; nothing in this codebase today is
+   a true full-viewport splash). */
+.en-splash { padding:56px 24px; text-align:center; }
+.en-splash__icon {
+    display:grid; place-items:center; width:64px; height:64px; margin:0 auto 16px; border-radius:18px;
+    background:var(--color-primary-soft); color:var(--color-primary); font-size:32px;
+}
+.en-splash h3 { margin:0 0 8px; font-size:17px; font-weight:700; color:var(--color-text-primary); }
+.en-splash p { margin:0 auto; max-width:48ch; font-size:13px; line-height:1.6; color:var(--color-text-secondary); }
+.en-splash p + p { margin-top:6px; }
+.en-splash--blocked .en-splash__icon { background:var(--color-danger-soft); color:var(--color-danger); }
+.en-splash__warning { font-weight:700; color:var(--color-danger); }
+
+@media (max-width:760px) {
+    .en-subject__title, .en-subject__units { display:block; margin-left:0; }
+}

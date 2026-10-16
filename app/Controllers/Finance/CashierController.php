@@ -107,4 +107,35 @@ class CashierController extends BaseController
 
         return redirect()->to('/finance/cashier/student/' . $studentId)->with('message', 'Payment recorded. Official Receipt ' . $result['or_number'] . ' issued.');
     }
+
+    public function changeInstallments($studentId)
+    {
+        $rules = [
+            'academic_year'     => 'required',
+            'installment_count' => 'required|in_list[1,2,3,4,5]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()->back()->with('errors', $this->validator->getErrors());
+        }
+
+        $student = (new StudentModel())->find((int) $studentId);
+
+        if ($student === null) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $result = (new TuitionAssessmentService())->changeInstallmentPlan(
+            (int) $studentId,
+            (string) $this->request->getPost('academic_year'),
+            (int) $this->request->getPost('installment_count'),
+            (int) auth()->id()
+        );
+
+        if (! $result['ok']) {
+            return redirect()->to('/finance/cashier/student/' . $studentId)->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to('/finance/cashier/student/' . $studentId)->with('message', 'Installment plan updated.');
+    }
 }

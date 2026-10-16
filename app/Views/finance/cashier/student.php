@@ -66,6 +66,32 @@
         <button type="submit" class="ac-btn ac-btn-primary" data-confirm="Record this payment and issue an Official Receipt?">Record &amp; Issue OR</button>
     </form>
 </div>
+
+<div class="ac-card" style="margin-bottom:20px;">
+    <h3>Change Installment Plan</h3>
+    <form method="post" action="<?= site_url('finance/cashier/student/' . $s['student_id'] . '/installments') ?>" style="display:grid; grid-template-columns:1.5fr 1.5fr auto; gap:10px; align-items:end;">
+        <?= csrf_field() ?>
+        <div class="ac-field" style="margin:0;">
+            <label>Academic Year</label>
+            <select name="academic_year" class="ac-input" required>
+                <?php foreach ($assessments as $a): ?>
+                    <option value="<?= esc($a['academic_year']) ?>"><?= esc($a['academic_year']) ?> (Total: <?= number_format((float) $a['total_amount'], 2) ?>)</option>
+                <?php endforeach ?>
+            </select>
+        </div>
+        <div class="ac-field" style="margin:0;">
+            <label>Installment Plan</label>
+            <select name="installment_count" class="ac-input" required>
+                <option value="1">Full Payment</option>
+                <option value="2">2 Payments</option>
+                <option value="3">3 Payments</option>
+                <option value="4">4 Payments</option>
+                <option value="5">5 Payments</option>
+            </select>
+        </div>
+        <button type="submit" class="ac-btn ac-btn-primary" data-confirm="Rebuild this student's installment schedule with the selected plan?">Update Plan</button>
+    </form>
+</div>
 <?php endif ?>
 
 <h3>Payment History</h3>

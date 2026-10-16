@@ -63,6 +63,28 @@ class StudentEnlistmentModel extends Model
     }
 
     /**
+     * Subject codes currently in the student's open cart for one academic
+     * year — read-only counterpart to openOrCreate() (no insert-if-missing
+     * side effect), used by EnrollmentModel::unmetCorequisites() to treat
+     * "already added together in this cart" as satisfying a corequisite.
+     *
+     * @return string[]
+     */
+    public function cartSubjectCodes(int $studentId, string $academicYear): array
+    {
+        $enlistment = $this->where('student_id', $studentId)
+            ->where('academic_year', $academicYear)
+            ->whereIn('status', self::OPEN_STATUSES)
+            ->first();
+
+        if ($enlistment === null) {
+            return [];
+        }
+
+        return array_column($this->itemsFor((int) $enlistment['id']), 'subject_code');
+    }
+
+    /**
      * Adds one (section, subject) to the cart. Re-validates eligibility via
      * EnrollmentModel::checkEligibility() (the same rules enrollOne() will
      * re-check for real at conversion time) and enforces the unit cap
@@ -151,10 +173,27 @@ class StudentEnlistmentModel extends Model
             return ['ok' => false, 'error' => 'Online enlistment is closed for the current term.'];
         }
 
-        $itemCount = $this->db->table('enlistment_items')->where('enlistment_id', $enlistmentId)->countAllResults();
+        $cartItems = $this->itemsFor($enlistmentId);
 
-        if ($itemCount === 0) {
+        if ($cartItems === []) {
             return ['ok' => false, 'error' => 'Add at least one subject to your cart before submitting.'];
+        }
+
+        $student = (new StudentModel())->find($studentId);
+
+        if ($student !== null) {
+            $enrollments = new EnrollmentModel();
+            $overrides   = new EnlistmentOverrideModel();
+
+            foreach ($cartItems as $item) {
+                $missing = $enrollments->unmetCorequisites((int) $student['user_id'], $item['subject_code'], $enlistment['academic_year']);
+
+                if ($missing === [] || $overrides->hasOverride($studentId, $item['subject_code'], $enlistment['academic_year'])) {
+                    continue;
+                }
+
+                return ['ok' => false, 'error' => "{$item['subject_code']} must be taken together with " . implode(', ', $missing) . '.'];
+            }
         }
 
         $this->update($enlistmentId, [
@@ -198,6 +237,37 @@ class StudentEnlistmentModel extends Model
             'dean_noted_at' => date('Y-m-d H:i:s'),
             'dean_notes'    => $notes,
         ], 'dean_noted', 'enlistment.dean_noted', $deanId, 'dean', $notes);
+    }
+
+    /**
+     * Lets a student nudge whichever office currently owns the next review
+     * step for their own cart, reusing the exact same notify targets this
+     * model already resolves for its own automatic transition notifications
+     * (see decide(), below) rather than duplicating that resolution logic.
+     *
+     * @return array{ok: bool, error?: string}
+     */
+    public function sendReminder(int $id, int $studentId): array
+    {
+        $enlistment = $this->find($id);
+
+        if ($enlistment === null || (int) $enlistment['student_id'] !== $studentId) {
+            return ['ok' => false, 'error' => 'Cart not found.'];
+        }
+
+        $status = $enlistment['status'];
+
+        if ($status === 'submitted') {
+            $this->notifyOwningChairs($studentId, 'enlistment.reminder', 'Reminder: a student enlistment cart is still awaiting your recommendation.');
+        } elseif ($status === 'chair_recommended') {
+            $this->notifyDeanOfStudent($studentId, 'enlistment.reminder', 'Reminder: a student enlistment cart is still awaiting your note.');
+        } elseif ($status === 'dean_noted') {
+            $this->notifyGroup('registrar', 'enlistment.reminder', 'Reminder: a student enlistment cart is still awaiting registrar approval.');
+        } else {
+            return ['ok' => false, 'error' => 'Nothing is currently awaiting review.'];
+        }
+
+        return ['ok' => true];
     }
 
     /**

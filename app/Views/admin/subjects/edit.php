@@ -142,6 +142,45 @@
 </div>
 
 <div class="ac-card" style="max-width:640px; margin-top:16px;">
+    <h3 style="margin:0 0 4px; font-size:15px;">Corequisites</h3>
+    <p style="font-size:12px; color:var(--color-text-secondary); margin:0 0 12px;">
+        A student must take every corequisite in the <b>same term</b> as
+        <b><?= esc($subject['subject_code']) ?></b> — not necessarily passed beforehand, just enrolled together
+        (e.g. a lecture and its lab). A mutual pairing is normal: add the corequisite on both subjects' pages.
+    </p>
+
+    <?php if ($corequisites === []): ?>
+        <p style="font-size:13px; color:var(--color-text-secondary); margin:0 0 12px;">No corequisites.</p>
+    <?php else: ?>
+        <ul style="list-style:none; padding:0; margin:0 0 12px;">
+            <?php foreach ($corequisites as $c): ?>
+                <li style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--color-border, #e5e7eb);">
+                    <span><b><?= esc($c['subject_code']) ?></b> — <?= esc($c['subject_name']) ?></span>
+                    <form method="post" action="<?= site_url('admin/subjects/' . $subject['subject_id'] . '/corequisites/' . $c['subject_id'] . '/remove') ?>" data-confirm="Remove <?= esc($c['subject_code'], 'attr') ?> as a corequisite?">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="ac-btn ac-btn-secondary">Remove</button>
+                    </form>
+                </li>
+            <?php endforeach ?>
+        </ul>
+    <?php endif ?>
+
+    <form method="post" action="<?= site_url('admin/subjects/' . $subject['subject_id'] . '/corequisites') ?>" style="display:flex; gap:10px; align-items:flex-end;">
+        <?= csrf_field() ?>
+        <div class="ac-field" style="flex:1; margin:0;">
+            <label for="corequisite_subject_id">Add corequisite</label>
+            <select id="corequisite_subject_id" name="corequisite_subject_id" class="ac-input" required <?= $coreqCandidates === [] ? 'disabled' : '' ?>>
+                <option value=""><?= $coreqCandidates === [] ? 'No eligible subjects' : 'Choose a subject…' ?></option>
+                <?php foreach ($coreqCandidates as $c): ?>
+                    <option value="<?= esc($c['subject_id'], 'attr') ?>"><?= esc($c['subject_code']) ?> — <?= esc($c['subject_name']) ?></option>
+                <?php endforeach ?>
+            </select>
+        </div>
+        <button type="submit" class="ac-btn ac-btn-primary" <?= $coreqCandidates === [] ? 'disabled' : '' ?>>Add</button>
+    </form>
+</div>
+
+<div class="ac-card" style="max-width:640px; margin-top:16px;">
     <h3 style="margin:0 0 4px; font-size:15px;">Components</h3>
     <p style="font-size:12px; color:var(--color-text-secondary); margin:0 0 12px;">
         Optional: split this subject into independently schedulable parts (e.g. Lecture + Laboratory). Leave this empty

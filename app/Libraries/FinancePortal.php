@@ -57,6 +57,10 @@ class FinancePortal
                         'title' => 'Fee Types',
                         'text'  => "The itemized fee lines (Miscellaneous, Laboratory, etc.) added on top of per-unit tuition in a student's assessment. Priced per program/year via Tuition Rates.",
                     ]],
+                    'settings'        => ['label' => 'Settings',         'icon' => 'tune',            'url' => 'finance/settings', 'help' => [
+                        'title' => 'Finance Settings',
+                        'text'  => "Policies that affect what students can do online while they still owe a balance — e.g. whether an outstanding balance blocks online enlistment.",
+                    ]],
                 ],
             ],
         ];

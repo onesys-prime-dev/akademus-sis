@@ -64,7 +64,7 @@ class GeneratedDocumentModel extends Model
                 if (! $eligibility['ok']) {
                     return $eligibility;
                 }
-            } elseif ($assessment !== null && (float) $assessment['balance'] > 0) {
+            } elseif (! in_array($type, ['cor', 'student_form'], true) && $assessment !== null && (float) $assessment['balance'] > 0) {
                 return ['ok' => false, 'error' => 'This student has an outstanding balance for the current term. Settle it with the Finance office before releasing this document.'];
             }
         }
@@ -79,20 +79,23 @@ class GeneratedDocumentModel extends Model
         ))->build();
 
         $viewName = match ($type) {
-            'tor'   => 'documents/tor_pdf',
-            'cor'   => 'documents/cor_pdf',
-            default => 'documents/certificate_pdf',
+            'tor'          => 'documents/tor_pdf',
+            'cor'          => 'documents/cor_pdf',
+            'student_form' => 'documents/student_form_pdf',
+            default        => 'documents/certificate_pdf',
         };
 
-        $corActiveYear = $type === 'cor' ? (new AcademicYearModel())->activeFormatted() : null;
+        // 'student_form' needs the same enrolled-subjects table as 'cor'.
+        $wantsEnrollmentDetail = in_array($type, ['cor', 'student_form'], true);
+        $activeYearForDetail   = $wantsEnrollmentDetail ? (new AcademicYearModel())->activeFormatted() : null;
 
         $html = view($viewName, [
             'student'           => $student,
             'type'              => $type,
             'typeLabel'         => DocumentRequestModel::TYPE_LABELS[$type],
             'grades'            => $type === 'tor' ? (new GradeModel())->forStudent((int) $student['user_id']) : [],
-            'enrollments'       => $type === 'cor' && $corActiveYear !== null ? $this->corEnrollments((int) $student['user_id'], $corActiveYear) : [],
-            'assessment'        => $type === 'cor' && $corActiveYear !== null ? (new TuitionAssessmentModel())->forStudentYear($studentId, $corActiveYear) : null,
+            'enrollments'       => $wantsEnrollmentDetail && $activeYearForDetail !== null ? $this->corEnrollments((int) $student['user_id'], $activeYearForDetail) : [],
+            'assessment'        => $wantsEnrollmentDetail && $activeYearForDetail !== null ? (new TuitionAssessmentModel())->forStudentYear($studentId, $activeYearForDetail) : null,
             'verificationCode'  => $verificationCode,
             'qrDataUri'         => $qr->getDataUri(),
             'issuedAt'          => date('F j, Y'),

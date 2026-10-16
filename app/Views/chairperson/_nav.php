@@ -50,7 +50,7 @@ return [
         ]],
         'student-progress'        => ['label' => 'Student Progress',        'icon' => 'school',              'url' => 'chairperson/student-progress', 'help' => [
             'title' => 'Student Progress',
-            'text'  => "Look up any student in your department to see their enrollment history, grades, and curriculum progress at a glance — useful for advising or checking whether someone is on track to graduate.",
+            'text'  => "Look up any student in your department to see their enrollment history, grades, and curriculum progress at a glance — useful for advising or checking whether someone is on track to graduate. Grant an enlistment override here to clear a student to enlist in a subject they're otherwise blocked from (e.g. an irregular/catch-up case) — audit-logged, with the student notified.",
         ]],
         'grade-approvals'         => ['label' => 'Grade Approvals',         'icon' => 'grade',              'url' => 'chairperson/grade-approvals', 'help' => [
             'title' => 'Grade Approvals',

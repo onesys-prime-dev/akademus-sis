@@ -19,7 +19,7 @@ class DocumentRequestModel extends Model
     protected $createdField  = 'created_at';
     protected $updatedField  = '';
 
-    public const TYPES = ['tor', 'certificate_enrollment', 'certificate_graduation', 'good_moral', 'certificate_candidacy', 'cor'];
+    public const TYPES = ['tor', 'certificate_enrollment', 'certificate_graduation', 'good_moral', 'certificate_candidacy', 'cor', 'student_form'];
 
     public const TYPE_LABELS = [
         'tor'                    => 'Transcript of Records',
@@ -28,6 +28,7 @@ class DocumentRequestModel extends Model
         'good_moral'             => 'Certificate of Good Moral Character',
         'certificate_candidacy'  => 'Certificate of Candidacy for Graduation',
         'cor'                    => 'Certificate of Registration',
+        'student_form'           => 'Student Form',
     ];
 
     /**

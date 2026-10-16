@@ -10,34 +10,50 @@
 .sd-hero p { margin:0; color:var(--color-text-secondary); font-size:13px; }
 .sd-eyebrow { color:#0b4aa2; font-size:10px; font-weight:750; letter-spacing:.1em; }
 
-.sd-card { border:1px solid #d9e0ea; border-radius:8px; background:var(--color-surface); box-shadow:0 1px 2px rgba(31,54,91,.04); }
+.sd-card { border:1px solid #d9e0ea; border-radius:10px; background:var(--color-surface); box-shadow:0 1px 2px rgba(31,54,91,.04); }
 
 .sd-notice { padding:13px 16px; border-radius:8px; border:1px solid #d3e6dc; background:#f0f8f4; color:#47735d; font-size:12.5px; line-height:1.6; }
 .sd-notice p { margin:0; }
 .sd-notice--error { color:#a14f56; border-color:#edcfd3; background:#fff5f6; }
 
 .sd-requests { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; align-items:stretch; }
-.sd-request { display:flex; gap:14px; padding:18px; }
-.sd-request__icon { display:grid; place-items:center; flex-shrink:0; width:42px; height:42px; border-radius:10px; background:var(--color-primary-soft); color:#0b4aa2; }
+.sd-request {
+    position:relative; display:flex; gap:16px; padding:20px;
+    background:linear-gradient(180deg,#fff 0%,#fbfcff 100%);
+    transition:border-color .2s,box-shadow .2s,transform .2s;
+}
+.sd-request::before {
+    content:''; position:absolute; inset:0 0 auto 0; height:3px; border-radius:10px 10px 0 0;
+    background:linear-gradient(90deg,#0b57d0,#3b82f6); opacity:0; transition:opacity .2s;
+}
+.sd-request:hover { border-color:#c7d4e8; box-shadow:0 10px 28px rgba(18,37,69,.08); transform:translateY(-1px); }
+.sd-request:hover::before { opacity:1; }
+.sd-request__icon {
+    display:grid; place-items:center; flex-shrink:0; width:46px; height:46px; border-radius:12px;
+    background:linear-gradient(145deg,#0b57d0,#0a4bb5); color:#fff;
+    box-shadow:0 4px 12px rgba(11,87,208,.28), inset 0 1px 0 rgba(255,255,255,.2);
+}
+.sd-request__icon .material-symbols-outlined { font-size:22px; }
 /* A flex column so the form/ineligible-note sits flush at the same
    baseline across both cards, whatever height its own description
    wraps to (a 2-line description on one card previously left a gap
    between its text and its form that the other card didn't have, so
    the two "Request ___" rows didn't line up). */
 .sd-request__body { display:flex; flex-direction:column; min-width:0; flex:1; }
-.sd-request__body h2 { margin:0 0 5px; color:var(--color-text-primary); font-size:14.5px; font-weight:700; }
-.sd-request__body p { margin:0; color:var(--color-text-secondary); font-size:12px; line-height:1.55; }
-.sd-request__form { display:flex; gap:8px; margin-top:auto; padding-top:13px; }
-.sd-input { flex:1; min-width:0; height:40px; padding:0 12px; border:1px solid #ccd7e8; border-radius:7px; background:#fbfcff; color:var(--color-text-primary); font:inherit; font-size:13px; transition:border-color .15s,box-shadow .15s,background .15s; }
+.sd-request__body h2 { margin:0 0 5px; color:var(--color-text-primary); font-size:15px; font-weight:750; letter-spacing:-.01em; }
+.sd-request__body p { margin:0; color:var(--color-text-secondary); font-size:12.5px; line-height:1.6; }
+.sd-request__form { display:flex; gap:9px; margin-top:auto; padding-top:14px; border-top:1px solid #eef1f6; }
+.sd-input { flex:1; min-width:0; height:40px; padding:0 13px; border:1px solid #d7deea; border-radius:8px; background:#fbfcff; color:var(--color-text-primary); font:inherit; font-size:13px; transition:border-color .15s,box-shadow .15s,background .15s; }
 .sd-input:hover { border-color:#aebed5; background:#fff; }
 .sd-input:focus { outline:none; border-color:#0b57d0; background:#fff; box-shadow:0 0 0 3px rgba(11,87,208,.12); }
-.sd-ineligible { display:flex; align-items:flex-start; gap:9px; margin-top:auto; padding:11px 13px; border-radius:7px; background:var(--color-surface-sunken); color:var(--color-text-secondary); font-size:12px; line-height:1.55; }
+.sd-ineligible { display:flex; align-items:flex-start; gap:10px; margin-top:auto; padding:12px 14px; border-radius:8px; background:var(--color-surface-sunken); color:var(--color-text-secondary); font-size:12.5px; line-height:1.55; }
 .sd-ineligible .material-symbols-outlined { font-size:17px; color:#8290a5; margin-top:1px; }
 
-.sd-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px; padding:0 16px; border:1px solid transparent; border-radius:7px; font:inherit; font-size:13px; font-weight:650; white-space:nowrap; text-decoration:none; cursor:pointer; transition:background-color .15s,border-color .15s,box-shadow .15s; }
+.sd-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px; padding:0 17px; border:1px solid transparent; border-radius:8px; font:inherit; font-size:13px; font-weight:650; white-space:nowrap; text-decoration:none; cursor:pointer; transition:background .15s,border-color .15s,box-shadow .15s,transform .15s; }
 .sd-button .material-symbols-outlined { font-size:17px; }
-.sd-button--primary { background:#0b57d0; color:#fff; }
-.sd-button--primary:hover { background:#0a4bb5; }
+.sd-button--primary { background:linear-gradient(180deg,#1266ea,#0b57d0); color:#fff; box-shadow:0 2px 6px rgba(11,87,208,.3); }
+.sd-button--primary:hover { background:linear-gradient(180deg,#1361db,#0a4bb5); box-shadow:0 4px 12px rgba(11,87,208,.38); transform:translateY(-1px); }
+.sd-button--primary:active { transform:translateY(0); box-shadow:0 2px 6px rgba(11,87,208,.3); }
 .sd-button--outline { min-height:34px; padding:0 12px; border-color:#ccd7e8; background:#fff; color:#2a456f; font-size:12px; }
 .sd-button--outline:hover { background:#f4f7fc; border-color:#aebed5; }
 .sd-icon-button { display:inline-grid; place-items:center; width:34px; height:34px; border:1px solid #e3e8f0; border-radius:8px; background:#fff; color:#76879f; cursor:pointer; transition:background-color .15s,color .15s; }
@@ -102,9 +118,20 @@
 @media (max-width:760px) {
     .sd-page { gap:14px; }
     .sd-hero { align-items:flex-start; flex-direction:column; gap:9px; padding:0 0 12px; }
-    .sd-request { padding:16px; }
-    .sd-request__form { flex-direction:column; align-items:stretch; }
-    .sd-request__form .sd-button { width:100%; }
+    .sd-requests { gap:12px; }
+    .sd-request {
+        padding:17px; gap:13px; border-radius:12px;
+        box-shadow:0 2px 10px rgba(31,54,91,.06);
+    }
+    .sd-request::before { border-radius:12px 12px 0 0; }
+    .sd-request__icon { width:40px; height:40px; border-radius:11px; }
+    .sd-request__icon .material-symbols-outlined { font-size:20px; }
+    .sd-request__body h2 { font-size:14.5px; }
+    .sd-request__body p { font-size:12px; }
+    .sd-request__form { flex-direction:column; align-items:stretch; gap:10px; }
+    .sd-request__form .sd-input { height:42px; }
+    .sd-request__form .sd-button { width:100%; min-height:42px; }
+    .sd-ineligible { font-size:12px; }
     .sd-table-head { padding:16px; }
     .sd-table-scroll { overflow:visible; padding:10px; }
     .sd-table { display:block; min-width:0; }
@@ -120,9 +147,17 @@
     /* The preview modal becomes a near-fullscreen sheet on a phone instead
        of a centered 820px panel that wouldn't fit. */
     .sd-dialog { inset:3vh auto auto 50%; width:calc(100vw - 20px); height:94vh; border-radius:12px; }
-    .sd-dialog-header { padding:14px 16px; }
+    .sd-dialog-header { padding:14px 16px; gap:10px; }
     .sd-dialog-header h2 { font-size:15px; }
 }
 @media (max-width:440px) {
     .sd-hero h1 { font-size:22px; }
+    /* Maximize the viewing area on small phones — edge to edge, no
+       rounded corners eating into the already-tight PDF canvas. The base
+       rules center the dialog via left:50% + translateX(-50%); that has
+       to be cancelled here too, or the leftover translateX(-50%) shifts
+       this full-width sheet half its own width off-screen. */
+    .sd-dialog { inset:0; left:0; width:100vw; height:100vh; border-radius:0; border:0; transform:none; }
+    .sd-dialog[open] { transform:none; }
+    @starting-style { .sd-dialog[open] { transform:none; } }
 }

@@ -5,6 +5,8 @@ namespace App\Controllers\Chairperson;
 use App\Controllers\BaseController;
 use App\Libraries\SchedulingAuthorization;
 use App\Libraries\StudentProgressService;
+use App\Models\AcademicYearModel;
+use App\Models\EnlistmentOverrideModel;
 use App\Models\StudentModel;
 
 /**
@@ -119,6 +121,11 @@ class StudentProgressController extends BaseController
             return $this->fail('Student not found.');
         }
 
+        $activeTerm = (new AcademicYearModel())->activeFormatted();
+        $overrides  = $activeTerm !== null
+            ? (new EnlistmentOverrideModel())->activeForStudent($studentId, $activeTerm)
+            : [];
+
         $identity = db_connect()->table('students s')
             ->select('u.first_name, u.last_name, s.student_number, p.program_name, c.curriculum_code, c.curriculum_name, sec.year_level, sec.section')
             ->join('users u', 'u.id = s.user_id')
@@ -129,7 +136,84 @@ class StudentProgressController extends BaseController
             ->get()
             ->getRowArray();
 
-        return $this->response->setJSON(['ok' => true, 'student' => $identity, 'progress' => $progress]);
+        return $this->response->setJSON([
+            'ok'          => true,
+            'student'     => $identity,
+            'progress'    => $progress,
+            'academicYear' => $activeTerm,
+            'overrides'   => array_map(static fn (array $o): array => [
+                'id'           => (int) $o['id'],
+                'subject_code' => $o['subject_code'],
+                'reason'       => $o['reason'],
+            ], $overrides),
+        ]);
+    }
+
+    /**
+     * Grants an enlistment override for a subject this chairperson's
+     * authorized student is currently blocked from (missing prerequisite or
+     * out-of-curriculum). Scoped the same way detail() is — a student
+     * outside the chair's authorized programs is refused.
+     */
+    public function grantOverride()
+    {
+        $userId      = (int) auth()->id();
+        $studentId   = (int) $this->request->getPost('student_id');
+        $subjectCode = (string) $this->request->getPost('subject_code');
+        $reason      = (string) $this->request->getPost('reason');
+
+        $student = (new StudentModel())->find($studentId);
+
+        if ($student === null || $student['program_id'] === null
+            || ! in_array((int) $student['program_id'], array_column($this->authorizedPrograms($userId), 'program_id'), true)) {
+            return $this->fail('Student not found.');
+        }
+
+        $activeTerm = (new AcademicYearModel())->activeFormatted();
+
+        if ($activeTerm === null) {
+            return $this->fail('No active academic term.');
+        }
+
+        $result = (new EnlistmentOverrideModel())->grant($studentId, $subjectCode, $activeTerm, $reason, $userId, 'chairperson');
+
+        if (! $result['ok']) {
+            return $this->fail($result['error']);
+        }
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * Revokes an override this chairperson (or another chair/registrar)
+     * previously granted, for one of this chair's authorized students.
+     */
+    public function revokeOverride()
+    {
+        $userId     = (int) auth()->id();
+        $overrideId = (int) $this->request->getPost('override_id');
+
+        $overrides = new EnlistmentOverrideModel();
+        $override  = $overrides->find($overrideId);
+
+        if ($override === null) {
+            return $this->fail('Override not found.');
+        }
+
+        $student = (new StudentModel())->find((int) $override['student_id']);
+
+        if ($student === null || $student['program_id'] === null
+            || ! in_array((int) $student['program_id'], array_column($this->authorizedPrograms($userId), 'program_id'), true)) {
+            return $this->fail('Student not found.');
+        }
+
+        $result = $overrides->revoke($overrideId, $userId);
+
+        if (! $result['ok']) {
+            return $this->fail($result['error']);
+        }
+
+        return $this->response->setJSON(['ok' => true]);
     }
 
     /**

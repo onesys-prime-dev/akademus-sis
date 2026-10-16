@@ -95,6 +95,8 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('subjects/toggle-status/(:num)', 'Admin\SubjectController::toggleStatus/$1');
     $routes->post('subjects/(:num)/prerequisites', 'Admin\SubjectController::addPrerequisite/$1');
     $routes->post('subjects/(:num)/prerequisites/(:num)/remove', 'Admin\SubjectController::removePrerequisite/$1/$2');
+    $routes->post('subjects/(:num)/corequisites', 'Admin\SubjectController::addCorequisite/$1');
+    $routes->post('subjects/(:num)/corequisites/(:num)/remove', 'Admin\SubjectController::removeCorequisite/$1/$2');
 
     // Step 9: subject component templates (Lecture/Laboratory/etc. split)
     $routes->post('subjects/(:num)/components', 'Admin\SubjectController::addComponentTemplate/$1');
@@ -225,6 +227,13 @@ $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) 
     $routes->post('notifications/mark-read', 'NotificationController::markRead');
     $routes->post('notifications/mark-all-read', 'NotificationController::markAllRead');
 
+    // student progress / enlistment override tool — institution-wide
+    // counterpart to Chairperson\StudentProgressController.
+    $routes->get('student-progress', 'Registrar\StudentProgressController::index');
+    $routes->get('student-progress/detail', 'Registrar\StudentProgressController::detail');
+    $routes->post('student-progress/grant-override', 'Registrar\StudentProgressController::grantOverride');
+    $routes->post('student-progress/revoke-override', 'Registrar\StudentProgressController::revokeOverride');
+
     // grade approvals — final two stages of the chain (dean_noted ->
     // registrar_approved -> locked), institution-wide.
     $routes->get('grade-approvals', 'Registrar\GradeApprovalController::index');
@@ -298,6 +307,7 @@ $routes->group('finance', ['filter' => 'group:finance'], function ($routes) use 
     $routes->get('cashier/search-students', 'Finance\CashierController::searchStudents', ['filter' => 'permission:finance.cashier']);
     $routes->get('cashier/student/(:num)', 'Finance\CashierController::studentLedger/$1', ['filter' => 'permission:finance.cashier']);
     $routes->post('cashier/student/(:num)/payment', 'Finance\CashierController::recordPayment/$1', ['filter' => 'permission:finance.cashier']);
+    $routes->post('cashier/student/(:num)/installments', 'Finance\CashierController::changeInstallments/$1', ['filter' => 'permission:finance.cashier']);
 
     // reports
     $routes->get('reports', 'Finance\ReportController::index', ['filter' => 'permission:finance.view']);
@@ -317,6 +327,10 @@ $routes->group('finance', ['filter' => 'group:finance'], function ($routes) use 
     $routes->get('holds/student/(:num)', 'Finance\HoldController::studentHolds/$1', ['filter' => 'permission:finance.manage']);
     $routes->post('holds/student/(:num)/place', 'Finance\HoldController::place/$1', ['filter' => 'permission:finance.manage']);
     $routes->post('holds/(:num)/release', 'Finance\HoldController::release/$1', ['filter' => 'permission:finance.manage']);
+
+    // finance settings (e.g. whether an outstanding balance blocks online enlistment)
+    $routes->get('settings', 'Finance\SettingsController::index', ['filter' => 'permission:finance.manage']);
+    $routes->post('settings/update', 'Finance\SettingsController::update', ['filter' => 'permission:finance.manage']);
 
     // notifications (shared controller, scoped by auth()->id())
     $routes->get('notifications', 'NotificationController::index');
@@ -406,6 +420,8 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->post('enlistment/add-item', 'StudentEnlistment::addItem');
     $routes->post('enlistment/remove-item', 'StudentEnlistment::removeItem');
     $routes->post('enlistment/submit', 'StudentEnlistment::submit');
+    $routes->post('enlistment/send-reminder', 'StudentEnlistment::sendReminder');
+    $routes->get('enlistment/print-form', 'StudentEnlistment::printForm');
     $routes->get('documents', 'StudentDocuments::index');
     $routes->post('documents/request-cor', 'StudentDocuments::requestCor');
     $routes->post('documents/request-coe', 'StudentDocuments::requestCoe');
@@ -510,6 +526,8 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     // student academic progress monitoring + graduation candidate review (one page, filtered by "view")
     $routes->get('student-progress'        , 'Chairperson\StudentProgressController::index');
     $routes->get('student-progress/detail' , 'Chairperson\StudentProgressController::detail');
+    $routes->post('student-progress/grant-override' , 'Chairperson\StudentProgressController::grantOverride');
+    $routes->post('student-progress/revoke-override', 'Chairperson\StudentProgressController::revokeOverride');
 
     // online enlistment — this chair's slice of the term's enlistment window,
     // plus the chair's step in the enlistment approval chain

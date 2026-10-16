@@ -7,6 +7,7 @@ use CodeIgniter\HTTP\ResponseInterface;
 use App\Models\ComponentTypeModel;
 use App\Models\SubjectComponentTemplateModel;
 use App\Models\SubjectModel;
+use App\Models\SubjectCorequisiteModel;
 use App\Models\SubjectPrerequisiteModel;
 
 class SubjectController extends BaseController
@@ -99,13 +100,16 @@ class SubjectController extends BaseController
         }
 
         $prerequisites = new SubjectPrerequisiteModel();
+        $corequisites  = new SubjectCorequisiteModel();
 
         return view('admin/subjects/edit', [
-            'subject'          => $subject,
-            'subDepartments'   => $this->subDepartments(),
-            'prerequisites'    => $prerequisites->forSubject((int) $id),
-            'candidates'       => $prerequisites->candidatesFor((int) $id),
-            'activeAdmin'      => 'subjects',
+            'subject'            => $subject,
+            'subDepartments'     => $this->subDepartments(),
+            'prerequisites'      => $prerequisites->forSubject((int) $id),
+            'candidates'         => $prerequisites->candidatesFor((int) $id),
+            'corequisites'       => $corequisites->forSubject((int) $id),
+            'coreqCandidates'    => $corequisites->candidatesFor((int) $id),
+            'activeAdmin'        => 'subjects',
             'componentTemplates' => (new SubjectComponentTemplateModel())->forSubject((int) $id, false),
             'componentTypes'     => (new ComponentTypeModel())->where('is_active', 1)->orderBy('name')->findAll(),
         ]);
@@ -303,6 +307,30 @@ class SubjectController extends BaseController
         return redirect()
             ->to('/admin/subjects/edit/' . $id)
             ->with($removed ? 'message' : 'errors', $removed ? 'Prerequisite removed.' : ['That prerequisite was not set.']);
+    }
+
+    public function addCorequisite($id)
+    {
+        if (! $this->validate(['corequisite_subject_id' => 'required|is_natural_no_zero'])) {
+            return redirect()->to('/admin/subjects/edit/' . $id)->with('errors', ['Choose a subject to add as a corequisite.']);
+        }
+
+        $result = (new SubjectCorequisiteModel())->addCorequisite((int) $id, (int) $this->request->getPost('corequisite_subject_id'));
+
+        if (! $result['ok']) {
+            return redirect()->to('/admin/subjects/edit/' . $id)->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to('/admin/subjects/edit/' . $id)->with('message', 'Corequisite added.');
+    }
+
+    public function removeCorequisite($id, $corequisiteId)
+    {
+        $removed = (new SubjectCorequisiteModel())->removeCorequisite((int) $id, (int) $corequisiteId);
+
+        return redirect()
+            ->to('/admin/subjects/edit/' . $id)
+            ->with($removed ? 'message' : 'errors', $removed ? 'Corequisite removed.' : ['That corequisite was not set.']);
     }
 
     public function toggleStatus($id) {

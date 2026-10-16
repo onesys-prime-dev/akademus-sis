@@ -55,6 +55,10 @@ class RegistrarPortal
                         'title' => 'Student Records',
                         'text'  => "Search and manage every student's record: enrollment status, curriculum assignment, grades, and tuition — the registrar's full administrative view of a student.",
                     ]],
+                    'student-progress' => ['label' => 'Student Progress', 'icon' => 'school', 'url' => 'registrar/student-progress', 'help' => [
+                        'title' => 'Student Progress',
+                        'text'  => "Curriculum completion and deficiencies across every program. Grant an enlistment override here to clear a specific student to enlist in a subject they're otherwise blocked from (e.g. an irregular/catch-up case) — audit-logged, with the student notified.",
+                    ]],
                 ],
             ],
         ];

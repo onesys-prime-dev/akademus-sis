@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AssessmentItemModel;
+use App\Models\AuditLogModel;
 use App\Models\LedgerAdjustmentModel;
 use App\Models\NotificationModel;
 use App\Models\OfficialReceiptModel;
@@ -206,9 +207,20 @@ class TuitionAssessmentService
         return round($total, 2);
     }
 
-    private function generateSchedule(int $assessmentId, float $totalAmount, int $installmentCount): void
+    /**
+     * Builds (or rebuilds) an assessment's installment schedule. Safe to call
+     * more than once — any existing rows for this assessment are deleted
+     * first. That's safe because payments are never pinned to a specific
+     * row: student_payments.schedule_id / payment_proofs.schedule_id are
+     * both nullable with ON DELETE SET NULL, and withBalances() applies the
+     * assessment's single amount_paid figure as a FIFO waterfall against
+     * whatever rows currently exist — so replacing the row shape never
+     * loses or misattributes money already paid.
+     */
+    public function generateSchedule(int $assessmentId, float $totalAmount, int $installmentCount): void
     {
         $schedules = new PaymentScheduleModel();
+        $schedules->where('assessment_id', $assessmentId)->delete();
 
         if ($installmentCount <= 1) {
             $schedules->insert([
@@ -267,6 +279,45 @@ class TuitionAssessmentService
             3 => 'rd',
             default => 'th',
         };
+    }
+
+    /**
+     * Finance-initiated change to a student's installment plan — e.g. a
+     * student asks in person to switch from 5 installments to 3. Rebuilds
+     * the schedule for the assessment's current total_amount (not just the
+     * remaining balance); see generateSchedule()'s docblock for why that's
+     * always safe even after partial payment.
+     *
+     * @return array{ok: bool, error?: string, assessment?: array}
+     */
+    public function changeInstallmentPlan(int $studentId, string $academicYear, int $installmentCount, int $changedBy): array
+    {
+        $assessments = new TuitionAssessmentModel();
+        $assessment  = $assessments->forStudentYear($studentId, $academicYear);
+
+        if ($assessment === null || (float) $assessment['total_amount'] <= 0) {
+            return ['ok' => false, 'error' => 'No assessment exists yet for this student/academic year.'];
+        }
+
+        $assessmentId = (int) $assessment['assessment_id'];
+        $installmentCount = max(1, min(5, $installmentCount));
+
+        $this->generateSchedule($assessmentId, (float) $assessment['total_amount'], $installmentCount);
+
+        (new AuditLogModel())->record(
+            'tuition.installment_plan_changed',
+            'tuition_assessment',
+            $assessmentId,
+            null,
+            ['installment_count' => $installmentCount],
+            null,
+            $changedBy,
+            'finance'
+        );
+
+        $this->notifyStudent($studentId, 'Your payment plan was updated to ' . $installmentCount . ' installment(s) by the Finance office.');
+
+        return ['ok' => true, 'assessment' => $assessments->find($assessmentId)];
     }
 
     /**
