@@ -70,11 +70,62 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         <div class="field">
             <label>Display Name</label>
             <input type="text" name="username" value="<?= esc($account->username) ?>" maxlength="100" required>
+            <div class="hint">Shown across the portal (sidebar, headers) — doesn't have to be your legal name.</div>
         </div>
-        <div class="field">
-            <label>Email</label>
-            <input type="email" value="<?= esc($account->email) ?>" disabled>
-            <div class="hint">Email is your login and can't be changed here — contact an administrator.</div>
+        <div class="field-row">
+            <div class="field">
+                <label>First Name</label>
+                <input type="text" name="first_name" value="<?= esc(old('first_name', $studentDetail['first_name'] ?? '')) ?>" maxlength="100">
+            </div>
+            <div class="field">
+                <label>Middle Name</label>
+                <input type="text" name="middle_name" value="<?= esc(old('middle_name', $studentDetail['middle_name'] ?? '')) ?>" maxlength="100">
+            </div>
+            <div class="field">
+                <label>Last Name</label>
+                <input type="text" name="last_name" value="<?= esc(old('last_name', $studentDetail['last_name'] ?? '')) ?>" maxlength="100">
+            </div>
+        </div>
+        <div class="field-row">
+            <div class="field">
+                <label>Mobile Number</label>
+                <input type="text" name="contact_number" value="<?= esc(old('contact_number', $studentDetail['contact_number'] ?? '')) ?>" maxlength="30" placeholder="e.g. 09171234567">
+            </div>
+            <div class="field">
+                <label>Email</label>
+                <input type="email" value="<?= esc($account->email) ?>" disabled>
+                <div class="hint">Email is your login and can't be changed here — contact an administrator.</div>
+            </div>
+        </div>
+        <div class="field-row">
+            <div class="field">
+                <label>Date of Birth</label>
+                <input type="date" name="date_of_birth" value="<?= esc(old('date_of_birth', $studentDetail['date_of_birth'] ?? '')) ?>">
+            </div>
+            <div class="field">
+                <label>Gender</label>
+                <input type="text" name="gender" value="<?= esc(old('gender', $studentDetail['gender'] ?? '')) ?>" maxlength="20" placeholder="e.g. Male, Female">
+            </div>
+        </div>
+        <div class="field-row">
+            <div class="field">
+                <label>Home Address</label>
+                <input type="text" name="home_address" value="<?= esc(old('home_address', $studentDetail['home_address'] ?? '')) ?>" maxlength="255">
+            </div>
+            <div class="field">
+                <label>City</label>
+                <input type="text" name="city" value="<?= esc(old('city', $studentDetail['city'] ?? '')) ?>" maxlength="100">
+            </div>
+        </div>
+        <div class="field-row">
+            <div class="field">
+                <label>Emergency Contact Name</label>
+                <input type="text" name="emergency_contact_name" value="<?= esc(old('emergency_contact_name', $studentDetail['emergency_contact_name'] ?? '')) ?>" maxlength="150">
+            </div>
+            <div class="field">
+                <label>Emergency Contact Number</label>
+                <input type="text" name="emergency_contact_number" value="<?= esc(old('emergency_contact_number', $studentDetail['emergency_contact_number'] ?? '')) ?>" maxlength="20">
+            </div>
         </div>
         <button type="submit" class="btn btn-primary">Save Changes</button>
     </form>
@@ -106,30 +157,41 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
 <div class="panel">
     <h2>Academic Information</h2>
-    <?php if ($section === null): ?>
+    <p class="panel-sub">Read-only — the same record shown on your Enlistment page. Contact the registrar to correct anything here.</p>
+    <?php if ($studentDetail === null): ?>
         <div class="empty-state">
             <div class="material-symbols-outlined">domain_disabled</div>
-            <p>You're not assigned to a section yet. Contact an administrator.</p>
+            <p>No student record is linked to your account yet. Contact an administrator.</p>
         </div>
     <?php else: ?>
         <div class="field-row">
             <div class="field">
-                <label>Program</label>
-                <input type="text" value="<?= esc($section['program']) ?>" disabled>
+                <label>Student No.</label>
+                <input type="text" value="<?= esc($studentDetail['student_number'] ?? '—') ?>" disabled>
             </div>
             <div class="field">
-                <label>Year Level</label>
-                <input type="text" value="<?= esc($section['year_level']) ?>" disabled>
+                <label>Status</label>
+                <input type="text" value="<?= esc($studentDetail['student_status'] !== null ? ucfirst($studentDetail['student_status']) : '—') ?>" disabled>
             </div>
         </div>
         <div class="field-row">
             <div class="field">
-                <label>Section</label>
-                <input type="text" value="<?= esc($section['section']) ?>" disabled>
+                <label>Program</label>
+                <input type="text" value="<?= esc($studentDetail['program_name'] ?? 'Not set') ?>" disabled>
+            </div>
+            <div class="field">
+                <label>Year &amp; Section</label>
+                <input type="text" value="<?= $studentDetail['section'] !== null ? esc($studentDetail['section']['year_level'] . ' · ' . $studentDetail['section']['section']) : 'Not assigned' ?>" disabled>
+            </div>
+        </div>
+        <div class="field-row">
+            <div class="field">
+                <label>Curriculum</label>
+                <input type="text" value="<?= esc($studentDetail['curriculum_code'] ?? 'Not assigned') ?>" disabled>
             </div>
             <div class="field">
                 <label>Academic Year</label>
-                <input type="text" value="<?= esc($section['academic_year']) ?>" disabled>
+                <input type="text" value="<?= esc($section['academic_year'] ?? '—') ?>" disabled>
             </div>
         </div>
     <?php endif ?>

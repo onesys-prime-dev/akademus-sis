@@ -19,6 +19,12 @@ class StudentModel extends Model
         'student_status',
         'intended_school_year',
         'intended_semester',
+        'date_of_birth',
+        'gender',
+        'home_address',
+        'city',
+        'emergency_contact_name',
+        'emergency_contact_number',
     ];
 
     protected $useTimestamps = true;

@@ -119,6 +119,12 @@ $STATUS_LABELS = [
                 <div class="en-info-field"><span>Program</span><strong><?= esc($studentDetail['program_name'] ?? 'Not set') ?></strong></div>
                 <div class="en-info-field"><span>Year &amp; Section</span><strong><?= $studentDetail['section'] !== null ? esc($studentDetail['section']['year_level'] . ' · ' . $studentDetail['section']['section']) : 'Not assigned' ?></strong></div>
                 <div class="en-info-field"><span>Curriculum</span><strong><?= esc($studentDetail['curriculum_code'] ?? 'Not assigned') ?></strong></div>
+                <div class="en-info-field"><span>Date of Birth</span><strong><?= esc($studentDetail['date_of_birth'] ?? 'Not set') ?></strong></div>
+                <div class="en-info-field"><span>Gender</span><strong><?= esc($studentDetail['gender'] ?? 'Not set') ?></strong></div>
+                <div class="en-info-field"><span>Home Address</span><strong><?= esc($studentDetail['home_address'] ?? 'Not set') ?></strong></div>
+                <div class="en-info-field"><span>City</span><strong><?= esc($studentDetail['city'] ?? 'Not set') ?></strong></div>
+                <div class="en-info-field"><span>Emergency Contact</span><strong><?= esc($studentDetail['emergency_contact_name'] ?? 'Not set') ?></strong></div>
+                <div class="en-info-field"><span>Emergency Contact No.</span><strong><?= esc($studentDetail['emergency_contact_number'] ?? 'Not set') ?></strong></div>
             </div>
         <?php endif ?>
     </div>

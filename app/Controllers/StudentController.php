@@ -82,11 +82,15 @@ class StudentController extends BaseController
         $account = auth()->user();
         $section = $this->mySection();
 
+        $student       = (new StudentModel())->where('user_id', (int) auth()->id())->first();
+        $studentDetail = $student !== null ? (new StudentModel())->findDetailed((int) $student['student_id']) : null;
+
         return view('student/profile', [
-            'pageTitle'  => 'Profile',
-            'activePage' => 'profile',
-            'account'    => $account,
-            'section'    => $section,
+            'pageTitle'     => 'Profile',
+            'activePage'    => 'profile',
+            'account'       => $account,
+            'section'       => $section,
+            'studentDetail' => $studentDetail,
         ]);
     }
 
@@ -261,16 +265,66 @@ class StudentController extends BaseController
 
     public function updateProfile()
     {
-        $username = trim((string) $this->request->getPost('username'));
+        $username      = trim((string) $this->request->getPost('username'));
+        $firstName     = trim((string) $this->request->getPost('first_name'));
+        $middleName    = trim((string) $this->request->getPost('middle_name'));
+        $lastName      = trim((string) $this->request->getPost('last_name'));
+        $contactNumber = trim((string) $this->request->getPost('contact_number'));
+
+        $dateOfBirth  = trim((string) $this->request->getPost('date_of_birth'));
+        $gender       = trim((string) $this->request->getPost('gender'));
+        $homeAddress  = trim((string) $this->request->getPost('home_address'));
+        $city         = trim((string) $this->request->getPost('city'));
+        $emName       = trim((string) $this->request->getPost('emergency_contact_name'));
+        $emNumber     = trim((string) $this->request->getPost('emergency_contact_number'));
 
         if ($username === '' || mb_strlen($username) > 100) {
             return redirect()->back()->with('profile_error', 'Name is required (max 100 characters).');
+        }
+
+        if (mb_strlen($firstName) > 100 || mb_strlen($middleName) > 100 || mb_strlen($lastName) > 100 || mb_strlen($contactNumber) > 30) {
+            return redirect()->back()->with('profile_error', 'One of the fields is too long.');
+        }
+
+        if ($dateOfBirth !== '' && \DateTime::createFromFormat('Y-m-d', $dateOfBirth) === false) {
+            return redirect()->back()->with('profile_error', 'Date of birth is invalid.');
+        }
+
+        if (mb_strlen($gender) > 20 || mb_strlen($homeAddress) > 255 || mb_strlen($city) > 100
+            || mb_strlen($emName) > 150 || mb_strlen($emNumber) > 20) {
+            return redirect()->back()->with('profile_error', 'One of the fields is too long.');
         }
 
         $users = auth()->getProvider();
         $user  = auth()->user();
         $user->username = $username;
         $users->save($user);
+
+        // first_name/middle_name/last_name/contact_number aren't part of
+        // Shield's own User entity (its $allowedFields is limited to
+        // username/status/active/last_active — anything else is silently
+        // dropped on save()), so they're written directly here, the same
+        // convention used everywhere else this app touches a custom users
+        // column (see StudentModel::promoteFromApplicant()).
+        db_connect()->table('users')->where('id', $user->id)->update([
+            'first_name'     => $firstName !== '' ? $firstName : null,
+            'middle_name'    => $middleName !== '' ? $middleName : null,
+            'last_name'      => $lastName !== '' ? $lastName : null,
+            'contact_number' => $contactNumber !== '' ? $contactNumber : null,
+        ]);
+
+        $student = (new StudentModel())->where('user_id', $user->id)->first();
+
+        if ($student !== null) {
+            (new StudentModel())->update((int) $student['student_id'], [
+                'date_of_birth'            => $dateOfBirth !== '' ? $dateOfBirth : null,
+                'gender'                   => $gender !== '' ? $gender : null,
+                'home_address'             => $homeAddress !== '' ? $homeAddress : null,
+                'city'                     => $city !== '' ? $city : null,
+                'emergency_contact_name'   => $emName !== '' ? $emName : null,
+                'emergency_contact_number' => $emNumber !== '' ? $emNumber : null,
+            ]);
+        }
 
         return redirect()->to('/student/profile')->with('profile_message', 'Profile updated.');
     }

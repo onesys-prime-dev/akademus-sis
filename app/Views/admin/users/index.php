@@ -96,6 +96,14 @@
                             'department_id'     => $u['department_id'] !== null ? (int) $u['department_id'] : null,
                             'section_id'        => $u['section_id'] !== null ? (int) $u['section_id'] : null,
                             'employment_status' => $u['employment_status'],
+                            'personal'          => [
+                                'date_of_birth'            => $u['date_of_birth'],
+                                'gender'                   => $u['gender'],
+                                'home_address'             => $u['home_address'],
+                                'city'                     => $u['city'],
+                                'emergency_contact_name'   => $u['emergency_contact_name'],
+                                'emergency_contact_number' => $u['emergency_contact_number'],
+                            ],
                         ]) ?>)'
                         aria-label="Edit <?= esc($u['username']) ?>">
                     <span class="material-symbols-outlined" aria-hidden="true">edit</span>
@@ -228,6 +236,40 @@
                 </div>
                 <p id="acSectionHint" style="display:none; font-size:11.5px; color:var(--color-text-secondary); margin-top:-4px; margin-bottom:16px;">A section only appears here once its chairperson has plotted at least one class for it. Needed for block enrollment.</p>
 
+                <div id="acPersonalRow" style="display:none;">
+                    <p style="font-size:11.5px; font-weight:650; color:var(--color-text-secondary); margin:0 0 8px; text-transform:uppercase; letter-spacing:.04em;">Personal Details (optional — the student can also fill these in themselves)</p>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div class="ac-field">
+                            <label>Date of Birth</label>
+                            <input type="date" name="date_of_birth" class="ac-input">
+                        </div>
+                        <div class="ac-field">
+                            <label>Gender</label>
+                            <input type="text" name="gender" class="ac-input" maxlength="20" placeholder="e.g. Male, Female">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div class="ac-field">
+                            <label>Home Address</label>
+                            <input type="text" name="home_address" class="ac-input" maxlength="255">
+                        </div>
+                        <div class="ac-field">
+                            <label>City</label>
+                            <input type="text" name="city" class="ac-input" maxlength="100">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div class="ac-field">
+                            <label>Emergency Contact Name</label>
+                            <input type="text" name="emergency_contact_name" class="ac-input" maxlength="150">
+                        </div>
+                        <div class="ac-field">
+                            <label>Emergency Contact Number</label>
+                            <input type="text" name="emergency_contact_number" class="ac-input" maxlength="20">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="ac-notice" id="acChairNotice" style="display:none;">
                     <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-info); margin-top:1px;">info</span>
                     <span class="ac-notice__text">This will set the account as the selected college's dean, replacing the current one if any.</span>
@@ -322,6 +364,40 @@
                     </div>
                 </div>
                 <p id="acEditSectionHint" style="display:none; font-size:11.5px; color:var(--color-text-secondary); margin-top:-4px; margin-bottom:16px;">A section only appears here once its chairperson has plotted at least one class for it.</p>
+
+                <div id="acEditPersonalRow" style="display:none;">
+                    <p style="font-size:11.5px; font-weight:650; color:var(--color-text-secondary); margin:0 0 8px; text-transform:uppercase; letter-spacing:.04em;">Personal Details</p>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div class="ac-field">
+                            <label>Date of Birth</label>
+                            <input type="date" name="date_of_birth" id="acEditDob" class="ac-input">
+                        </div>
+                        <div class="ac-field">
+                            <label>Gender</label>
+                            <input type="text" name="gender" id="acEditGender" class="ac-input" maxlength="20" placeholder="e.g. Male, Female">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div class="ac-field">
+                            <label>Home Address</label>
+                            <input type="text" name="home_address" id="acEditHomeAddress" class="ac-input" maxlength="255">
+                        </div>
+                        <div class="ac-field">
+                            <label>City</label>
+                            <input type="text" name="city" id="acEditCity" class="ac-input" maxlength="100">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div class="ac-field">
+                            <label>Emergency Contact Name</label>
+                            <input type="text" name="emergency_contact_name" id="acEditEmName" class="ac-input" maxlength="150">
+                        </div>
+                        <div class="ac-field">
+                            <label>Emergency Contact Number</label>
+                            <input type="text" name="emergency_contact_number" id="acEditEmNumber" class="ac-input" maxlength="20">
+                        </div>
+                    </div>
+                </div>
 
                 <div class="ac-notice" id="acEditChairNotice" style="display:none;">
                     <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-info); margin-top:1px;">info</span>
@@ -506,6 +582,7 @@
         document.getElementById('acChairNotice').style.display = role === 'dean' ? 'flex' : 'none';
         document.getElementById('acSectionRow').style.display = role === 'student' ? 'grid' : 'none';
         document.getElementById('acSectionHint').style.display = role === 'student' ? 'block' : 'none';
+        document.getElementById('acPersonalRow').style.display = role === 'student' ? 'block' : 'none';
         document.getElementById('acEmpStatusField').style.display = role === 'faculty' ? 'block' : 'none';
         if (role === 'student') acCascadeSections('');
     }
@@ -549,6 +626,14 @@
                 yearLevel: currentSection ? currentSection.year_level : null,
                 sectionId: currentSection ? sectionId : null,
             });
+
+            var personal = user.personal || {};
+            document.getElementById('acEditDob').value = personal.date_of_birth || '';
+            document.getElementById('acEditGender').value = personal.gender || '';
+            document.getElementById('acEditHomeAddress').value = personal.home_address || '';
+            document.getElementById('acEditCity').value = personal.city || '';
+            document.getElementById('acEditEmName').value = personal.emergency_contact_name || '';
+            document.getElementById('acEditEmNumber').value = personal.emergency_contact_number || '';
         }
 
         acOpenModal('modalEditAccount');
@@ -559,6 +644,7 @@
         document.getElementById('acEditDeptField').style.display = (role === 'admin' || role === 'registrar') ? 'none' : 'block';
         document.getElementById('acEditSectionRow').style.display = role === 'student' ? 'grid' : 'none';
         document.getElementById('acEditSectionHint').style.display = role === 'student' ? 'block' : 'none';
+        document.getElementById('acEditPersonalRow').style.display = role === 'student' ? 'block' : 'none';
         document.getElementById('acEditEmpStatusField').style.display = role === 'faculty' ? 'block' : 'none';
         if (role === 'student') acCascadeSections('Edit', preselect);
     }

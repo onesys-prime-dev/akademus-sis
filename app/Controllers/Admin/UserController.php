@@ -32,10 +32,12 @@ class UserController extends BaseController
         $roleFilter = $this->request->getGet('role') ?: 'all';
 
         $builder = db_connect()->table('users u')
-            ->select('u.id, u.username, i.secret as email, u.active, u.department_id, u.section_id, u.employment_status, g.group, d.code as dept_code, d.name as dept_name')
+            ->select('u.id, u.username, i.secret as email, u.active, u.department_id, u.section_id, u.employment_status, g.group, d.code as dept_code, d.name as dept_name,
+                      s.date_of_birth, s.gender, s.home_address, s.city, s.emergency_contact_name, s.emergency_contact_number')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->join('departments d', 'd.dept_id = u.department_id', 'left')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->join('students s', 's.user_id = u.id', 'left')
             ->where('u.deleted_at', null)
             ->orderBy('u.username', 'asc');
 
@@ -217,13 +219,21 @@ class UserController extends BaseController
                 ? ((new CurriculumModel())->liveFor($programId)['curriculum_id'] ?? null)
                 : null;
 
+            $dateOfBirth = trim((string) $this->request->getPost('date_of_birth'));
+
             (new StudentModel())->insert([
-                'user_id'        => $user->id,
-                'student_number' => (new StudentModel())->nextStudentNumber(),
-                'program_id'     => $programId,
-                'curriculum_id'  => $curriculumId,
-                'admission_date' => date('Y-m-d H:i:s'),
-                'student_status' => 'active',
+                'user_id'                  => $user->id,
+                'student_number'           => (new StudentModel())->nextStudentNumber(),
+                'program_id'               => $programId,
+                'curriculum_id'            => $curriculumId,
+                'admission_date'           => date('Y-m-d H:i:s'),
+                'student_status'           => 'active',
+                'date_of_birth'            => $dateOfBirth !== '' ? $dateOfBirth : null,
+                'gender'                   => trim((string) $this->request->getPost('gender')) ?: null,
+                'home_address'             => trim((string) $this->request->getPost('home_address')) ?: null,
+                'city'                     => trim((string) $this->request->getPost('city')) ?: null,
+                'emergency_contact_name'   => trim((string) $this->request->getPost('emergency_contact_name')) ?: null,
+                'emergency_contact_number' => trim((string) $this->request->getPost('emergency_contact_number')) ?: null,
             ]);
 
             // Assigning a student straight to a section here (rather than
@@ -337,6 +347,23 @@ class UserController extends BaseController
                     'section_id'        => $sectionId,
                     'employment_status' => $role === 'faculty' ? ($this->request->getPost('employment_status') ?: null) : null,
                 ]);
+
+            if ($role === 'student') {
+                $student = (new StudentModel())->where('user_id', $id)->first();
+
+                if ($student !== null) {
+                    $dateOfBirth = trim((string) $this->request->getPost('date_of_birth'));
+
+                    (new StudentModel())->update((int) $student['student_id'], [
+                        'date_of_birth'            => $dateOfBirth !== '' ? $dateOfBirth : null,
+                        'gender'                   => trim((string) $this->request->getPost('gender')) ?: null,
+                        'home_address'             => trim((string) $this->request->getPost('home_address')) ?: null,
+                        'city'                     => trim((string) $this->request->getPost('city')) ?: null,
+                        'emergency_contact_name'   => trim((string) $this->request->getPost('emergency_contact_name')) ?: null,
+                        'emergency_contact_number' => trim((string) $this->request->getPost('emergency_contact_number')) ?: null,
+                    ]);
+                }
+            }
         }
 
         return redirect()
