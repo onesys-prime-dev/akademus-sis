@@ -269,17 +269,22 @@ class StudentModel extends Model
      * matching rows for the duration of the transaction so two concurrent
      * promotions in the same year can't be handed the same number.
      */
-    private function nextStudentNumber(): string
+    public function nextStudentNumber(): string
     {
         $year   = date('Y');
         $suffix = $this->db->DBDriver === 'MySQLi' ? ' FOR UPDATE' : '';
 
-        $count = $this->db->query(
-            "SELECT COUNT(*) AS cnt FROM students WHERE student_number LIKE ?{$suffix}",
+        // MAX(suffix)+1, not COUNT(*)+1 — a count drifts out of sync with
+        // reality the moment any row in the sequence is deleted (e.g. a
+        // test account cleanup), handing out a number that collides with
+        // one still in use further up the sequence.
+        $row = $this->db->query(
+            "SELECT MAX(CAST(SUBSTRING_INDEX(student_number, '-', -1) AS UNSIGNED)) AS max_suffix
+             FROM students WHERE student_number LIKE ?{$suffix}",
             ["STU-{$year}-%"]
         )->getRowArray();
 
-        $next = ((int) ($count['cnt'] ?? 0)) + 1;
+        $next = ((int) ($row['max_suffix'] ?? 0)) + 1;
 
         return sprintf('STU-%s-%05d', $year, $next);
     }

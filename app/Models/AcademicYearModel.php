@@ -152,14 +152,23 @@ class AcademicYearModel extends Model
      * open for $ayId (defaults to the active term). While open, students
      * build/submit a cart through the enlistment wizard instead of using
      * the instant-enroll endpoints (see StudentEnrollment::enroll()'s
-     * gate). Same open-by-default rule as the other two windows.
+     * gate).
+     *
+     * Unlike the other two windows, enlistment defaults CLOSED when no
+     * dates are set — a chairperson/registrar must deliberately open it for
+     * a term before students can self-enlist, rather than a freshly-created
+     * term silently accepting carts nobody meant to allow yet. Registration
+     * and grading keep the opposite (open-by-default) rule: those gate
+     * staff-driven actions that would otherwise need every term configured
+     * by hand before routine work (manual enrollment, grading) could happen
+     * at all.
      */
     public function isEnlistmentOpen(?int $ayId = null, ?string $now = null): bool
     {
-        return $this->isWindowOpen('enlistment_opens_at', 'enlistment_closes_at', $ayId, $now);
+        return $this->isWindowOpen('enlistment_opens_at', 'enlistment_closes_at', $ayId, $now, false);
     }
 
-    private function isWindowOpen(string $opensColumn, string $closesColumn, ?int $ayId, ?string $now): bool
+    private function isWindowOpen(string $opensColumn, string $closesColumn, ?int $ayId, ?string $now, bool $defaultOpen = true): bool
     {
         $row = $ayId !== null ? $this->find($ayId) : $this->activeRow();
 
@@ -170,7 +179,7 @@ class AcademicYearModel extends Model
         }
 
         if ($row[$opensColumn] === null && $row[$closesColumn] === null) {
-            return true;
+            return $defaultOpen;
         }
 
         $now ??= date('Y-m-d H:i:s');

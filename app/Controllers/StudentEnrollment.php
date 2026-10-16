@@ -93,27 +93,13 @@ class StudentEnrollment extends BaseController
             return $this->fail('Online enlistment is open — use the Enlistment wizard to build your schedule.');
         }
 
-        $enrollments = new EnrollmentModel();
-        $subjects    = $enrollments->subjectsFor($section);
+        $result = (new EnrollmentModel())->enrollBlock($userId, (int) $section['section_id']);
 
-        if ($subjects === []) {
-            return $this->fail('No subjects are scheduled for your section yet.');
+        if (! $result['ok']) {
+            return $this->fail($result['error']);
         }
 
-        $enrolled = [];
-        $failed   = [];
-
-        foreach ($subjects as $subjectCode) {
-            $result = $enrollments->enrollOne($userId, (int) $section['section_id'], $subjectCode, 'block');
-
-            if ($result['ok']) {
-                $enrolled[] = $subjectCode;
-            } else {
-                $failed[] = ['subject_code' => $subjectCode, 'error' => $result['error']];
-            }
-        }
-
-        return $this->response->setJSON(['ok' => true, 'enrolled' => $enrolled, 'failed' => $failed]);
+        return $this->response->setJSON(['ok' => true, 'enrolled' => $result['enrolled'], 'failed' => $result['failed']]);
     }
 
     /**

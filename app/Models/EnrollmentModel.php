@@ -588,6 +588,48 @@ class EnrollmentModel extends Model
     }
 
     /**
+     * Enrolls $userId into every subject plotted for $sectionId — the
+     * shared core behind both the student's own self-service block-enroll
+     * action (StudentEnrollment::enrollBlock(), which adds the "only the
+     * active year, and not while enlistment is open" guards on top) and
+     * admin account creation (Admin\UserController::store()) — a student
+     * assigned straight to a section there should actually end up
+     * enrolled, not just carry an unused section_id. Tuition is assessed
+     * for free: enrollOne() recomputes it on every successful item.
+     *
+     * @return array{ok: bool, error?: string, enrolled?: list<string>, failed?: list<array{subject_code: string, error: string}>}
+     */
+    public function enrollBlock(int $userId, int $sectionId): array
+    {
+        $section = (new SectionModel())->find($sectionId);
+
+        if ($section === null) {
+            return ['ok' => false, 'error' => 'That section no longer exists.'];
+        }
+
+        $subjects = $this->subjectsFor($section);
+
+        if ($subjects === []) {
+            return ['ok' => false, 'error' => 'No subjects are scheduled for this section yet.'];
+        }
+
+        $enrolled = [];
+        $failed   = [];
+
+        foreach ($subjects as $subjectCode) {
+            $result = $this->enrollOne($userId, $sectionId, $subjectCode, 'block');
+
+            if ($result['ok']) {
+                $enrolled[] = $subjectCode;
+            } else {
+                $failed[] = ['subject_code' => $subjectCode, 'error' => $result['error']];
+            }
+        }
+
+        return ['ok' => true, 'enrolled' => $enrolled, 'failed' => $failed];
+    }
+
+    /**
      * Every actively-enrolled student in this section for this one subject
      * (not the whole section's roster) — the class list grading needs when
      * the (section, subject) pair is NOT merged into a course offering.

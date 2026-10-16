@@ -3,9 +3,13 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Models\AcademicYearModel;
+use App\Models\CurriculumModel;
 use App\Models\DepartmentModel;
+use App\Models\EnrollmentModel;
 use App\Models\NotificationModel;
 use App\Models\SectionModel;
+use App\Models\StudentModel;
 use App\Models\SubDepartmentModel;
 use CodeIgniter\Shield\Entities\User;
 
@@ -59,6 +63,37 @@ class UserController extends BaseController
         // DepartmentModel::LEGACY_PROGRAM_NAMES) — resolve via
         // DepartmentModel::programDept() rather than a raw SQL join, which
         // would silently drop those sections.
+        //
+        // Scoped to the currently active academic year/semester only — this
+        // dropdown previously listed every section from every past and
+        // future term (every prior Summer/2nd Semester cohort piling up
+        // alongside this term's), since nothing filtered by academic_year.
+        // A student should only ever be block-assigned into a section that
+        // actually exists for the term that's live right now.
+        //
+        // Still includes whatever section_id any existing user (not just
+        // this page's slice) is currently sitting in, even from an older
+        // term — otherwise editing a student already assigned to a
+        // since-closed term's section would silently blank out their real
+        // department/year/section in the Edit modal (its id simply
+        // wouldn't exist in the filtered list for the preselect lookup to find).
+        $assignedSectionIds = array_values(array_unique(array_filter(array_map(
+            static fn (array $u): ?int => $u['section_id'] !== null ? (int) $u['section_id'] : null,
+            $allUsers
+        ))));
+
+        $activeTerm   = (new AcademicYearModel())->activeFormatted();
+        $sectionModel = (new SectionModel())->orderBy('program')->orderBy('year_level')->orderBy('section');
+
+        if ($activeTerm !== null) {
+            $sectionModel->groupStart()
+                ->where('academic_year', $activeTerm)
+                ->orWhereIn('section_id', $assignedSectionIds === [] ? [0] : $assignedSectionIds)
+            ->groupEnd();
+        } elseif ($assignedSectionIds !== []) {
+            $sectionModel->whereIn('section_id', $assignedSectionIds);
+        }
+
         $sections = array_map(
             static function (array $s) use ($codeToSubDeptId) {
                 $code            = DepartmentModel::programDept($s['program']);
@@ -66,7 +101,7 @@ class UserController extends BaseController
 
                 return $s;
             },
-            (new SectionModel())->orderBy('academic_year', 'DESC')->orderBy('program')->orderBy('section')->findAll()
+            ($activeTerm !== null || $assignedSectionIds !== []) ? $sectionModel->findAll() : []
         );
 
         return view('admin/users/index', [
@@ -162,6 +197,46 @@ class UserController extends BaseController
                     'section_id'        => $sectionId,
                     'employment_status' => $employmentStatus,
                 ]));
+        }
+
+        // A student account is useless without its `students` row — every
+        // other piece of the system (tuition assessment, the curriculum-
+        // driven enlistment list, grades, dashboard counts) is keyed off
+        // students.student_id/curriculum_id, none of which existed before
+        // this: creating a student here only ever touched `users`. Mirrors
+        // StudentModel::promoteFromApplicant()'s own program -> curriculum
+        // resolution so both creation paths end up in the same shape.
+        if ($role === 'student') {
+            $section = $sectionId !== null ? (new SectionModel())->find($sectionId) : null;
+
+            $programId = $section !== null
+                ? ($section['program_id'] !== null ? (int) $section['program_id'] : DepartmentModel::programIdOfName($section['program']))
+                : null;
+
+            $curriculumId = $programId !== null
+                ? ((new CurriculumModel())->liveFor($programId)['curriculum_id'] ?? null)
+                : null;
+
+            (new StudentModel())->insert([
+                'user_id'        => $user->id,
+                'student_number' => (new StudentModel())->nextStudentNumber(),
+                'program_id'     => $programId,
+                'curriculum_id'  => $curriculumId,
+                'admission_date' => date('Y-m-d H:i:s'),
+                'student_status' => 'active',
+            ]);
+
+            // Assigning a student straight to a section here (rather than
+            // through the self-service Enlistment cart) is meant to drop
+            // them directly into that cohort's classes — block-enroll them
+            // into everything plotted for it now, same core logic the
+            // student's own "Enroll Now" action uses. Best-effort: a
+            // section with nothing plotted for it yet is a normal,
+            // expected state (the chairperson hasn't scheduled it), not a
+            // reason to fail account creation.
+            if ($section !== null) {
+                (new EnrollmentModel())->enrollBlock($user->id, $sectionId);
+            }
         }
 
         return redirect()
