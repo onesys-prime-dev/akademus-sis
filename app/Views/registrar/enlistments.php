@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 
 <div class="ac-page-header">
-    <div><h2 class="ac-page-header__title">Enlistment Approvals</h2><p class="ac-page-header__sub">Dean-noted carts awaiting final approval. Approving converts each item into a real enrollment.</p></div>
+    <div><h2 class="ac-page-header__title">Enlistment Approvals</h2><p class="ac-page-header__sub">Dean-noted carts awaiting final approval. Approving enlists the student into every cart item and assesses their tuition.</p></div>
 </div>
 
 <?php if (session('errors')): ?>
@@ -35,7 +35,7 @@
                             <form method="post" action="<?= site_url('registrar/enlistments/approve') ?>" style="display:inline;">
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
-                                <button type="submit" class="ac-btn-outline" data-confirm="Approve and enroll this student into every cart item?">Approve &amp; Enroll</button>
+                                <button type="submit" class="ac-btn-outline" data-confirm="Approve and enlist this student into every cart item?">Approve &amp; Enlist</button>
                             </form>
                             <form method="post" action="<?= site_url('registrar/enlistments/return') ?>" style="display:inline;">
                                 <?= csrf_field() ?>

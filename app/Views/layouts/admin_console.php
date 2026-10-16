@@ -60,6 +60,42 @@
         })();
     </script>
 
+    <script>
+        // data-confirm="..." is used all over this app's views (approve/
+        // return/record-payment/delete buttons, etc.) but nothing ever
+        // actually implemented it — every one of those actions submitted
+        // immediately with no "are you sure?" prompt. This is the one place
+        // that wires it up, for every page, instead of each view needing
+        // its own JS. Covers the two shapes used in this codebase:
+        //   <form data-confirm="...">...<button type="submit">...
+        //   <form>...<button type="submit" data-confirm="...">...
+        // via the form's own 'submit' event (checking which button actually
+        // triggered it, through the standard SubmitEvent.submitter), plus a
+        // plain <a data-confirm="...">/<button> click outside any form.
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            if (!(form instanceof HTMLFormElement)) return;
+
+            var message = (e.submitter && e.submitter.getAttribute('data-confirm')) || form.getAttribute('data-confirm');
+
+            if (message && !window.confirm(message)) {
+                e.preventDefault();
+            }
+        }, true);
+
+        document.addEventListener('click', function (e) {
+            var el = e.target.closest('[data-confirm]');
+            if (!el || el.closest('form')) return; // forms are handled by the submit listener above
+
+            var message = el.getAttribute('data-confirm');
+
+            if (message && !window.confirm(message)) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }, true);
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
 

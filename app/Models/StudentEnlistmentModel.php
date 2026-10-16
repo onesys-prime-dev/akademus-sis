@@ -348,7 +348,13 @@ class StudentEnlistmentModel extends Model
 
         (new NotificationModel())->notify((int) $student['user_id'], 'enlistment.' . $finalStatus, $message, site_url('student/enlistment'));
 
-        return ['ok' => true, 'enrolled' => $enrolled, 'failed' => $failed];
+        return [
+            'ok'            => true,
+            'enrolled'      => $enrolled,
+            'failed'        => $failed,
+            'student_id'    => (int) $enlistment['student_id'],
+            'academic_year' => $enlistment['academic_year'],
+        ];
     }
 
     /**
