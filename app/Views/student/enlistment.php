@@ -26,7 +26,7 @@ $navGroups     = [
         ]],
         'enlistment' => ['label' => 'Enlistment', 'icon' => 'playlist_add_check', 'url' => 'student/enlistment', 'help' => [
             'title' => 'Enlistment',
-            'text'  => "Build your subject cart for next term and submit it for chair → dean → registrar approval. Only available while your department's enlistment window is open; otherwise you'll enroll directly once sections open.",
+            'text'  => "Build your subject cart for next term and submit it for approval. Only available while your department's enlistment window is open; otherwise you'll enroll directly once sections open.",
         ]],
         'documents' => ['label' => 'Documents',   'icon' => 'description',        'url' => 'student/documents', 'help' => [
             'title' => 'Documents',
@@ -36,10 +36,25 @@ $navGroups     = [
 ];
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
 
-$STEPS = ['draft' => 1, 'submitted' => 2, 'chair_recommended' => 2, 'dean_noted' => 3, 'enrolled' => 4, 'conversion_failed' => 4];
+// Three meaningful stages the student actually sees (not a breakdown of
+// every internal chair->dean->registrar step, which has its own staff-side
+// queues/notifications but is a single "Pending Approval" wait from the
+// student's point of view — matching the reference flow's own generic
+// "subject for approval" note instead of a granular review tracker).
+$STEPS = ['draft' => 1, 'submitted' => 2, 'chair_recommended' => 2, 'dean_noted' => 2, 'enrolled' => 3, 'conversion_failed' => 3];
+$STEP_LABELS = ['Course Selection' => 1, 'Pending Approval' => 2, 'Enrolled' => 3];
 $status = $enlistment['status'] ?? null;
 $itemIds = array_map(static fn ($i) => $i['section_id'] . '|' . $i['subject_code'], $items);
 $DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+$STATUS_LABELS = [
+    'draft'              => 'Draft',
+    'submitted'          => 'Pending Approval',
+    'chair_recommended'  => 'Pending Approval',
+    'dean_noted'         => 'Pending Approval',
+    'enrolled'           => 'Enrolled',
+    'conversion_failed'  => 'Needs Attention',
+];
 ?>
 
 <?= $this->section('styles') ?>
@@ -50,7 +65,7 @@ $DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 <div class="ac-page-header">
     <div><h2 class="ac-page-header__title">Online Enlistment</h2><p class="ac-page-header__sub"><?= esc($activeTerm ?? 'No active term') ?></p></div>
-    <?php if ($status !== null): ?><span class="en-pill <?= esc($status) ?>"><?= esc(str_replace('_', ' ', strtoupper($status))) ?></span><?php endif ?>
+    <?php if ($status !== null): ?><span class="en-pill <?= esc($status) ?>"><?= esc($STATUS_LABELS[$status] ?? ucfirst($status)) ?></span><?php endif ?>
 </div>
 
 <?php if (session('errors')): ?>
@@ -69,8 +84,11 @@ $DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 <?php else: ?>
 
     <div class="en-steps">
-        <?php foreach (['Info' => 1, 'Course Selection' => 2, 'Chair/Dean Review' => 3, 'Enrolled' => 4] as $label => $n): ?>
-            <div class="en-step <?= ($STEPS[$status] ?? 1) === $n ? 'is-active' : (($STEPS[$status] ?? 1) > $n ? 'is-done' : '') ?>"><?= esc($label) ?></div>
+        <?php foreach ($STEP_LABELS as $label => $n): ?>
+            <div class="en-step <?= ($STEPS[$status] ?? 1) === $n ? 'is-active' : (($STEPS[$status] ?? 1) > $n ? 'is-done' : '') ?>">
+                <span class="en-step__dot"><?= ($STEPS[$status] ?? 1) > $n ? '&check;' : $n ?></span>
+                <span class="en-step__label"><?= esc($label) ?></span>
+            </div>
         <?php endforeach ?>
     </div>
 
@@ -80,10 +98,26 @@ $DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         </div>
     <?php endif ?>
 
-    <!-- Step 1: Info -->
-    <div class="ac-card" style="margin-bottom:16px;">
-        <div class="ac-dept-name">1. Confirm Your Information</div>
-        <p style="font-size:12.5px; color:var(--color-text-secondary);">Make sure your contact details are up to date before enlisting. <a href="<?= site_url('student/profile') ?>">Edit profile &rarr;</a></p>
+    <!-- Personal Information -->
+    <div class="ac-card en-info-card" style="margin-bottom:16px;">
+        <div class="en-info-card__head">
+            <div class="ac-dept-name">Personal Information</div>
+            <a href="<?= site_url('student/profile') ?>" class="en-edit-link"><span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit</a>
+        </div>
+        <?php if ($studentDetail === null): ?>
+            <p class="en-units-note">No student record is linked to your account yet.</p>
+        <?php else: ?>
+            <div class="en-info-grid">
+                <div class="en-info-field"><span>Student No.</span><strong><?= esc($studentDetail['student_number'] ?? '—') ?></strong></div>
+                <div class="en-info-field"><span>Status</span><strong><?= esc($studentDetail['student_status'] !== null ? ucfirst($studentDetail['student_status']) : '—') ?></strong></div>
+                <div class="en-info-field"><span>Full Name</span><strong><?= esc(trim(($studentDetail['first_name'] ?? '') . ' ' . ($studentDetail['middle_name'] ?? '') . ' ' . ($studentDetail['last_name'] ?? '')) ?: '—') ?></strong></div>
+                <div class="en-info-field"><span>Email</span><strong><?= esc($studentDetail['email'] ?? '—') ?></strong></div>
+                <div class="en-info-field"><span>Mobile Number</span><strong><?= esc($studentDetail['contact_number'] ?? 'Not set') ?></strong></div>
+                <div class="en-info-field"><span>Program</span><strong><?= esc($studentDetail['program_name'] ?? 'Not set') ?></strong></div>
+                <div class="en-info-field"><span>Year &amp; Section</span><strong><?= $studentDetail['section'] !== null ? esc($studentDetail['section']['year_level'] . ' · ' . $studentDetail['section']['section']) : 'Not assigned' ?></strong></div>
+                <div class="en-info-field"><span>Curriculum</span><strong><?= esc($studentDetail['curriculum_code'] ?? 'Not assigned') ?></strong></div>
+            </div>
+        <?php endif ?>
     </div>
 
     <?php if ($status === 'draft'): ?>
@@ -101,10 +135,13 @@ $DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                 <p>Please settle your balance with the Finance office, or contact the registrar, before enlisting online.</p>
             </div>
         <?php else: ?>
-            <!-- Step 2: Course Selection -->
+            <!-- Course Selection -->
             <div class="ac-card" style="margin-bottom:16px;">
-                <div class="ac-dept-name">2. Course Selection</div>
-                <p class="en-units-note">Subjects your curriculum says you still need. Units: <?= esc((string) $unitsUsed) ?> / <?= esc((string) $cap) ?></p>
+                <div class="en-section-head">
+                    <div class="ac-dept-name">Course Selection</div>
+                    <span class="en-units-pill">Units: <?= esc((string) $unitsUsed) ?> / <?= esc((string) $cap) ?></span>
+                </div>
+                <p class="en-units-note">Subjects your curriculum says you still need.</p>
 
                 <?php if ($dueSubjects === []): ?>
                     <div class="ac-empty-block">Nothing left to enlist in right now — either you're all caught up, or no curriculum is assigned to your record yet.</div>
@@ -194,11 +231,14 @@ $DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                 <?php endif ?>
             </div>
 
-            <!-- Step 3: Review & Submit -->
+            <!-- Review & Submit -->
             <div class="ac-card">
-                <div class="ac-dept-name">3. Review &amp; Submit</div>
+                <div class="en-section-head">
+                    <div class="ac-dept-name">Review &amp; Submit</div>
+                    <span class="en-units-pill">Units: <?= esc((string) $unitsUsed) ?> / <?= esc((string) $cap) ?></span>
+                </div>
                 <?php if ($items === []): ?>
-                    <div class="ac-empty-block">Your cart is empty.</div>
+                    <div class="ac-empty-block">Your cart is empty. Add a subject above to get started.</div>
                 <?php else: ?>
                     <table class="ac-table">
                         <thead><tr><th>Subject</th><th>Year/Section</th><th>Units</th><th></th></tr></thead>
@@ -230,10 +270,15 @@ $DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             </div>
         <?php endif ?>
     <?php elseif (in_array($status, ['submitted', 'chair_recommended', 'dean_noted'], true)): ?>
-        <!-- Step 4: Status Tracker -->
+        <!-- Status Tracker -->
         <div class="ac-card">
-            <div class="ac-dept-name">Status Tracker</div>
-            <p style="font-size:12.5px; color:var(--color-text-secondary);">Your cart is being reviewed. You cannot edit it while it's in review.</p>
+            <div class="en-pending-banner">
+                <span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span>
+                <div>
+                    <strong>Pending Approval</strong>
+                    <p>Your cart is being reviewed. You can't edit it while it's in review — a notification will let you know once a decision is made.</p>
+                </div>
+            </div>
             <table class="ac-table">
                 <thead><tr><th>Subject</th><th>Year/Section</th><th>Units</th></tr></thead>
                 <tbody>
@@ -250,12 +295,21 @@ $DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         </div>
     <?php elseif ($status === 'enrolled'): ?>
         <div class="ac-card">
-            <div class="ac-dept-name">Enrolled</div>
-            <p style="font-size:12.5px; color:var(--color-text-secondary);">Your approved subjects are now on <a href="<?= site_url('student/schedule') ?>">My Schedule</a>, and your tuition assessment is on <a href="<?= site_url('student/tuition') ?>">Tuition &amp; Fees</a>.</p>
-            <a href="<?= site_url('student/enlistment/print-form') ?>" target="_blank" class="ac-btn ac-btn-primary" style="margin-top:10px;">Print Student Form</a>
+            <div class="en-splash en-splash--success">
+                <span class="material-symbols-outlined en-splash__icon" aria-hidden="true">check_circle</span>
+                <h3>You're enrolled</h3>
+                <p>Your approved subjects are now on <a href="<?= site_url('student/schedule') ?>">My Schedule</a>, and your tuition assessment is on <a href="<?= site_url('student/tuition') ?>">Tuition &amp; Fees</a>.</p>
+            </div>
+            <div class="en-splash-actions">
+                <a href="<?= site_url('student/enlistment/print-form') ?>" target="_blank" class="ac-btn ac-btn-primary">Print Student Form</a>
+            </div>
         </div>
     <?php elseif ($status === 'conversion_failed'): ?>
-        <div class="ac-empty-block">Your enlistment was approved but could not be converted to enrollments. Check your notifications for details, or contact the registrar.</div>
+        <div class="en-splash en-splash--blocked">
+            <span class="material-symbols-outlined en-splash__icon" aria-hidden="true">error</span>
+            <h3>Could not complete enrollment</h3>
+            <p>Your enlistment was approved but could not be converted to enrollments. Check your notifications for details, or contact the registrar.</p>
+        </div>
     <?php endif ?>
 
 <?php endif ?>

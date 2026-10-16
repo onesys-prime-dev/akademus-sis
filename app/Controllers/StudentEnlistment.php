@@ -32,6 +32,8 @@ class StudentEnlistment extends BaseController
             return redirect()->to('/student/dashboard')->with('errors', ['No student record is linked to your account.']);
         }
 
+        $studentDetail = (new StudentModel())->findDetailed((int) $student['student_id']);
+
         $ayModel      = new AcademicYearModel();
         $activeTerm   = $ayModel->activeFormatted();
         $windowOpen   = $ayModel->isEnlistmentOpen();
@@ -48,6 +50,7 @@ class StudentEnlistment extends BaseController
                 'balance'            => 0.0,
                 'cap'                => (int) (setting('Academic.maxStudentUnits') ?? 24),
                 'unitsUsed'          => 0,
+                'studentDetail'      => $studentDetail,
             ]);
         }
 
@@ -109,6 +112,7 @@ class StudentEnlistment extends BaseController
             'balance'     => $balance,
             'cap'         => (int) (setting('Academic.maxStudentUnits') ?? 24),
             'unitsUsed'   => $unitsUsed,
+            'studentDetail' => $studentDetail,
         ]);
     }
 
