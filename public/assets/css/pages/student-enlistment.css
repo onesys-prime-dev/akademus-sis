@@ -4,6 +4,7 @@
    design-system/tokens.css — nothing here redefines those. */
 
 .en-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill); }
+.en-pill--header { display:inline-block; margin-top:10px; }
 .en-pill.draft { background: var(--color-warning-soft); color: #713f12; }
 .en-pill.submitted, .en-pill.chair_recommended, .en-pill.dean_noted { background: #dff8fb; color: #164e63; }
 .en-pill.enrolled { background: var(--color-success-soft); color: #14532d; }
@@ -65,6 +66,9 @@
 .en-table-scroll { overflow-x:auto; margin-top:10px; }
 .en-class-table { min-width:620px; }
 .en-class-table th, .en-class-table td { vertical-align:top; }
+.en-action-cell { white-space:nowrap; }
+
+.en-submit-form { margin-top:14px; }
 
 .en-check {
     display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 7px; border-radius:var(--radius-pill);
@@ -97,10 +101,55 @@
 .en-splash-actions { display:flex; justify-content:center; padding-bottom:24px; }
 
 @media (max-width:760px) {
+    .en-steps { align-items:flex-start; margin:14px 0 18px; }
+    .en-step__label { font-size:10px; line-height:1.3; }
+    .en-step__dot { width:24px; height:24px; font-size:11px; }
+    .en-step::before { top:12px; }
+
+    .en-info-card__head { margin-bottom:10px; }
+    .en-info-grid { grid-template-columns:1fr 1fr; gap:12px 16px; }
+
+    .en-subject { padding:14px 0; }
+    .en-subject__head { flex-direction:column; align-items:flex-start; }
     .en-subject__title, .en-subject__units { display:block; margin-left:0; }
-    .en-steps { align-items:flex-start; }
-    .en-step__label { font-size:10.5px; }
-    .en-info-grid { grid-template-columns:1fr 1fr; }
+    .en-subject__title { margin-top:2px; }
+    .en-subject__badges { flex-wrap:wrap; }
+
+    .en-section-head { flex-direction:column; align-items:flex-start; gap:6px; }
+
+    .en-pending-banner { padding:12px; }
+
+    /* The 6-column offerings table (and the simpler cart-review tables)
+       become a stacked list of cards instead of a horizontally-scrolled
+       table — the same data-label transform used elsewhere in this app
+       (e.g. student-documents.css's request/document tables). */
+    .en-table-scroll { overflow:visible; margin-top:8px; }
+    .en-class-table, .en-mini-table { min-width:0; width:100%; }
+    .en-class-table thead, .en-mini-table thead {
+        position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap;
+    }
+    .en-class-table tbody, .en-mini-table tbody { display:flex; flex-direction:column; gap:10px; }
+    .en-class-table tbody tr, .en-mini-table tbody tr {
+        display:block; padding:12px; border:1px solid var(--color-border); border-radius:var(--radius-md);
+        background:var(--color-surface); box-shadow:var(--shadow-xs, 0 1px 2px rgba(16,24,40,.04));
+    }
+    .en-class-table tbody td, .en-mini-table tbody td {
+        display:block; padding:5px 0; border:0; text-align:left;
+    }
+    .en-class-table tbody td::before, .en-mini-table tbody td::before {
+        content:attr(data-label); display:block; margin-bottom:2px; font-size:9.5px; font-weight:700;
+        letter-spacing:.04em; text-transform:uppercase; color:var(--color-text-tertiary);
+    }
+    .en-class-table tbody td.en-action-cell, .en-mini-table tbody td.en-action-cell {
+        margin-top:6px; padding-top:10px; border-top:1px dashed var(--color-border); white-space:normal;
+    }
+    .en-class-table tbody td.en-action-cell form, .en-mini-table tbody td.en-action-cell form { display:block !important; }
+    .en-class-table tbody td.en-action-cell .ac-btn-outline, .en-mini-table tbody td.en-action-cell .ac-btn-outline { width:100%; }
+
+    .en-submit-form .ac-btn, .en-submit-form .ac-btn-outline { width:100%; }
+
+    .en-splash { padding:40px 18px; }
+    .en-splash-actions .ac-btn { width:100%; }
 }
 @media (max-width:480px) {
     .en-info-grid { grid-template-columns:1fr; }

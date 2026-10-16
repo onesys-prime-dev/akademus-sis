@@ -64,8 +64,11 @@ $STATUS_LABELS = [
 <?= $this->section('content') ?>
 
 <div class="ac-page-header">
-    <div><h2 class="ac-page-header__title">Online Enlistment</h2><p class="ac-page-header__sub"><?= esc($activeTerm ?? 'No active term') ?></p></div>
-    <?php if ($status !== null): ?><span class="en-pill <?= esc($status) ?>"><?= esc($STATUS_LABELS[$status] ?? ucfirst($status)) ?></span><?php endif ?>
+    <div>
+        <h2 class="ac-page-header__title">Online Enlistment</h2>
+        <p class="ac-page-header__sub"><?= esc($activeTerm ?? 'No active term') ?></p>
+        <?php if ($status !== null): ?><span class="en-pill en-pill--header <?= esc($status) ?>"><?= esc($STATUS_LABELS[$status] ?? ucfirst($status)) ?></span><?php endif ?>
+    </div>
 </div>
 
 <?php if (session('errors')): ?>
@@ -189,23 +192,23 @@ $STATUS_LABELS = [
                                     <?php foreach ($subj['offerings'] as $off): ?>
                                         <?php $rowInCart = in_array($off['section_id'] . '|' . $subj['code'], $itemIds, true); ?>
                                         <tr>
-                                            <td><?= esc($off['section_label']) ?></td>
-                                            <td>
+                                            <td data-label="Section"><?= esc($off['section_label']) ?></td>
+                                            <td data-label="Day & Time">
                                                 <?php if ($off['meetings'] === []): ?><span class="en-muted">TBA</span><?php endif ?>
                                                 <?php foreach ($off['meetings'] as $m): ?>
                                                     <div class="en-meeting"><?= esc($DAY_NAMES[$m['day']] ?? '?') ?> <?= esc($m['start']) ?>&ndash;<?= esc($m['end']) ?></div>
                                                 <?php endforeach ?>
                                             </td>
-                                            <td><?php foreach ($off['meetings'] as $m): ?><div class="en-meeting"><?= esc($m['room'] ?: 'Room to be assigned') ?></div><?php endforeach ?></td>
-                                            <td><?php foreach ($off['meetings'] as $m): ?><div class="en-meeting"><?= esc($m['prof'] ?: 'Instructor to be assigned') ?></div><?php endforeach ?></td>
-                                            <td>
+                                            <td data-label="Room"><?php foreach ($off['meetings'] as $m): ?><div class="en-meeting"><?= esc($m['room'] ?: 'Room to be assigned') ?></div><?php endforeach ?></td>
+                                            <td data-label="Instructor"><?php foreach ($off['meetings'] as $m): ?><div class="en-meeting"><?= esc($m['prof'] ?: 'Instructor to be assigned') ?></div><?php endforeach ?></td>
+                                            <td data-label="Slots">
                                                 <?php if ($off['capacity'] === null): ?>
                                                     <span class="ac-pill ac-pill--neutral">Unlimited</span>
                                                 <?php else: ?>
                                                     <span class="ac-pill <?= $off['available'] <= 0 ? 'en-slots--full' : '' ?>"><?= esc((string) max(0, $off['available'])) ?> / <?= esc((string) $off['capacity']) ?></span>
                                                 <?php endif ?>
                                             </td>
-                                            <td>
+                                            <td data-label="Action" class="en-action-cell">
                                                 <?php if ($rowInCart): ?>
                                                     <span class="ac-pill ac-pill--success">In cart</span>
                                                 <?php elseif ($subjectInCart): ?>
@@ -240,15 +243,16 @@ $STATUS_LABELS = [
                 <?php if ($items === []): ?>
                     <div class="ac-empty-block">Your cart is empty. Add a subject above to get started.</div>
                 <?php else: ?>
-                    <table class="ac-table">
+                    <div class="en-table-scroll">
+                    <table class="ac-table en-mini-table">
                         <thead><tr><th>Subject</th><th>Year/Section</th><th>Units</th><th></th></tr></thead>
                         <tbody>
                         <?php foreach ($items as $item): ?>
                             <tr>
-                                <td><?= esc($item['subject_code']) ?></td>
-                                <td><?= esc($item['year_level']) ?> &middot; <?= esc($item['section']) ?></td>
-                                <td><?= esc($item['units']) ?></td>
-                                <td>
+                                <td data-label="Subject"><?= esc($item['subject_code']) ?></td>
+                                <td data-label="Year/Section"><?= esc($item['year_level']) ?> &middot; <?= esc($item['section']) ?></td>
+                                <td data-label="Units"><?= esc($item['units']) ?></td>
+                                <td data-label="Action" class="en-action-cell">
                                     <form method="post" action="<?= site_url('student/enlistment/remove-item') ?>" style="display:inline;">
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="enlistment_id" value="<?= (int) $enlistment['id'] ?>">
@@ -260,8 +264,9 @@ $STATUS_LABELS = [
                         <?php endforeach ?>
                         </tbody>
                     </table>
+                    </div>
 
-                    <form method="post" action="<?= site_url('student/enlistment/submit') ?>" style="margin-top:14px;">
+                    <form method="post" action="<?= site_url('student/enlistment/submit') ?>" class="en-submit-form">
                         <?= csrf_field() ?>
                         <input type="hidden" name="enlistment_id" value="<?= (int) $enlistment['id'] ?>">
                         <button type="submit" class="ac-btn ac-btn-primary">Submit for Review</button>
@@ -279,15 +284,17 @@ $STATUS_LABELS = [
                     <p>Your cart is being reviewed. You can't edit it while it's in review — a notification will let you know once a decision is made.</p>
                 </div>
             </div>
-            <table class="ac-table">
+            <div class="en-table-scroll">
+            <table class="ac-table en-mini-table">
                 <thead><tr><th>Subject</th><th>Year/Section</th><th>Units</th></tr></thead>
                 <tbody>
                 <?php foreach ($items as $item): ?>
-                    <tr><td><?= esc($item['subject_code']) ?></td><td><?= esc($item['year_level']) ?> &middot; <?= esc($item['section']) ?></td><td><?= esc($item['units']) ?></td></tr>
+                    <tr><td data-label="Subject"><?= esc($item['subject_code']) ?></td><td data-label="Year/Section"><?= esc($item['year_level']) ?> &middot; <?= esc($item['section']) ?></td><td data-label="Units"><?= esc($item['units']) ?></td></tr>
                 <?php endforeach ?>
                 </tbody>
             </table>
-            <form method="post" action="<?= site_url('student/enlistment/send-reminder') ?>" style="margin-top:12px;">
+            </div>
+            <form method="post" action="<?= site_url('student/enlistment/send-reminder') ?>" class="en-submit-form">
                 <?= csrf_field() ?>
                 <input type="hidden" name="enlistment_id" value="<?= (int) $enlistment['id'] ?>">
                 <button type="submit" class="ac-btn-outline">Send Reminder</button>
