@@ -78,9 +78,9 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     </label>
                 </form>
                 <?php if ($photoUrl !== null): ?>
-                    <form method="post" action="<?= site_url('student/profile/photo/remove') ?>" data-confirm="Remove your profile photo?">
+                    <form method="post" action="<?= site_url('student/profile/photo/remove') ?>" id="avatarRemoveForm">
                         <?= csrf_field() ?>
-                        <button type="submit" class="btn btn-secondary">Remove photo</button>
+                        <button type="button" class="btn btn-secondary" id="avatarRemoveBtn">Remove photo</button>
                     </form>
                 <?php endif ?>
             </div>
@@ -249,6 +249,17 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     </div>
 </div>
 
+<div class="avatar-crop-backdrop" id="avatarRemoveBackdrop" hidden>
+    <div class="avatar-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="avatarRemoveTitle">
+        <h3 id="avatarRemoveTitle">Remove profile photo?</h3>
+        <p>You'll go back to your letter avatar. This can't be undone.</p>
+        <div class="avatar-crop-actions">
+            <button type="button" class="btn btn-secondary" id="avatarRemoveCancel">Cancel</button>
+            <button type="button" class="btn btn-danger" id="avatarRemoveConfirm">Remove photo</button>
+        </div>
+    </div>
+</div>
+
 <script>
 (function () {
     var fileInput = document.getElementById('avatarFileInput');
@@ -409,6 +420,19 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             uploadForm.requestSubmit();
         }, 'image/png');
     });
+
+    var removeBtn       = document.getElementById('avatarRemoveBtn');
+    var removeForm      = document.getElementById('avatarRemoveForm');
+    var removeBackdrop  = document.getElementById('avatarRemoveBackdrop');
+    var removeCancelBtn = document.getElementById('avatarRemoveCancel');
+    var removeConfirmBtn = document.getElementById('avatarRemoveConfirm');
+
+    if (removeBtn) {
+        removeBtn.addEventListener('click', function () { removeBackdrop.hidden = false; });
+        removeCancelBtn.addEventListener('click', function () { removeBackdrop.hidden = true; });
+        removeBackdrop.addEventListener('click', function (e) { if (e.target === removeBackdrop) removeBackdrop.hidden = true; });
+        removeConfirmBtn.addEventListener('click', function () { removeForm.requestSubmit(); });
+    }
 })();
 </script>
 
