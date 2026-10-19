@@ -49,11 +49,14 @@ if (! function_exists('avatar_photo_url')) {
     /**
      * The URL for a user's uploaded profile photo, or null if they haven't
      * set one (callers fall back to the letter avatar). Served through
-     * AvatarController, never a public upload path — see its own docblock.
+     * AvatarController straight from the users.photo_blob column, never a
+     * public upload path — see its own docblock. $photoMime (users.photo_mime)
+     * is what signals "a photo is set"; the blob itself is never passed
+     * around just to check presence.
      */
-    function avatar_photo_url(int $userId, ?string $photoFilename): ?string
+    function avatar_photo_url(int $userId, ?string $photoMime): ?string
     {
-        return $photoFilename !== null && $photoFilename !== '' ? site_url("avatar/{$userId}") : null;
+        return $photoMime !== null && $photoMime !== '' ? site_url("avatar/{$userId}") : null;
     }
 }
 

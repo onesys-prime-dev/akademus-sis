@@ -284,8 +284,8 @@ $initial       = strtoupper(substr($username, 0, 1));
 $avatarColor   = avatar_color($username);
 $avatarPhotoUrl = null;
 if (auth()->loggedIn()) {
-    $photoFilename  = db_connect()->table('users')->select('photo_filename')->where('id', auth()->id())->get()->getRowArray()['photo_filename'] ?? null;
-    $avatarPhotoUrl = avatar_photo_url((int) auth()->id(), $photoFilename);
+    $photoMime      = db_connect()->table('users')->select('photo_mime')->where('id', auth()->id())->get()->getRowArray()['photo_mime'] ?? null;
+    $avatarPhotoUrl = avatar_photo_url((int) auth()->id(), $photoMime);
 }
 // Every role group (admin, student, faculty, chairperson) routes an
 // identically-shaped notifications/mark-read/mark-all-read trio off its own

@@ -97,11 +97,12 @@ class StudentController extends BaseController
     }
 
     /**
-     * Uploads (replacing any existing one) the student's own profile photo.
-     * Same OWASP-cheat-sheet pattern as uploadProof(): randomized stored
-     * name, mime+extension validated, size capped, served back only
-     * through AvatarController — never a public path. The old file is
-     * deleted once the new one is safely in place.
+     * Uploads (replacing any existing one) the student's own profile photo —
+     * the bytes the browser's crop/zoom step already squared off (see
+     * profile.php's crop modal) go straight into users.photo_blob/
+     * photo_mime, never a file on disk, per explicit request. Still
+     * mime/extension-validated and size-capped the same way
+     * uploadProof()/the old file-based version were.
      */
     public function uploadPhoto()
     {
@@ -121,47 +122,24 @@ class StudentController extends BaseController
             return redirect()->to('/student/profile')->with('profile_error', 'Upload failed. Please try again.');
         }
 
-        $targetDir  = WRITEPATH . 'uploads/avatars/' . $userId;
-        $storedName = $file->getRandomName();
-
-        if (! is_dir($targetDir)) {
-            mkdir($targetDir, 0755, true);
-        }
-
-        $previous = db_connect()->table('users')->select('photo_filename')->where('id', $userId)->get()->getRowArray();
-
-        $file->move($targetDir, $storedName);
-
-        db_connect()->table('users')->where('id', $userId)->update(['photo_filename' => $storedName]);
-
-        if (! empty($previous['photo_filename'])) {
-            $oldPath = $targetDir . '/' . $previous['photo_filename'];
-            if (is_file($oldPath)) {
-                unlink($oldPath);
-            }
-        }
+        db_connect()->table('users')->where('id', $userId)->update([
+            'photo_blob' => file_get_contents($file->getTempName()),
+            'photo_mime' => $file->getClientMimeType(),
+        ]);
 
         return redirect()->to('/student/profile')->with('profile_message', 'Profile photo updated.');
     }
 
     /**
      * Removes the student's own profile photo, reverting to the letter
-     * avatar. Deletes the stored file too — nothing orphaned on disk.
+     * avatar.
      */
     public function removePhoto()
     {
-        $userId = (int) auth()->id();
-
-        $current = db_connect()->table('users')->select('photo_filename')->where('id', $userId)->get()->getRowArray();
-
-        if (! empty($current['photo_filename'])) {
-            $path = WRITEPATH . 'uploads/avatars/' . $userId . '/' . $current['photo_filename'];
-            if (is_file($path)) {
-                unlink($path);
-            }
-        }
-
-        db_connect()->table('users')->where('id', $userId)->update(['photo_filename' => null]);
+        db_connect()->table('users')->where('id', (int) auth()->id())->update([
+            'photo_blob' => null,
+            'photo_mime' => null,
+        ]);
 
         return redirect()->to('/student/profile')->with('profile_message', 'Profile photo removed.');
     }
