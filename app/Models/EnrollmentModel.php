@@ -334,7 +334,11 @@ class EnrollmentModel extends Model
             return $r;
         }, $this->db->table('plotted_schedules p')
             ->select('sec.section_id, p.subject_code, MAX(p.subject_title) AS subject_title, p.year_level, p.section')
-            ->join('sections sec', 'sec.academic_year = p.academic_year AND sec.program = p.program AND sec.year_level = p.year_level AND sec.section = p.section')
+            ->join('sections sec', 'sec.program = p.program AND sec.year_level = p.year_level AND sec.section = p.section')
+            // Sections are year-scoped now — matched on the school year
+            // only, as a separate condition rather than in the join (the
+            // join itself no longer has a term-scoped column to match on).
+            ->where('sec.academic_year', AcademicYearModel::yearOnly($academicYear))
             ->where('p.academic_year', $academicYear)
             ->where('p.program', $programName)
             ->groupBy('sec.section_id, p.subject_code, p.year_level, p.section')
@@ -508,8 +512,12 @@ class EnrollmentModel extends Model
 
         $db->transStart();
 
+        // e.* already carries the correct (term-scoped) academic_year —
+        // selecting sec.academic_year too would silently overwrite it with
+        // the section's year-only value in the result array (same column
+        // name), which is exactly wrong for recomputeTuition() below.
         $row = $db->query(
-            "SELECT e.*, sec.academic_year FROM enrollments e
+            "SELECT e.* FROM enrollments e
              JOIN sections sec ON sec.section_id = e.section_id
              WHERE e.enrollment_id = ?{$suffix}",
             [$enrollmentId]

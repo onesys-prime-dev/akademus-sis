@@ -45,13 +45,15 @@ class TuitionAssessmentService
 
         $db = db_connect();
 
+        // enrollments.academic_year (term-scoped) is the filter here, not
+        // the section's — a section spans the whole school year now, so it
+        // can no longer tell this term's enrollments apart from another.
         $totalUnits = (float) ($db->table('enrollments e')
             ->select('COALESCE(SUM(s.units), 0) AS total')
-            ->join('sections sec', 'sec.section_id = e.section_id')
             ->join('subjects s', 's.subject_code = e.subject_code')
             ->where('e.user_id', $student['user_id'])
             ->where('e.status', 'enrolled')
-            ->where('sec.academic_year', $academicYear)
+            ->where('e.academic_year', $academicYear)
             ->get()
             ->getRowArray()['total'] ?? 0);
 

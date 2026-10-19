@@ -29,16 +29,18 @@ class StudentController extends BaseController
         $meetings = $publishedGrades = $paymentSchedule = [];
         $assessment = null;
         if ($activeTerm !== null) {
+            // Sections are year-scoped (no semester identity of their own
+            // anymore) — enrollments.academic_year is the term-scoped
+            // identity to filter/join on, not sections.academic_year.
             $enrolledCount = db_connect()->table('enrollments e')
-                ->join('sections s', 's.section_id = e.section_id')
                 ->where('e.user_id', $userId)->where('e.status', 'enrolled')
-                ->where('s.academic_year', $activeTerm)->countAllResults();
+                ->where('e.academic_year', $activeTerm)->countAllResults();
             $meetings = db_connect()->table('enrollments e')
                 ->select('p.day, p.start_time, p.end_time, p.subject_code, p.subject_title, p.room, p.prof, s.section, s.program, s.year_level')
                 ->join('sections s', 's.section_id = e.section_id')
-                ->join('plotted_schedules p', 'p.academic_year = s.academic_year AND p.program = s.program AND p.year_level = s.year_level AND p.section = s.section AND p.subject_code = e.subject_code')
+                ->join('plotted_schedules p', 'p.academic_year = e.academic_year AND p.program = s.program AND p.year_level = s.year_level AND p.section = s.section AND p.subject_code = e.subject_code')
                 ->where('e.user_id', $userId)->where('e.status', 'enrolled')
-                ->where('s.academic_year', $activeTerm)
+                ->where('e.academic_year', $activeTerm)
                 ->orderBy('p.day')->orderBy('p.start_time')->get()->getResultArray();
             // Only official grades may be shown to students.
             $publishedGrades = db_connect()->table('grades g')
@@ -92,6 +94,76 @@ class StudentController extends BaseController
             'section'       => $section,
             'studentDetail' => $studentDetail,
         ]);
+    }
+
+    /**
+     * Uploads (replacing any existing one) the student's own profile photo.
+     * Same OWASP-cheat-sheet pattern as uploadProof(): randomized stored
+     * name, mime+extension validated, size capped, served back only
+     * through AvatarController — never a public path. The old file is
+     * deleted once the new one is safely in place.
+     */
+    public function uploadPhoto()
+    {
+        $userId = (int) auth()->id();
+
+        $rules = [
+            'photo' => 'uploaded[photo]|max_size[photo,2048]|ext_in[photo,jpg,jpeg,png,webp]|mime_in[photo,image/jpeg,image/png,image/webp]|is_image[photo]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()->to('/student/profile')->with('profile_error', implode(' ', $this->validator->getErrors()));
+        }
+
+        $file = $this->request->getFile('photo');
+
+        if ($file === null || ! $file->isValid()) {
+            return redirect()->to('/student/profile')->with('profile_error', 'Upload failed. Please try again.');
+        }
+
+        $targetDir  = WRITEPATH . 'uploads/avatars/' . $userId;
+        $storedName = $file->getRandomName();
+
+        if (! is_dir($targetDir)) {
+            mkdir($targetDir, 0755, true);
+        }
+
+        $previous = db_connect()->table('users')->select('photo_filename')->where('id', $userId)->get()->getRowArray();
+
+        $file->move($targetDir, $storedName);
+
+        db_connect()->table('users')->where('id', $userId)->update(['photo_filename' => $storedName]);
+
+        if (! empty($previous['photo_filename'])) {
+            $oldPath = $targetDir . '/' . $previous['photo_filename'];
+            if (is_file($oldPath)) {
+                unlink($oldPath);
+            }
+        }
+
+        return redirect()->to('/student/profile')->with('profile_message', 'Profile photo updated.');
+    }
+
+    /**
+     * Removes the student's own profile photo, reverting to the letter
+     * avatar. Deletes the stored file too — nothing orphaned on disk.
+     */
+    public function removePhoto()
+    {
+        $userId = (int) auth()->id();
+
+        $current = db_connect()->table('users')->select('photo_filename')->where('id', $userId)->get()->getRowArray();
+
+        if (! empty($current['photo_filename'])) {
+            $path = WRITEPATH . 'uploads/avatars/' . $userId . '/' . $current['photo_filename'];
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+
+        db_connect()->table('users')->where('id', $userId)->update(['photo_filename' => null]);
+
+        return redirect()->to('/student/profile')->with('profile_message', 'Profile photo removed.');
     }
 
     public function tuition(): string

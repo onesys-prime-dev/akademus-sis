@@ -55,12 +55,34 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <?php endif ?>
 
 <div class="panel">
+    <?php $photoUrl = avatar_photo_url((int) $account->id, $studentDetail['photo_filename'] ?? null); ?>
     <div class="avatar-row">
-        <div class="avatar"><?= esc(mb_strtoupper(mb_substr($account->username, 0, 1))) ?></div>
+        <div class="avatar" style="<?= $photoUrl === null ? 'background:' . esc(avatar_color($account->username), 'attr') . ';' : '' ?> overflow:hidden;">
+            <?php if ($photoUrl !== null): ?>
+                <img src="<?= esc($photoUrl) ?>" alt="" style="width:100%;height:100%;object-fit:cover;">
+            <?php else: ?>
+                <?= esc(mb_strtoupper(mb_substr($account->username, 0, 1))) ?>
+            <?php endif ?>
+        </div>
         <div>
             <div class="avatar-name"><?= esc($account->username) ?></div>
             <div class="avatar-role">
                 <?= $section !== null ? esc($section['program']) . ' · ' . esc($section['year_level']) . ' · Section ' . esc($section['section']) : 'No section assigned' ?>
+            </div>
+            <div class="avatar-photo-actions">
+                <form method="post" action="<?= site_url('student/profile/photo') ?>" enctype="multipart/form-data">
+                    <?= csrf_field() ?>
+                    <label class="btn btn-secondary avatar-upload-btn">
+                        Change photo
+                        <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" onchange="this.form.submit()" hidden>
+                    </label>
+                </form>
+                <?php if ($photoUrl !== null): ?>
+                    <form method="post" action="<?= site_url('student/profile/photo/remove') ?>" data-confirm="Remove your profile photo?">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="btn btn-secondary">Remove photo</button>
+                    </form>
+                <?php endif ?>
             </div>
         </div>
     </div>
@@ -104,7 +126,13 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             </div>
             <div class="field">
                 <label>Gender</label>
-                <input type="text" name="gender" value="<?= esc(old('gender', $studentDetail['gender'] ?? '')) ?>" maxlength="20" placeholder="e.g. Male, Female">
+                <?php $genderValue = old('gender', $studentDetail['gender'] ?? ''); ?>
+                <select name="gender">
+                    <option value="" <?= $genderValue === '' ? 'selected' : '' ?>>Select&hellip;</option>
+                    <option value="Male" <?= $genderValue === 'Male' ? 'selected' : '' ?>>Male</option>
+                    <option value="Female" <?= $genderValue === 'Female' ? 'selected' : '' ?>>Female</option>
+                    <option value="Non-binary" <?= $genderValue === 'Non-binary' ? 'selected' : '' ?>>Non-binary</option>
+                </select>
             </div>
         </div>
         <div class="field-row">

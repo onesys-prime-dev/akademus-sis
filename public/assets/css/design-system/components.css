@@ -274,6 +274,16 @@ html.is-resizing *, html.is-resizing *::before, html.is-resizing *::after { tran
 .ac-page-header { align-items: flex-end; }
 .ac-page-header__title { margin-bottom: 4px; }
 .ac-page-header__sub { margin: 0; }
+
+/* Must come AFTER the unconditional align-items:flex-end rule above —
+   this file loads last in the cascade, so an earlier-in-file mobile
+   override would still lose to that later, unconditional declaration at
+   equal specificity. Desktop's flex-end baseline-aligns a title against
+   its subtitle in a row layout; mobile stacks them in a column instead,
+   where flex-end would right-align a subtitle-less title like "Profile". */
+@media (max-width: 640px) {
+    .ac-page-header { align-items: flex-start; }
+}
 .ac-panel, .panel, .stat-card, .ac-card, .ac-bento-card, .ac-dtable {
     background: var(--color-surface);
     border: 1px solid var(--color-border);

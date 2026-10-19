@@ -369,7 +369,7 @@ class StudentModel extends Model
     public function findDetailed(int $studentId): ?array
     {
         $student = $this->db->table('students s')
-            ->select('s.*, u.id as user_id, u.username, u.first_name, u.middle_name, u.last_name, u.contact_number, u.section_id,
+            ->select('s.*, u.id as user_id, u.username, u.first_name, u.middle_name, u.last_name, u.contact_number, u.section_id, u.photo_filename,
                       i.secret as email, p.program_id, p.program_code, p.program_name,
                       c.curriculum_code, c.curriculum_name')
             ->join('users u', 'u.id = s.user_id')

@@ -42,7 +42,7 @@
         <div class="ac-dtable__row">
 
             <div class="ac-user-cell" data-label="Name">
-                <div class="ac-avatar ac-avatar--primary" aria-hidden="true"><?= esc($initials) ?></div>
+                <div class="ac-avatar" style="background:<?= esc(avatar_color($u['username']), 'attr') ?>;color:#fff;" aria-hidden="true"><?= esc($initials) ?></div>
                 <div>
                     <p class="ac-user-cell__name"><?= esc($u['username']) ?></p>
                     <p class="ac-user-cell__id">ID #<?= esc($u['id']) ?></p>

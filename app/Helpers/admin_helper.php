@@ -29,6 +29,34 @@ if (! function_exists('admin_icon')) {
     }
 }
 
+if (! function_exists('avatar_color')) {
+    /**
+     * Deterministic background color for a letter avatar, picked from a
+     * fixed palette by hashing $seed (username, or any other stable
+     * per-person string) — the same person always gets the same color, and
+     * different people are spread across the palette instead of every
+     * avatar in the app being an identical flat blue.
+     */
+    function avatar_color(string $seed): string
+    {
+        static $palette = ['#174ea6', '#0f766e', '#a65b08', '#15803d', '#4f5eb3', '#b91c1c', '#7c3aed', '#0e7490'];
+
+        return $palette[crc32($seed) % count($palette)];
+    }
+}
+
+if (! function_exists('avatar_photo_url')) {
+    /**
+     * The URL for a user's uploaded profile photo, or null if they haven't
+     * set one (callers fall back to the letter avatar). Served through
+     * AvatarController, never a public upload path — see its own docblock.
+     */
+    function avatar_photo_url(int $userId, ?string $photoFilename): ?string
+    {
+        return $photoFilename !== null && $photoFilename !== '' ? site_url("avatar/{$userId}") : null;
+    }
+}
+
 if (! function_exists('time_ago')) {
     /**
      * "2h ago" / "3d ago" style relative timestamp.

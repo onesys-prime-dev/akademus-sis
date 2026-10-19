@@ -281,6 +281,12 @@ $username      = $userName ?? (auth()->user()->username ?? 'Administrator');
 $userRoleLabel = $userRoleLabel ?? 'Administrator';
 $logoutUrl     = $logoutUrl ?? '/logout';
 $initial       = strtoupper(substr($username, 0, 1));
+$avatarColor   = avatar_color($username);
+$avatarPhotoUrl = null;
+if (auth()->loggedIn()) {
+    $photoFilename  = db_connect()->table('users')->select('photo_filename')->where('id', auth()->id())->get()->getRowArray()['photo_filename'] ?? null;
+    $avatarPhotoUrl = avatar_photo_url((int) auth()->id(), $photoFilename);
+}
 // Every role group (admin, student, faculty, chairperson) routes an
 // identically-shaped notifications/mark-read/mark-all-read trio off its own
 // prefix — so the bell can stay in this one shared layout instead of being
@@ -391,12 +397,22 @@ $pageHelp ??= [
             <?= $this->renderSection('headerActions') ?>
 
             <div class="ac-user-menu" id="acUserMenu">
-                <button type="button" class="ac-avatar ac-avatar--primary ac-user-menu__trigger" id="acUserMenuBtn" aria-label="Account menu for <?= esc($username) ?>" title="<?= esc($username) ?>" aria-haspopup="true" aria-expanded="false">
-                    <?= esc($initial) ?>
+                <button type="button" class="ac-avatar ac-user-menu__trigger" id="acUserMenuBtn" style="<?= $avatarPhotoUrl === null ? 'background:' . esc($avatarColor, 'attr') . ';color:#fff;' : '' ?>" aria-label="Account menu for <?= esc($username) ?>" title="<?= esc($username) ?>" aria-haspopup="true" aria-expanded="false">
+                    <?php if ($avatarPhotoUrl !== null): ?>
+                        <img src="<?= esc($avatarPhotoUrl) ?>" alt="">
+                    <?php else: ?>
+                        <?= esc($initial) ?>
+                    <?php endif ?>
                 </button>
                 <div class="ac-user-menu__dropdown">
                     <div class="ac-user-menu__who">
-                        <span class="ac-avatar ac-avatar--primary ac-user-menu__who-avatar"><?= esc($initial) ?></span>
+                        <span class="ac-avatar ac-user-menu__who-avatar" style="<?= $avatarPhotoUrl === null ? 'background:' . esc($avatarColor, 'attr') . ';color:#fff;' : '' ?>">
+                            <?php if ($avatarPhotoUrl !== null): ?>
+                                <img src="<?= esc($avatarPhotoUrl) ?>" alt="">
+                            <?php else: ?>
+                                <?= esc($initial) ?>
+                            <?php endif ?>
+                        </span>
                         <div class="ac-user-menu__who-text">
                             <p class="ac-user-menu__name"><?= esc($username) ?></p>
                             <span class="ac-user-menu__role"><?= esc($userRoleLabel) ?></span>

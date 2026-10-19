@@ -376,10 +376,9 @@ class StudentProgressService
 
         $rows = db_connect()->table('enrollments e')
             ->select('e.user_id, e.subject_code')
-            ->join('sections sec', 'sec.section_id = e.section_id')
             ->whereIn('e.user_id', $userIds)
             ->where('e.status', 'enrolled')
-            ->where('sec.academic_year', $activeTerm)
+            ->where('e.academic_year', $activeTerm)
             ->get()
             ->getResultArray();
 

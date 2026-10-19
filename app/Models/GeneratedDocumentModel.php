@@ -250,16 +250,19 @@ class GeneratedDocumentModel extends Model
      */
     private function corEnrollments(int $userId, string $academicYear): array
     {
+        // e.academic_year (term-scoped) is the filter/join key here, not
+        // sec.academic_year — a section spans the whole school year now,
+        // so it can no longer tell this term's enrollments apart.
         return $this->db->table('enrollments e')
             ->select("e.subject_code, sec.program, sec.year_level, sec.section, sub.subject_name, sub.units,
                       GROUP_CONCAT(DISTINCT p.prof SEPARATOR ', ') AS prof,
                       GROUP_CONCAT(DISTINCT p.room SEPARATOR ', ') AS room")
             ->join('sections sec', 'sec.section_id = e.section_id')
             ->join('subjects sub', 'sub.subject_code = e.subject_code', 'left')
-            ->join('plotted_schedules p', 'p.academic_year = sec.academic_year AND p.program = sec.program AND p.year_level = sec.year_level AND p.section = sec.section AND p.subject_code = e.subject_code', 'left')
+            ->join('plotted_schedules p', 'p.academic_year = e.academic_year AND p.program = sec.program AND p.year_level = sec.year_level AND p.section = sec.section AND p.subject_code = e.subject_code', 'left')
             ->where('e.user_id', $userId)
             ->where('e.status', 'enrolled')
-            ->where('sec.academic_year', $academicYear)
+            ->where('e.academic_year', $academicYear)
             ->groupBy('e.subject_code, sec.program, sec.year_level, sec.section, sub.subject_name, sub.units')
             ->orderBy('e.subject_code')
             ->get()

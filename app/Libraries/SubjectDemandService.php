@@ -2,6 +2,8 @@
 
 namespace App\Libraries;
 
+use App\Models\AcademicYearModel;
+
 /**
  * Centralizes "who needs this subject this term, who's already placed, and
  * who's left" — the shared-subject demand aggregation layer (Step 4 of the
@@ -163,7 +165,7 @@ class SubjectDemandService
             ->select('opr.subject_id, opr.status, opr.request_type')
             ->join('sections sec', 'sec.section_id = opr.section_id')
             ->whereIn('opr.subject_id', $subjectIds)
-            ->where('sec.academic_year', $academicYear)
+            ->where('sec.academic_year', AcademicYearModel::yearOnly($academicYear))
             ->get()
             ->getResultArray();
 
@@ -186,10 +188,9 @@ class SubjectDemandService
             $assignedRows = $db->table('enrollments e')
                 ->distinct()
                 ->select('e.subject_code, e.user_id')
-                ->join('sections sec', 'sec.section_id = e.section_id')
                 ->whereIn('e.subject_code', $allCodes)
                 ->where('e.status', 'enrolled')
-                ->where('sec.academic_year', $academicYear)
+                ->where('e.academic_year', $academicYear)
                 ->get()
                 ->getResultArray();
 
@@ -216,7 +217,7 @@ class SubjectDemandService
             ->join('sections sec', 'sec.section_id = u.section_id')
             ->join('programs p', 'p.program_id = st.program_id', 'left')
             ->where('st.student_status', 'active')
-            ->where('sec.academic_year', $academicYear)
+            ->where('sec.academic_year', AcademicYearModel::yearOnly($academicYear))
             ->where('st.curriculum_id IS NOT NULL')
             ->get()
             ->getResultArray();
@@ -406,7 +407,7 @@ class SubjectDemandService
         $base = static fn () => db_connect()->table('offering_placement_requests opr')
             ->join('sections sec', 'sec.section_id = opr.section_id')
             ->where('opr.subject_id', $subjectId)
-            ->where('sec.academic_year', $academicYear);
+            ->where('sec.academic_year', AcademicYearModel::yearOnly($academicYear));
 
         $pending = $base()->where('opr.status', 'pending')->countAllResults();
 
@@ -435,7 +436,7 @@ class SubjectDemandService
             ->join('sections sec', 'sec.section_id = u.section_id')
             ->join('programs p', 'p.program_id = st.program_id', 'left')
             ->where('st.student_status', 'active')
-            ->where('sec.academic_year', $academicYear)
+            ->where('sec.academic_year', AcademicYearModel::yearOnly($academicYear))
             ->where('st.curriculum_id IS NOT NULL')
             ->get()
             ->getResultArray();
@@ -536,10 +537,9 @@ class SubjectDemandService
         $rows = db_connect()->table('enrollments e')
             ->distinct()
             ->select('e.user_id')
-            ->join('sections sec', 'sec.section_id = e.section_id')
             ->where('e.subject_code', $subjectCode)
             ->where('e.status', 'enrolled')
-            ->where('sec.academic_year', $academicYear)
+            ->where('e.academic_year', $academicYear)
             ->get()
             ->getResultArray();
 

@@ -62,7 +62,7 @@
         <?php $initials = strtoupper(substr($s['first_name'] ?? '?', 0, 1) . substr($s['last_name'] ?? '', 0, 1)); ?>
         <div class="ac-dtable__row">
             <div class="ac-user-cell">
-                <div class="ac-avatar ac-avatar--primary"><?= esc($initials) ?></div>
+                <div class="ac-avatar" style="background:<?= esc(avatar_color($s['username']), 'attr') ?>;color:#fff;"><?= esc($initials) ?></div>
                 <div>
                     <p class="ac-user-cell__name"><?= esc(trim(($s['first_name'] ?? '') . ' ' . ($s['last_name'] ?? ''))) ?: esc($s['username']) ?></p>
                     <p class="ac-user-cell__id"><?= esc($s['email'] ?? $s['username']) ?></p>

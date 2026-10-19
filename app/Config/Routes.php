@@ -412,6 +412,8 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->get('profile', 'StudentController::profile');
     $routes->post('profile/update', 'StudentController::updateProfile');
     $routes->post('profile/password', 'StudentController::updatePassword');
+    $routes->post('profile/photo', 'StudentController::uploadPhoto');
+    $routes->post('profile/photo/remove', 'StudentController::removePhoto');
     $routes->get('schedule', 'StudentEnrollment::schedule');
     $routes->post('enroll', 'StudentEnrollment::enroll');
     $routes->post('enroll/block', 'StudentEnrollment::enrollBlock');
@@ -554,6 +556,10 @@ $routes->get('/student/tuition/receipt/(:num)', 'StudentController::viewReceipt/
 
 // Forced password change (temp-password first login) — any signed-in role.
 $routes->post('/account/set-temp-password', 'AccountController::setTempPassword', ['filter' => 'session']);
+
+// Profile photo serving — any signed-in role (same visibility a username or
+// initial already has app-wide); AvatarController::show() itself gates it.
+$routes->get('/avatar/(:num)', 'AvatarController::show/$1', ['filter' => 'session']);
 
 /*
 $routes->get('/profile', function () {

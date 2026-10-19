@@ -193,7 +193,10 @@ html, .ac-page { height: 100%; }
     font-size: 13px;
     font-weight: 700;
     flex-shrink: 0;
+    overflow: hidden;
 }
+
+.ac-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 .ac-avatar--primary { background: var(--color-primary); color: #fff; }
 
