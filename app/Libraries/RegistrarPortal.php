@@ -41,7 +41,7 @@ class RegistrarPortal
                     ]],
                     'enlistments' => ['label' => 'Enlistment Approvals', 'icon' => 'playlist_add_check', 'url' => 'registrar/enlistments', 'help' => [
                         'title' => 'Enlistment Approvals',
-                        'text'  => "The final stage of the enlistment chain: carts noted by the dean land here. Approving converts the cart into real enrollments (recomputing tuition automatically); returning sends it back to the student with your reason.",
+                        'text'  => "The final stage of the enlistment chain: enlistments noted by the dean land here. Approving converts it into real enrollments (recomputing tuition automatically); returning sends it back to the student with your reason.",
                     ]],
                     'clearance' => ['label' => 'Graduation Clearance', 'icon' => 'checklist', 'url' => 'registrar/clearance', 'help' => [
                         'title' => 'Graduation Clearance',

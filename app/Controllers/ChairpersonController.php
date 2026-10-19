@@ -291,6 +291,30 @@ class ChairpersonController extends BaseController
         return $formatted;
     }
 
+    /**
+     * Label-only counterpart to creatableAcademicYears() — the set of
+     * school years a NEW section may be created under (active + upcoming),
+     * deduped by year since sections no longer have a separate row per
+     * semester within the same year.
+     */
+    private function creatableSectionYears(): array
+    {
+        $years = new AcademicYearModel();
+        $rows  = array_filter([$years->activeRow(), $years->upcomingTerm()]);
+
+        $labels = [];
+
+        foreach ($rows as $row) {
+            $label = AcademicYearModel::format($row['label']);
+
+            if (! in_array($label, $labels, true)) {
+                $labels[] = $label;
+            }
+        }
+
+        return $labels;
+    }
+
     private function academicYears(): array
     {
         $rows = (new AcademicYearModel())
@@ -343,6 +367,19 @@ class ChairpersonController extends BaseController
     private function isActiveYear(string $academicYear): bool
     {
         return $academicYear === (new AcademicYearModel())->activeFormatted();
+    }
+
+    /**
+     * Year-only counterpart to isActiveYear() — for values read off a
+     * `sections` row (e.g. SectionBalancer's rebalance group), which is
+     * year-scoped now and never equal to the term-scoped string
+     * isActiveYear() compares against.
+     */
+    private function isActiveSchoolYear(string $academicYear): bool
+    {
+        $active = (new AcademicYearModel())->activeFormatted();
+
+        return $active !== null && $academicYear === AcademicYearModel::yearOnly($active);
     }
 
     public function index()
@@ -422,7 +459,7 @@ class ChairpersonController extends BaseController
                     ->select('section')
                     ->where('program', $context['program'])
                     ->where('year_level', $context['year_level'])
-                    ->where('academic_year', $context['academic_year'])
+                    ->where('academic_year', $context['section_year'])
                     ->get()
                     ->getResultArray(),
                 'section'
@@ -643,7 +680,7 @@ class ChairpersonController extends BaseController
             $profMap
         );
 
-        $section   = (new SectionModel())->forContext($context['academic_year'], $context['program'], $context['year_level'], $context['section']);
+        $section   = (new SectionModel())->forContext($context['section_year'], $context['program'], $context['year_level'], $context['section']);
         $headcount = $section === null ? 0 : (int) db_connect()->table('users u')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'student')->where('u.deleted_at', null)->where('u.section_id', $section['section_id'])
@@ -1539,7 +1576,7 @@ class ChairpersonController extends BaseController
                             ->select('section')
                             ->where('program', $context['program'])
                             ->where('year_level', $context['year_level'])
-                            ->where('academic_year', $context['academic_year'])
+                            ->where('academic_year', AcademicYearModel::yearOnly($context['academic_year']))
                             ->get()
                             ->getResultArray(),
                         'section'
@@ -1576,6 +1613,9 @@ class ChairpersonController extends BaseController
             $context[$key] = $payload['context'][$key];
         }
 
+        // Section identity is year-scoped now; $context['academic_year']
+        // above stays term-scoped for plotted_schedules/faculty_assignments.
+        $context['section_year'] = AcademicYearModel::yearOnly($context['academic_year']);
 
         $subjectsByCode = array_column($this->contextSubjects($context['academic_year'], $context['program'], $context['year_level']), null, 'code');
 
@@ -1979,9 +2019,11 @@ class ChairpersonController extends BaseController
 
         // A section becomes a real, stable row the moment it's plotted —
         // this is the anchor enrollment attaches to (unlike plotted_schedules
-        // rows, which get replaced wholesale on every save).
+        // rows, which get replaced wholesale on every save). Year-scoped, so
+        // plotting 2nd Semester for a section already plotted in 1st
+        // Semester resolves to the SAME row instead of creating a new one.
         (new SectionModel())->firstOrCreateForContext(
-            $context['academic_year'],
+            $context['section_year'],
             $context['program'],
             $context['year_level'],
             $context['section']
@@ -2147,7 +2189,7 @@ class ChairpersonController extends BaseController
                             ->select('section')
                             ->where('program', $payload['program'])
                             ->where('year_level', $payload['year_level'])
-                            ->where('academic_year', $payload['academic_year'])
+                            ->where('academic_year', AcademicYearModel::yearOnly($payload['academic_year']))
                             ->get()
                             ->getResultArray(),
                         'section'
@@ -2178,7 +2220,7 @@ class ChairpersonController extends BaseController
 
         $sections = new SectionModel();
         $section  = $sections->firstOrCreateForContext(
-            $payload['academic_year'],
+            AcademicYearModel::yearOnly($payload['academic_year']),
             $payload['program'],
             $payload['year_level'],
             $payload['section']
@@ -2271,7 +2313,7 @@ class ChairpersonController extends BaseController
             'deptName'        => $this->authorizedDeptNamesJoined(),
             'programs'        => $this->authorizedPrograms(),
             'yearLevels'      => self::FILTERS['year_level'],
-            'academicYears'   => $this->creatableAcademicYears(),
+            'academicYears'   => $this->creatableSectionYears(),
             'activeAcademicYear' => (new AcademicYearModel())->activeFormatted(),
             'sections'        => $sections,
             'rosterBySection' => $rosterBySection,
@@ -2311,7 +2353,7 @@ class ChairpersonController extends BaseController
             return $this->fail('Invalid year level.');
         }
 
-        if (! in_array($payload['academic_year'], $this->creatableAcademicYears(), true)) {
+        if (! in_array($payload['academic_year'], $this->creatableSectionYears(), true)) {
             return $this->fail('Invalid academic year.');
         }
 
@@ -2397,8 +2439,12 @@ class ChairpersonController extends BaseController
             return $this->fail('Invalid academic year.');
         }
 
+        // The dashboard's "gap" panel posts the term-scoped academic_year
+        // (see the view's hidden `academic_year` field, sourced from
+        // $activeYear) — SectionBalancer::ensureBaseSection() resolves/
+        // creates a `sections` row, which is year-scoped now.
         $section = (new SectionBalancer())->ensureBaseSection(
-            $payload['academic_year'],
+            AcademicYearModel::yearOnly($payload['academic_year']),
             $payload['program'],
             $payload['year_level'],
             (int) auth()->id(),
@@ -2576,7 +2622,7 @@ class ChairpersonController extends BaseController
             return $this->fail('Confirm the rebalance first.');
         }
 
-        if (! $this->isActiveYear($group[0])) {
+        if (! $this->isActiveSchoolYear($group[0])) {
             return $this->fail('Only the active academic year can be rebalanced.');
         }
 
@@ -2856,7 +2902,7 @@ class ChairpersonController extends BaseController
                 $scoped = $db->table('sections')->where('program', $program)->where('year_level', $year);
 
                 if ($academicYear !== null) {
-                    $scoped->where('academic_year', $academicYear);
+                    $scoped->where('academic_year', AcademicYearModel::yearOnly($academicYear));
                 }
 
                 // A specific year level IS known/targeted here — whatever
@@ -2963,6 +3009,12 @@ class ChairpersonController extends BaseController
                 break;
             }
         }
+
+        // Section identity is year-scoped, not term-scoped — sections no
+        // longer get a new row per semester. Anywhere a `sections` row is
+        // looked up/anchored uses this instead of $context['academic_year'],
+        // which stays term-scoped for plotted_schedules/faculty_assignments.
+        $context['section_year'] = isset($context['ay_label']) ? AcademicYearModel::format($context['ay_label']) : AcademicYearModel::yearOnly($context['academic_year']);
 
         // Smart default for a BORROWED program (one that needs this
         // department's subject but isn't owned by it — see
@@ -3147,7 +3199,7 @@ class ChairpersonController extends BaseController
                     $sections = array_column(
                         db_connect()->table('sections')
                             ->select('section')
-                            ->where(['program' => $program, 'year_level' => $yearLevel, 'academic_year' => $activeYear])
+                            ->where(['program' => $program, 'year_level' => $yearLevel, 'academic_year' => AcademicYearModel::yearOnly($activeYear)])
                             ->distinct()
                             ->get()
                             ->getResultArray(),
@@ -3285,7 +3337,7 @@ class ChairpersonController extends BaseController
         if ($programs !== [] && $activeYear !== null) {
             $deptSections = db_connect()->table('sections')
                 ->select('section_id, program, year_level, section, capacity, status')
-                ->where('academic_year', $activeYear)
+                ->where('academic_year', AcademicYearModel::yearOnly($activeYear))
                 ->whereIn('program', $programs)
                 ->orderBy('program')
                 ->orderBy('year_level')

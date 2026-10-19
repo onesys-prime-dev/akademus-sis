@@ -331,13 +331,21 @@ class SectionBalancer
 
         foreach ($sections as $s) {
             $sid = (int) $s['section_id'];
-            $ctx = ['academic_year' => $academicYear, 'program' => $program, 'year_level' => $yearLevel, 'section' => $s['section']];
+            // $academicYear here is year-only (sections are year-scoped),
+            // but plotted_schedules/faculty_assignments stay term-scoped —
+            // every term's string starts with the year-only prefix (e.g.
+            // "AY 2026 - 2027 · 1st Semester"), so a prefix match catches a
+            // schedule/assignment in EITHER semester of this section's
+            // year. Rebalancing must treat a section as unsafe if it has
+            // one in ANY term this year, not just an exact (and now
+            // impossible) string match.
+            $ctxBase = ['program' => $program, 'year_level' => $yearLevel, 'section' => $s['section']];
 
             $flags = [
                 'status'          => $s['status'],
                 'auto_balance'    => (bool) ($s['auto_balance'] ?? 1),
-                'has_schedule'    => $db->table('plotted_schedules')->where($ctx)->countAllResults() > 0,
-                'has_faculty'     => $db->table('faculty_assignments')->where($ctx)->countAllResults() > 0,
+                'has_schedule'    => $db->table('plotted_schedules')->where($ctxBase)->like('academic_year', $academicYear, 'after')->countAllResults() > 0,
+                'has_faculty'     => $db->table('faculty_assignments')->where($ctxBase)->like('academic_year', $academicYear, 'after')->countAllResults() > 0,
                 'has_grades'      => $db->table('grades')->where('section_id', $sid)->countAllResults() > 0,
                 'has_enrollments' => $db->table('enrollments')->where('section_id', $sid)->where('status', 'enrolled')->countAllResults() > 0,
             ];

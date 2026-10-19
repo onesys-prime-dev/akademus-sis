@@ -168,13 +168,18 @@ class StudentAccountNormalizer
                 }
             }
 
+            // Sections no longer carry their own semester identity — this
+            // tool normalizes an account against the active term, same as
+            // the block-enroll path it mirrors (EnrollmentModel::enrollBlock()).
+            $termAcademicYear = (new \App\Models\AcademicYearModel())->activeFormatted();
+
             if ($commit && $student !== null) {
-                $result = (new TuitionAssessmentService())->recompute((int) $student['student_id'], $section['academic_year']);
+                $result = (new TuitionAssessmentService())->recompute((int) $student['student_id'], $termAcademicYear);
                 $steps[] = $result['ok']
-                    ? 'Tuition recomputed for ' . $section['academic_year'] . ' (status: ' . ($result['assessment']['status'] ?? '?') . ').'
+                    ? 'Tuition recomputed for ' . $termAcademicYear . ' (status: ' . ($result['assessment']['status'] ?? '?') . ').'
                     : 'Tuition recompute failed: ' . ($result['error'] ?? 'unknown');
             } elseif (! $commit) {
-                $steps[] = 'Recompute tuition for ' . $section['academic_year'] . '.';
+                $steps[] = 'Recompute tuition for ' . $termAcademicYear . '.';
             }
         }
 

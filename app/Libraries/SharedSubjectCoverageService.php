@@ -2,6 +2,7 @@
 
 namespace App\Libraries;
 
+use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
 use App\Models\DepartmentModel;
 
@@ -67,7 +68,7 @@ class SharedSubjectCoverageService
                 ->whereIn('program_id', $myProgramIds === [] ? [0] : $myProgramIds)
                 ->orWhereIn('program', $myProgramNames === [] ? [''] : $myProgramNames)
             ->groupEnd()
-            ->where('academic_year', $academicYear)
+            ->where('academic_year', AcademicYearModel::yearOnly($academicYear))
             ->get()
             ->getResultArray();
 
@@ -300,7 +301,7 @@ class SharedSubjectCoverageService
         $myCommitmentsBySection = [];
 
         foreach ($relevantSectionIds as $sectionId) {
-            $myCommitmentsBySection[$sectionId] = $conflictService->meetingsForSection($sectionId);
+            $myCommitmentsBySection[$sectionId] = $conflictService->meetingsForSection($sectionId, $academicYear);
         }
 
         // Active (pending/approved) requests tied to my sections, batched.

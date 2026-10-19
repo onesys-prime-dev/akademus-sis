@@ -418,6 +418,7 @@ $routes->group('student', ['filter' => 'group:student'], function ($routes) {
     $routes->post('enrollments/drop', 'StudentEnrollment::drop');
     $routes->get('enlistment', 'StudentEnlistment::wizard');
     $routes->post('enlistment/add-item', 'StudentEnlistment::addItem');
+    $routes->post('enlistment/add-items', 'StudentEnlistment::addItems');
     $routes->post('enlistment/remove-item', 'StudentEnlistment::removeItem');
     $routes->post('enlistment/submit', 'StudentEnlistment::submit');
     $routes->post('enlistment/send-reminder', 'StudentEnlistment::sendReminder');
@@ -531,8 +532,9 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
 
     // online enlistment — this chair's slice of the term's enlistment window,
     // plus the chair's step in the enlistment approval chain
-    $routes->get('enlistment-window'        , 'Chairperson\EnlistmentWindowController::edit');
-    $routes->post('enlistment-window/update', 'Chairperson\EnlistmentWindowController::update');
+    $routes->get('enlistment-window'                 , 'Chairperson\EnlistmentWindowController::edit');
+    $routes->post('enlistment-window/update'         , 'Chairperson\EnlistmentWindowController::update');
+    $routes->post('enlistment-window/save-offerings' , 'Chairperson\EnlistmentWindowController::saveOfferings');
     $routes->get('enlistment-approvals'          , 'Chairperson\EnlistmentApprovalController::index');
     $routes->post('enlistment-approvals/recommend', 'Chairperson\EnlistmentApprovalController::recommend');
     $routes->post('enlistment-approvals/return'   , 'Chairperson\EnlistmentApprovalController::returnToStudent');

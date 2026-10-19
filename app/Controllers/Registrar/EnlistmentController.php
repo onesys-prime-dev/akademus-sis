@@ -38,8 +38,8 @@ class EnlistmentController extends BaseController
         }
 
         $message = $result['failed'] === []
-            ? 'Enlistment approved and the student was enlisted into every cart item.'
-            : 'Enlistment approved with some items failing conversion: ' . implode('; ', array_column($result['failed'], 'error'));
+            ? 'Enlistment approved and the student was enlisted into every selected subject.'
+            : 'Enlistment approved with some subjects failing conversion: ' . implode('; ', array_column($result['failed'], 'error'));
 
         $message .= ' ' . $this->assessmentSummary((int) $result['student_id'], (string) $result['academic_year']);
 
@@ -85,6 +85,6 @@ class EnlistmentController extends BaseController
             return redirect()->back()->with('errors', [$result['error']]);
         }
 
-        return redirect()->to('/registrar/enlistments')->with('message', 'Cart returned to student.');
+        return redirect()->to('/registrar/enlistments')->with('message', 'Enlistment returned to student.');
     }
 }

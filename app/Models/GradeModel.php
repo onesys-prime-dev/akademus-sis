@@ -55,7 +55,7 @@ class GradeModel extends Model
      */
     public function rosterWithGrades(string $academicYear, string $program, string $yearLevel, string $section, string $subjectCode): array
     {
-        $sectionRow = (new SectionModel())->forContext($academicYear, $program, $yearLevel, $section);
+        $sectionRow = (new SectionModel())->forContext(\App\Models\AcademicYearModel::yearOnly($academicYear), $program, $yearLevel, $section);
 
         if ($sectionRow === null) {
             return ['section' => null, 'offering' => null, 'roster' => []];
@@ -64,9 +64,12 @@ class GradeModel extends Model
         $sectionId = (int) $sectionRow['section_id'];
         $offering  = (new CourseOfferingModel())->offeringForSection($sectionId, $subjectCode);
 
+        // A year-scoped section's roster for this subject must still be
+        // narrowed to THIS term — enrollments.academic_year is what makes
+        // that possible now that the section itself spans the whole year.
         $roster = $offering !== null
             ? (new CourseOfferingModel())->listRoster((int) $offering['offering_id'])
-            : (new EnrollmentModel())->listRosterForSectionSubject($sectionId, $subjectCode);
+            : (new EnrollmentModel())->listRosterForSectionSubject($sectionId, $subjectCode, $academicYear);
 
         if ($roster === []) {
             return ['section' => $sectionRow, 'offering' => $offering, 'roster' => []];

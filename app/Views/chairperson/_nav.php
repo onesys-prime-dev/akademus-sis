@@ -62,11 +62,11 @@ return [
         ]],
         'enlistment-approvals'    => ['label' => 'Enlistment Approvals',    'icon' => 'playlist_add_check', 'url' => 'chairperson/enlistment-approvals', 'help' => [
             'title' => 'Enlistment Approvals',
-            'text'  => "Students submit their subject carts here for your review before the dean, then the registrar, finalize enrollment. You can recommend a cart forward or return it to the student with a reason for revision.",
+            'text'  => "Students submit their enlistments here for your review before the dean, then the registrar, finalize enrollment. You can recommend an enlistment forward or return it to the student with a reason for revision.",
         ]],
         'enlistment-window'       => ['label' => 'Enlistment Window',      'icon' => 'event_available',    'url' => 'chairperson/enlistment-window', 'help' => [
             'title' => 'Enlistment Window',
-            'text'  => "Open or close the period during which your department's students can submit an enlistment cart, and set the per-student unit cap for the term. Outside this window, students fall back to direct self-enrollment.",
+            'text'  => "Open or close the period during which your department's students can pre-register for the upcoming term, and set the per-student unit cap. Outside this window, students fall back to direct self-enrollment.",
         ]],
     ],
 ];

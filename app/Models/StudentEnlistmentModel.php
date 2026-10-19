@@ -97,10 +97,10 @@ class StudentEnlistmentModel extends Model
         $enlistment = $this->find($enlistmentId);
 
         if ($enlistment === null || $enlistment['status'] !== 'draft') {
-            return ['ok' => false, 'error' => 'This cart can no longer be edited.'];
+            return ['ok' => false, 'error' => 'This enlistment can no longer be edited.'];
         }
 
-        $eligibility = (new EnrollmentModel())->checkEligibility($studentUserId, $sectionId, $subjectCode);
+        $eligibility = (new EnrollmentModel())->checkEligibility($studentUserId, $sectionId, $subjectCode, $enlistment['academic_year']);
 
         if (! $eligibility['ok']) {
             return ['ok' => false, 'error' => $eligibility['error']];
@@ -123,7 +123,7 @@ class StudentEnlistmentModel extends Model
                 'created_at'    => date('Y-m-d H:i:s'),
             ]);
         } catch (\Exception $e) {
-            return ['ok' => false, 'error' => "{$subjectCode} is already in your cart."];
+            return ['ok' => false, 'error' => "{$subjectCode} is already in your enlistment."];
         }
 
         return ['ok' => true];
@@ -134,7 +134,7 @@ class StudentEnlistmentModel extends Model
         $enlistment = $this->find($enlistmentId);
 
         if ($enlistment === null || $enlistment['status'] !== 'draft') {
-            return ['ok' => false, 'error' => 'This cart can no longer be edited.'];
+            return ['ok' => false, 'error' => 'This enlistment can no longer be edited.'];
         }
 
         $this->db->table('enlistment_items')->where('id', $itemId)->where('enlistment_id', $enlistmentId)->delete();
@@ -166,17 +166,17 @@ class StudentEnlistmentModel extends Model
         $enlistment = $this->find($enlistmentId);
 
         if ($enlistment === null || (int) $enlistment['student_id'] !== $studentId || $enlistment['status'] !== 'draft') {
-            return ['ok' => false, 'error' => 'This cart can no longer be submitted.'];
+            return ['ok' => false, 'error' => 'This enlistment can no longer be submitted.'];
         }
 
         if (! (new AcademicYearModel())->isEnlistmentOpen()) {
-            return ['ok' => false, 'error' => 'Online enlistment is closed for the current term.'];
+            return ['ok' => false, 'error' => 'Online enlistment is closed for the upcoming term.'];
         }
 
         $cartItems = $this->itemsFor($enlistmentId);
 
         if ($cartItems === []) {
-            return ['ok' => false, 'error' => 'Add at least one subject to your cart before submitting.'];
+            return ['ok' => false, 'error' => 'Add at least one subject before submitting.'];
         }
 
         $student = (new StudentModel())->find($studentId);
@@ -216,7 +216,7 @@ class StudentEnlistmentModel extends Model
             'student'
         );
 
-        $this->notifyOwningChairs((int) $enlistment['student_id'], 'enlistment.submitted', 'A student has submitted their enlistment cart for your review.');
+        $this->notifyOwningChairs((int) $enlistment['student_id'], 'enlistment.submitted', 'A student has submitted their enlistment for your review.');
 
         return ['ok' => true];
     }
@@ -252,17 +252,17 @@ class StudentEnlistmentModel extends Model
         $enlistment = $this->find($id);
 
         if ($enlistment === null || (int) $enlistment['student_id'] !== $studentId) {
-            return ['ok' => false, 'error' => 'Cart not found.'];
+            return ['ok' => false, 'error' => 'Enlistment not found.'];
         }
 
         $status = $enlistment['status'];
 
         if ($status === 'submitted') {
-            $this->notifyOwningChairs($studentId, 'enlistment.reminder', 'Reminder: a student enlistment cart is still awaiting your recommendation.');
+            $this->notifyOwningChairs($studentId, 'enlistment.reminder', 'Reminder: a student enlistment is still awaiting your recommendation.');
         } elseif ($status === 'chair_recommended') {
-            $this->notifyDeanOfStudent($studentId, 'enlistment.reminder', 'Reminder: a student enlistment cart is still awaiting your note.');
+            $this->notifyDeanOfStudent($studentId, 'enlistment.reminder', 'Reminder: a student enlistment is still awaiting your note.');
         } elseif ($status === 'dean_noted') {
-            $this->notifyGroup('registrar', 'enlistment.reminder', 'Reminder: a student enlistment cart is still awaiting registrar approval.');
+            $this->notifyGroup('registrar', 'enlistment.reminder', 'Reminder: a student enlistment is still awaiting registrar approval.');
         } else {
             return ['ok' => false, 'error' => 'Nothing is currently awaiting review.'];
         }
@@ -290,7 +290,7 @@ class StudentEnlistmentModel extends Model
         $enlistment = $this->find($id);
 
         if ($enlistment === null || $enlistment['status'] !== 'dean_noted') {
-            return ['ok' => false, 'error' => 'This cart is not awaiting final approval.'];
+            return ['ok' => false, 'error' => 'This enlistment is not awaiting final approval.'];
         }
 
         $student = (new StudentModel())->find((int) $enlistment['student_id']);
@@ -380,7 +380,7 @@ class StudentEnlistmentModel extends Model
         $enlistment = $this->find($id);
 
         if ($enlistment === null || $enlistment['status'] !== $fromStatus) {
-            return ['ok' => false, 'error' => 'This cart is not awaiting your decision.'];
+            return ['ok' => false, 'error' => 'This enlistment is not awaiting your decision.'];
         }
 
         if (! in_array($decision, ['recommend', 'note', 'return'], true)) {
@@ -389,7 +389,7 @@ class StudentEnlistmentModel extends Model
 
         if ($decision === 'return') {
             if (trim((string) $notes) === '') {
-                return ['ok' => false, 'error' => 'A reason is required to return a cart to the student.'];
+                return ['ok' => false, 'error' => 'A reason is required to return an enlistment to the student.'];
             }
 
             $this->update($id, [
@@ -418,7 +418,7 @@ class StudentEnlistmentModel extends Model
                 (new NotificationModel())->notify(
                     (int) $student['user_id'],
                     'enlistment.returned',
-                    "Your enlistment cart was returned by {$actorRole} for revision: {$notes}",
+                    "Your enlistment was returned by {$actorRole} for revision: {$notes}",
                     site_url('student/enlistment')
                 );
             }
@@ -440,9 +440,9 @@ class StudentEnlistmentModel extends Model
         );
 
         if ($toStatus === 'chair_recommended') {
-            $this->notifyDeanOfStudent((int) $enlistment['student_id'], 'enlistment.chair_recommended', 'A student enlistment cart has been recommended by the chairperson and is awaiting your note.');
+            $this->notifyDeanOfStudent((int) $enlistment['student_id'], 'enlistment.chair_recommended', 'A student enlistment has been recommended by the chairperson and is awaiting your note.');
         } elseif ($toStatus === 'dean_noted') {
-            $this->notifyGroup('registrar', 'enlistment.dean_noted', 'A student enlistment cart has been noted by the dean and is awaiting registrar approval.');
+            $this->notifyGroup('registrar', 'enlistment.dean_noted', 'A student enlistment has been noted by the dean and is awaiting registrar approval.');
         }
 
         return ['ok' => true];

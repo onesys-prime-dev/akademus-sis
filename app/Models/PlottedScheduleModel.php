@@ -225,7 +225,7 @@ class PlottedScheduleModel extends Model
         $conflictService = new SchedulingConflictService();
         $preparedBlocks   = $this->attachFacultyUsernames($blocks);
 
-        $cohort = $conflictService->cohortConflicts($offeringId, $preparedBlocks, $existingIds);
+        $cohort = $conflictService->cohortConflicts($offeringId, (string) $offering['academic_year'], $preparedBlocks, $existingIds);
 
         if (! $cohort['ok']) {
             return ['ok' => false, 'error' => 'This time conflicts with a participating section\'s existing schedule.', 'conflicts' => $cohort['conflicts']];
@@ -347,13 +347,13 @@ class PlottedScheduleModel extends Model
 
         if ($component['roster_mode'] === 'explicit') {
             $memberIds = $components->explicitMemberIds($offeringComponentId);
-            $memberCheck = $conflictService->studentConflicts($memberIds, $preparedBlocks, $existingIds);
+            $memberCheck = $conflictService->studentConflicts($memberIds, (string) $offering['academic_year'], $preparedBlocks, $existingIds);
 
             if (! $memberCheck['ok']) {
                 return ['ok' => false, 'error' => 'This time conflicts with an existing class for one or more students assigned to this component.', 'conflicts' => $memberCheck['conflicts']];
             }
         } else {
-            $cohort = $conflictService->cohortConflicts((int) $component['offering_id'], $preparedBlocks, $existingIds);
+            $cohort = $conflictService->cohortConflicts((int) $component['offering_id'], (string) $offering['academic_year'], $preparedBlocks, $existingIds);
 
             if (! $cohort['ok']) {
                 return ['ok' => false, 'error' => 'This time conflicts with a participating section\'s existing schedule.', 'conflicts' => $cohort['conflicts']];

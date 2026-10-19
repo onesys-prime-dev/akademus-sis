@@ -12,7 +12,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <?= $this->section('content') ?>
 
 <div class="ac-page-header">
-    <div><h2 class="ac-page-header__title">Enlistment Approvals</h2><p class="ac-page-header__sub">Submitted carts awaiting your recommendation, on their way to the dean.</p></div>
+    <div><h2 class="ac-page-header__title">Enlistment Approvals</h2><p class="ac-page-header__sub">Submitted enlistments awaiting your recommendation, on their way to the dean.</p></div>
 </div>
 
 <?php if (session('errors')): ?>

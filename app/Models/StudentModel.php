@@ -411,10 +411,10 @@ class StudentModel extends Model
 
         $student['enrollment_history'] = $this->db->table('enrollments e')
             ->select('e.enrollment_id, e.subject_code, e.method, e.status, e.created_at,
-                      sec.academic_year, sec.program, sec.year_level, sec.section')
+                      e.academic_year, sec.program, sec.year_level, sec.section')
             ->join('sections sec', 'sec.section_id = e.section_id')
             ->where('e.user_id', $student['user_id'])
-            ->orderBy('sec.academic_year', 'DESC')
+            ->orderBy('e.academic_year', 'DESC')
             ->orderBy('e.subject_code')
             ->get()
             ->getResultArray();

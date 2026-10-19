@@ -2,6 +2,7 @@
 
 namespace App\Libraries;
 
+use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
 use App\Models\OfferingComponentModel;
 
@@ -134,7 +135,7 @@ class SharedSubjectDashboardService
         $typeRows = $db->table('offering_placement_requests opr')
             ->join('sections sec', 'sec.section_id = opr.section_id')
             ->whereIn('opr.subject_id', $subjectIds)
-            ->where('sec.academic_year', $academicYear)
+            ->where('sec.academic_year', AcademicYearModel::yearOnly($academicYear))
             ->where('opr.status', 'pending')
             ->select('opr.subject_id, opr.request_type, COUNT(*) AS cnt')
             ->groupBy('opr.subject_id, opr.request_type')

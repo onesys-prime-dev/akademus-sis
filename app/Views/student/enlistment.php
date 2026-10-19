@@ -26,7 +26,7 @@ $navGroups     = [
         ]],
         'enlistment' => ['label' => 'Enlistment', 'icon' => 'playlist_add_check', 'url' => 'student/enlistment', 'help' => [
             'title' => 'Enlistment',
-            'text'  => "Build your subject cart for next term and submit it for approval. Only available while your department's enlistment window is open; otherwise you'll enroll directly once sections open.",
+            'text'  => "Select your subjects for next term and submit them for approval. Only available while your department's enlistment window is open; otherwise you'll enroll directly once sections open.",
         ]],
         'documents' => ['label' => 'Documents',   'icon' => 'description',        'url' => 'student/documents', 'help' => [
             'title' => 'Documents',
@@ -66,7 +66,10 @@ $STATUS_LABELS = [
 <div class="ac-page-header">
     <div>
         <h2 class="ac-page-header__title">Online Enlistment</h2>
-        <p class="ac-page-header__sub"><?= esc($activeTerm ?? 'No active term') ?></p>
+        <p class="ac-page-header__sub">
+            <?= esc($enlistTerm ?? 'No upcoming term set yet') ?>
+            <?php if ($activeTerm !== null && $enlistTerm !== null): ?><span class="en-current-term-note">&middot; currently enrolled in <?= esc($activeTerm) ?></span><?php endif ?>
+        </p>
         <?php if ($status !== null): ?><span class="en-pill en-pill--header <?= esc($status) ?>"><?= esc($STATUS_LABELS[$status] ?? ucfirst($status)) ?></span><?php endif ?>
     </div>
 </div>
@@ -82,8 +85,8 @@ $STATUS_LABELS = [
     <div class="ac-notice" style="margin-bottom:16px;"><span class="ac-notice__text"><?= esc(session('message')) ?></span></div>
 <?php endif ?>
 
-<?php if ($activeTerm === null): ?>
-    <div class="ac-empty-block">No active academic term is set. Contact the registrar.</div>
+<?php if ($enlistTerm === null): ?>
+    <div class="ac-empty-block">No upcoming academic term has been set up yet. Contact the registrar.</div>
 <?php else: ?>
 
     <div class="en-steps">
@@ -134,7 +137,7 @@ $STATUS_LABELS = [
             <div class="en-splash">
                 <span class="material-symbols-outlined en-splash__icon" aria-hidden="true">event_busy</span>
                 <h3>Enlistment is not yet open</h3>
-                <p>Online enlistment hasn't started for this term yet. Check back once the window opens.</p>
+                <p>Pre-registration for <?= esc($enlistTerm) ?> hasn't started yet. Check back once the window opens.</p>
             </div>
         <?php elseif (! $eligible): ?>
             <div class="en-splash en-splash--blocked">
@@ -155,6 +158,9 @@ $STATUS_LABELS = [
                 <?php if ($dueSubjects === []): ?>
                     <div class="ac-empty-block">Nothing left to enlist in right now — either you're all caught up, or no curriculum is assigned to your record yet.</div>
                 <?php else: ?>
+                    <form method="post" action="<?= site_url('student/enlistment/add-items') ?>" id="enCourseForm">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="enlistment_id" value="<?= (int) $enlistment['id'] ?>">
                     <?php foreach ($dueSubjects as $subj): ?>
                         <?php
                             $subjectInCartIds = array_filter($itemIds, static fn (string $id): bool => str_ends_with($id, '|' . $subj['code']));
@@ -179,11 +185,17 @@ $STATUS_LABELS = [
                                 </div>
                             </div>
                             <?php if (! empty($subj['corequisites'])): ?>
-                                <p class="en-coreq-note">Pairs with: <?= esc(implode(', ', $subj['corequisites'])) ?> — must be added to your cart together.</p>
+                                <p class="en-coreq-note">Pairs with: <?= esc(implode(', ', $subj['corequisites'])) ?> — must both be selected together.</p>
                             <?php endif ?>
 
                             <?php if ($subj['offerings'] === []): ?>
-                                <div class="en-muted" style="padding:10px 0;">Not yet offered this term.</div>
+                                <div class="en-muted" style="padding:10px 0;">
+                                    <?php if ($subj['curriculum_semester_label'] !== null): ?>
+                                        Scheduled for <?= esc($subj['curriculum_semester_label']) ?> &mdash; not due this term.
+                                    <?php else: ?>
+                                        Not yet offered this term &mdash; check back once your chairperson schedules it.
+                                    <?php endif ?>
+                                </div>
                             <?php else: ?>
                                 <div class="en-table-scroll">
                                 <table class="ac-table en-class-table">
@@ -191,7 +203,7 @@ $STATUS_LABELS = [
                                         <tr>
                                             <th>Section</th>
                                             <th>Day &amp; Time</th><th>Room</th><th>Instructor</th>
-                                            <th>Slots</th><th></th>
+                                            <th>Slots</th><th>Select</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -214,19 +226,16 @@ $STATUS_LABELS = [
                                                     <span class="ac-pill <?= $off['available'] <= 0 ? 'en-slots--full' : '' ?>"><?= esc((string) max(0, $off['available'])) ?> / <?= esc((string) $off['capacity']) ?></span>
                                                 <?php endif ?>
                                             </td>
-                                            <td data-label="Action" class="en-action-cell">
+                                            <td data-label="Select" class="en-action-cell">
                                                 <?php if ($rowInCart): ?>
-                                                    <span class="ac-pill ac-pill--success">In cart</span>
+                                                    <span class="ac-pill ac-pill--success">Selected</span>
                                                 <?php elseif ($subjectInCart): ?>
                                                     <span class="en-muted">&mdash;</span>
                                                 <?php else: ?>
-                                                    <form method="post" action="<?= site_url('student/enlistment/add-item') ?>" style="display:inline;">
-                                                        <?= csrf_field() ?>
-                                                        <input type="hidden" name="enlistment_id" value="<?= (int) $enlistment['id'] ?>">
-                                                        <input type="hidden" name="section_id" value="<?= (int) $off['section_id'] ?>">
-                                                        <input type="hidden" name="subject_code" value="<?= esc($subj['code'], 'attr') ?>">
-                                                        <button type="submit" class="ac-btn-outline">Add</button>
-                                                    </form>
+                                                    <label class="en-select-check">
+                                                        <input type="checkbox" name="selections[]" value="<?= (int) $off['section_id'] ?>|<?= esc($subj['code'], 'attr') ?>">
+                                                        <span class="en-sr-only">Select <?= esc($subj['code']) ?> &mdash; <?= esc($off['section_label']) ?></span>
+                                                    </label>
                                                 <?php endif ?>
                                             </td>
                                         </tr>
@@ -237,6 +246,8 @@ $STATUS_LABELS = [
                             <?php endif ?>
                         </div>
                     <?php endforeach ?>
+                        <button type="submit" class="ac-btn ac-btn-primary en-add-selected-btn">Add Selected Subjects</button>
+                    </form>
                 <?php endif ?>
             </div>
 
@@ -247,7 +258,7 @@ $STATUS_LABELS = [
                     <span class="en-units-pill">Units: <?= esc((string) $unitsUsed) ?> / <?= esc((string) $cap) ?></span>
                 </div>
                 <?php if ($items === []): ?>
-                    <div class="ac-empty-block">Your cart is empty. Add a subject above to get started.</div>
+                    <div class="ac-empty-block">You haven't selected any subjects yet. Choose from the list above to get started.</div>
                 <?php else: ?>
                     <div class="en-table-scroll">
                     <table class="ac-table en-mini-table">
@@ -287,7 +298,7 @@ $STATUS_LABELS = [
                 <span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span>
                 <div>
                     <strong>Pending Approval</strong>
-                    <p>Your cart is being reviewed. You can't edit it while it's in review — a notification will let you know once a decision is made.</p>
+                    <p>Your enlistment is being reviewed. You can't edit your subjects while it's in review — a notification will let you know once a decision is made.</p>
                 </div>
             </div>
             <div class="en-table-scroll">

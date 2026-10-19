@@ -46,9 +46,14 @@ class SchedulingConflictService
      * itself). $excludeScheduleIds additionally excludes specific rows by id
      * (the exact rows currently being replaced).
      *
+     * $termAcademicYear is the term-scoped academic year (e.g. "AY 2026 -
+     * 2027 · 1st Semester") whose legacy commitments count — a section is
+     * year-scoped now, so which semester's plot to check is no longer
+     * implied by the section itself and has to be told explicitly.
+     *
      * @return list<array<string, mixed>>
      */
-    public function meetingsForSection(int $sectionId, ?int $excludeOfferingId = null, array $excludeScheduleIds = []): array
+    public function meetingsForSection(int $sectionId, string $termAcademicYear, ?int $excludeOfferingId = null, array $excludeScheduleIds = []): array
     {
         $section = (new SectionModel())->find($sectionId);
 
@@ -60,7 +65,7 @@ class SchedulingConflictService
 
         $legacy = $db->table('plotted_schedules')
             ->where('offering_id IS NULL')
-            ->where('academic_year', $section['academic_year'])
+            ->where('academic_year', $termAcademicYear)
             ->where('program', $section['program'])
             ->where('year_level', $section['year_level'])
             ->where('section', $section['section'])
@@ -110,13 +115,13 @@ class SchedulingConflictService
      *
      * @return array{ok: bool, conflicts: list<array{schedule_id: int, subject_code: string, time_label: string, section_ids: list<int>}>}
      */
-    public function cohortConflicts(int $offeringId, array $proposedBlocks, array $excludeScheduleIds = []): array
+    public function cohortConflicts(int $offeringId, string $termAcademicYear, array $proposedBlocks, array $excludeScheduleIds = []): array
     {
         $sectionIds = $this->attachedSectionIds($offeringId);
         $conflicts  = [];
 
         foreach ($sectionIds as $sectionId) {
-            $commitments = $this->meetingsForSection($sectionId, $offeringId, $excludeScheduleIds);
+            $commitments = $this->meetingsForSection($sectionId, $termAcademicYear, $offeringId, $excludeScheduleIds);
 
             foreach ($commitments as $row) {
                 foreach ($proposedBlocks as $block) {
@@ -152,7 +157,7 @@ class SchedulingConflictService
      *
      * @return array{ok: bool, conflicts: list<array{schedule_id: int, subject_code: string, time_label: string}>}
      */
-    public function attachConflicts(int $offeringId, int $newSectionId): array
+    public function attachConflicts(int $offeringId, string $termAcademicYear, int $newSectionId): array
     {
         $offeringMeetings = db_connect()->table('plotted_schedules')->where('offering_id', $offeringId)->get()->getResultArray();
 
@@ -160,7 +165,7 @@ class SchedulingConflictService
             return ['ok' => true, 'conflicts' => []];
         }
 
-        $sectionCommitments = $this->meetingsForSection($newSectionId);
+        $sectionCommitments = $this->meetingsForSection($newSectionId, $termAcademicYear);
         $conflicts          = [];
 
         foreach ($sectionCommitments as $row) {
@@ -261,11 +266,15 @@ class SchedulingConflictService
      *    with offering_component_id IS NULL) apply to every enrolled
      *    student regardless of component membership.
      *
+     * $termAcademicYear narrows which term's legacy (non-offering)
+     * commitments count — a student's home section is year-scoped now, so
+     * the term has to be told explicitly rather than read off the section.
+     *
      * @param list<int> $userIds
      *
      * @return array<int, list<array<string, mixed>>> keyed by user_id
      */
-    public function commitmentsForStudents(array $userIds): array
+    public function commitmentsForStudents(array $userIds, string $termAcademicYear): array
     {
         $userIds = array_values(array_unique(array_map('intval', $userIds)));
 
@@ -300,11 +309,10 @@ class SchedulingConflictService
         $legacyMeetingsByKey = [];
 
         if ($sectionById !== []) {
-            $builder = $db->table('plotted_schedules')->where('offering_id IS NULL')->groupStart();
+            $builder = $db->table('plotted_schedules')->where('offering_id IS NULL')->where('academic_year', $termAcademicYear)->groupStart();
 
             foreach ($sectionById as $sec) {
                 $builder->orGroupStart()
-                    ->where('academic_year', $sec['academic_year'])
                     ->where('program', $sec['program'])
                     ->where('year_level', $sec['year_level'])
                     ->where('section', $sec['section'])
@@ -314,7 +322,7 @@ class SchedulingConflictService
             $builder->groupEnd();
 
             foreach ($builder->get()->getResultArray() as $row) {
-                $key = implode('|', [$row['academic_year'], $row['program'], $row['year_level'], $row['section']]);
+                $key = implode('|', [$row['program'], $row['year_level'], $row['section']]);
                 $legacyMeetingsByKey[$key][] = $row;
             }
         }
@@ -369,7 +377,7 @@ class SchedulingConflictService
                     continue;
                 }
 
-                $key = implode('|', [$sec['academic_year'], $sec['program'], $sec['year_level'], $sec['section']]);
+                $key = implode('|', [$sec['program'], $sec['year_level'], $sec['section']]);
 
                 foreach ($legacyMeetingsByKey[$key] ?? [] as $row) {
                     $result[$uid][] = $row;
@@ -435,9 +443,9 @@ class SchedulingConflictService
      *
      * @return array{ok: bool, conflicts: list<array{schedule_id: int, subject_code: string, time_label: string, user_ids: list<int>}>}
      */
-    public function studentConflicts(array $userIds, array $proposedBlocks, array $excludeScheduleIds = []): array
+    public function studentConflicts(array $userIds, string $termAcademicYear, array $proposedBlocks, array $excludeScheduleIds = []): array
     {
-        $commitments = $this->commitmentsForStudents($userIds);
+        $commitments = $this->commitmentsForStudents($userIds, $termAcademicYear);
         $conflicts   = [];
 
         foreach ($commitments as $uid => $rows) {

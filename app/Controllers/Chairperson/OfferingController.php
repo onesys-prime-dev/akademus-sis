@@ -60,21 +60,21 @@ class OfferingController extends BaseController
         // those sections is already merged for that subject.
         $bySubject = [];
         foreach ($sections as $section) {
-            $plottedCodes = array_column(
-                db_connect()->table('plotted_schedules')
-                    ->select('subject_code')
-                    ->where('academic_year', $section['academic_year'])
-                    ->where('program', $section['program'])
-                    ->where('year_level', $section['year_level'])
-                    ->where('section', $section['section'])
-                    ->distinct()
-                    ->get()
-                    ->getResultArray(),
-                'subject_code'
-            );
+            // Sections are year-scoped now, but what's actually plotted
+            // against one still varies by term — grouped by each plotted
+            // row's own (term-scoped) academic_year rather than the
+            // section's, which would never match plotted_schedules anymore.
+            $plottedRows = db_connect()->table('plotted_schedules')
+                ->select('subject_code, academic_year')
+                ->where('program', $section['program'])
+                ->where('year_level', $section['year_level'])
+                ->where('section', $section['section'])
+                ->distinct()
+                ->get()
+                ->getResultArray();
 
-            foreach ($plottedCodes as $code) {
-                $bySubject[$section['academic_year']][$code][] = $section;
+            foreach ($plottedRows as $row) {
+                $bySubject[$row['academic_year']][$row['subject_code']][] = $section;
             }
         }
 
@@ -365,7 +365,7 @@ class OfferingController extends BaseController
             return $this->response->setJSON(['ok' => true, 'suggestions' => []]);
         }
 
-        $sectionRow = (new SectionModel())->forContext($academicYear, $program, $yearLevel, $section);
+        $sectionRow = (new SectionModel())->forContext(AcademicYearModel::yearOnly($academicYear), $program, $yearLevel, $section);
 
         if ($sectionRow === null) {
             return $this->response->setJSON(['ok' => true, 'suggestions' => []]);
@@ -489,7 +489,7 @@ class OfferingController extends BaseController
             return null; // offering-linked row — no single section identity
         }
 
-        $section = (new SectionModel())->forContext($row['academic_year'], $row['program'], $row['year_level'], $row['section']);
+        $section = (new SectionModel())->forContext(AcademicYearModel::yearOnly($row['academic_year']), $row['program'], $row['year_level'], $row['section']);
 
         return $section !== null ? (int) $section['section_id'] : null;
     }

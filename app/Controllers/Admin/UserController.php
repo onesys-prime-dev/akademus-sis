@@ -88,8 +88,10 @@ class UserController extends BaseController
         $sectionModel = (new SectionModel())->orderBy('program')->orderBy('year_level')->orderBy('section');
 
         if ($activeTerm !== null) {
+            // Sections are year-scoped now (no separate row per semester),
+            // so "this term" means the active term's school year here.
             $sectionModel->groupStart()
-                ->where('academic_year', $activeTerm)
+                ->where('academic_year', AcademicYearModel::yearOnly($activeTerm))
                 ->orWhereIn('section_id', $assignedSectionIds === [] ? [0] : $assignedSectionIds)
             ->groupEnd();
         } elseif ($assignedSectionIds !== []) {

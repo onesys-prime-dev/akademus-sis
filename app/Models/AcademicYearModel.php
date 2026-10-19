@@ -85,11 +85,42 @@ class AcademicYearModel extends Model
     }
 
     /**
+     * Strips a term-scoped string's "· Nth Semester" suffix down to its
+     * year-only form — "AY 2026 - 2027 · 1st Semester" -> "AY 2026 - 2027".
+     * A value that's already year-only passes through unchanged. This is
+     * what `sections.academic_year` means today (year only, no semester);
+     * plotted_schedules/faculty_assignments/grades/course_offerings/
+     * enlistments/enrollments all keep the full term-scoped string — this
+     * helper is for the handful of call sites that need to go from "the
+     * term being worked in" to "the section that term's work belongs to."
+     */
+    public static function yearOnly(string $academicYear): string
+    {
+        return trim(explode('·', $academicYear)[0]);
+    }
+
+    /**
      * The active year (+ semester), formatted, or null if none is set active.
      */
     public function activeFormatted(): ?string
     {
         $row = $this->where('is_active', 1)->first();
+
+        return $row === null ? null : self::format($row['label'], $row['semester']);
+    }
+
+    /**
+     * The upcoming term (see upcomingTerm()), formatted, or null if there
+     * isn't one yet. This — not activeFormatted() — is what "enlistment"
+     * means: a student pre-registers for the NEXT term while the active one
+     * is still in progress, not re-shops for classes in the term they're
+     * already sitting in. Every enlistment-facing lookup (StudentEnlistment::
+     * wizard(), the cart's own academic_year, subject offerings, tuition
+     * assessment for what's being enlisted into) is keyed off this.
+     */
+    public function upcomingFormatted(): ?string
+    {
+        $row = $this->upcomingTerm();
 
         return $row === null ? null : self::format($row['label'], $row['semester']);
     }
@@ -128,6 +159,22 @@ class AcademicYearModel extends Model
     }
 
     /**
+     * Every term that's still ahead of today, soonest first — unlike
+     * upcomingTerm() this isn't collapsed to a single row, because more
+     * than one term can legitimately be "upcoming" at once (e.g. 2nd
+     * Semester and a Summer term both scheduled after the currently active
+     * term). Callers that let a chair/registrar pick which future term
+     * they're configuring (enlistment window, offered subjects) need the
+     * whole list, not just the nearest one.
+     */
+    public function upcomingTerms(): array
+    {
+        return $this->where('start_date >', date('Y-m-d'))
+            ->orderBy('start_date', 'ASC')
+            ->findAll();
+    }
+
+    /**
      * Whether grading is currently open for $ayId (defaults to the active
      * term). A term with no window set (both columns null) is treated as
      * open — the window is an opt-in restriction a registrar deliberately
@@ -162,9 +209,23 @@ class AcademicYearModel extends Model
      * staff-driven actions that would otherwise need every term configured
      * by hand before routine work (manual enrollment, grading) could happen
      * at all.
+     *
+     * Also unlike the other two windows, when $ayId isn't given this
+     * defaults to the UPCOMING term (upcomingTerm()), not the active one —
+     * enlistment is pre-registration for what's next, checked while the
+     * active term is still running. No upcoming term existing yet (nothing
+     * to enlist into) is treated as closed.
      */
     public function isEnlistmentOpen(?int $ayId = null, ?string $now = null): bool
     {
+        if ($ayId === null) {
+            $ayId = $this->upcomingTerm()['ay_id'] ?? null;
+
+            if ($ayId === null) {
+                return false;
+            }
+        }
+
         return $this->isWindowOpen('enlistment_opens_at', 'enlistment_closes_at', $ayId, $now, false);
     }
 

@@ -32,7 +32,7 @@ class StudentEnrollment extends BaseController
             }
         }
 
-        if (! $this->isActiveYear($payload['academic_year'])) {
+        if (! $this->isActiveTerm($payload['academic_year'])) {
             return $this->fail('This academic year is not active. Only the active term accepts new enrollments.');
         }
 
@@ -41,7 +41,7 @@ class StudentEnrollment extends BaseController
         }
 
         $section = (new SectionModel())->forContext(
-            $payload['academic_year'],
+            AcademicYearModel::yearOnly($payload['academic_year']),
             $payload['program'],
             $payload['year_level'],
             $payload['section']
@@ -85,7 +85,7 @@ class StudentEnrollment extends BaseController
             return $this->fail('Your assigned section no longer exists. Contact your administrator.');
         }
 
-        if (! $this->isActiveYear($section['academic_year'])) {
+        if (! $this->isActiveSchoolYear($section['academic_year'])) {
             return $this->fail('This academic year is not active. Only the active term accepts new enrollments.');
         }
 
@@ -120,8 +120,7 @@ class StudentEnrollment extends BaseController
         $enrollments  = new EnrollmentModel();
 
         $mine = db_connect()->table('enrollments e')
-            ->select('sec.academic_year, e.subject_code')
-            ->join('sections sec', 'sec.section_id = e.section_id')
+            ->select('e.academic_year, e.subject_code')
             ->where('e.enrollment_id', $enrollmentId)
             ->where('e.user_id', $userId)
             ->get()
@@ -131,7 +130,7 @@ class StudentEnrollment extends BaseController
             return redirect()->to('/student/schedule')->with('errors', ['Enrollment not found.']);
         }
 
-        if (! $this->isActiveYear($mine['academic_year'])) {
+        if (! $this->isActiveTerm($mine['academic_year'])) {
             return redirect()->to('/student/schedule')->with('errors', ['Only subjects in the active term can be dropped.']);
         }
 
@@ -154,11 +153,11 @@ class StudentEnrollment extends BaseController
         $userId = (int) auth()->id();
 
         $rows = db_connect()->table('enrollments e')
-            ->select('e.subject_code, s.academic_year, s.program, s.year_level, s.section')
+            ->select('e.subject_code, e.academic_year, s.program, s.year_level, s.section')
             ->join('sections s', 's.section_id = e.section_id')
             ->where('e.user_id', $userId)
             ->where('e.status', 'enrolled')
-            ->orderBy('s.academic_year', 'DESC')
+            ->orderBy('e.academic_year', 'DESC')
             ->get()
             ->getResultArray();
 
@@ -220,9 +219,29 @@ class StudentEnrollment extends BaseController
         ]);
     }
 
-    private function isActiveYear(string $academicYear): bool
+    /**
+     * $academicYear here is term-scoped (e.g. "AY 2026 - 2027 · 1st
+     * Semester") — compares against the active term exactly. Used anywhere
+     * the value being checked came from `enrollments.academic_year` or a
+     * client-submitted term, never from a section (sections no longer
+     * carry semester identity — see isActiveSchoolYear()).
+     */
+    private function isActiveTerm(string $academicYear): bool
     {
         return $academicYear === (new AcademicYearModel())->activeFormatted();
+    }
+
+    /**
+     * $academicYear here is year-only (e.g. "AY 2026 - 2027"), as read off
+     * a `sections` row. Compares against the active term's school year,
+     * ignoring semester — a year-scoped section stays valid for enrollment
+     * across both semesters of the same school year.
+     */
+    private function isActiveSchoolYear(string $academicYear): bool
+    {
+        $active = (new AcademicYearModel())->activeFormatted();
+
+        return $active !== null && $academicYear === AcademicYearModel::yearOnly($active);
     }
 
     private function fail(string $message)

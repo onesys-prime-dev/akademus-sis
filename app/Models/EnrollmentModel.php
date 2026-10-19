@@ -19,6 +19,7 @@ class EnrollmentModel extends Model
         'subject_code',
         'method',
         'status',
+        'academic_year',
     ];
 
     protected $useTimestamps = true;
@@ -64,6 +65,13 @@ class EnrollmentModel extends Model
             return ['ok' => false, 'error' => 'Registration is closed for the current term.'];
         }
 
+        // Sections are year-scoped now (no semester identity of their
+        // own), so "which term's meetings/conflicts/tuition" has to come
+        // from somewhere else — the active term, same term
+        // isRegistrationOpen() above just gated on. This is also the value
+        // stamped onto the new enrollments.academic_year column below.
+        $termAcademicYear = (new AcademicYearModel())->activeFormatted();
+
         if (! $holdOverride) {
             $student = (new StudentModel())->where('user_id', $userId)->first();
 
@@ -84,7 +92,7 @@ class EnrollmentModel extends Model
             return ['ok' => false, 'error' => 'That section no longer exists.'];
         }
 
-        $meetings = $this->meetingsFor($section, $subjectCode);
+        $meetings = $this->meetingsFor($section, $subjectCode, $termAcademicYear);
 
         if ($meetings === []) {
             $db->transRollback();
@@ -131,7 +139,7 @@ class EnrollmentModel extends Model
             return ['ok' => false, 'error' => $outsideCurriculum];
         }
 
-        $conflict = $this->findConflict($userId, $section['academic_year'], $meetings, $subjectCode);
+        $conflict = $this->findConflict($userId, $termAcademicYear, $meetings, $subjectCode);
 
         if ($conflict !== null) {
             $db->transRollback();
@@ -180,26 +188,28 @@ class EnrollmentModel extends Model
 
         if ($previous !== null && $previous['status'] !== 'enrolled') {
             $this->update((int) $previous['enrollment_id'], [
-                'offering_id' => $offeringId,
-                'method'      => $method,
-                'status'      => 'enrolled',
+                'offering_id'   => $offeringId,
+                'method'        => $method,
+                'status'        => 'enrolled',
+                'academic_year' => $termAcademicYear,
             ]);
             $this->logStatusChange((int) $previous['enrollment_id'], $previous['status'], 'enrolled', 'Re-enrolled' . ($overrideNote !== null ? ' — ' . $overrideNote : ''), $overrideBy);
             $db->transComplete();
 
-            $this->recomputeTuition($userId, $section['academic_year']);
+            $this->recomputeTuition($userId, $termAcademicYear);
 
             return ['ok' => true, 'enrollment_id' => (int) $previous['enrollment_id']];
         }
 
         try {
             $inserted = $this->insert([
-                'user_id'      => $userId,
-                'section_id'   => $sectionId,
-                'offering_id'  => $offeringId,
-                'subject_code' => $subjectCode,
-                'method'       => $method,
-                'status'       => 'enrolled',
+                'user_id'       => $userId,
+                'section_id'    => $sectionId,
+                'offering_id'   => $offeringId,
+                'subject_code'  => $subjectCode,
+                'method'        => $method,
+                'status'        => 'enrolled',
+                'academic_year' => $termAcademicYear,
             ]);
         } catch (\Exception $e) {
             $inserted = false;
@@ -223,7 +233,7 @@ class EnrollmentModel extends Model
 
         $db->transComplete();
 
-        $this->recomputeTuition($userId, $section['academic_year']);
+        $this->recomputeTuition($userId, $termAcademicYear);
 
         return ['ok' => true, 'enrollment_id' => $enrollmentId];
     }
@@ -239,9 +249,16 @@ class EnrollmentModel extends Model
      * section simply can't be added to a cart; overrides stay a registrar/
      * admin capability exercised only at conversion time.
      *
+     * $termAcademicYear is the term-scoped academic year (e.g. "AY 2026 -
+     * 2027 · 2nd Semester") being checked against — sections no longer
+     * carry their own semester identity, so unlike a direct enrollOne()
+     * call (always the active term) this has to come from the caller.
+     * StudentEnlistmentModel::addItem() passes the enlistment's own term,
+     * which is the UPCOMING term, not the active one.
+     *
      * @return array{ok: bool, error?: string, units?: float}
      */
-    public function checkEligibility(int $userId, int $sectionId, string $subjectCode): array
+    public function checkEligibility(int $userId, int $sectionId, string $subjectCode, string $termAcademicYear): array
     {
         $section = db_connect()->table('sections')->where('section_id', $sectionId)->get()->getRowArray();
 
@@ -249,7 +266,7 @@ class EnrollmentModel extends Model
             return ['ok' => false, 'error' => 'That section no longer exists.'];
         }
 
-        $meetings = $this->meetingsFor($section, $subjectCode);
+        $meetings = $this->meetingsFor($section, $subjectCode, $termAcademicYear);
 
         if ($meetings === []) {
             return ['ok' => false, 'error' => "{$subjectCode} is not scheduled for this section."];
@@ -271,7 +288,7 @@ class EnrollmentModel extends Model
             return ['ok' => false, 'error' => $outsideCurriculum];
         }
 
-        $conflict = $this->findConflict($userId, $section['academic_year'], $meetings, $subjectCode);
+        $conflict = $this->findConflict($userId, $termAcademicYear, $meetings, $subjectCode);
 
         if ($conflict !== null) {
             return ['ok' => false, 'error' => "Schedule conflict: {$subjectCode} overlaps {$conflict}, which you're already enrolled in."];
@@ -376,7 +393,7 @@ class EnrollmentModel extends Model
         }
 
         foreach ($legacyByTuple as $tuple) {
-            $section = $sectionModel->forContext($academicYear, $programName, $tuple['year_level'], $tuple['section']);
+            $section = $sectionModel->forContext(AcademicYearModel::yearOnly($academicYear), $programName, $tuple['year_level'], $tuple['section']);
 
             if ($section === null) {
                 continue;
@@ -542,12 +559,12 @@ class EnrollmentModel extends Model
     public function activeForStudent(int $userId): array
     {
         return $this->db->table('enrollments e')
-            ->select('e.enrollment_id, e.subject_code, e.method, sec.academic_year, sec.program, sec.year_level, sec.section,
+            ->select('e.enrollment_id, e.subject_code, e.method, e.academic_year, sec.program, sec.year_level, sec.section,
                       (SELECT COUNT(*) FROM grades g WHERE g.enrollment_id = e.enrollment_id) AS grade_count')
             ->join('sections sec', 'sec.section_id = e.section_id')
             ->where('e.user_id', $userId)
             ->where('e.status', 'enrolled')
-            ->orderBy('sec.academic_year', 'DESC')
+            ->orderBy('e.academic_year', 'DESC')
             ->orderBy('e.subject_code')
             ->get()
             ->getResultArray();
@@ -567,16 +584,22 @@ class EnrollmentModel extends Model
 
     /**
      * Every subject actually plotted for a section — the set block
-     * enrollment enrolls a student into.
+     * enrollment enrolls a student into. $termAcademicYear defaults to the
+     * active term: sections no longer carry their own semester identity,
+     * so "which term's plot" has to be told rather than read off the
+     * section, and every current caller (self-service/admin block enroll)
+     * means the active term.
      *
      * @return string[]
      */
-    public function subjectsFor(array $section): array
+    public function subjectsFor(array $section, ?string $termAcademicYear = null): array
     {
+        $termAcademicYear ??= (new AcademicYearModel())->activeFormatted();
+
         return array_column(
             db_connect()->table('plotted_schedules')
                 ->select('subject_code')
-                ->where('academic_year', $section['academic_year'])
+                ->where('academic_year', $termAcademicYear)
                 ->where('program', $section['program'])
                 ->where('year_level', $section['year_level'])
                 ->where('section', $section['section'])
@@ -631,18 +654,22 @@ class EnrollmentModel extends Model
 
     /**
      * Every actively-enrolled student in this section for this one subject
-     * (not the whole section's roster) — the class list grading needs when
-     * the (section, subject) pair is NOT merged into a course offering.
+     * AND term (not the whole section's roster) — the class list grading
+     * needs when the (section, subject) pair is NOT merged into a course
+     * offering. $termAcademicYear filters on enrollments.academic_year,
+     * not the section's (now year-only) one — a section spans every
+     * semester of its school year, so the term has to be named explicitly.
      *
      * @return list<array{enrollment_id: int, user_id: int, username: string}>
      */
-    public function listRosterForSectionSubject(int $sectionId, string $subjectCode): array
+    public function listRosterForSectionSubject(int $sectionId, string $subjectCode, string $termAcademicYear): array
     {
         return db_connect()->table('enrollments e')
             ->select('e.enrollment_id, e.user_id, u.username')
             ->join('users u', 'u.id = e.user_id')
             ->where('e.section_id', $sectionId)
             ->where('e.subject_code', $subjectCode)
+            ->where('e.academic_year', $termAcademicYear)
             ->where('e.status', 'enrolled')
             ->orderBy('u.username')
             ->get()
@@ -681,13 +708,15 @@ class EnrollmentModel extends Model
     }
 
     /**
-     * This subject's plotted meetings (day/start/end) for one section.
+     * This subject's plotted meetings (day/start/end) for one section, for
+     * the given TERM — sections are year-scoped now, so which semester's
+     * plot to read is no longer implied by $section itself.
      */
-    private function meetingsFor(array $section, string $subjectCode): array
+    private function meetingsFor(array $section, string $subjectCode, string $termAcademicYear): array
     {
         $rows = db_connect()->table('plotted_schedules')
             ->select('day, start_time, end_time')
-            ->where('academic_year', $section['academic_year'])
+            ->where('academic_year', $termAcademicYear)
             ->where('program', $section['program'])
             ->where('year_level', $section['year_level'])
             ->where('section', $section['section'])
@@ -894,17 +923,21 @@ class EnrollmentModel extends Model
     }
 
     /**
-     * The subject_code of the first already-enrolled subject (same academic
-     * year) whose meetings clash with $meetings, or null when clear.
+     * The subject_code of the first already-enrolled subject (same TERM —
+     * not just the same school year, which sections no longer distinguish)
+     * whose meetings clash with $meetings, or null when clear. Filters on
+     * enrollments.academic_year (the term-scoped identity an enrollment
+     * carries independently of its now year-scoped section), not
+     * sections.academic_year.
      */
     private function findConflict(int $userId, string $academicYear, array $meetings, string $excludeSubject): ?string
     {
         $rows = db_connect()->table('enrollments e')
-            ->select('e.subject_code, s.academic_year, s.program, s.year_level, s.section')
+            ->select('e.subject_code, s.program, s.year_level, s.section')
             ->join('sections s', 's.section_id = e.section_id')
             ->where('e.user_id', $userId)
             ->where('e.status', 'enrolled')
-            ->where('s.academic_year', $academicYear)
+            ->where('e.academic_year', $academicYear)
             ->get()
             ->getResultArray();
 
@@ -913,7 +946,7 @@ class EnrollmentModel extends Model
                 continue;
             }
 
-            $otherMeetings = $this->meetingsFor($row, $row['subject_code']);
+            $otherMeetings = $this->meetingsFor($row, $row['subject_code'], $academicYear);
 
             foreach ($meetings as $a) {
                 foreach ($otherMeetings as $b) {

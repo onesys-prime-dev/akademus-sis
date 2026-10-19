@@ -309,7 +309,7 @@ class CourseOfferingModel extends Model
             return ['ok' => false, 'error' => "Section #{$sectionId} is already attached to an offering for {$subjectCode}."];
         }
 
-        $scheduleCheck = (new SchedulingConflictService())->attachConflicts($offeringId, $sectionId);
+        $scheduleCheck = (new SchedulingConflictService())->attachConflicts($offeringId, (string) $offering['academic_year'], $sectionId);
 
         if (! $scheduleCheck['ok']) {
             $db->transComplete();

@@ -23,7 +23,7 @@ class DeanPortal
                 '' => [
                     'dashboard'       => ['label' => 'Dashboard',       'icon' => 'dashboard', 'url' => 'dean/dashboard', 'help' => [
                         'title' => 'Dean Dashboard',
-                        'text'  => "An overview of your college: classes awaiting your note, and enlistment carts awaiting your sign-off, across every department under you.",
+                        'text'  => "An overview of your college: classes awaiting your note, and enlistments awaiting your sign-off, across every department under you.",
                     ]],
                     'grade-approvals' => ['label' => 'Grade Approvals', 'icon' => 'grade',     'url' => 'dean/grade-approvals', 'help' => [
                         'title' => 'Grade Approvals',
@@ -35,7 +35,7 @@ class DeanPortal
                     ]],
                     'enlistment-approvals' => ['label' => 'Enlistment Approvals', 'icon' => 'playlist_add_check', 'url' => 'dean/enlistment-approvals', 'help' => [
                         'title' => 'Enlistment Approvals',
-                        'text'  => "Enlistment carts recommended by the chairperson land here for your note, before the registrar finalizes them into real enrollments.",
+                        'text'  => "Enlistments recommended by the chairperson land here for your note, before the registrar finalizes them into real enrollments.",
                     ]],
                 ],
             ],

@@ -46,7 +46,7 @@ class EnlistmentApprovalController extends BaseController
         $enlistment = (new StudentEnlistmentModel())->find($id);
 
         if ($enlistment === null || ! $this->ownsEnlistment($enlistment)) {
-            return redirect()->back()->with('errors', ['That cart does not belong to your department.']);
+            return redirect()->back()->with('errors', ['That enlistment does not belong to your department.']);
         }
 
         $model  = new StudentEnlistmentModel();
@@ -58,7 +58,7 @@ class EnlistmentApprovalController extends BaseController
             return redirect()->back()->with('errors', [$result['error']]);
         }
 
-        return redirect()->to('/chairperson/enlistment-approvals')->with('message', $isReturn ? 'Cart returned to student.' : 'Cart recommended.');
+        return redirect()->to('/chairperson/enlistment-approvals')->with('message', $isReturn ? 'Enlistment returned to student.' : 'Enlistment recommended.');
     }
 
     private function ownsEnlistment(array $enlistment): bool

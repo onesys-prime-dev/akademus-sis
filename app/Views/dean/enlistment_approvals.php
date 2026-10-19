@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 
 <div class="ac-page-header">
-    <div><h2 class="ac-page-header__title">Enlistment Approvals</h2><p class="ac-page-header__sub">Chair-recommended carts awaiting your note, on their way to the registrar.</p></div>
+    <div><h2 class="ac-page-header__title">Enlistment Approvals</h2><p class="ac-page-header__sub">Chair-recommended enlistments awaiting your note, on their way to the registrar.</p></div>
 </div>
 
 <?php if (session('errors')): ?>
