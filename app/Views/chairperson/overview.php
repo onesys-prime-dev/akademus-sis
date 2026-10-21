@@ -261,13 +261,13 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <?php else: ?>
                     <div class="cd-attention__list">
                         <?php if ($plottingGaps !== []): ?>
-                            <a class="cd-task cd-task--warning" href="#cdProgramsTitle">
+                            <a class="cd-task cd-task--warning" href="<?= esc($plottingGaps[0]['url'], 'attr') ?>">
                                 <span class="cd-task__icon"><span class="material-symbols-outlined" aria-hidden="true">event_busy</span></span>
                                 <span class="cd-task__body">
                                     <strong><?= count($plottingGaps) ?> section<?= count($plottingGaps) === 1 ? '' : 's' ?> need plotting</strong>
-                                    <small>Complete missing subject schedules below</small>
+                                    <small>Go to the most urgent one — <?= esc($plottingGaps[0]['program']) ?> <?= esc($plottingGaps[0]['year_level']) ?><?= $plottingGaps[0]['section'] !== null ? ' · ' . esc($plottingGaps[0]['section']) : '' ?></small>
                                 </span>
-                                <span class="material-symbols-outlined cd-task__arrow" aria-hidden="true">arrow_downward</span>
+                                <span class="material-symbols-outlined cd-task__arrow" aria-hidden="true">chevron_right</span>
                             </a>
                         <?php endif ?>
 
