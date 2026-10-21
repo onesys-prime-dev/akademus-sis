@@ -212,7 +212,7 @@ class TuitionAssessmentService
             (new PaymentScheduleModel())->where('assessment_id', $assessmentId)->delete();
         } elseif ($rate !== null) {
             if ($isNew || $wasEstimated || $scheduleIsStale) {
-                $this->generateSchedule($assessmentId, (float) $finalAssessment['total_amount'], max(1, (int) $rate['installment_count']), $academicYear);
+                $this->generateSchedule($assessmentId, (float) $finalAssessment['total_amount'], max(1, (int) $rate['installment_count']), $academicYear, $additionalFeesAmount);
             } else {
                 // Total moved (e.g. Finance just charged an additional fee)
                 // but the plan is locked — amount_paid > 0, so a full
@@ -498,30 +498,52 @@ class TuitionAssessmentService
      * whatever rows currently exist — so replacing the row shape never
      * loses or misattributes money already paid.
      */
-    public function generateSchedule(int $assessmentId, float $totalAmount, int $installmentCount, ?string $academicYear = null): void
+    public function generateSchedule(int $assessmentId, float $totalAmount, int $installmentCount, ?string $academicYear = null, float $additionalFeesAmount = 0.0): void
     {
         $schedules = new PaymentScheduleModel();
         $schedules->where('assessment_id', $assessmentId)->delete();
+
+        // Carved out of the regular installments into its own line, same
+        // "Additional Fees" label reconcileLockedSchedule() uses for a
+        // schedule that's locked (amount_paid > 0) and can't be rebuilt —
+        // so it reads the same way regardless of whether the student had
+        // already started paying when the fee was added. Clamped so a
+        // fee amount that's somehow larger than the whole total (shouldn't
+        // happen, but never trust it blindly) can't produce a negative
+        // base installment.
+        $additionalFeesAmount = round(min(max($additionalFeesAmount, 0), $totalAmount), 2);
+        $baseAmount           = round($totalAmount - $additionalFeesAmount, 2);
+        $hasFeeLine           = $additionalFeesAmount > 0 && $baseAmount > 0;
+        $baseTotal            = $hasFeeLine ? $baseAmount : $totalAmount;
 
         if ($installmentCount <= 1) {
             $schedules->insert([
                 'assessment_id' => $assessmentId,
                 'label'         => 'Full Payment',
-                'amount'        => round($totalAmount, 2),
+                'amount'        => round($baseTotal, 2),
                 'sort_order'    => 0,
             ]);
+
+            if ($hasFeeLine) {
+                $schedules->insert([
+                    'assessment_id' => $assessmentId,
+                    'label'         => 'Additional Fees',
+                    'amount'        => $additionalFeesAmount,
+                    'sort_order'    => 1,
+                ]);
+            }
 
             return;
         }
 
-        $share     = round($totalAmount / $installmentCount, 2);
+        $share     = round($baseTotal / $installmentCount, 2);
         $allocated = 0.0;
         $labels    = $this->installmentLabels($installmentCount);
         $dueDates  = $academicYear !== null ? $this->dueDatesFor($installmentCount, $academicYear) : [];
 
         foreach ($labels as $i => $label) {
             $isLast = $i === $installmentCount - 1;
-            $amount = $isLast ? round($totalAmount - $allocated, 2) : $share;
+            $amount = $isLast ? round($baseTotal - $allocated, 2) : $share;
             $allocated += $amount;
 
             $schedules->insert([
@@ -530,6 +552,15 @@ class TuitionAssessmentService
                 'due_date'      => $dueDates[$i] ?? null,
                 'amount'        => $amount,
                 'sort_order'    => $i,
+            ]);
+        }
+
+        if ($hasFeeLine) {
+            $schedules->insert([
+                'assessment_id' => $assessmentId,
+                'label'         => 'Additional Fees',
+                'amount'        => $additionalFeesAmount,
+                'sort_order'    => $installmentCount,
             ]);
         }
     }
@@ -730,7 +761,7 @@ class TuitionAssessmentService
         $assessmentId = (int) $assessment['assessment_id'];
         $installmentCount = max(1, min(5, $installmentCount));
 
-        $this->generateSchedule($assessmentId, (float) $assessment['total_amount'], $installmentCount, (string) $assessment['academic_year']);
+        $this->generateSchedule($assessmentId, (float) $assessment['total_amount'], $installmentCount, (string) $assessment['academic_year'], (float) ($assessment['additional_fees_amount'] ?? 0));
 
         (new AuditLogModel())->record(
             'tuition.installment_plan_changed',
