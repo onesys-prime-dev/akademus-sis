@@ -111,6 +111,12 @@ $paidPercent = $totalAssessment > 0 ? min(100, max(0, $amountPaid / $totalAssess
 $statusLabel = ['paid' => 'Paid in full', 'partial' => 'Partially paid'][$current['status']] ?? 'Unpaid';
 $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ?? 'unpaid';
 ?>
+<?php if (! empty($current['is_estimated'])): ?>
+    <div class="ac-notice" style="margin-bottom:16px; background:var(--color-info-soft, #eff6ff);">
+        <span class="material-symbols-outlined" aria-hidden="true" style="color:var(--color-info, #1d4ed8);">info</span>
+        <span class="ac-notice__text">This is a <strong>preliminary estimate</strong> based on your curriculum — you're not enrolled in any classes yet this term, so these figures aren't final. They'll update automatically once you're enrolled.</span>
+    </div>
+<?php endif ?>
 <section class="tf-summary" aria-label="Account overview">
     <div class="tf-balance">
         <div class="tf-balance-top"><span>Amount due</span><span class="tf-status tf-status--<?= $statusClass ?>"><?= esc($statusLabel) ?></span></div>

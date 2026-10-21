@@ -11,6 +11,7 @@ use App\Models\NotificationModel;
 use App\Models\SectionModel;
 use App\Models\StudentModel;
 use App\Models\SubDepartmentModel;
+use App\Services\TuitionAssessmentService;
 use CodeIgniter\Shield\Entities\User;
 
 class UserController extends BaseController
@@ -225,6 +226,16 @@ class UserController extends BaseController
 
             (new StudentModel())->insert([
                 'user_id'                  => $user->id,
+                // students.applicant_id is NOT NULL + UNIQUE, and this path
+                // (unlike promoteFromApplicant()) has no real applicant
+                // record to source one from. Leaving it unset let every row
+                // default to '', which silently crashed (duplicate key) on
+                // the SECOND admin-created student ever — the INSERT threw
+                // after `users`/auth_identities had already been committed,
+                // leaving a login-able account with no `students` row at
+                // all: no tuition assessment, no schedule, nothing. $user->id
+                // is already unique and immutable, so it can never collide.
+                'applicant_id'              => 'ADMIN-' . $user->id,
                 'student_number'           => (new StudentModel())->nextStudentNumber(),
                 'program_id'               => $programId,
                 'curriculum_id'            => $curriculumId,
@@ -238,6 +249,27 @@ class UserController extends BaseController
                 'emergency_contact_number' => trim((string) $this->request->getPost('emergency_contact_number')) ?: null,
             ]);
 
+            // recompute() was previously only ever triggered as a SIDE
+            // EFFECT of an enrollment change (EnrollmentModel::enrollOne/
+            // drop) — so a student with zero enrollments (no section yet,
+            // or a section nothing's been plotted for) never got an
+            // assessment row at all, not even an estimate. Calling it here
+            // directly guarantees one exists from the moment the account
+            // does: with no real enrollment yet it falls back to a
+            // curriculum-based estimate (TuitionAssessmentService::
+            // recompute()'s own fallback), which the enrollment call below
+            // then supersedes with the real figure the moment it succeeds.
+            $activeTerm = (new AcademicYearModel())->activeFormatted();
+
+            if ($activeTerm !== null) {
+                try {
+                    $newStudent = (new StudentModel())->where('user_id', $user->id)->first();
+                    (new TuitionAssessmentService())->recompute((int) $newStudent['student_id'], $activeTerm);
+                } catch (\Throwable $e) {
+                    log_message('error', '[Tuition] recompute failed for admin-created student ' . $user->id . ': ' . $e->getMessage());
+                }
+            }
+
             // Assigning a student straight to a section here (rather than
             // through the self-service Enlistment cart) is meant to drop
             // them directly into that cohort's classes — block-enroll them
@@ -245,13 +277,18 @@ class UserController extends BaseController
             // student's own "Enroll Now" action uses. Best-effort: a
             // section with nothing plotted for it yet is a normal,
             // expected state (the chairperson hasn't scheduled it), not a
-            // reason to fail account creation.
-            if ($section !== null) {
-                (new EnrollmentModel())->enrollBlock($user->id, $sectionId);
-            }
+            // reason to fail account creation — but it DOES mean this
+            // student has no real schedule yet, and their tuition figure
+            // above (if any) is only a curriculum-based estimate, not a
+            // final bill. Surfaced below so the admin isn't left thinking
+            // the account is just broken when the student reports nothing
+            // on their Schedule page.
+            $enrollWarning = $section !== null
+                ? $this->enrollWarningFor($username, (new EnrollmentModel())->enrollBlock($user->id, $sectionId))
+                : "{$username} was created without a section, so they have no real schedule yet — their Tuition & Fees page shows a curriculum-based estimate until they're assigned one and enrolled.";
         }
 
-        return redirect()
+        $redirect = redirect()
             ->to('/admin/users')
             ->with('credential', [
                 'heading'  => 'Account created',
@@ -259,6 +296,94 @@ class UserController extends BaseController
                 'email'    => $email,
                 'password' => $tempPassword,
             ]);
+
+        return isset($enrollWarning) && $enrollWarning !== null
+            ? $redirect->with('message', $enrollWarning)
+            : $redirect;
+    }
+
+    /**
+     * Builds a human warning from an EnrollmentModel::enrollBlock() result,
+     * or null when it genuinely succeeded. enrollBlock() always returns
+     * ok:true as its own outer result (even when every individual subject
+     * failed to enroll, e.g. registration closed) — ok:false only covers
+     * "section doesn't exist" / "nothing plotted yet". So this checks
+     * enrolled/failed too, not just ok, otherwise a student who ended up
+     * with zero real enrollments for some other per-subject reason would
+     * get no warning at all.
+     */
+    private function enrollWarningFor(string $username, array $result): ?string
+    {
+        if (! $result['ok']) {
+            return "{$username} was created. Their Tuition & Fees page shows a curriculum-based estimate for now, but they have no class schedule: {$result['error']} Use the Sync Enrollment action once this section's subjects are plotted.";
+        }
+
+        if (($result['enrolled'] ?? []) !== []) {
+            return null;
+        }
+
+        $failed = $result['failed'] ?? [];
+
+        // Re-running sync on a student already enrolled in everything their
+        // section currently has plotted isn't a failure — enrollOne() just
+        // reports each one as "Already enrolled", which should read as
+        // "nothing to do", not as a warning.
+        $alreadyEnrolled = $failed !== [] && array_reduce(
+            $failed,
+            static fn (bool $carry, array $f): bool => $carry && str_starts_with($f['error'], 'Already enrolled in'),
+            true
+        );
+
+        if ($alreadyEnrolled) {
+            return null;
+        }
+
+        $reason = $failed[0]['error'] ?? 'an unknown error';
+
+        return "{$username} was created. Their Tuition & Fees page shows a curriculum-based estimate for now, but none of this section's classes could be enrolled yet: {$reason} Use the Sync Enrollment action to retry.";
+    }
+
+    /**
+     * Re-runs block enrollment for a student already assigned to a
+     * section — the only way to recover a student who was created before
+     * their section had anything plotted (or whose enrollment otherwise
+     * failed at creation time, see enrollWarningFor()). Plotting a section
+     * later never retroactively enrolls students already assigned to it;
+     * this is that missing retry, callable as many times as needed
+     * (enrollOne() is idempotent — already-enrolled subjects are simply
+     * skipped, not duplicated or errored loudly). A successful enrollment
+     * recomputes tuition as a side effect (EnrollmentModel::enrollOne()),
+     * so Sync Enrollment is also how a stuck "no tuition assessment yet"
+     * account gets unstuck without recreating it.
+     */
+    public function syncEnrollment($id)
+    {
+        $user = auth()->getProvider()->findById($id);
+
+        if ($user === null || ! $user->inGroup('student')) {
+            return redirect()->back()->with('errors', ['That account is not a student.']);
+        }
+
+        $sectionId = db_connect()->table('users')->select('section_id')->where('id', $id)->get()->getRowArray()['section_id'] ?? null;
+
+        if ($sectionId === null) {
+            return redirect()->back()->with('errors', ["{$user->username} isn't assigned to a section yet — assign one via Edit first."]);
+        }
+
+        $result = (new EnrollmentModel())->enrollBlock((int) $id, (int) $sectionId);
+        $warning = $this->enrollWarningFor($user->username, $result);
+
+        if ($warning !== null) {
+            return redirect()->back()->with('errors', [$warning]);
+        }
+
+        $count = count($result['enrolled']);
+
+        $message = $count > 0
+            ? "{$user->username} enrolled in {$count} subject" . ($count === 1 ? '' : 's') . ". Their tuition assessment and schedule are now up to date."
+            : "{$user->username} is already enrolled in everything currently scheduled for their section — nothing new to add.";
+
+        return redirect()->back()->with('message', $message);
     }
 
     /**

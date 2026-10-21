@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\TuitionAssessmentService;
 use CodeIgniter\Model;
 
 class StudentModel extends Model
@@ -170,6 +171,23 @@ class StudentModel extends Model
         // needs a college and a published curriculum.
         if ($programCreated !== null) {
             $this->notifyAdminsOfNewProgram($programCreated);
+        }
+
+        // Best-effort, same as EnrollmentModel's own recomputeTuition():
+        // without this, a freshly-promoted student with zero enrollments
+        // never gets an assessment row at all until they're actually
+        // enrolled (recompute() was previously only ever triggered as an
+        // enrollment side effect). Calling it now gives them a
+        // curriculum-based estimate from day one — see
+        // TuitionAssessmentService::recompute()'s own fallback.
+        $activeTerm = (new AcademicYearModel())->activeFormatted();
+
+        if ($activeTerm !== null) {
+            try {
+                (new TuitionAssessmentService())->recompute((int) $student['student_id'], $activeTerm);
+            } catch (\Throwable $e) {
+                log_message('error', '[Tuition] recompute failed for newly-promoted student ' . $student['student_id'] . ': ' . $e->getMessage());
+            }
         }
 
         return [

@@ -27,7 +27,41 @@ final class StudentAccountNormalizerTest extends CIUnitTestCase
     protected $refresh   = true;
     protected $namespace = ['CodeIgniter\Shield', 'CodeIgniter\Settings', 'App'];
 
-    private const TERM = 'AY2026-2027';
+    private const YEAR = 'AY 2026 - 2027';
+    private const TERM = self::YEAR . ' · 1st Semester';
+
+    /**
+     * Every path under test resolves "the active term" dynamically via
+     * AcademicYearModel::activeFormatted() (sections themselves only carry
+     * the year), and enrollment/assessment rows are keyed by that full
+     * term-scoped string. Seed the term this file's fixtures speak in.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        db_connect()->table('academic_years')->insert([
+            'label'      => '2026-2027',
+            'semester'   => '1st',
+            'start_date' => '2026-08-03',
+            'end_date'   => '2026-12-18',
+            'is_active'  => 1,
+        ]);
+    }
+
+    /**
+     * WidenAcademicYearColumns::down() shrinks these columns back to
+     * VARCHAR(20) during the next test's refresh; a term-scoped
+     * ("… · 1st Semester") value would truncate mid-regress and abort the
+     * whole migration cycle. Rows here are test-only, so clear the one
+     * table this fixture fills with a term-scoped value.
+     */
+    protected function tearDown(): void
+    {
+        db_connect()->table('plotted_schedules')->truncate();
+
+        parent::tearDown();
+    }
 
     private function makeProgram(string $code = 'BSIT'): int
     {
@@ -41,7 +75,7 @@ final class StudentAccountNormalizerTest extends CIUnitTestCase
     {
         $sections = new SectionModel();
         $sections->insert([
-            'academic_year' => self::TERM,
+            'academic_year' => self::YEAR,
             'program'       => $program,
             'year_level'    => '1st Year',
             'section'       => $section,
@@ -77,7 +111,7 @@ final class StudentAccountNormalizerTest extends CIUnitTestCase
         }
 
         db_connect()->table('plotted_schedules')->insert([
-            'academic_year' => $section['academic_year'], 'program' => $section['program'],
+            'academic_year' => self::TERM, 'program' => $section['program'],
             'year_level' => $section['year_level'], 'section' => $section['section'],
             'day' => $day, 'start_time' => $start, 'end_time' => $end, 'time_label' => "{$start}-{$end}",
             'subject_code' => $code, 'subject_title' => $code . ' Title', 'room' => 'Room 101',

@@ -115,6 +115,17 @@
                         aria-label="Reset password for <?= esc($u['username']) ?>">
                     <span class="material-symbols-outlined" aria-hidden="true">key</span>
                 </button>
+
+                <?php if ($u['group'] === 'student' && $u['section_id'] !== null): ?>
+                    <form method="post" action="<?= site_url('admin/users/sync-enrollment/' . $u['id']) ?>">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="ac-icon-btn"
+                                title="Sync enrollment — enroll into any newly-plotted subjects for their section"
+                                aria-label="Sync enrollment for <?= esc($u['username']) ?>">
+                            <span class="material-symbols-outlined" aria-hidden="true">sync</span>
+                        </button>
+                    </form>
+                <?php endif ?>
             </div>
 
         </div>

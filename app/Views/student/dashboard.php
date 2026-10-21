@@ -47,6 +47,7 @@ $next = $week['next'];
 $tomorrow = $now->modify('+1 day');
 $tomorrowMeetings = array_values(array_filter($week['meetings'], static fn ($m) => (int) $m['day'] === (int) $tomorrow->format('N') - 1));
 $hasAssessment = $assessment !== null && $assessment['status'] !== 'unassessed';
+$isEstimate    = $hasAssessment && ! empty($assessment['is_estimated']);
 ?>
 <div class="sd-page">
     <header class="sd-heading"><div><span class="sd-eyebrow">STUDENT HOME</span><h1>Welcome back, <?= esc($account->username) ?>.</h1><p>Your classes, account, and academic progress for today.</p></div><div class="sd-date"><strong><?= esc($now->format('l, F j')) ?></strong><a href="<?= site_url('student/dashboard') ?>" aria-label="Refresh dashboard">Updated <?= esc($now->format('g:i A')) ?> PHT</a></div></header>
@@ -89,7 +90,8 @@ $hasAssessment = $assessment !== null && $assessment['status'] !== 'unassessed';
             </section>
             <section class="sd-card" aria-labelledby="sdTuitionTitle"><header class="sd-section-header"><div><h2 id="sdTuitionTitle">Tuition &amp; fees</h2><p>Current term assessment</p></div></header>
                 <?php if ($hasAssessment): ?>
-                    <div class="sd-balance"><span class="sd-balance-value"><span>₱</span><?= number_format((float) $assessment['balance'], 2) ?></span><span class="sd-balance-status <?= $assessment['status'] === 'paid' ? 'is-paid' : '' ?>"><?= $assessment['status'] === 'paid' ? 'Paid in full' : 'Outstanding balance' ?></span>
+                    <div class="sd-balance"><span class="sd-balance-value"><span>₱</span><?= number_format((float) $assessment['balance'], 2) ?></span><span class="sd-balance-status <?= $assessment['status'] === 'paid' ? 'is-paid' : '' ?>"><?= $assessment['status'] === 'paid' ? 'Paid in full' : ($isEstimate ? 'Preliminary estimate' : 'Outstanding balance') ?></span>
+                        <?php if ($isEstimate): ?><p class="sd-stats-caption" style="margin:6px 0 0;">Curriculum-based — updates automatically once you're enrolled.</p><?php endif ?>
                         <?php if ($nextPayment !== null): $dueDate = $nextPayment['due_date'] ? new DateTimeImmutable($nextPayment['due_date'], new DateTimeZone('Asia/Manila')) : null; $overdue = $dueDate !== null && $dueDate->format('Y-m-d') < $now->format('Y-m-d'); ?>
                         <div class="sd-payment <?= $overdue ? 'is-overdue' : '' ?>"><span><?= $overdue ? 'Past-due installment' : 'Next unpaid installment' ?></span><strong><?= esc($nextPayment['label']) ?> &middot; ₱<?= number_format((float) $nextPayment['balance'], 2) ?></strong><p><?= $dueDate ? 'Due ' . esc($dueDate->format('M j, Y')) : 'Due date not set' ?></p></div>
                         <?php endif ?>

@@ -13,6 +13,7 @@ use App\Models\SectionModel;
 use App\Models\StudentModel;
 use App\Models\StudentPaymentModel;
 use App\Models\TuitionAssessmentModel;
+use App\Services\TuitionAssessmentService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
 class StudentController extends BaseController
@@ -51,6 +52,7 @@ class StudentController extends BaseController
                 ->where('g.status', 'locked')->orderBy('g.locked_at', 'DESC')->get()->getResultArray();
             $student = (new StudentModel())->where('user_id', $userId)->first();
             if ($student !== null) {
+                $this->ensureActiveTermAssessment($student, $activeTerm);
                 $assessment = (new TuitionAssessmentModel())->forStudentYear((int) $student['student_id'], $activeTerm);
                 if ($assessment !== null && $assessment['status'] !== 'unassessed') {
                     $paymentSchedule = (new PaymentScheduleModel())->withBalances((int) $assessment['assessment_id'], (float) $assessment['amount_paid']);
@@ -156,6 +158,8 @@ class StudentController extends BaseController
         $proofs      = [];
 
         if ($student !== null) {
+            $this->ensureActiveTermAssessment($student, (new AcademicYearModel())->activeFormatted());
+
             $assessments = (new TuitionAssessmentModel())->historyFor((int) $student['student_id']);
             $payments    = (new StudentPaymentModel())->historyFor((int) $student['student_id']);
             $proofs      = (new PaymentProofModel())->forStudent((int) $student['student_id']);
@@ -177,6 +181,37 @@ class StudentController extends BaseController
             'payments'        => $payments,
             'proofs'          => $proofs,
         ]);
+    }
+
+    /**
+     * Guarantees an assessment row exists for the active term before the
+     * dashboard/tuition pages read one.
+     *
+     * recompute() otherwise only ever runs as a creation or enrollment side
+     * effect, so an account created before those paths existed (or before a
+     * new term became active) would sit at "No tuition assessment yet"
+     * forever despite having a curriculum and a rate sheet. Recomputing here
+     * gives them the same curriculum-based estimate a brand-new account gets.
+     *
+     * Only when no row exists at all for the term: once one does — estimated
+     * or final — page views stay pure reads and never rewrite it. Best-effort
+     * by design; a failure must never take down the page the student is on.
+     */
+    private function ensureActiveTermAssessment(?array $student, ?string $activeTerm): void
+    {
+        if ($student === null || $activeTerm === null) {
+            return;
+        }
+
+        if ((new TuitionAssessmentModel())->forStudentYear((int) $student['student_id'], $activeTerm) !== null) {
+            return;
+        }
+
+        try {
+            (new TuitionAssessmentService())->recompute((int) $student['student_id'], $activeTerm);
+        } catch (\Throwable $e) {
+            log_message('error', '[Tuition] on-read assessment failed for student ' . $student['student_id'] . ': ' . $e->getMessage());
+        }
     }
 
     /**

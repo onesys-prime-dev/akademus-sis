@@ -12,6 +12,7 @@ use App\Models\PaymentProofModel;
 use App\Models\PaymentScheduleModel;
 use App\Models\ProgramFeeRateModel;
 use App\Models\StudentDiscountModel;
+use App\Libraries\TermCurriculum;
 use App\Models\StudentModel;
 use App\Models\StudentPaymentModel;
 use App\Models\TuitionAssessmentModel;
@@ -58,6 +59,25 @@ class TuitionAssessmentService
             ->get()
             ->getRowArray()['total'] ?? 0);
 
+        // No real enrollment yet (brand-new account, or their section hasn't
+        // been plotted) — fall back to what the CURRICULUM says their
+        // year/term should carry, so a tuition estimate exists from day
+        // one instead of staying blank until a chairperson schedules
+        // classes. Marked is_estimated so the UI can tell a student this
+        // number isn't final yet. The instant real enrollment exists this
+        // branch stops being reached at all — $totalUnits above already
+        // reflects it, taking priority.
+        $isEstimated = false;
+
+        if ($totalUnits <= 0 && $student['curriculum_id'] !== null) {
+            $estimatedUnits = $this->curriculumExpectedUnits((int) $student['curriculum_id'], (int) $student['user_id'], $academicYear);
+
+            if ($estimatedUnits > 0) {
+                $totalUnits  = $estimatedUnits;
+                $isEstimated = true;
+            }
+        }
+
         $rate = $student['program_id'] !== null
             ? (new TuitionRateModel())->forProgramYear((int) $student['program_id'], $academicYear)
             : null;
@@ -66,15 +86,17 @@ class TuitionAssessmentService
             ? (new ProgramFeeRateModel())->forProgramYear((int) $student['program_id'], $academicYear)
             : [];
 
-        $assessments = new TuitionAssessmentModel();
-        $existing    = $assessments->forStudentYear($studentId, $academicYear);
-        $amountPaid  = (float) ($existing['amount_paid'] ?? 0);
+        $assessments  = new TuitionAssessmentModel();
+        $existing     = $assessments->forStudentYear($studentId, $academicYear);
+        $amountPaid   = (float) ($existing['amount_paid'] ?? 0);
+        $wasEstimated = (bool) ($existing['is_estimated'] ?? false);
 
         if ($rate === null) {
             $data = [
                 'student_id'      => $studentId,
                 'academic_year'   => $academicYear,
                 'total_units'     => $totalUnits,
+                'is_estimated'    => $isEstimated,
                 'tuition_amount'  => 0,
                 'discount_amount' => 0,
                 'total_amount'    => 0,
@@ -92,6 +114,7 @@ class TuitionAssessmentService
                 'student_id'      => $studentId,
                 'academic_year'   => $academicYear,
                 'total_units'     => $totalUnits,
+                'is_estimated'    => $isEstimated,
                 'tuition_amount'  => $tuitionAmount,
                 'discount_amount' => 0, // filled in below, once $assessmentId exists
                 'total_amount'    => $grossAmount,
@@ -117,7 +140,13 @@ class TuitionAssessmentService
         // rows are keyed to it) — ensureDiscountAdjustments() creates any
         // missing ones idempotently, then total_amount/balance/status are
         // recomputed net of every discount on record for this assessment.
-        if ($rate !== null) {
+        //
+        // Never applied to a preliminary estimate: a percentage scholarship
+        // would be frozen at the value it computed on estimated units, and
+        // ensureDiscountAdjustments() is idempotent per grant, so it would
+        // never be recalculated once real enrollment changes the gross
+        // amount. The first recompute with real enrollment applies them.
+        if ($rate !== null && ! $isEstimated) {
             $this->ensureDiscountAdjustments($assessmentId, $studentId, $academicYear, $data['total_amount']);
 
             $discountAmount = $this->sumActiveDiscounts($assessmentId);
@@ -134,14 +163,123 @@ class TuitionAssessmentService
 
         $finalAssessment = $assessments->find($assessmentId);
 
+        // A real assessment whose total MOVED while nothing has been paid
+        // against it (the normal case during a block enrollment: enrollOne()
+        // recomputes once per subject, so the first subject used to lock the
+        // whole installment plan at a fraction of the final bill). Safe to
+        // rebuild precisely because amount_paid is still 0 — no plan is
+        // being paid against yet. A paid assessment is never reshuffled.
+        $scheduleIsStale = ! $isNew
+            && ! $wasEstimated
+            && (float) $finalAssessment['amount_paid'] <= 0
+            && (float) $finalAssessment['total_amount'] !== (float) ($existing['total_amount'] ?? 0);
+
         // Only ever generated once — a later rate correction must not
         // reshuffle a payment plan the student may already be paying
         // against (see payment_schedules migration docblock).
-        if ($isNew && $rate !== null) {
+        //
+        // An ESTIMATE has no real bill behind it yet, so it must not carry an
+        // installment plan: locking a schedule at estimated amounts would
+        // leave every installment wrong the moment the student actually
+        // enrolls (this is the only place a schedule is ever generated).
+        // The first recompute carrying real enrollment creates it — the
+        // estimated -> real transition therefore counts as "new" too.
+        //
+        // Any plan left over from a previous, real assessment (every course
+        // dropped since) is removed for the same reason: its installments
+        // keep summing to an amount that no longer exists. Safe with
+        // payments already made — they are never pinned to a row (see
+        // generateSchedule()).
+        if ($isEstimated) {
+            (new PaymentScheduleModel())->where('assessment_id', $assessmentId)->delete();
+        } elseif ($rate !== null && ($isNew || $wasEstimated || $scheduleIsStale)) {
             $this->generateSchedule($assessmentId, (float) $finalAssessment['total_amount'], max(1, (int) $rate['installment_count']), $academicYear);
         }
 
         return ['ok' => true, 'assessment' => $finalAssessment];
+    }
+
+    /**
+     * What the student's CURRICULUM says their current year/term should
+     * carry (curriculum_subjects for their year level + this academic
+     * year's semester), used only as a stand-in for real enrolled units
+     * when there aren't any yet. Year level comes from their assigned
+     * section (users.section_id -> sections.year_level, the same
+     * resolution SubjectDemandService uses elsewhere); a student with no
+     * section yet (brand new, not yet placed into a cohort) is assumed to
+     * be 1st Year — the only sensible default for someone with no cohort
+     * at all.
+     *
+     * Curricula are often still being built out, so the exact year level
+     * can legitimately have no subjects yet (a 2nd-Year cohort while only
+     * 1st-Year subjects have been entered). Returning 0 there would mean
+     * "no tuition at all" for a student who is very much expected to pay,
+     * which is the exact blank page this fallback exists to prevent — so
+     * an empty level borrows the nearest populated level at or below it,
+     * and the lowest populated level when nothing at/below exists.
+     */
+    private function curriculumExpectedUnits(int $curriculumId, int $userId, string $academicYear): float
+    {
+        $semester = TermCurriculum::semesterOf($academicYear);
+
+        if ($semester === null) {
+            return 0.0;
+        }
+
+        $sectionYearLevel = db_connect()->table('users u')
+            ->select('sec.year_level')
+            ->join('sections sec', 'sec.section_id = u.section_id', 'left')
+            ->where('u.id', $userId)
+            ->get()
+            ->getRowArray()['year_level'] ?? null;
+
+        $yearLevel = $sectionYearLevel !== null ? TermCurriculum::yearLevelOf($sectionYearLevel) : null;
+        $yearLevel ??= 1;
+
+        // One grouped read covers both the exact level and the fallback
+        // (rather than re-querying per candidate level).
+        $unitsByLevel = [];
+
+        foreach (db_connect()->table('curriculum_subjects cs')
+            ->select('cs.year_level, COALESCE(SUM(s.units), 0) AS units')
+            ->join('subjects s', 's.subject_id = cs.subject_id')
+            ->where('cs.curriculum_id', $curriculumId)
+            ->where('cs.semester', $semester)
+            ->where('cs.is_active', 1)
+            ->where('s.is_active', 1)
+            ->groupBy('cs.year_level')
+            ->orderBy('cs.year_level', 'ASC')
+            ->get()
+            ->getResultArray() as $row) {
+            $unitsByLevel[(int) $row['year_level']] = (float) $row['units'];
+        }
+
+        if (($unitsByLevel[$yearLevel] ?? 0.0) > 0) {
+            return $unitsByLevel[$yearLevel];
+        }
+
+        // Ascending order, so the last populated level at/below the
+        // student's own is the nearest one; otherwise the first populated
+        // level above is the closest available.
+        $fallback = null;
+
+        foreach ($unitsByLevel as $level => $units) {
+            if ($units <= 0) {
+                continue;
+            }
+
+            if ($level <= $yearLevel) {
+                $fallback = $units;
+
+                continue;
+            }
+
+            $fallback ??= $units;
+
+            break;
+        }
+
+        return $fallback ?? 0.0;
     }
 
     /**

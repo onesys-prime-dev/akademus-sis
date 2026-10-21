@@ -2,6 +2,7 @@
 
 namespace App\Libraries;
 
+use App\Models\AcademicYearModel;
 use App\Models\CurriculumModel;
 use App\Models\DepartmentModel;
 use App\Models\EnrollmentModel;
@@ -87,10 +88,16 @@ class StudentAccountNormalizer
             }
 
             if ($student !== null) {
-                $assessment = (new TuitionAssessmentModel())->forStudentYear((int) $student['student_id'], $section['academic_year']);
+                // sections.academic_year is a school YEAR ("AY 2026 - 2027"),
+                // while assessments are keyed by TERM ("AY 2026 - 2027 · 1st
+                // Semester") — the same string normalize() recomputes below.
+                // Comparing against the section's year never matched a real
+                // row, flagging every student as missing one forever.
+                $termAcademicYear = (new AcademicYearModel())->activeFormatted() ?? $section['academic_year'];
+                $assessment       = (new TuitionAssessmentModel())->forStudentYear((int) $student['student_id'], $termAcademicYear);
 
                 if ($assessment === null) {
-                    $reasons[] = 'No tuition assessment for ' . $section['academic_year'] . '.';
+                    $reasons[] = 'No tuition assessment for ' . $termAcademicYear . '.';
                 }
             }
         }
@@ -171,9 +178,11 @@ class StudentAccountNormalizer
             // Sections no longer carry their own semester identity — this
             // tool normalizes an account against the active term, same as
             // the block-enroll path it mirrors (EnrollmentModel::enrollBlock()).
-            $termAcademicYear = (new \App\Models\AcademicYearModel())->activeFormatted();
+            $termAcademicYear = (new AcademicYearModel())->activeFormatted();
 
-            if ($commit && $student !== null) {
+            if ($termAcademicYear === null) {
+                $steps[] = 'Skipped tuition recompute: no active academic term is set.';
+            } elseif ($commit && $student !== null) {
                 $result = (new TuitionAssessmentService())->recompute((int) $student['student_id'], $termAcademicYear);
                 $steps[] = $result['ok']
                     ? 'Tuition recomputed for ' . $termAcademicYear . ' (status: ' . ($result['assessment']['status'] ?? '?') . ').'

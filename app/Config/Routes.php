@@ -185,6 +185,7 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('users/reset-password/(:num)', 'Admin\UserController::resetPassword/$1');
     $routes->post('users/activate/(:num)'      , 'Admin\UserController::activate/$1');
     $routes->post('users/deactivate/(:num)'    , 'Admin\UserController::deactivate/$1');
+    $routes->post('users/sync-enrollment/(:num)', 'Admin\UserController::syncEnrollment/$1');
 
     // roles / permissions overview
     $routes->get('roles', 'Admin\RoleController::index');

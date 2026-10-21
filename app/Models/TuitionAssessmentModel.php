@@ -13,6 +13,7 @@ class TuitionAssessmentModel extends Model
         'student_id',
         'academic_year',
         'total_units',
+        'is_estimated',
         'tuition_amount',
         'discount_amount',
         'total_amount',
