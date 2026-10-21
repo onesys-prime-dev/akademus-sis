@@ -9,6 +9,7 @@ use App\Models\AcademicYearModel;
 use App\Libraries\TermCurriculum;
 use App\Libraries\SchedulingAuthorization;
 use App\Models\DepartmentModel;
+use App\Models\EnrollmentModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\FacultyAvailabilityModel;
 use App\Models\FacultyChangeRequestModel;
@@ -2132,6 +2133,37 @@ class ChairpersonController extends BaseController
                     "You've been assigned to teach {$assignment['code']} ({$context['program']} · {$context['section']}).",
                     site_url('faculty/dashboard')
                 );
+            }
+
+            // Retroactively enroll every student already sitting in this
+            // section into whatever's newly plotted — the primary path for
+            // what used to require someone noticing and clicking "Sync
+            // enrollment" on Admin > User Accounts (still there as a
+            // fallback for edge cases, e.g. a student assigned to the
+            // section after this save). Best-effort: an enrollment hiccup
+            // here must never undo or mask a schedule save that already
+            // committed.
+            try {
+                $sectionRow = (new SectionModel())->forContext($context['section_year'], $context['program'], $context['year_level'], $context['section']);
+
+                if ($sectionRow !== null) {
+                    $studentIds = array_column(
+                        db_connect()->table('users u')
+                            ->join('auth_groups_users g', 'g.user_id = u.id')
+                            ->where('g.group', 'student')->where('u.deleted_at', null)->where('u.section_id', $sectionRow['section_id'])
+                            ->select('u.id')
+                            ->get()->getResultArray(),
+                        'id'
+                    );
+
+                    $enrollmentModel = new EnrollmentModel();
+
+                    foreach ($studentIds as $studentId) {
+                        $enrollmentModel->enrollBlock((int) $studentId, (int) $sectionRow['section_id']);
+                    }
+                }
+            } catch (\Throwable $e) {
+                log_message('error', 'Auto-sync enrollment after plotting failed: ' . $e->getMessage());
             }
         }
 
