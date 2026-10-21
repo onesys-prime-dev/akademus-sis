@@ -292,7 +292,7 @@ $STATUS_LABELS = [
                     </table>
                     </div>
 
-                    <form method="post" action="<?= site_url('student/enlistment/submit') ?>" class="en-submit-form">
+                    <form method="post" action="<?= site_url('student/enlistment/submit') ?>" class="en-submit-form" id="enSubmitForm">
                         <?= csrf_field() ?>
                         <input type="hidden" name="enlistment_id" value="<?= (int) $enlistment['id'] ?>">
                         <button type="submit" class="ac-btn ac-btn-primary">Submit for Review</button>
@@ -448,6 +448,32 @@ $STATUS_LABELS = [
     }
 
     updateMaster();
+})();
+
+(function () {
+    var submitForm = document.getElementById('enSubmitForm');
+    if (!submitForm) return;
+
+    var itemCount = <?= (int) count($items) ?>;
+    var unitsUsed  = <?= (int) $unitsUsed ?>;
+
+    submitForm.addEventListener('submit', function (e) {
+        // typeof check happens here, not at page-load — interface.js (which
+        // defines window.acConfirm) loads with `defer`, so it may not have
+        // run yet at the point this inline script block executes, but it is
+        // guaranteed to have by the time a user actually clicks submit.
+        if (submitForm.dataset.confirmed === '1' || typeof window.acConfirm !== 'function') return;
+        e.preventDefault();
+
+        var message = 'Submit ' + itemCount + ' subject' + (itemCount === 1 ? '' : 's') + ' (' + unitsUsed + ' units) for approval? '
+            + 'You won\'t be able to change your selections again until a decision is made.';
+
+        window.acConfirm(message, { title: 'Submit for approval?', confirmLabel: 'Submit for Review' }).then(function (ok) {
+            if (!ok) return;
+            submitForm.dataset.confirmed = '1';
+            if (submitForm.requestSubmit) { submitForm.requestSubmit(); } else { submitForm.submit(); }
+        });
+    });
 })();
 </script>
 <?= $this->endSection() ?>
