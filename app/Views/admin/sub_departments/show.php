@@ -1,5 +1,9 @@
 <?= $this->extend('layouts/admin_console') ?>
 
+<?= $this->section('styles') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/chair-assignment.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/chair-assignment.css') ?>">
+<?= $this->endSection() ?>
+
 <?= $this->section('headerActions') ?>
 <button type="button" onclick="acOpenModal('modalEditDetails')" class="ac-btn ac-btn-secondary">
     <span class="material-symbols-outlined" style="font-size:18px;">edit</span>
@@ -50,7 +54,7 @@
             <span class="material-symbols-outlined" style="font-size:18px;">swap_horiz</span>
             <span>Transfer College</span>
         </button>
-        <button type="button" onclick="acOpenModal('modalChair')" class="ac-btn <?= $department['chair'] ? 'ac-btn-secondary' : 'ac-btn-primary' ?>">
+        <button type="button" id="chairAssignBtn" onclick="acOpenModal('modalChair')" class="ac-btn <?= $department['chair'] ? 'ac-btn-secondary' : 'ac-btn-primary' ?>">
             <span class="material-symbols-outlined" style="font-size:18px;"><?= $department['chair'] ? 'sync_alt' : 'person_add' ?></span>
             <span><?= $department['chair'] ? 'Reassign Chairperson' : 'Assign Chairperson' ?></span>
         </button>
@@ -437,79 +441,134 @@
     </div>
 </div>
 
+<?php
+$oldChairUserId   = (int) (old('existing_user_id') ?? 0);
+$initialChairMode = old('chair_mode') === 'new' ? 'new' : 'existing';
+?>
 <!-- Assign / reassign chairperson modal -->
-<div class="ac-modal" id="modalChair">
-    <div class="ac-modal__panel">
-        <div class="ac-modal__header">
-            <div>
-                <div class="ac-modal__title">Assign Chairperson</div>
-                <div class="ac-modal__subtitle">Creates a Chairperson account scoped to <?= esc($department['name']) ?>.</div>
+<div class="ac-modal ac-modal--chair" id="modalChair">
+    <div class="ac-modal__panel chair-modal">
+        <div class="ac-modal__header chair-modal__header">
+            <div class="chair-modal__heading">
+                <span class="chair-modal__icon material-symbols-outlined" aria-hidden="true">supervisor_account</span>
+                <div>
+                    <h2 class="ac-modal__title"><?= $department['chair'] ? 'Reassign chairperson' : 'Assign chairperson' ?></h2>
+                    <p class="ac-modal__subtitle"><?= $department['chair'] ? 'Choose who leads ' . esc($department['name']) . ' from now on.' : 'Give ' . esc($department['name']) . ' a leader.' ?></p>
+                </div>
             </div>
-            <button type="button" onclick="acCloseModal('modalChair')" class="ac-modal__close">
-                <span class="material-symbols-outlined" style="font-size:18px;">close</span>
+            <button type="button" onclick="acCloseModal('modalChair')" class="ac-modal__close" aria-label="Close">
+                <span class="material-symbols-outlined" style="font-size:18px;" aria-hidden="true">close</span>
             </button>
         </div>
 
-        <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/store-chair') ?>" id="formChair">
+        <form method="post" action="<?= site_url('admin/sub-departments/' . $department['sub_dept_id'] . '/store-chair') ?>" id="formChair" data-no-dirty-tracking>
             <?= csrf_field() ?>
-            <div class="ac-modal__body">
-                <div class="ac-field">
-                    <div style="display:flex; gap:16px; margin-bottom:4px;">
-                        <label style="display:flex; align-items:center; gap:6px; font-weight:400; text-transform:none;">
-                            <input type="radio" name="chair_mode" value="existing" checked onchange="acToggleChairMode(this)"> Existing user
-                        </label>
-                        <label style="display:flex; align-items:center; gap:6px; font-weight:400; text-transform:none;">
-                            <input type="radio" name="chair_mode" value="new" onchange="acToggleChairMode(this)"> New account
-                        </label>
-                    </div>
+            <input type="hidden" name="chair_mode" value="<?= $initialChairMode ?>" id="chairModeValue">
+
+            <div class="ac-modal__body chair-modal__body">
+                <div class="chair-mode" id="chairModeSwitch" role="group" aria-label="How to add the chairperson">
+                    <button type="button" class="chair-mode__btn<?= $initialChairMode === 'existing' ? ' is-active' : '' ?>" data-chair-mode="existing" aria-pressed="<?= $initialChairMode === 'existing' ? 'true' : 'false' ?>">
+                        <span class="material-symbols-outlined" aria-hidden="true">person_search</span>
+                        <span class="chair-mode__text"><strong>Existing account</strong><small>Promote staff already in the SIS</small></span>
+                    </button>
+                    <button type="button" class="chair-mode__btn<?= $initialChairMode === 'new' ? ' is-active' : '' ?>" data-chair-mode="new" aria-pressed="<?= $initialChairMode === 'new' ? 'true' : 'false' ?>">
+                        <span class="material-symbols-outlined" aria-hidden="true">person_add</span>
+                        <span class="chair-mode__text"><strong>New account</strong><small>Invite someone new</small></span>
+                    </button>
                 </div>
 
-                <div class="ac-field" id="chairExistingField">
-                    <label>User</label>
-                    <select name="existing_user_id" class="ac-input" id="chairExistingSelect" required>
-                        <option value="">Choose a user…</option>
-                        <?php foreach ($assignableUsers as $u): ?>
-                            <option value="<?= (int) $u['id'] ?>">
-                                <?= esc($u['username']) ?><?= $u['email'] ? ' — ' . esc($u['email']) : '' ?><?= $u['groups'] !== [] ? ' (' . esc(implode(', ', $u['groups'])) . ')' : '' ?>
-                            </option>
+                <div id="chairExistingField" class="chair-existing"<?= $initialChairMode === 'new' ? ' hidden' : '' ?>>
+                    <span class="chair-label" id="chairPickerLabel">Chairperson</span>
+
+                    <div class="chair-picker" id="chairPicker" hidden>
+                        <div class="chair-picker__search">
+                            <span class="material-symbols-outlined" aria-hidden="true">search</span>
+                            <input type="search" id="chairUserSearch" class="chair-picker__input" placeholder="Search by name or email…" autocomplete="off" aria-labelledby="chairPickerLabel" aria-controls="chairUserList">
+                            <kbd class="chair-picker__kbd" aria-hidden="true">/</kbd>
+                        </div>
+                        <div class="chair-picker__filters" role="group" aria-label="Filter candidates by role">
+                            <button type="button" class="chair-filter" data-chair-filter="chairperson" aria-pressed="false">Chairpersons<span class="chair-filter__count" data-chair-count="chairperson">0</span></button>
+                            <button type="button" class="chair-filter" data-chair-filter="faculty" aria-pressed="false">Faculty<span class="chair-filter__count" data-chair-count="faculty">0</span></button>
+                            <button type="button" class="chair-filter" data-chair-filter="all" aria-pressed="false">All staff<span class="chair-filter__count" data-chair-count="all">0</span></button>
+                        </div>
+                        <div class="chair-picker__list" id="chairUserList" role="listbox" aria-labelledby="chairPickerLabel"></div>
+                        <div class="chair-picker__empty" id="chairUserEmpty" hidden>
+                            <span class="material-symbols-outlined" aria-hidden="true">person_search</span>
+                            <p id="chairUserEmptyText">No staff match your search.</p>
+                            <button type="button" class="chair-picker__empty-action" id="chairUserEmptyReset" hidden>Show all staff</button>
+                        </div>
+                        <p class="chair-picker__foot">
+                            <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
+                            <span>Only faculty and existing chairpersons are listed — student accounts can't chair a department.<?php if ($staffCandidates === []): ?> <button type="button" class="chair-link" data-chair-mode-switch="new">Create a new account instead</button>.<?php endif ?></span>
+                        </p>
+                    </div>
+
+                    <select name="existing_user_id" id="chairExistingSelect" class="ac-input chair-picker__native" required aria-labelledby="chairPickerLabel">
+                        <option value="">Choose a staff member…</option>
+                        <?php foreach ($staffCandidates as $u): ?>
+                            <?php
+                            // Only role badges that make sense in this context;
+                            // `roles` itself also carries internal groups.
+                            $shownRoles = array_values(array_intersect($u['roles'], ['chairperson', 'faculty', 'dean', 'registrar', 'admin']));
+                            $optionText = $u['username']
+                                . ($u['email'] !== null ? ' — ' . $u['email'] : '')
+                                . ($shownRoles !== [] ? ' (' . implode(', ', $shownRoles) . ')' : '');
+                            ?>
+                            <option value="<?= (int) $u['id'] ?>"
+                                data-name="<?= esc($u['username'], 'attr') ?>"
+                                data-email="<?= esc($u['email'] ?? '', 'attr') ?>"
+                                data-roles="<?= esc(implode(' ', $shownRoles), 'attr') ?>"
+                                data-chair-of="<?= esc(implode(', ', $u['chair_of']), 'attr') ?>"
+                                data-current="<?= $u['is_current'] ? '1' : '0' ?>"
+                                data-tone="<?= (int) $u['tone'] ?>"
+                                <?= (int) $u['id'] === $oldChairUserId ? 'selected' : '' ?>><?= esc($optionText) ?></option>
                         <?php endforeach ?>
                     </select>
                 </div>
 
-                <div id="chairNewFields" style="display:none;">
-                    <div class="ac-field">
-                        <label>Full Name</label>
-                        <input type="text" name="username" class="ac-input" placeholder="Prof. Maria Reyes" value="<?= esc($department['chair']['username'] ?? '') ?>">
+                <div id="chairNewFields" class="chair-new"<?= $initialChairMode === 'new' ? '' : ' hidden' ?>>
+                    <div class="chair-new__grid">
+                        <div class="chair-field">
+                            <label for="chairNewName">Full name</label>
+                            <div class="chair-field__control">
+                                <span class="material-symbols-outlined" aria-hidden="true">badge</span>
+                                <input type="text" name="username" id="chairNewName" class="ac-input" placeholder="Prof. Maria Reyes" value="<?= esc(old('username') ?? '') ?>" autocomplete="name">
+                            </div>
+                        </div>
+                        <div class="chair-field">
+                            <label for="chairNewEmail">Email address</label>
+                            <div class="chair-field__control">
+                                <span class="material-symbols-outlined" aria-hidden="true">alternate_email</span>
+                                <input type="email" name="email" id="chairNewEmail" class="ac-input" placeholder="name@example.com" value="<?= esc(old('email') ?? '') ?>" autocomplete="email">
+                            </div>
+                        </div>
                     </div>
-                    <div class="ac-field">
-                        <label>Email</label>
-                        <input type="email" name="email" class="ac-input" placeholder="name@example.com" value="<?= esc($department['chair']['email'] ?? '') ?>">
+                    <div class="chair-new__note">
+                        <span class="material-symbols-outlined" aria-hidden="true">mark_email_read</span>
+                        <div>
+                            <strong>They'll chair <?= esc($department['name']) ?>.</strong>
+                            <span>A temporary password is generated and shown to you once the account is saved.</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="ac-notice">
-                    <span class="material-symbols-outlined" style="font-size:14px; color:var(--color-info); margin-top:1px;">info</span>
-                    <span class="ac-notice__text">This will set the account as <?= esc($department['name']) ?>'s chairperson, replacing the current one if any. An existing user keeps their other roles/departments — this only adds chairperson access here.</span>
+                <div class="chair-summary-note" id="chairReplaceNote">
+                    <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                    <span>Existing accounts keep their other roles — this only adds chairperson access here.<?php if ($department['chair']): ?> Assigning someone new replaces the current chairperson.<?php endif ?></span>
                 </div>
             </div>
-            <div class="ac-modal__actions">
+
+            <div class="ac-modal__actions chair-modal__actions">
+                <span class="chair-modal__selection" id="chairSelectedSummary" aria-live="polite"></span>
                 <button type="button" onclick="acCloseModal('modalChair')" class="ac-btn ac-btn-secondary">Cancel</button>
-                <button type="submit" class="ac-btn ac-btn-primary"><?= $department['chair'] ? 'Reassign' : 'Assign' ?></button>
+                <button type="submit" class="ac-btn ac-btn-primary" id="chairSubmitBtn"
+                        data-label-existing="<?= $department['chair'] ? 'Reassign chairperson' : 'Assign chairperson' ?>"
+                        data-label-new="Create &amp; assign">
+                    <span class="material-symbols-outlined" style="font-size:18px;" aria-hidden="true">check_circle</span>
+                    <span id="chairSubmitLabel"><?= $department['chair'] ? 'Reassign chairperson' : 'Assign chairperson' ?></span>
+                </button>
             </div>
         </form>
-        <script>
-            function acToggleChairMode(radio) {
-                const existing = radio.form.querySelector('#chairExistingField');
-                const existingSelect = radio.form.querySelector('#chairExistingSelect');
-                const newFields = radio.form.querySelector('#chairNewFields');
-                const newInputs = newFields.querySelectorAll('input');
-                const isExisting = radio.value === 'existing';
-                existing.style.display = isExisting ? '' : 'none';
-                newFields.style.display = isExisting ? 'none' : '';
-                existingSelect.required = isExisting;
-                newInputs.forEach(input => { input.required = !isExisting; });
-            }
-        </script>
     </div>
 </div>
 
@@ -543,13 +602,14 @@
                 <div class="ac-field" id="facultyExistingField">
                     <label>User</label>
                     <select name="existing_user_id" class="ac-input" id="facultyExistingSelect" required>
-                        <option value="">Choose a user…</option>
-                        <?php foreach ($assignableUsers as $u): ?>
+                        <option value="">Choose a staff member…</option>
+                        <?php foreach ($staffCandidates as $u): ?>
                             <option value="<?= (int) $u['id'] ?>">
-                                <?= esc($u['username']) ?><?= $u['email'] ? ' — ' . esc($u['email']) : '' ?><?= $u['groups'] !== [] ? ' (' . esc(implode(', ', $u['groups'])) . ')' : '' ?>
+                                <?= esc($u['username']) ?><?= $u['email'] !== null ? ' — ' . esc($u['email']) : '' ?><?= $u['roles'] !== [] ? ' (' . esc(implode(', ', $u['roles'])) . ')' : '' ?>
                             </option>
                         <?php endforeach ?>
                     </select>
+                    <p class="chair-native-hint">Only faculty and chairperson accounts are listed.</p>
                 </div>
 
                 <div id="facultyNewFields" style="display:none;">
@@ -636,10 +696,22 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
+<script src="<?= base_url('assets/js/chair-assignment.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/chair-assignment.js') ?>"></script>
 <?php if (session('errors')): ?>
 <script>
     <?php if (old('program_code') || old('program_name')): ?>
         document.getElementById('modalAddProgram').classList.add('is-open');
+    <?php elseif (old('chair_mode')): ?>
+        // Chairperson form validation failed. Reopen THAT modal, in the mode
+        // that was submitted — before this branch existed, a chair error fell
+        // through to the Add Faculty modal because both post username/email.
+        (function () {
+            if (window.acSetChairMode) window.acSetChairMode(<?= old('chair_mode') === 'new' ? "'new'" : "'existing'" ?>);
+            setTimeout(function () {
+                if (window.acOpenChairModal) { window.acOpenChairModal(); return; }
+                document.getElementById('modalChair').classList.add('is-open');
+            }, 0);
+        })();
     <?php elseif (old('username') || old('email')): ?>
         document.getElementById('modalAddFaculty').classList.add('is-open');
         // Validation failed on the "new account" path — restore that radio

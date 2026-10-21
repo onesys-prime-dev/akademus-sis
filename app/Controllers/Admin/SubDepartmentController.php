@@ -59,40 +59,114 @@ class SubDepartmentController extends BaseController
             // secondary affiliations existed.
             'facultyCount'   => count($facultyMembers),
             'studentCount'   => $this->countInGroup($id, 'student'),
-            'assignableUsers' => $this->assignableUsers(),
+            'staffCandidates' => $this->staffCandidates((int) $id),
         ]);
     }
 
     /**
-     * Every active, non-deleted account — for the "Assign Chairperson"
-     * modal's existing-user picker, so promoting someone already in the
-     * system (most commonly an existing faculty member) doesn't require
-     * re-typing their name/email and hoping it matches exactly.
+     * Staff accounts that can be granted a department-level role — active,
+     * non-deleted users in the `faculty` or `chairperson` group.
      *
-     * @return list<array{id: int, username: string, email: ?string, groups: list<string>}>
+     * Deliberately NOT "every account" any more: the Assign Chairperson and
+     * Add Faculty pickers used to list every student in the SIS, burying the
+     * handful of real candidates under hundreds of rows. Students, admins and
+     * registrars are never eligible for either role, so they're excluded at
+     * the source (not merely hidden in the browser).
+     *
+     * Each row also carries what a useful picker needs: the roles they
+     * already hold, which departments they chair, and whether that includes
+     * THIS department — so the current chair can be labeled instead of
+     * silently offered as a no-op.
+     *
+     * @return list<array{id:int, username:string, email:?string, roles:list<string>, chair_of:list<string>, is_current:bool, is_chairperson:bool, tone:int}>
      */
-    private function assignableUsers(): array
+    private function staffCandidates(int $subDeptId): array
     {
-        $rows = db_connect()->table('users u')
-            ->select('u.id, u.username, i.secret as email')
+        $db = db_connect();
+
+        $rows = $db->table('users u')
+            ->select('u.id, u.username, i.secret AS email')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->whereIn('g.group', ['faculty', 'chairperson'])
             ->where('u.deleted_at', null)
-            ->orderBy('u.username')
+            ->where('u.active', 1)
+            ->distinct()
+            ->orderBy('u.username', 'ASC')
             ->get()
             ->getResultArray();
 
-        $groupsByUser = [];
-
-        foreach (db_connect()->table('auth_groups_users')->select('user_id, `group`')->get()->getResultArray() as $g) {
-            $groupsByUser[(int) $g['user_id']][] = $g['group'];
+        if ($rows === []) {
+            return [];
         }
 
-        foreach ($rows as &$row) {
-            $row['groups'] = $groupsByUser[(int) $row['id']] ?? [];
-        }
-        unset($row);
+        $ids = array_map(static fn (array $r): int => (int) $r['id'], $rows);
 
-        return $rows;
+        $rolesByUser = [];
+
+        foreach ($db->table('auth_groups_users')->select('user_id, `group`')->whereIn('user_id', $ids)->get()->getResultArray() as $g) {
+            $rolesByUser[(int) $g['user_id']][] = (string) $g['group'];
+        }
+
+        // Every department each candidate currently chairs: the primary one
+        // stored on users.sub_department_id, plus any delegated through
+        // sub_department_schedulers (one person may chair more than one).
+        $chairsByUser = [];
+
+        $primary = $db->table('users u')
+            ->select('u.id, sd.sub_dept_id, sd.name')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->join('sub_departments sd', 'sd.sub_dept_id = u.sub_department_id')
+            ->where('g.group', 'chairperson')
+            ->whereIn('u.id', $ids)
+            ->get()
+            ->getResultArray();
+
+        $delegated = $db->table('sub_department_schedulers sds')
+            ->select('sds.user_id, sd.sub_dept_id, sd.name')
+            ->join('sub_departments sd', 'sd.sub_dept_id = sds.sub_dept_id')
+            ->whereIn('sds.user_id', $ids)
+            ->get()
+            ->getResultArray();
+
+        foreach (array_merge($primary, $delegated) as $row) {
+            $userId = (int) ($row['id'] ?? $row['user_id']);
+            $chairsByUser[$userId][(int) $row['sub_dept_id']] = (string) $row['name'];
+        }
+
+        $candidates = [];
+
+        foreach ($rows as $row) {
+            $userId     = (int) $row['id'];
+            $roles      = array_values(array_unique($rolesByUser[$userId] ?? []));
+            $chairs     = $chairsByUser[$userId] ?? [];
+            $isChair    = in_array('chairperson', $roles, true) || $chairs !== [];
+
+            $candidates[] = [
+                'id'             => $userId,
+                'username'       => (string) $row['username'],
+                'email'          => $row['email'] !== null ? (string) $row['email'] : null,
+                'roles'          => $roles,
+                'chair_of'       => array_values($chairs),
+                'is_current'     => array_key_exists($subDeptId, $chairs),
+                'is_chairperson' => $isChair,
+                // Deterministic avatar tone — restrained colour variety
+                // without a per-user preference to configure or maintain.
+                'tone'           => (crc32((string) $row['username']) % 6) + 1,
+            ];
+        }
+
+        // Chairpersons first (a reassignment is almost always to someone who
+        // already holds the role), then everyone alphabetically.
+        usort($candidates, static function (array $a, array $b): int {
+            if ($a['is_chairperson'] !== $b['is_chairperson']) {
+                return $a['is_chairperson'] ? -1 : 1;
+            }
+
+            return strcasecmp($a['username'], $b['username']);
+        });
+
+        return $candidates;
     }
 
     public function update($id)
@@ -133,9 +207,15 @@ class SubDepartmentController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
+        $mode           = (string) ($this->request->getPost('chair_mode') ?? '');
         $existingUserId = (int) ($this->request->getPost('existing_user_id') ?? 0);
 
-        if ($this->request->getPost('chair_mode') === 'existing' || $existingUserId > 0) {
+        // A real "new" mode must win even if the form still carries a stale
+        // existing_user_id (switching modes after picking someone used to
+        // silently reassign that person instead of creating the account).
+        // The no-mode fallback remains for legacy callers that only post an
+        // id, e.g. the users page's retargeted create form.
+        if ($mode === 'existing' || ($mode === '' && $existingUserId > 0)) {
             return $this->assignExistingChair($id, $department, $existingUserId);
         }
 
@@ -239,14 +319,33 @@ class SubDepartmentController extends BaseController
      * reads) instead of silently stealing them away from their first
      * department. Either way, THIS department still ends up with exactly
      * one chairperson — see clearDepartmentChair().
+     *
+     * Only ACTIVE faculty/chairperson accounts are accepted, mirroring the
+     * picker's own filter — a crafted POST naming a student (or a disabled
+     * account) is rejected rather than silently granting the role.
      */
     private function assignExistingChair(int $id, array $department, int $userId)
     {
+        if ($userId <= 0) {
+            return redirect()->back()->withInput()->with('errors', ['Choose a staff member to assign as chairperson.']);
+        }
+
         $users = auth()->getProvider();
         $user  = $users->findById($userId);
 
         if ($user === null) {
-            return redirect()->back()->with('errors', ['Selected user not found.']);
+            return redirect()->back()->withInput()->with('errors', ['Selected user not found.']);
+        }
+
+        // The picker only offers faculty/chairperson accounts — enforce the
+        // same rule here so a hand-crafted POST can never turn a student (or
+        // an inactive account) into a department chairperson.
+        if (! $user->active) {
+            return redirect()->back()->withInput()->with('errors', ['That account is inactive. Activate it first, or choose another staff member.']);
+        }
+
+        if (! $user->inGroup('faculty') && ! $user->inGroup('chairperson')) {
+            return redirect()->back()->withInput()->with('errors', ['Only faculty and existing chairpersons can be assigned as chairperson. Pick a faculty member, or create a new account.']);
         }
 
         if (! $user->inGroup('chairperson')) {

@@ -1,0 +1,778 @@
+/**
+ * Assign / reassign chairperson modal — scoped to the department detail page
+ * (admin/sub_departments/show.php).
+ *
+ * Consumes the shared design tokens rather than hardcoded brand values; the
+ * only literals are the restrained avatar-tone palette and tag tints, which
+ * have no semantic token of their own.
+ */
+
+/* ---- Shell ------------------------------------------------------------ */
+
+.ac-modal--chair .ac-modal__panel {
+    width: 100%;
+    max-width: 600px;
+    max-height: min(780px, calc(100dvh - 32px));
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chair-modal form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.chair-modal__header {
+    flex: 0 0 auto;
+    padding: 22px 24px 16px;
+    border-bottom: 1px solid var(--color-border);
+    background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-surface-secondary) 100%);
+}
+
+.chair-modal__heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+}
+
+.chair-modal__icon {
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 21px;
+    box-shadow: inset 0 0 0 1px rgba(23, 78, 166, .08);
+}
+
+.chair-modal .ac-modal__title {
+    font-size: 18px;
+    letter-spacing: -.01em;
+}
+
+.chair-modal .ac-modal__subtitle {
+    margin-top: 3px;
+    color: var(--color-text-secondary);
+    font-size: 12.5px;
+}
+
+.chair-modal__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 0;
+    padding: 20px 24px;
+    overflow-y: auto;
+    gap: 16px;
+    background: var(--color-surface);
+    scrollbar-width: thin;
+}
+
+.chair-modal .chair-modal__actions {
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 0;
+    padding: 14px 24px;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface-secondary);
+}
+
+.chair-modal .chair-modal__actions .ac-btn {
+    flex: 0 0 auto;
+}
+
+.chair-modal__selection {
+    min-width: 0;
+    margin-right: auto;
+    overflow: hidden;
+    color: var(--color-text-tertiary);
+    font-size: 11px;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chair-modal__selection strong {
+    color: var(--color-text-primary);
+    font-weight: 650;
+}
+
+.chair-modal__selection:empty {
+    display: none;
+}
+
+/* ---- Mode switch (existing account / new account) --------------------- */
+
+.chair-mode {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface-sunken);
+}
+
+.chair-mode .ac-segmented__indicator {
+    border-radius: 9px;
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.chair-mode__btn {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: color var(--motion-fast) var(--ease-standard);
+}
+
+.chair-mode__btn:hover {
+    color: var(--color-text-primary);
+}
+
+.chair-mode__btn .material-symbols-outlined {
+    flex: 0 0 auto;
+    color: var(--color-text-tertiary);
+    font-size: 19px;
+    transition: color var(--motion-fast) var(--ease-standard);
+}
+
+.chair-mode__btn.is-active {
+    color: var(--color-text-primary);
+}
+
+.chair-mode__btn.is-active .material-symbols-outlined {
+    color: var(--color-primary);
+}
+
+.chair-mode__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.chair-mode__text strong {
+    font-size: 12.5px;
+    font-weight: 650;
+}
+
+.chair-mode__text small {
+    margin-top: 2px;
+    overflow: hidden;
+    color: var(--color-text-tertiary);
+    font-size: 10.5px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---- Staff picker ----------------------------------------------------- */
+
+.chair-existing[hidden],
+.chair-picker[hidden],
+.chair-new[hidden],
+.chair-picker__empty[hidden],
+.chair-picker__empty-action[hidden] {
+    display: none !important;
+}
+
+.chair-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.chair-picker {
+    overflow: hidden;
+    border: 1px solid var(--color-border-control);
+    border-radius: 12px;
+    background: var(--color-surface);
+    box-shadow: var(--shadow-xs);
+    transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.chair-picker:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: var(--focus-ring);
+}
+
+.chair-picker__search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface-secondary);
+}
+
+.chair-picker__search .material-symbols-outlined {
+    color: var(--color-text-tertiary);
+    font-size: 18px;
+}
+
+.chair-picker__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 13px;
+}
+
+.chair-picker__input::placeholder {
+    color: var(--color-text-tertiary);
+}
+
+.chair-picker__input::-webkit-search-cancel-button {
+    cursor: pointer;
+}
+
+.chair-picker__kbd {
+    flex: 0 0 auto;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border: 1px solid var(--color-border);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    background: var(--color-surface);
+    color: var(--color-text-tertiary);
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 17px;
+    text-align: center;
+}
+
+.chair-picker__filters {
+    display: flex;
+    gap: 4px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+    scrollbar-width: none;
+}
+
+.chair-picker__filters::-webkit-scrollbar {
+    display: none;
+}
+
+.chair-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 650;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+
+.chair-filter:hover {
+    background: var(--color-surface-sunken);
+}
+
+.chair-filter[aria-pressed="true"] {
+    border-color: rgba(23, 78, 166, .18);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.chair-filter__count {
+    min-width: 16px;
+    padding: 1px 5px;
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-sunken);
+    color: var(--color-text-tertiary);
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.chair-filter[aria-pressed="true"] .chair-filter__count {
+    background: rgba(23, 78, 166, .12);
+    color: var(--color-primary);
+}
+
+.chair-picker.is-invalid {
+    border-color: var(--color-danger);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, .12);
+}
+
+.chair-picker__list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 288px;
+    padding: 6px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.chair-picker__list[hidden] {
+    display: none !important;
+}
+
+.chair-picker__list:empty {
+    display: none;
+}
+
+
+/* ---- Candidate rows --------------------------------------------------- */
+
+.chair-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+
+.chair-user:hover,
+.chair-user:focus-visible {
+    border-color: var(--color-border);
+    background: var(--color-surface-secondary);
+    outline: none;
+}
+
+.chair-user.is-selected {
+    border-color: rgba(23, 78, 166, .22);
+    background: var(--color-primary-soft);
+}
+
+.chair-user.is-current {
+    cursor: default;
+    opacity: .78;
+}
+
+.chair-user.is-current:hover {
+    border-color: transparent;
+    background: transparent;
+}
+
+.chair-avatar {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    font-size: 11.5px;
+    font-weight: 750;
+    letter-spacing: .02em;
+}
+
+.chair-avatar--1 { background: #e8f0fe; color: #174ea6; }
+.chair-avatar--2 { background: #ecfdf5; color: #047857; }
+.chair-avatar--3 { background: #fff7ed; color: #b45309; }
+.chair-avatar--4 { background: #f5f3ff; color: #6d28d9; }
+.chair-avatar--5 { background: #fdf2f8; color: #be185d; }
+.chair-avatar--6 { background: #f0fdfa; color: #0f766e; }
+
+.chair-user__body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.chair-user__top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.chair-user__name {
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 12.5px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chair-tag {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    height: 17px;
+    padding: 0 6px;
+    border-radius: 4px;
+    font-size: 9.5px;
+    font-weight: 750;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.chair-tag--chair { background: #e7f0ff; color: #174ea6; }
+.chair-tag--faculty { background: var(--color-surface-sunken); color: var(--color-text-secondary); }
+.chair-tag--current { background: #ecfdf3; color: #067647; }
+
+.chair-user__email {
+    overflow: hidden;
+    color: var(--color-text-tertiary);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chair-user__meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-size: 10.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chair-user__meta .material-symbols-outlined {
+    flex: 0 0 auto;
+    font-size: 13px;
+}
+
+.chair-user__check {
+    flex: 0 0 auto;
+    color: var(--color-primary);
+    font-size: 19px;
+    opacity: 0;
+    transform: scale(.8);
+    transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-spring);
+}
+
+.chair-user.is-selected .chair-user__check {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.chair-user.is-current .chair-user__check {
+    display: none;
+}
+
+/* ---- Empty + foot ----------------------------------------------------- */
+
+.chair-picker__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 26px 18px;
+    color: var(--color-text-tertiary);
+    text-align: center;
+}
+
+.chair-picker__empty .material-symbols-outlined {
+    font-size: 26px;
+    opacity: .7;
+}
+
+.chair-picker__empty p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.chair-picker__empty-action {
+    margin-top: 4px;
+    padding: 5px 10px;
+    border: 1px solid var(--color-border-control);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
+    color: var(--color-primary);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background var(--motion-fast) var(--ease-standard);
+}
+
+.chair-picker__empty-action:hover {
+    background: var(--color-primary-soft);
+}
+
+.chair-picker__foot {
+    display: flex;
+    gap: 6px;
+    margin: 0;
+    padding: 8px 12px;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface-secondary);
+    color: var(--color-text-tertiary);
+    font-size: 10.5px;
+    line-height: 1.4;
+}
+
+.chair-picker__foot .material-symbols-outlined {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: var(--color-text-muted);
+    font-size: 14px;
+}
+
+.chair-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-primary);
+    font: inherit;
+    font-weight: 650;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.chair-native-hint {
+    margin: 6px 0 0;
+    color: var(--color-text-tertiary);
+    font-size: 11px;
+}
+
+
+/* ---- New-account form ------------------------------------------------- */
+
+.chair-new {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.chair-new__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.chair-field label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.chair-field__control {
+    position: relative;
+}
+
+.chair-field__control .material-symbols-outlined {
+    position: absolute;
+    top: 50%;
+    left: 11px;
+    transform: translateY(-50%);
+    color: var(--color-text-tertiary);
+    font-size: 17px;
+    pointer-events: none;
+}
+
+.chair-field__control .ac-input {
+    min-height: 40px;
+    padding-left: 35px;
+}
+
+.chair-new__note {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 11px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-surface-secondary);
+}
+
+.chair-new__note .material-symbols-outlined {
+    flex: 0 0 auto;
+    color: var(--color-primary);
+    font-size: 18px;
+}
+
+.chair-new__note div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.chair-new__note strong {
+    color: var(--color-text-primary);
+    font-size: 11.5px;
+    font-weight: 650;
+}
+
+.chair-new__note span {
+    color: var(--color-text-tertiary);
+    font-size: 10.5px;
+    line-height: 1.4;
+}
+
+.chair-summary-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 9px 11px;
+    border: 1px solid var(--color-info-soft);
+    border-radius: 9px;
+    background: var(--color-info-soft);
+    color: #1e40af;
+    font-size: 10.5px;
+    line-height: 1.45;
+}
+
+.chair-summary-note .material-symbols-outlined {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: var(--color-info);
+    font-size: 14px;
+}
+
+/* ---- Responsive / motion ---------------------------------------------- */
+
+@media (max-width: 640px) {
+    .ac-modal--chair {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .ac-modal--chair .ac-modal__panel {
+        max-width: 100%;
+        max-height: 90dvh;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+
+    /* The base sheet stacks actions column-reverse for a single primary
+       button; this footer also carries a selection summary, so give it a
+       deliberate layout: summary across the top, then Cancel / submit as a
+       balanced pair. Higher specificity because page styles load before
+       components.css/admin-console.css. */
+    .chair-modal .chair-modal__actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+        gap: 8px;
+        flex-direction: row;
+        flex-wrap: nowrap;
+    }
+
+    .chair-modal .chair-modal__selection {
+        grid-column: 1 / -1;
+        margin-right: 0;
+        white-space: normal;
+    }
+
+    .chair-modal .chair-modal__actions .ac-btn {
+        width: 100%;
+        min-height: 42px;
+        white-space: normal;
+        text-align: center;
+    }
+}
+
+@media (max-width: 560px) {
+    .chair-modal__header {
+        padding: 18px 18px 14px;
+    }
+
+    .chair-modal__body {
+        padding: 16px 18px;
+        gap: 12px;
+    }
+
+    .chair-modal__actions {
+        flex-wrap: wrap;
+        padding: 12px 18px;
+    }
+
+    .chair-modal__selection {
+        flex-basis: 100%;
+        margin-right: 0;
+        white-space: normal;
+    }
+
+    .chair-mode__text small {
+        display: none;
+    }
+
+    .chair-new__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chair-picker__list {
+        max-height: 220px;
+    }
+
+    /* The submit label is longer than a half-width phone button fits next to
+       an icon; drop the icon so it stays on one line. */
+    .chair-modal .chair-modal__actions .ac-btn .material-symbols-outlined {
+        display: none;
+    }
+
+    /* "/" is a hardware-keyboard affordance; phones don't have one. */
+    .chair-picker__kbd {
+        display: none;
+    }
+
+    /* Let long names take the full row; the role tags wrap underneath
+       instead of squeezing the person's name to "Sophia …". */
+    .chair-user__top {
+        flex-wrap: wrap;
+    }
+
+    .chair-user__name {
+        white-space: normal;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chair-mode .ac-segmented__indicator,
+    .chair-mode__btn,
+    .chair-mode__btn .material-symbols-outlined,
+    .chair-filter,
+    .chair-user,
+    .chair-user__check,
+    .chair-picker {
+        transition: none;
+    }
+}
+
