@@ -482,12 +482,19 @@ function blockIssues(b) {
         issues.push({ level: 'error', title: 'Section conflict', detail: `${CONTEXT.section} also has ${sameSection.code} at ${blockRange(sameSection)}.` });
     }
 
-    const roomClash = clashing.find(o => o.room === b.room);
+    // A class deliberately shared across sections (accepted from "Merge
+    // into that class", or plotted to match one by hand) has an identical
+    // subject/time/room/faculty signature to the class it's sharing with —
+    // that's the same class, not two classes fighting over one room/
+    // professor. Only flag it when something actually differs.
+    const isSharedClass = o => o.code === b.code && o.start === b.start && o.end === b.end && o.prof === b.prof;
+
+    const roomClash = clashing.find(o => o.room === b.room && !isSharedClass(o));
     if (roomClash) {
         issues.push({ level: 'error', title: 'Room conflict', detail: `${b.room} is also used by ${roomClash.code} · ${roomClash.section || CONTEXT.section}, ${blockRange(roomClash)}.` });
     }
 
-    const facultyClash = b.prof && clashing.find(o => o.prof === b.prof);
+    const facultyClash = b.prof && clashing.find(o => o.prof === b.prof && !isSharedClass(o));
     if (facultyClash) {
         issues.push({ level: 'error', title: 'Faculty conflict', detail: `${b.prof} also teaches ${facultyClash.code} · ${facultyClash.section || CONTEXT.section}, ${blockRange(facultyClash)}.` });
     }
@@ -1832,13 +1839,19 @@ function evaluatePlacement({ subject, day, startRow, endRow, ignoreKey = null, r
             message: `${subject.code} already meets ${MAX_MEETINGS} times a week, which is the maximum.` }, warnings: [] };
     }
 
-    const facultyClash = prof ? everyone.find(b => b.prof === prof && inSlot(b)) : null;
+    // Same subject, same room, same professor, overlapping time: that's the
+    // same physical class being shared with another section (a manual
+    // equivalent of "Merge into that class"), not a double-booking — don't
+    // flag it as a faculty/room conflict.
+    const isSharedClass = b => b.code === subject.code && b.room === roomName && b.prof === prof;
+
+    const facultyClash = prof ? everyone.find(b => b.prof === prof && inSlot(b) && !isSharedClass(b)) : null;
     if (facultyClash) {
         return { hard: { type: 'faculty', title: 'Faculty conflict', attempted, existing: facultyClash,
             message: `${prof} is already teaching ${facultyClash.code}${facultyClash.section ? ' for ' + facultyClash.section : ''} at this time. Choose another time, or change who teaches ${subject.code}.` }, warnings: [] };
     }
 
-    const roomClash = roomName ? everyone.find(b => b.room === roomName && inSlot(b)) : null;
+    const roomClash = roomName ? everyone.find(b => b.room === roomName && inSlot(b) && !isSharedClass(b)) : null;
     if (roomClash) {
         return { hard: { type: 'room', title: 'Room conflict', attempted, existing: roomClash,
             message: `${roomName} is already in use by ${roomClash.code} · ${roomClash.section || CONTEXT.section} at this time.` }, warnings: [] };

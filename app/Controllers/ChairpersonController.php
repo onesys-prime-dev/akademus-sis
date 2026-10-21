@@ -1926,9 +1926,32 @@ class ChairpersonController extends BaseController
             $schedules = new PlottedScheduleModel();
             $others    = array_map([$this, 'rowToBlock'], $schedules->forOtherContexts($context['academic_year'], $context['program'], $context['year_level'], $context['section']));
 
+            // Sections sharing one physical class (accepted from the Schedule
+            // Plotting grid's "Merge into that class" suggestion — see
+            // OfferingController::mergeSuggestions()) produce two rows with an
+            // identical subject/day/time/room/faculty signature by design.
+            // That is not a double-booking; it is the same class attended by
+            // both sections. Only an EXACT match on every one of those fields
+            // counts as a deliberate merge — anything looser (same room, same
+            // time, but a different subject or professor) still means two
+            // different classes colliding, and must still fail below.
+            $mergedSections = [];
+
             foreach ($blocks as $block) {
                 foreach ($others as $other) {
                     if (! ScheduleOverlap::clashes($block, $other)) {
+                        continue;
+                    }
+
+                    $isSharedClass = $block['code'] === $other['code']
+                        && $block['start'] === $other['start']
+                        && $block['end'] === $other['end']
+                        && $block['room'] === $other['room']
+                        && $block['prof'] === $other['prof'];
+
+                    if ($isSharedClass) {
+                        $slotKey = $block['room'] . '|' . $block['start'] . '|' . $block['end'] . '|' . $block['code'];
+                        $mergedSections[$slotKey]['others'][$other['program'] . '|' . $other['year_level'] . '|' . $other['section']] = true;
                         continue;
                     }
 
@@ -1938,6 +1961,38 @@ class ChairpersonController extends BaseController
 
                     if ($block['prof'] !== null && $block['prof'] !== '' && $block['prof'] === $other['prof']) {
                         return $this->fail("Faculty conflict: {$other['prof']} teaches {$other['code']} ({$other['section']}) at {$other['time_label']}.");
+                    }
+                }
+            }
+
+            // A shared class still has to physically fit everyone in the
+            // room — add this section's own headcount to every other section
+            // merged into that exact slot and check against the room's
+            // capacity (mergeSuggestions() only verified this at the moment
+            // the suggestion was generated, which can go stale by the time
+            // it's accepted, and a chairperson can merge sections manually by
+            // plotting an identical block too).
+            if ($mergedSections !== []) {
+                $roomCapacity = array_column((new RoomModel())->findAll(), 'capacity', 'name');
+                $mySectionHeadcount = $this->sectionHeadcount($context['section_year'], $context['program'], $context['year_level'], $context['section']);
+
+                foreach ($mergedSections as $slotKey => $data) {
+                    [$room] = explode('|', $slotKey, 2);
+                    $capacity = $roomCapacity[$room] ?? null;
+
+                    if ($capacity === null) {
+                        continue; // unknown/retired room — can't verify, same as elsewhere
+                    }
+
+                    $total = $mySectionHeadcount;
+
+                    foreach (array_keys($data['others']) as $sectionKey) {
+                        [$p, $yl, $sec] = explode('|', $sectionKey, 3);
+                        $total += $this->sectionHeadcount($context['section_year'], $p, $yl, $sec);
+                    }
+
+                    if ($total > $capacity) {
+                        return $this->fail("Room capacity: {$room} seats {$capacity}, but the sections merged into this class total {$total} students.");
                     }
                 }
             }
@@ -3082,6 +3137,27 @@ class ChairpersonController extends BaseController
 
         $labels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
         return $labels[((int) $yearLevel) - 1] ?? null;
+    }
+
+    /**
+     * Real enrolled headcount for a section, falling back to the capacity
+     * policy's target for its program/year level when the section has no
+     * students yet (mirrors suggest()'s own $headcount resolution above).
+     */
+    private function sectionHeadcount(string $sectionYear, string $program, string $yearLevel, string $section): int
+    {
+        $row = (new SectionModel())->forContext($sectionYear, $program, $yearLevel, $section);
+
+        $headcount = $row === null ? 0 : (int) db_connect()->table('users u')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'student')->where('u.deleted_at', null)->where('u.section_id', $row['section_id'])
+            ->countAllResults();
+
+        if ($headcount > 0) {
+            return $headcount;
+        }
+
+        return (int) (new CapacityPolicyModel())->resolve(['program' => $program, 'year_level' => $yearLevel])['target'];
     }
 
     private function rowToBlock(array $row): array
