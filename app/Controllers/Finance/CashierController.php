@@ -5,6 +5,7 @@ namespace App\Controllers\Finance;
 use App\Controllers\BaseController;
 use App\Libraries\FinancePortal;
 use App\Models\NotificationModel;
+use App\Models\PaymentProofModel;
 use App\Models\StudentModel;
 use App\Models\StudentPaymentModel;
 use App\Models\TuitionAssessmentModel;
@@ -62,6 +63,7 @@ class CashierController extends BaseController
             'student'     => $student,
             'assessments' => (new TuitionAssessmentModel())->historyFor((int) $studentId),
             'payments'    => (new StudentPaymentModel())->historyFor((int) $studentId),
+            'proofs'      => (new PaymentProofModel())->forStudent((int) $studentId),
             'methods'     => StudentPaymentModel::METHODS,
         ] + FinancePortal::shell('cashier'));
     }

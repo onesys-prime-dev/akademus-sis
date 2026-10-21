@@ -34,6 +34,70 @@
     </table>
 </div>
 
+<?php if (session()->has('message')): ?>
+    <div class="ac-notice" style="margin-bottom:16px;">
+        <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-success); margin-top:1px;" aria-hidden="true">check_circle</span>
+        <span class="ac-notice__text"><?= esc(session('message')) ?></span>
+    </div>
+<?php endif ?>
+
+<?php $pendingProofs = array_filter($proofs, static fn (array $p) => $p['status'] === 'pending'); ?>
+<?php if ($proofs !== []): ?>
+<h3>Payment Proofs<?= $pendingProofs !== [] ? ' <span class="ac-pill ac-pill--warning" style="vertical-align:middle;">' . count($pendingProofs) . ' pending</span>' : '' ?></h3>
+<div class="ac-table-card" style="margin-bottom:20px;">
+    <table class="ac-table">
+        <thead><tr><th>Uploaded</th><th>Amount &amp; Installment</th><th>File</th><th>Reference</th><th>Status</th><th style="width:300px;"></th></tr></thead>
+        <tbody>
+            <?php foreach ($proofs as $p): ?>
+                <?php
+                    $amount    = $p['schedule_id'] !== null ? (float) $p['schedule_amount'] : (float) $p['assessment_balance'];
+                    $planLabel = $p['schedule_id'] !== null ? $p['schedule_label'] : 'General Payment (full balance)';
+                    $statusPill = match ($p['status']) {
+                        'approved' => 'ac-pill--success',
+                        'rejected' => 'ac-pill--danger',
+                        default    => 'ac-pill--warning',
+                    };
+                ?>
+                <tr>
+                    <td><?= esc(date('M j, Y g:i A', strtotime($p['created_at']))) ?></td>
+                    <td>
+                        ₱<?= number_format($amount, 2) ?>
+                        <br><span class="ac-pill ac-pill--neutral"><?= esc($planLabel) ?></span>
+                    </td>
+                    <td>
+                        <button type="button" class="ac-btn-outline" onclick="acOpenFileModal('<?= site_url('student/tuition/proof/' . $p['proof_id']) ?>', '<?= esc($p['original_filename'], 'js') ?>')" title="<?= esc($p['original_filename'], 'attr') ?>">
+                            <span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px; vertical-align:-3px;">visibility</span> View
+                        </button>
+                    </td>
+                    <td><?= esc($p['remarks'] ?: '—') ?></td>
+                    <td>
+                        <span class="ac-pill <?= $statusPill ?>"><?= esc(ucfirst($p['status'])) ?></span>
+                        <?php if ($p['status'] === 'rejected' && $p['cashier_remarks']): ?>
+                            <div class="ac-muted" style="font-size:11.5px; margin-top:4px;"><?= esc($p['cashier_remarks']) ?></div>
+                        <?php endif ?>
+                    </td>
+                    <td>
+                        <?php if ($p['status'] === 'pending'): ?>
+                            <div style="display:flex; gap:8px;">
+                                <form method="post" action="<?= site_url('finance/payment-proofs/' . $p['proof_id'] . '/approve') ?>" data-confirm="Approve this proof and record ₱<?= number_format($amount, 2) ?> as the <?= esc($planLabel, 'attr') ?> payment?">
+                                    <?= csrf_field() ?>
+                                    <button type="submit" class="ac-btn ac-btn-primary">Approve</button>
+                                </form>
+                                <form method="post" action="<?= site_url('finance/payment-proofs/' . $p['proof_id'] . '/reject') ?>" style="display:flex; gap:6px;" data-confirm="Reject this payment proof? The student will see your reason.">
+                                    <?= csrf_field() ?>
+                                    <input type="text" name="cashier_remarks" class="ac-input" placeholder="Reason (required)" required minlength="3" style="min-width:120px;">
+                                    <button type="submit" class="ac-btn-outline">Reject</button>
+                                </form>
+                            </div>
+                        <?php endif ?>
+                    </td>
+                </tr>
+            <?php endforeach ?>
+        </tbody>
+    </table>
+</div>
+<?php endif ?>
+
 <?php if ($assessments !== []): ?>
 <div class="ac-card" style="margin-bottom:20px;">
     <h3>Record a Payment</h3>

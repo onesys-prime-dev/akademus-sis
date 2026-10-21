@@ -24,11 +24,6 @@ class PaymentProofController extends BaseController
         return in_array($segment, ['registrar', 'finance'], true) ? $segment : 'admin';
     }
 
-    private function baseUrl(): string
-    {
-        return '/' . $this->portal() . '/payment-proofs';
-    }
-
     private function shell(): array
     {
         return match ($this->portal()) {
@@ -57,16 +52,16 @@ class PaymentProofController extends BaseController
         $result = (new TuitionAssessmentService())->approveProof($id, (int) auth()->id());
 
         if (! $result['ok']) {
-            return redirect()->to($this->baseUrl())->with('errors', [$result['error']]);
+            return redirect()->back()->with('errors', [$result['error']]);
         }
 
-        return redirect()->to($this->baseUrl())->with('message', 'Proof approved and payment recorded.');
+        return redirect()->back()->with('message', 'Proof approved and payment recorded.');
     }
 
     public function reject(int $id)
     {
         if (! $this->validate(['cashier_remarks' => 'required|min_length[3]'])) {
-            return redirect()->to($this->baseUrl())->with('errors', $this->validator->getErrors());
+            return redirect()->back()->with('errors', $this->validator->getErrors());
         }
 
         $proofs = new PaymentProofModel();
@@ -78,9 +73,9 @@ class PaymentProofController extends BaseController
         $result = (new TuitionAssessmentService())->rejectProof($id, (int) auth()->id(), (string) $this->request->getPost('cashier_remarks'));
 
         if (! $result['ok']) {
-            return redirect()->to($this->baseUrl())->with('errors', [$result['error']]);
+            return redirect()->back()->with('errors', [$result['error']]);
         }
 
-        return redirect()->to($this->baseUrl())->with('message', 'Proof rejected.');
+        return redirect()->back()->with('message', 'Proof rejected.');
     }
 }
