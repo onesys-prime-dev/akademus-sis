@@ -210,6 +210,16 @@ class OfferingController extends BaseController
         foreach ($ownedSubjects as $subject) {
             $summary = $demandService->summary((int) $subject['subject_id'], $activeYear);
 
+            // Every expected student already has a real seat somewhere
+            // (direct enrollment, a merged class, etc.) — "no course_offerings
+            // row exists yet" is just missing Step-6 bookkeeping at that
+            // point, not an unmet need. Without this gate a fully-served
+            // subject falsely sits in "needs plotting" forever, since
+            // nothing ever prompts anyone to create that offering row.
+            if (($summary['unassigned_count'] ?? 0) <= 0) {
+                continue;
+            }
+
             foreach ($summary['by_section'] as $bySection) {
                 if ($bySection['expected_count'] <= 0 || $bySection['section_id'] === null) {
                     continue;

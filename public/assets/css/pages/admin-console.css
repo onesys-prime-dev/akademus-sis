@@ -1893,10 +1893,37 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     .ac-detail-header { flex-direction: column; align-items: flex-start; }
 
     .ac-stats,
-    .ac-bento,
     .ac-grid,
     .ac-grid--sm,
     .ac-tile-grid { grid-template-columns: 1fr; }
+
+    /* Dashboard "at a glance" stat tiles — one giant full-width card per
+       stat means a wall of scrolling for very little information per
+       screen. A tighter 2-up grid with smaller padding/type keeps every
+       stat scannable within a couple of screens, closer to how a phone's
+       own widgets present the same kind of summary. */
+    .ac-bento { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 24px; }
+    .ac-bento-card { padding: 14px; }
+    .ac-bento-card__top { margin-bottom: 10px; flex-wrap: wrap; gap: 6px; }
+    .ac-bento-card__icon { width: 30px; height: 30px; }
+    .ac-bento-card__icon .material-symbols-outlined { font-size: 18px; }
+    /* Reserves room for a 2-line label so a short label ("Faculty in
+       department") and a long one ("Classes needing your subjects") still
+       leave their card's value/icon aligned with its row neighbor. */
+    .ac-bento-card__label { font-size: 11px; line-height: 1.35; min-height: 2.7em; }
+    .ac-bento-card__value { font-size: 19px; }
+    .ac-bento-card .ac-pill { font-size: 9px; padding: 2px 6px; }
+    /* An odd stat count otherwise leaves the last card alone in its row,
+       half the width with empty space beside it — span it across both
+       columns instead so every row is actually full. */
+    .ac-bento-card:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .ac-bento-card:last-child:nth-child(odd) .ac-bento-card__top { margin-bottom: 0; }
+    .ac-bento-card:last-child:nth-child(odd) .ac-bento-card__label { min-height: 0; }
 
     /* Data-grid rows collapse from a multi-column row into a labeled stack.
        Cells opt in with data-label="..." so a screen reader / visual label
