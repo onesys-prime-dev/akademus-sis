@@ -23,7 +23,7 @@
 
 <div class="ac-page-header">
     <div>
-        <a href="<?= site_url('finance/cashier') ?>" style="font-size:12.5px; color:var(--color-text-secondary);">&larr; Back to Cashier</a>
+        <a href="<?= site_url('finance/cashier') ?>" class="ac-back-link"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to Cashier</a>
         <h2 class="ac-page-header__title" style="margin-top:6px;"><?= esc(trim($s['first_name'] . ' ' . $s['last_name'])) ?></h2>
         <p class="ac-page-header__sub">
             <?= esc($s['student_number']) ?> &middot; <?= esc($s['program_name'] ?? 'No program set') ?>

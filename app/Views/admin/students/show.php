@@ -6,7 +6,7 @@
 
 <div class="ac-page-header">
     <div>
-        <a href="<?= site_url($basePath . '/students') ?>" style="font-size:12.5px; color:var(--color-text-secondary);">&larr; Back to Student Records</a>
+        <a href="<?= site_url($basePath . '/students') ?>" class="ac-back-link"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to Student Records</a>
         <h2 class="ac-page-header__title" style="margin-top:6px;"><?= esc(trim($s['first_name'] . ' ' . $s['middle_name'] . ' ' . $s['last_name'])) ?></h2>
         <p class="ac-page-header__sub"><?= esc($s['student_number']) ?> &middot; <?= esc($s['program_code'] ?? 'No program set') ?> &middot;
             <span class="ac-status-dot ac-status-dot--<?= $s['student_status'] === 'active' ? 'active' : ($s['student_status'] === 'dropped' ? 'pending' : 'inactive') ?>"><?= esc(ucfirst($s['student_status'])) ?></span>
