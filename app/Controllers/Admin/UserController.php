@@ -31,10 +31,11 @@ class UserController extends BaseController
     public function index()
     {
         $roleFilter = $this->request->getGet('role') ?: 'all';
+        $search     = trim((string) $this->request->getGet('q'));
 
         $builder = db_connect()->table('users u')
             ->select('u.id, u.username, i.secret as email, u.active, u.department_id, u.section_id, u.employment_status, g.group, d.code as dept_code, d.name as dept_name,
-                      s.date_of_birth, s.gender, s.home_address, s.city, s.emergency_contact_name, s.emergency_contact_number')
+                      s.student_number, s.date_of_birth, s.gender, s.home_address, s.city, s.emergency_contact_name, s.emergency_contact_number')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->join('departments d', 'd.dept_id = u.department_id', 'left')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
@@ -46,6 +47,14 @@ class UserController extends BaseController
             $builder->where('g.group', $roleFilter);
         } else {
             $builder->whereIn('g.group', self::ROLES);
+        }
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('u.username', $search)
+                ->orLike('i.secret', $search)
+                ->orLike('s.student_number', $search)
+            ->groupEnd();
         }
 
         $allUsers = $builder->get()->getResultArray();
@@ -114,6 +123,7 @@ class UserController extends BaseController
             'activeAdmin'    => 'users',
             'users'          => $users,
             'roleFilter'     => $roleFilter,
+            'search'         => $search,
             'roles'          => self::ROLES,
             'departments'    => $this->departmentModel->findAll(),
             'subDepartments' => $subDepartments,

@@ -16,12 +16,25 @@
     </div>
 
     <div class="ac-segmented">
-        <a href="<?= site_url('admin/users') ?>" class="<?= $roleFilter === 'all' ? 'is-active' : '' ?>">All</a>
+        <a href="<?= site_url('admin/users') . ($search !== '' ? '?q=' . urlencode($search) : '') ?>" class="<?= $roleFilter === 'all' ? 'is-active' : '' ?>">All</a>
         <?php foreach ($roles as $r): ?>
-            <a href="<?= site_url('admin/users?role=' . $r) ?>" class="<?= $roleFilter === $r ? 'is-active' : '' ?>"><?= esc(ucfirst($r)) ?></a>
+            <a href="<?= site_url('admin/users?role=' . $r) . ($search !== '' ? '&q=' . urlencode($search) : '') ?>" class="<?= $roleFilter === $r ? 'is-active' : '' ?>"><?= esc(ucfirst($r)) ?></a>
         <?php endforeach ?>
     </div>
 </div>
+
+<form method="get" action="<?= site_url('admin/users') ?>" class="ac-search-form" style="display:flex; gap:10px; margin-bottom:16px; max-width:420px;">
+    <?php if ($roleFilter !== 'all'): ?>
+        <input type="hidden" name="role" value="<?= esc($roleFilter) ?>">
+    <?php endif ?>
+    <div class="ac-field" style="margin:0; flex:1;">
+        <input type="text" name="q" class="ac-input" placeholder="Search by name, email, or student number" value="<?= esc($search) ?>">
+    </div>
+    <button type="submit" class="ac-btn ac-btn-secondary">Search</button>
+    <?php if ($search !== ''): ?>
+        <a href="<?= site_url('admin/users') . ($roleFilter !== 'all' ? '?role=' . $roleFilter : '') ?>" class="ac-btn ac-btn-secondary" style="white-space:nowrap;">Clear</a>
+    <?php endif ?>
+</form>
 
 <div class="ac-dtable ac-utable">
 
@@ -35,7 +48,10 @@
     </div>
 
     <?php if (empty($users)): ?>
-        <div class="ac-empty-panel"><strong>No accounts in this view</strong><p>Choose another role, or use Create Account to add someone to Akademus.</p></div>
+        <div class="ac-empty-panel">
+            <strong>No accounts in this view</strong>
+            <p><?= $search !== '' ? 'No accounts match "' . esc($search) . '". Try a different name, email, or student number.' : 'Choose another role, or use Create Account to add someone to Akademus.' ?></p>
+        </div>
     <?php endif ?>
     <?php foreach ($users as $u): ?>
         <?php $initials = strtoupper(substr($u['username'], 0, 1) . (strpos($u['username'], ' ') !== false ? substr(strrchr($u['username'], ' '), 1, 1) : '')); ?>
@@ -134,7 +150,8 @@
     <?php
         $rangeStart = $totalUsers === 0 ? 0 : (($page - 1) * $perPage) + 1;
         $rangeEnd   = min($page * $perPage, $totalUsers);
-        $baseQuery  = $roleFilter !== 'all' ? '?role=' . urlencode($roleFilter) . '&page=' : '?page=';
+        $baseParams = array_filter(['role' => $roleFilter !== 'all' ? $roleFilter : null, 'q' => $search !== '' ? $search : null]);
+        $baseQuery  = ($baseParams === [] ? '?' : '?' . http_build_query($baseParams) . '&') . 'page=';
     ?>
     <div class="ac-pagination">
         <span>Showing <?= $rangeStart ?>–<?= $rangeEnd ?> of <?= $totalUsers ?> users</span>
