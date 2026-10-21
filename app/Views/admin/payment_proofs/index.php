@@ -29,7 +29,7 @@
                     <th>Uploaded</th>
                     <th>File</th>
                     <th>Remarks</th>
-                    <th style="width:320px;"></th>
+                    <th style="width:380px;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -37,15 +37,16 @@
                     <tr>
                         <td><?= esc($proof['first_name'] . ' ' . $proof['last_name']) ?> <span class="ac-muted">(<?= esc($proof['student_number']) ?>)</span></td>
                         <td><?= esc(date('M j, Y g:i A', strtotime($proof['created_at']))) ?></td>
-                        <td><a href="<?= site_url('student/tuition/proof/' . $proof['proof_id']) ?>" target="_blank"><?= esc($proof['original_filename']) ?></a></td>
+                        <td><span title="<?= esc($proof['original_filename'], 'attr') ?>"><?= esc($proof['original_filename']) ?></span></td>
                         <td><?= esc($proof['remarks']) ?></td>
                         <td>
                             <div style="display:flex; gap:8px;">
+                                <button type="button" class="ac-btn-outline" onclick="acOpenFileModal('<?= site_url('student/tuition/proof/' . $proof['proof_id']) ?>', '<?= esc($proof['original_filename'], 'js') ?>')"><span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px; vertical-align:-3px;">visibility</span> View</button>
                                 <form method="post" action="<?= site_url($basePath . '/payment-proofs/' . $proof['proof_id'] . '/approve') ?>" data-confirm="Approve this proof and record the payment?">
                                     <?= csrf_field() ?>
                                     <button type="submit" class="ac-btn ac-btn-primary">Approve</button>
                                 </form>
-                                <form method="post" action="<?= site_url($basePath . '/payment-proofs/' . $proof['proof_id'] . '/reject') ?>" style="display:flex; gap:6px;">
+                                <form method="post" action="<?= site_url($basePath . '/payment-proofs/' . $proof['proof_id'] . '/reject') ?>" style="display:flex; gap:6px;" data-confirm="Reject this payment proof? The student will see your reason.">
                                     <?= csrf_field() ?>
                                     <input type="text" name="cashier_remarks" class="ac-input" placeholder="Reason (required)" required minlength="3" style="min-width:150px;">
                                     <button type="submit" class="ac-btn-outline">Reject</button>

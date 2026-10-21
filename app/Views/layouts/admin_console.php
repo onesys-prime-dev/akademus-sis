@@ -62,37 +62,67 @@
 
     <script>
         // data-confirm="..." is used all over this app's views (approve/
-        // return/record-payment/delete buttons, etc.) but nothing ever
-        // actually implemented it — every one of those actions submitted
-        // immediately with no "are you sure?" prompt. This is the one place
-        // that wires it up, for every page, instead of each view needing
-        // its own JS. Covers the two shapes used in this codebase:
+        // return/record-payment/delete buttons, etc.) — this is the one
+        // place that wires it up, for every page, instead of each view
+        // needing its own JS. Covers the two shapes used in this codebase:
         //   <form data-confirm="...">...<button type="submit">...
         //   <form>...<button type="submit" data-confirm="...">...
         // via the form's own 'submit' event (checking which button actually
         // triggered it, through the standard SubmitEvent.submitter), plus a
         // plain <a data-confirm="...">/<button> click outside any form.
+        //
+        // Uses the same styled acConfirm() modal every other confirmation
+        // in this app uses (interface.js) instead of the browser's own
+        // window.confirm() — acConfirm() is async, so both listeners always
+        // preventDefault() first, then re-trigger the real action themselves
+        // (requestSubmit()/click()) once the user accepts, guarded by a
+        // one-shot "bypass" flag so that re-trigger doesn't loop back into
+        // this same listener. interface.js loads deferred, so acConfirm may
+        // not exist yet at the moment this file is merely parsed — checked
+        // with typeof inside the handler (which only ever runs later, in
+        // response to a real user action, by which point it's long loaded),
+        // never at registration time. Falls back to window.confirm() if
+        // acConfirm somehow still isn't available.
+        function acRunConfirm(message) {
+            return typeof window.acConfirm === 'function'
+                ? window.acConfirm(message)
+                : Promise.resolve(window.confirm(message));
+        }
+
         document.addEventListener('submit', function (e) {
             var form = e.target;
             if (!(form instanceof HTMLFormElement)) return;
+            if (form.dataset.acConfirmBypass === '1') { delete form.dataset.acConfirmBypass; return; }
 
-            var message = (e.submitter && e.submitter.getAttribute('data-confirm')) || form.getAttribute('data-confirm');
+            var submitter = e.submitter;
+            var message = (submitter && submitter.getAttribute('data-confirm')) || form.getAttribute('data-confirm');
+            if (!message) return;
 
-            if (message && !window.confirm(message)) {
-                e.preventDefault();
-            }
+            e.preventDefault();
+
+            acRunConfirm(message).then(function (ok) {
+                if (!ok) return;
+                form.dataset.acConfirmBypass = '1';
+                if (form.requestSubmit) form.requestSubmit(submitter || undefined); else form.submit();
+            });
         }, true);
 
         document.addEventListener('click', function (e) {
             var el = e.target.closest('[data-confirm]');
             if (!el || el.closest('form')) return; // forms are handled by the submit listener above
+            if (el.dataset.acConfirmBypass === '1') { delete el.dataset.acConfirmBypass; return; }
 
             var message = el.getAttribute('data-confirm');
+            if (!message) return;
 
-            if (message && !window.confirm(message)) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-            }
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            acRunConfirm(message).then(function (ok) {
+                if (!ok) return;
+                el.dataset.acConfirmBypass = '1';
+                el.click();
+            });
         }, true);
     </script>
 
@@ -533,6 +563,32 @@ $pageHelp ??= [
     };
 </script>
 
+<!-- Shared in-app file preview modal — any staff view can open it via
+     acOpenFileModal(url, title) instead of linking straight to a raw file
+     in a new tab. The url must be a route that serves the file INLINE by
+     default and supports a `?download=1` query string for the Download
+     button (see StudentController::viewProof() for the established
+     convention this follows). -->
+<div class="ac-modal ac-file-modal" id="acFileModal">
+    <div class="ac-modal__panel">
+        <div class="ac-modal__header">
+            <div>
+                <div class="ac-modal__title" id="acFileModalTitle">Document preview</div>
+            </div>
+            <button type="button" onclick="acCloseModal('acFileModal')" class="ac-modal__close">
+                <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+        </div>
+        <div class="ac-modal__body">
+            <iframe id="acFileModalFrame" class="ac-file-frame" title="Document preview"></iframe>
+            <div class="ac-modal__actions">
+                <a id="acFileModalDownload" href="#" class="ac-btn ac-btn-secondary"><span class="material-symbols-outlined" aria-hidden="true">download</span>Download</a>
+                <button type="button" class="ac-btn ac-btn-primary" onclick="acPrintFileModal()"><span class="material-symbols-outlined" aria-hidden="true">print</span>Print</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?= $this->renderSection('scripts') ?>
 
 <script>
@@ -612,6 +668,38 @@ $pageHelp ??= [
             acDoCloseModal(modal);
         }
     }
+
+    // Opens #acFileModal with the given file loaded inline — see the
+    // markup's own comment above for the url convention it expects.
+    function acOpenFileModal(url, title) {
+        var titleEl = document.getElementById('acFileModalTitle');
+        titleEl.textContent = title;
+        titleEl.title = title;
+        document.getElementById('acFileModalFrame').src = url;
+        document.getElementById('acFileModalDownload').href = url + (url.indexOf('?') === -1 ? '?' : '&') + 'download=1';
+        acOpenModal('acFileModal');
+    }
+
+    function acPrintFileModal() {
+        var frame = document.getElementById('acFileModalFrame');
+        if (frame && frame.contentWindow) {
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+        }
+    }
+
+    // The iframe keeps loading/playing the file in the background otherwise
+    // (and a PDF viewer can keep making network requests) even after the
+    // modal visually closes — clear its src once it's actually hidden.
+    (function () {
+        var fileModal = document.getElementById('acFileModal');
+        if (!fileModal) return;
+        new MutationObserver(function () {
+            if (!fileModal.classList.contains('is-open')) {
+                document.getElementById('acFileModalFrame').src = '';
+            }
+        }).observe(fileModal, { attributes: true, attributeFilter: ['class'] });
+    })();
 
     // Escape closes the topmost open modal; Tab is trapped inside it.
     document.addEventListener('keydown', function (e) {

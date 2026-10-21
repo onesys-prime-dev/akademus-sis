@@ -806,6 +806,23 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     color: var(--color-primary);
 }
 
+/* Reusable in-app file preview modal (an .ac-modal variant) — any staff
+   view that links to an uploaded file (payment proofs, documents, etc.)
+   can reuse this instead of a plain target="_blank" link straight to the
+   raw file, which leaves the app entirely and gives no print/download
+   affordance of its own. See admin/payment_proofs/index.php for the JS
+   that drives it (acOpenFileModal()). */
+.ac-file-modal .ac-modal__panel { max-width: 640px; width: 100%; }
+.ac-file-modal .ac-modal__header { gap: 12px; }
+.ac-file-modal .ac-modal__header > div { min-width: 0; flex: 1 1 auto; }
+.ac-file-modal .ac-modal__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-file-modal .ac-modal__close { flex: 0 0 auto; }
+.ac-file-frame { width: 100%; height: 65vh; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-sunken, #f6f8fb); }
+@media (max-width: 560px) {
+    .ac-file-frame { height: 55vh; }
+    .ac-file-modal .ac-modal__actions { flex-direction: column-reverse; }
+}
+
 /* Table */
 
 .ac-table-card {
