@@ -56,7 +56,8 @@
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 :is(.ac-input, .field input, .field select, .field textarea, .auth-page .form-control):focus { border-color: var(--color-primary); box-shadow: var(--focus-ring); }
-:is(.ac-input, .auth-page .form-control):disabled { background: var(--color-surface-sunken); color: var(--color-text-secondary); cursor: not-allowed; }
+:is(.ac-input, .auth-page .form-control):disabled,
+.ac-page .field :is(input, select, textarea):disabled { background: var(--color-surface-sunken); color: var(--color-text-secondary); cursor: not-allowed; -webkit-text-fill-color: var(--color-text-secondary); }
 textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
 .ac-field label, .ac-page .field label, .auth-page .form-floating label { font: var(--text-label); text-transform: none; letter-spacing: 0; color: var(--color-text-secondary); display: block; margin-bottom: 8px; }
 .ac-modal__body { gap: var(--space-4); }

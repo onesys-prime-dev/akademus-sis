@@ -197,7 +197,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 </div>
 
 <div class="panel">
-    <h2>Academic Information</h2>
+    <h2><span class="material-symbols-outlined panel-title-icon" aria-hidden="true">lock</span>Academic Information</h2>
     <p class="panel-sub">Read-only — the same record shown on your Enlistment page. Contact the registrar to correct anything here.</p>
     <?php if ($studentDetail === null): ?>
         <div class="empty-state">
