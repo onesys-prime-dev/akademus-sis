@@ -61,23 +61,16 @@
     </script>
 
     <script>
-        // data-confirm="..." is used all over this app's views (approve/
-        // return/record-payment/delete buttons, etc.) — this is the one
-        // place that wires it up, for every page, instead of each view
-        // needing its own JS. Covers the two shapes used in this codebase:
-        //   <form data-confirm="...">...<button type="submit">...
-        //   <form>...<button type="submit" data-confirm="...">...
-        // via the form's own 'submit' event (checking which button actually
-        // triggered it, through the standard SubmitEvent.submitter), plus a
-        // plain <a data-confirm="...">/<button> click outside any form.
+        // data-confirm="..." on a plain <a>/<button> OUTSIDE any <form> (a
+        // form's own data-confirm is already handled by interface.js's own
+        // document-level 'submit' listener — duplicating that here caused
+        // the two listeners to fight over the same submit event, each
+        // re-triggering the other via requestSubmit() in an endless
+        // confirm/resubmit loop that silently never reached the server).
         //
         // Uses the same styled acConfirm() modal every other confirmation
         // in this app uses (interface.js) instead of the browser's own
-        // window.confirm() — acConfirm() is async, so both listeners always
-        // preventDefault() first, then re-trigger the real action themselves
-        // (requestSubmit()/click()) once the user accepts, guarded by a
-        // one-shot "bypass" flag so that re-trigger doesn't loop back into
-        // this same listener. interface.js loads deferred, so acConfirm may
+        // window.confirm(). interface.js loads deferred, so acConfirm may
         // not exist yet at the moment this file is merely parsed — checked
         // with typeof inside the handler (which only ever runs later, in
         // response to a real user action, by which point it's long loaded),
@@ -88,24 +81,6 @@
                 ? window.acConfirm(message)
                 : Promise.resolve(window.confirm(message));
         }
-
-        document.addEventListener('submit', function (e) {
-            var form = e.target;
-            if (!(form instanceof HTMLFormElement)) return;
-            if (form.dataset.acConfirmBypass === '1') { delete form.dataset.acConfirmBypass; return; }
-
-            var submitter = e.submitter;
-            var message = (submitter && submitter.getAttribute('data-confirm')) || form.getAttribute('data-confirm');
-            if (!message) return;
-
-            e.preventDefault();
-
-            acRunConfirm(message).then(function (ok) {
-                if (!ok) return;
-                form.dataset.acConfirmBypass = '1';
-                if (form.requestSubmit) form.requestSubmit(submitter || undefined); else form.submit();
-            });
-        }, true);
 
         document.addEventListener('click', function (e) {
             var el = e.target.closest('[data-confirm]');
