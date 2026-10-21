@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Libraries\FinancePortal;
 use App\Models\NotificationModel;
 use App\Models\PaymentProofModel;
+use App\Models\PaymentScheduleModel;
 use App\Models\StudentModel;
 use App\Models\StudentPaymentModel;
 use App\Models\TuitionAssessmentModel;
@@ -58,10 +59,30 @@ class CashierController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
+        $assessments = (new TuitionAssessmentModel())->historyFor((int) $studentId);
+
+        // Every assessment's CURRENT installment schedule, with real
+        // paid/balance per row (FIFO against amount_paid, same math the
+        // student's own tuition page shows) — so Finance can see what plan
+        // is actually saved and what's already been paid against it,
+        // instead of inferring it from the "Change Installment Plan" form
+        // (which always starts its preview from "Full Payment" and tells
+        // you nothing about money already applied).
+        $scheduleModel     = new PaymentScheduleModel();
+        $schedulesByAssessment = [];
+
+        foreach ($assessments as $a) {
+            $schedulesByAssessment[(int) $a['assessment_id']] = $scheduleModel->withBalances(
+                (int) $a['assessment_id'],
+                (float) $a['amount_paid']
+            );
+        }
+
         return view('finance/cashier/student', [
             'pageTitle'   => 'Cashier — ' . $student['student_number'],
             'student'     => $student,
-            'assessments' => (new TuitionAssessmentModel())->historyFor((int) $studentId),
+            'assessments' => $assessments,
+            'schedules'   => $schedulesByAssessment,
             'payments'    => (new StudentPaymentModel())->historyFor((int) $studentId),
             'proofs'      => (new PaymentProofModel())->forStudent((int) $studentId),
             'methods'     => StudentPaymentModel::METHODS,

@@ -34,6 +34,40 @@
     </table>
 </div>
 
+<?php foreach ($assessments as $a): ?>
+    <?php $schedule = $schedules[(int) $a['assessment_id']] ?? []; ?>
+    <?php if ($schedule === []) continue; ?>
+    <h3>Current Payment Plan <span class="ac-muted" style="font-size:12.5px; font-weight:400;">— <?= esc($a['academic_year']) ?></span></h3>
+    <div class="ac-table-card" style="margin-bottom:20px;">
+        <table class="ac-table">
+            <thead><tr><th>Installment</th><th>Due Date</th><th>Amount</th><th>Paid</th><th>Remaining</th><th>Status</th></tr></thead>
+            <tbody>
+                <?php foreach ($schedule as $row): ?>
+                    <?php
+                        $installmentAmount  = (float) $row['amount'];
+                        $installmentBalance = (float) $row['balance'];
+                        $installmentPaid    = (float) $row['paid'];
+                        $installmentStatus  = $installmentBalance <= 0 ? 'Paid' : ($installmentPaid > 0 ? 'Partial' : 'Due');
+                        $statusPill = match ($installmentStatus) {
+                            'Paid'    => 'ac-pill--success',
+                            'Partial' => 'ac-pill--warning',
+                            default   => 'ac-pill--neutral',
+                        };
+                    ?>
+                    <tr>
+                        <td><strong><?= esc($row['label']) ?></strong></td>
+                        <td><?= $row['due_date'] ? esc(date('M j, Y', strtotime($row['due_date']))) : ($row['label'] === 'Downpayment' ? 'Due on enrollment' : '—') ?></td>
+                        <td>₱<?= number_format($installmentAmount, 2) ?></td>
+                        <td>₱<?= number_format($installmentPaid, 2) ?></td>
+                        <td>₱<?= number_format($installmentBalance, 2) ?></td>
+                        <td><span class="ac-pill <?= $statusPill ?>"><?= esc($installmentStatus) ?></span></td>
+                    </tr>
+                <?php endforeach ?>
+            </tbody>
+        </table>
+    </div>
+<?php endforeach ?>
+
 <?php if (session()->has('message')): ?>
     <div class="ac-notice" style="margin-bottom:16px;">
         <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-success); margin-top:1px;" aria-hidden="true">check_circle</span>
@@ -131,6 +165,20 @@
     </form>
 </div>
 
+<?php
+    // What's actually saved right now for each academic year (every
+    // schedule row except the separately-tracked "Additional Fees" line)
+    // — so the plan picker below starts pointed at reality instead of
+    // always defaulting to "Full Payment" regardless of what's saved.
+    $currentCountByYear = [];
+    foreach ($assessments as $a) {
+        $rows  = $schedules[(int) $a['assessment_id']] ?? [];
+        $count = count(array_filter($rows, static fn (array $r) => $r['label'] !== 'Additional Fees'));
+        if ($count > 0) {
+            $currentCountByYear[$a['academic_year']] = $count;
+        }
+    }
+?>
 <div class="ac-card" style="margin-bottom:20px;">
     <h3>Change Installment Plan</h3>
     <form method="post" action="<?= site_url('finance/cashier/student/' . $s['student_id'] . '/installments') ?>" id="installmentForm" style="display:grid; grid-template-columns:1.5fr 1.5fr auto; gap:10px; align-items:end;">
@@ -169,7 +217,20 @@
     var body     = document.getElementById('installmentPreviewBody');
     var submit   = document.getElementById('installmentSubmit');
     var previewUrl = <?= json_encode(site_url('finance/cashier/student/' . $s['student_id'] . '/installments/preview')) ?>;
+    var currentCountByYear = <?= json_encode($currentCountByYear) ?>;
     var fetchToken = 0;
+
+    // Start the picker pointed at what's actually saved for the chosen
+    // year, not whatever option happens to be first in the <select> — a
+    // year with no plan at all yet (nothing in currentCountByYear) keeps
+    // whatever's already selected.
+    function syncToCurrentPlan() {
+        var current = currentCountByYear[yearEl.value];
+        if (current) countEl.value = String(current);
+    }
+
+    yearEl.addEventListener('change', syncToCurrentPlan);
+    syncToCurrentPlan();
 
     function loadPreview() {
         var year = yearEl.value, count = countEl.value;
