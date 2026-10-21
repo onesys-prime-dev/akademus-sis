@@ -101,7 +101,7 @@ class StudentRecordController extends BaseController
 
         $documents      = new GeneratedDocumentModel();
         $corEligibility = $documents->corEligibility((int) $id, (int) $student['user_id']);
-        $coeEligibility = $documents->coeEligibility((int) $student['user_id']);
+        $coeEligibility = $documents->coeEligibility((int) $id, (int) $student['user_id']);
 
         return view('admin/students/show', [
             'pageTitle'     => $student['first_name'] . ' ' . $student['last_name'] . ' — Student Record',

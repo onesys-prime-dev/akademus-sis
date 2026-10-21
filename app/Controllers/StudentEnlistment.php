@@ -334,8 +334,15 @@ class StudentEnlistment extends BaseController
             return redirect()->to('/student/enlistment')->with('errors', ['No student record is linked to your account.']);
         }
 
+        // Uses corEligibility(), not coeEligibility() — this just needs
+        // "currently enrolled," not a payment check, and corEligibility()
+        // is the one with that looser rule (see its own docblock). Was
+        // previously written as coeEligibility() back when COE was the
+        // payment-independent one of the two; swapped to keep this
+        // print-right-after-enrolling action payment-independent now that
+        // the two have traded rules.
         $documents   = new GeneratedDocumentModel();
-        $eligibility = $documents->coeEligibility($userId);
+        $eligibility = $documents->corEligibility((int) $student['student_id'], $userId);
 
         if (! $eligibility['ok']) {
             return redirect()->to('/student/enlistment')->with('errors', [$eligibility['error']]);

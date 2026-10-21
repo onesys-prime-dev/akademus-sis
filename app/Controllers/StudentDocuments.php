@@ -29,7 +29,7 @@ class StudentDocuments extends BaseController
 
         $documents  = new GeneratedDocumentModel();
         $corEligibility = $documents->corEligibility((int) $student['student_id'], $userId);
-        $coeEligibility = $documents->coeEligibility($userId);
+        $coeEligibility = $documents->coeEligibility((int) $student['student_id'], $userId);
 
         return view('student/documents', [
             'pageTitle'   => 'Documents',
@@ -49,7 +49,7 @@ class StudentDocuments extends BaseController
 
     public function requestCoe()
     {
-        return $this->requestDocument('certificate_enrollment', fn (GeneratedDocumentModel $m, array $student, int $userId) => $m->coeEligibility($userId));
+        return $this->requestDocument('certificate_enrollment', fn (GeneratedDocumentModel $m, array $student, int $userId) => $m->coeEligibility((int) $student['student_id'], $userId));
     }
 
     private function requestDocument(string $type, \Closure $checkEligibility)

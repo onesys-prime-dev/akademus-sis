@@ -59,7 +59,7 @@ class GeneratedDocumentModel extends Model
                     return $eligibility;
                 }
             } elseif ($type === 'certificate_enrollment') {
-                $eligibility = $this->coeEligibility((int) $student['user_id']);
+                $eligibility = $this->coeEligibility($studentId, (int) $student['user_id']);
 
                 if (! $eligibility['ok']) {
                     return $eligibility;
@@ -187,13 +187,13 @@ class GeneratedDocumentModel extends Model
     }
 
     /**
-     * A COR is deliberately looser than TOR/certificates: a downpayment is
-     * enough, full payment isn't required — only an active hold (checked by
-     * the caller) or having paid NOTHING at all blocks it. "Currently
-     * enrolled" is checked explicitly rather than inferred from the
-     * assessment existing, since that's the two-part condition this was
-     * asked for. Shared by generate()'s gate AND StudentDocuments::index()'s
-     * eligibility display, so the rule lives in exactly one place.
+     * A COR only certifies that the student is registered/enrolled for the
+     * active term — it's the document a student requests BEFORE paying
+     * anything, so being officially enrolled for the active term is the
+     * whole rule — a balance, even an unpaid one, never blocks it (only an
+     * active hold, checked by the caller, does). Shared by generate()'s
+     * gate AND StudentDocuments::index()'s eligibility display, so the
+     * rule lives in exactly one place.
      *
      * @return array{ok: bool, error?: string}
      */
@@ -208,26 +208,21 @@ class GeneratedDocumentModel extends Model
             return ['ok' => false, 'error' => 'This student is not currently enrolled for the active term.'];
         }
 
-        $assessment = (new TuitionAssessmentModel())->forStudentYear($studentId, $activeYear);
-
-        if ($assessment === null || (float) $assessment['amount_paid'] <= 0) {
-            return ['ok' => false, 'error' => 'This student has not made any payment for the current term yet.'];
-        }
-
         return ['ok' => true];
     }
 
     /**
-     * A Certificate of Enrollment is looser still than COR: it only
-     * certifies enrollment status, not payment, so being officially
-     * enrolled for the active term is the whole rule — a balance, even an
-     * unpaid one, never blocks it (only an active hold, checked by the
-     * caller, does). Shared by generate()'s gate AND StudentDocuments::
+     * A Certificate of Enrollment is stricter than COR: a downpayment is
+     * required — only an active hold (checked by the caller) or having
+     * paid NOTHING at all blocks it, full payment still isn't required.
+     * "Currently enrolled" is checked explicitly rather than inferred from
+     * the assessment existing, since that's the two-part condition this
+     * was asked for. Shared by generate()'s gate AND StudentDocuments::
      * index()'s eligibility display.
      *
      * @return array{ok: bool, error?: string}
      */
-    public function coeEligibility(int $userId): array
+    public function coeEligibility(int $studentId, int $userId): array
     {
         $activeYear = (new AcademicYearModel())->activeFormatted();
 
@@ -236,6 +231,12 @@ class GeneratedDocumentModel extends Model
 
         if (! $enrolledNow) {
             return ['ok' => false, 'error' => 'This student is not currently enrolled for the active term.'];
+        }
+
+        $assessment = (new TuitionAssessmentModel())->forStudentYear($studentId, $activeYear);
+
+        if ($assessment === null || (float) $assessment['amount_paid'] <= 0) {
+            return ['ok' => false, 'error' => 'This student has not made any payment for the current term yet.'];
         }
 
         return ['ok' => true];

@@ -30,7 +30,7 @@ $navGroups     = [
         ]],
         'documents' => ['label' => 'Documents',   'icon' => 'description',    'url' => 'student/documents', 'help' => [
             'title' => 'Documents',
-            'text'  => "Request a Certificate of Registration (needs at least a downpayment) or Certificate of Enrollment (available once you're enrolled, balance or not), and track their status.",
+            'text'  => "Request a Certificate of Registration (available once you're enrolled, balance or not) or Certificate of Enrollment (needs at least a downpayment), and track their status.",
         ]],
     ],
 ];
@@ -66,7 +66,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             <div class="sd-request__icon"><span class="material-symbols-outlined" aria-hidden="true">badge</span></div>
             <div class="sd-request__body">
                 <h2>Certificate of Registration</h2>
-                <p>Available once you're enrolled for the current term and have made at least a downpayment.</p>
+                <p>Available once you're officially enrolled for the current term — an outstanding balance does not block this one.</p>
                 <?php if ($corEligible): ?>
                     <form method="post" action="<?= site_url('student/documents/request-cor') ?>" class="sd-request__form">
                         <?= csrf_field() ?>
@@ -84,7 +84,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             <div class="sd-request__icon"><span class="material-symbols-outlined" aria-hidden="true">how_to_reg</span></div>
             <div class="sd-request__body">
                 <h2>Certificate of Enrollment</h2>
-                <p>Available once you're officially enrolled for the current term — an outstanding balance does not block this one.</p>
+                <p>Available once you're enrolled for the current term and have made at least a downpayment.</p>
                 <?php if ($coeEligible): ?>
                     <form method="post" action="<?= site_url('student/documents/request-coe') ?>" class="sd-request__form">
                         <?= csrf_field() ?>
