@@ -235,7 +235,11 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 $attentionCount = ($stats['pending_approvals'] > 0 ? 1 : 0)
                     + ($stats['needs_plotting_count'] > 0 ? 1 : 0)
                     + ($plottingGaps !== [] ? 1 : 0)
-                    + ($curriculumRemaining > 0 ? 1 : 0);
+                    + ($curriculumRemaining > 0 ? 1 : 0)
+                    + ($stats['grade_approvals_count'] > 0 ? 1 : 0)
+                    + ($stats['grade_change_requests_count'] > 0 ? 1 : 0)
+                    + ($stats['enlistment_approvals_count'] > 0 ? 1 : 0)
+                    + ($stats['placement_requests_count'] > 0 ? 1 : 0);
             ?>
             <section class="cd-panel cd-attention" aria-labelledby="cdAttentionTitle">
                 <header class="cd-attention__head">
@@ -295,6 +299,50 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                 <span class="cd-task__body">
                                     <strong><?= $curriculumRemaining ?> curriculum term<?= $curriculumRemaining === 1 ? '' : 's' ?> unpublished</strong>
                                     <small>Finish the department curriculum setup</small>
+                                </span>
+                                <span class="material-symbols-outlined cd-task__arrow" aria-hidden="true">chevron_right</span>
+                            </a>
+                        <?php endif ?>
+
+                        <?php if ($stats['grade_approvals_count'] > 0): ?>
+                            <a class="cd-task cd-task--warning" href="<?= site_url('chairperson/grade-approvals') ?>">
+                                <span class="cd-task__icon"><span class="material-symbols-outlined" aria-hidden="true">grade</span></span>
+                                <span class="cd-task__body">
+                                    <strong><?= (int) $stats['grade_approvals_count'] ?> class<?= $stats['grade_approvals_count'] === 1 ? '' : 'es' ?> awaiting grade approval</strong>
+                                    <small>Review grades faculty submitted for your department</small>
+                                </span>
+                                <span class="material-symbols-outlined cd-task__arrow" aria-hidden="true">chevron_right</span>
+                            </a>
+                        <?php endif ?>
+
+                        <?php if ($stats['grade_change_requests_count'] > 0): ?>
+                            <a class="cd-task cd-task--warning" href="<?= site_url('chairperson/grade-change-requests') ?>">
+                                <span class="cd-task__icon"><span class="material-symbols-outlined" aria-hidden="true">history_edu</span></span>
+                                <span class="cd-task__body">
+                                    <strong><?= (int) $stats['grade_change_requests_count'] ?> correction request<?= $stats['grade_change_requests_count'] === 1 ? '' : 's' ?> pending</strong>
+                                    <small>Faculty requests to change an already-locked grade</small>
+                                </span>
+                                <span class="material-symbols-outlined cd-task__arrow" aria-hidden="true">chevron_right</span>
+                            </a>
+                        <?php endif ?>
+
+                        <?php if ($stats['enlistment_approvals_count'] > 0): ?>
+                            <a class="cd-task cd-task--warning" href="<?= site_url('chairperson/enlistment-approvals') ?>">
+                                <span class="cd-task__icon"><span class="material-symbols-outlined" aria-hidden="true">playlist_add_check</span></span>
+                                <span class="cd-task__body">
+                                    <strong><?= (int) $stats['enlistment_approvals_count'] ?> enlistment<?= $stats['enlistment_approvals_count'] === 1 ? '' : 's' ?> awaiting your review</strong>
+                                    <small>Recommend forward or return to the student</small>
+                                </span>
+                                <span class="material-symbols-outlined cd-task__arrow" aria-hidden="true">chevron_right</span>
+                            </a>
+                        <?php endif ?>
+
+                        <?php if ($stats['placement_requests_count'] > 0): ?>
+                            <a class="cd-task" href="<?= site_url('chairperson/placement-requests') ?>">
+                                <span class="cd-task__icon"><span class="material-symbols-outlined" aria-hidden="true">forward_to_inbox</span></span>
+                                <span class="cd-task__body">
+                                    <strong><?= (int) $stats['placement_requests_count'] ?> shared subject request<?= $stats['placement_requests_count'] === 1 ? '' : 's' ?> waiting</strong>
+                                    <small>Other departments requesting placement in subjects you own</small>
                                 </span>
                                 <span class="material-symbols-outlined cd-task__arrow" aria-hidden="true">chevron_right</span>
                             </a>

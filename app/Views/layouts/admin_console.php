@@ -351,6 +351,9 @@ $pageHelp ??= [
                 <a href="<?= site_url($item['url']) ?>" class="ac-nav-item <?= $active === $key ? 'is-active' : '' ?>" title="<?= esc($item['label']) ?>" <?= $active === $key ? 'aria-current="page"' : '' ?>>
                     <span class="material-symbols-outlined <?= $active === $key ? 'icon-fill' : '' ?>" aria-hidden="true"><?= $item['icon'] ?></span>
                     <span class="ac-nav-label"><?= esc($item['label']) ?></span>
+                    <?php if (! empty($item['badge'])): ?>
+                        <span class="ac-nav-badge"><?= (int) $item['badge'] > 99 ? '99+' : (int) $item['badge'] ?></span>
+                    <?php endif ?>
                 </a>
             <?php endforeach ?>
         <?php endforeach ?>

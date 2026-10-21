@@ -3,12 +3,11 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Libraries\ChairpersonBadgeCounts;
 use App\Libraries\ScheduleOverlap;
 use App\Models\AcademicYearModel;
 use App\Libraries\TermCurriculum;
 use App\Libraries\SchedulingAuthorization;
-use App\Libraries\SubjectDemandService;
-use App\Models\CourseOfferingModel;
 use App\Models\DepartmentModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\FacultyAvailabilityModel;
@@ -3290,42 +3289,20 @@ class ChairpersonController extends BaseController
             ->where('u.deleted_at', null)
             ->countAllResults();
 
+        // Same numbers the sidebar's own badges show (chairperson/_nav.php,
+        // via this same ChairpersonBadgeCounts library) — the Attention
+        // Needed panel below surfaces every one of them, not just plotting
+        // gaps and swap approvals, so a chair never has to discover a
+        // backlog by happening to click into that section. Also the single
+        // source for needs_plotting_count below, rather than this method
+        // reimplementing that SubjectDemandService walk a second time.
+        $badgeCounts = (new ChairpersonBadgeCounts())->forUser((int) auth()->id());
+
         // Live count of classes (any department's section) that need one of
         // MY owned subjects plotted — mirrors
-        // Chairperson\OfferingController::needsPlottingList(), computed
-        // fresh from current demand every time this page loads, never
-        // cached. See Merged Classes -> "Needs Plotting" to act on them.
-        $needsPlottingCount = 0;
-
-        if ($activeYear !== null) {
-            if ($subDeptIds !== []) {
-                $ownedSubjects = db_connect()->table('subjects')
-                    ->select('subject_id, subject_code')
-                    ->whereIn('sub_department_id', $subDeptIds)
-                    ->where('is_active', 1)
-                    ->get()
-                    ->getResultArray();
-
-                if ($ownedSubjects !== []) {
-                    $demandService = new SubjectDemandService();
-                    $offeringModel = new CourseOfferingModel();
-
-                    foreach ($ownedSubjects as $subject) {
-                        $summary = $demandService->summary((int) $subject['subject_id'], $activeYear);
-
-                        foreach ($summary['by_section'] as $bySection) {
-                            if ($bySection['expected_count'] <= 0 || $bySection['section_id'] === null) {
-                                continue;
-                            }
-
-                            if ($offeringModel->offeringForSection((int) $bySection['section_id'], $subject['subject_code']) === null) {
-                                $needsPlottingCount++;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // Chairperson\OfferingController::needsPlottingList(). See Merged
+        // Classes -> "Needs Plotting" to act on them.
+        $needsPlottingCount = $badgeCounts['shared-subjects'];
 
         // A chairperson delegated across more than one department sees them
         // all named here (not just their home one) — singular phrasing when
@@ -3365,6 +3342,10 @@ class ChairpersonController extends BaseController
                 'curriculum_set'      => $curriculumSet,
                 'curriculum_slots'    => $curriculumSlots,
                 'needs_plotting_count' => $needsPlottingCount,
+                'grade_approvals_count'       => $badgeCounts['grade-approvals'],
+                'grade_change_requests_count' => $badgeCounts['grade-change-requests'],
+                'enlistment_approvals_count'  => $badgeCounts['enlistment-approvals'],
+                'placement_requests_count'    => $badgeCounts['placement-requests'],
             ],
         ]);
     }

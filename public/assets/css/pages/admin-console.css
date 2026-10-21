@@ -173,7 +173,7 @@ html, .ac-page { height: 100%; }
     opacity: 0;
     transition: opacity var(--motion-fast) var(--ease-standard), max-width var(--motion-normal) var(--ease-enter);
 }
-.ac-sidebar .ac-nav-label { max-width: 160px; opacity: 1; }
+.ac-sidebar .ac-nav-label { flex: 1 1 auto; min-width: 0; max-width: 160px; opacity: 1; text-overflow: ellipsis; }
 
 .ac-nav-item:hover { background: var(--color-surface-sunken); }
 
@@ -182,6 +182,32 @@ html, .ac-page { height: 100%; }
     color: var(--color-primary);
     font-weight: 700;
 }
+
+/* A sidebar item's own "N need your action" count — visually matches the
+   topbar notification bell's .ac-topbar__dot so the two read as the same
+   kind of signal, just placed inline instead of absolutely positioned on
+   an icon. Opacity-collapses with the label when the rail is narrow (see
+   .ac-nav-label above) instead of reflowing, so it never pokes out past
+   the collapsed icon-only rail. */
+.ac-nav-badge {
+    flex: 0 0 auto;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--color-danger);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity var(--motion-fast) var(--ease-standard);
+}
+.ac-sidebar .ac-nav-badge { opacity: 1; }
+.ac-nav-item.is-active .ac-nav-badge { background: var(--color-primary); }
 
 .ac-avatar {
     width: 32px;
