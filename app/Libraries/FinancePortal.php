@@ -13,6 +13,8 @@ class FinancePortal
      */
     public static function shell(string $active): array
     {
+        $badges = auth()->loggedIn() ? (new FinanceBadgeCounts())->forUser((int) auth()->id()) : [];
+
         return [
             'activeAdmin'   => $active,
             'basePath'      => 'finance',
@@ -29,7 +31,7 @@ class FinancePortal
                         'title' => 'Cashier',
                         'text'  => "Look up a student and record a cash/over-the-counter payment directly against their current assessment. Recording a payment here issues a real Official Receipt immediately and notifies the student.",
                     ]],
-                    'payment-proofs'  => ['label' => 'Payment Proofs',     'icon' => 'receipt_long',   'url' => 'finance/payment-proofs', 'help' => [
+                    'payment-proofs'  => ['label' => 'Payment Proofs',     'icon' => 'receipt_long',   'url' => 'finance/payment-proofs', 'badge' => $badges['payment-proofs'] ?? 0, 'help' => [
                         'title' => 'Payment Proofs',
                         'text'  => "Students can upload proof of an off-site payment (bank deposit, online transfer) for your review. Approving one here records it as a real payment on their ledger, exactly like a Cashier transaction; rejecting it asks them to resubmit.",
                     ]],
@@ -45,7 +47,7 @@ class FinancePortal
                         'title' => 'Additional Fees',
                         'text'  => "One-off charges outside the regular tuition/miscellaneous structure — campus event fees, penalties, surcharges. Charge one student from a search, or apply the same fee to an entire program/year level/section at once from Bulk Apply. Applied to balances immediately; students are notified either way.",
                     ]],
-                    'clearance'       => ['label' => 'Graduation Clearance', 'icon' => 'checklist',    'url' => 'finance/clearance', 'help' => [
+                    'clearance'       => ['label' => 'Graduation Clearance', 'icon' => 'checklist',    'url' => 'finance/clearance', 'badge' => $badges['clearance'] ?? 0, 'help' => [
                         'title' => 'Graduation Clearance',
                         'text'  => "Finance's sign-off on a graduating student's clearance checklist — confirming they have no outstanding financial obligations before the registrar can finalize their graduation.",
                     ]],
