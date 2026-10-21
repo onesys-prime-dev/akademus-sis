@@ -2,174 +2,15 @@
 
 <?= $this->section('content') ?>
 
-<?php $s = $student; ?>
-
-<div class="ac-page-header">
-    <div>
-        <a href="<?= site_url('finance/cashier') ?>" style="font-size:12.5px; color:var(--color-text-secondary);">&larr; Back to Cashier</a>
-        <h2 class="ac-page-header__title" style="margin-top:6px;"><?= esc(trim($s['first_name'] . ' ' . $s['last_name'])) ?></h2>
-        <p class="ac-page-header__sub"><?= esc($s['student_number']) ?> &middot; <?= esc($s['program_name'] ?? 'No program set') ?></p>
-    </div>
-</div>
-
-<h3>Assessments</h3>
-<div class="ac-table-card" style="margin-bottom:20px;">
-    <table class="ac-table">
-        <thead><tr><th>Academic Year</th><th>Total</th><th>Discounts</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
-        <tbody>
-            <?php if ($assessments === []): ?>
-                <tr><td colspan="6" class="ac-muted">No assessments yet.</td></tr>
-            <?php endif ?>
-            <?php foreach ($assessments as $a): ?>
-                <tr>
-                    <td><?= esc($a['academic_year']) ?></td>
-                    <td><?= number_format((float) $a['total_amount'], 2) ?></td>
-                    <td><?= ((float) ($a['discount_amount'] ?? 0)) > 0 ? '−' . number_format((float) $a['discount_amount'], 2) : '—' ?></td>
-                    <td><?= number_format((float) $a['amount_paid'], 2) ?></td>
-                    <td><?= number_format((float) $a['balance'], 2) ?></td>
-                    <td><span class="ac-status <?= $a['status'] === 'paid' ? 'locked' : '' ?>"><?= esc(ucfirst($a['status'])) ?></span></td>
-                </tr>
-            <?php endforeach ?>
-        </tbody>
-    </table>
-</div>
-
-<?php foreach ($assessments as $a): ?>
-    <?php $schedule = $schedules[(int) $a['assessment_id']] ?? []; ?>
-    <?php if ($schedule === []) continue; ?>
-    <h3>Current Payment Plan <span class="ac-muted" style="font-size:12.5px; font-weight:400;">— <?= esc($a['academic_year']) ?></span></h3>
-    <div class="ac-table-card" style="margin-bottom:20px;">
-        <table class="ac-table">
-            <thead><tr><th>Installment</th><th>Due Date</th><th>Amount</th><th>Paid</th><th>Remaining</th><th>Status</th></tr></thead>
-            <tbody>
-                <?php foreach ($schedule as $row): ?>
-                    <?php
-                        $installmentAmount  = (float) $row['amount'];
-                        $installmentBalance = (float) $row['balance'];
-                        $installmentPaid    = (float) $row['paid'];
-                        $installmentStatus  = $installmentBalance <= 0 ? 'Paid' : ($installmentPaid > 0 ? 'Partial' : 'Due');
-                        $statusPill = match ($installmentStatus) {
-                            'Paid'    => 'ac-pill--success',
-                            'Partial' => 'ac-pill--warning',
-                            default   => 'ac-pill--neutral',
-                        };
-                    ?>
-                    <tr>
-                        <td><strong><?= esc($row['label']) ?></strong></td>
-                        <td><?= $row['due_date'] ? esc(date('M j, Y', strtotime($row['due_date']))) : ($row['label'] === 'Downpayment' ? 'Due on enrollment' : '—') ?></td>
-                        <td>₱<?= number_format($installmentAmount, 2) ?></td>
-                        <td>₱<?= number_format($installmentPaid, 2) ?></td>
-                        <td>₱<?= number_format($installmentBalance, 2) ?></td>
-                        <td><span class="ac-pill <?= $statusPill ?>"><?= esc($installmentStatus) ?></span></td>
-                    </tr>
-                <?php endforeach ?>
-            </tbody>
-        </table>
-    </div>
-<?php endforeach ?>
-
-<?php if (session()->has('message')): ?>
-    <div class="ac-notice" style="margin-bottom:16px;">
-        <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-success); margin-top:1px;" aria-hidden="true">check_circle</span>
-        <span class="ac-notice__text"><?= esc(session('message')) ?></span>
-    </div>
-<?php endif ?>
-
-<?php $pendingProofs = array_filter($proofs, static fn (array $p) => $p['status'] === 'pending'); ?>
-<?php if ($proofs !== []): ?>
-<h3>Payment Proofs<?= $pendingProofs !== [] ? ' <span class="ac-pill ac-pill--warning" style="vertical-align:middle;">' . count($pendingProofs) . ' pending</span>' : '' ?></h3>
-<div class="ac-table-card" style="margin-bottom:20px;">
-    <table class="ac-table">
-        <thead><tr><th>Uploaded</th><th>Amount &amp; Installment</th><th>File</th><th>Reference</th><th>Status</th><th style="width:300px;"></th></tr></thead>
-        <tbody>
-            <?php foreach ($proofs as $p): ?>
-                <?php
-                    $amount    = $p['schedule_id'] !== null ? (float) $p['schedule_amount'] : (float) $p['assessment_balance'];
-                    $planLabel = $p['schedule_id'] !== null ? $p['schedule_label'] : 'General Payment (full balance)';
-                    $statusPill = match ($p['status']) {
-                        'approved' => 'ac-pill--success',
-                        'rejected' => 'ac-pill--danger',
-                        default    => 'ac-pill--warning',
-                    };
-                ?>
-                <tr>
-                    <td><?= esc(date('M j, Y g:i A', strtotime($p['created_at']))) ?></td>
-                    <td>
-                        ₱<?= number_format($amount, 2) ?>
-                        <br><span class="ac-pill ac-pill--neutral"><?= esc($planLabel) ?></span>
-                    </td>
-                    <td>
-                        <button type="button" class="ac-btn-outline" onclick="acOpenFileModal('<?= site_url('student/tuition/proof/' . $p['proof_id']) ?>', '<?= esc($p['original_filename'], 'js') ?>')" title="<?= esc($p['original_filename'], 'attr') ?>">
-                            <span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px; vertical-align:-3px;">visibility</span> View
-                        </button>
-                    </td>
-                    <td><?= esc($p['remarks'] ?: '—') ?></td>
-                    <td>
-                        <span class="ac-pill <?= $statusPill ?>"><?= esc(ucfirst($p['status'])) ?></span>
-                        <?php if ($p['status'] === 'rejected' && $p['cashier_remarks']): ?>
-                            <div class="ac-muted" style="font-size:11.5px; margin-top:4px;"><?= esc($p['cashier_remarks']) ?></div>
-                        <?php endif ?>
-                    </td>
-                    <td>
-                        <?php if ($p['status'] === 'pending'): ?>
-                            <div style="display:flex; gap:8px;">
-                                <form method="post" action="<?= site_url('finance/payment-proofs/' . $p['proof_id'] . '/approve') ?>" data-confirm="Approve this proof and record ₱<?= number_format($amount, 2) ?> as the <?= esc($planLabel, 'attr') ?> payment?">
-                                    <?= csrf_field() ?>
-                                    <button type="submit" class="ac-btn ac-btn-primary">Approve</button>
-                                </form>
-                                <form method="post" action="<?= site_url('finance/payment-proofs/' . $p['proof_id'] . '/reject') ?>" style="display:flex; gap:6px;" data-confirm="Reject this payment proof? The student will see your reason.">
-                                    <?= csrf_field() ?>
-                                    <input type="text" name="cashier_remarks" class="ac-input" placeholder="Reason (required)" required minlength="3" style="min-width:120px;">
-                                    <button type="submit" class="ac-btn-outline">Reject</button>
-                                </form>
-                            </div>
-                        <?php endif ?>
-                    </td>
-                </tr>
-            <?php endforeach ?>
-        </tbody>
-    </table>
-</div>
-<?php endif ?>
-
-<?php if ($assessments !== []): ?>
-<div class="ac-card" style="margin-bottom:20px;">
-    <h3>Record a Payment</h3>
-    <form method="post" action="<?= site_url('finance/cashier/student/' . $s['student_id'] . '/payment') ?>" style="display:grid; grid-template-columns:1.5fr 1fr 1fr 1fr auto; gap:10px; align-items:end;">
-        <?= csrf_field() ?>
-        <div class="ac-field" style="margin:0;">
-            <label>Academic Year</label>
-            <select name="academic_year" class="ac-input" required>
-                <?php foreach ($assessments as $a): ?>
-                    <option value="<?= esc($a['academic_year']) ?>"><?= esc($a['academic_year']) ?> (Bal: <?= number_format((float) $a['balance'], 2) ?>)</option>
-                <?php endforeach ?>
-            </select>
-        </div>
-        <div class="ac-field" style="margin:0;">
-            <label>Amount</label>
-            <input type="number" name="amount" class="ac-input" step="0.01" min="0.01" required>
-        </div>
-        <div class="ac-field" style="margin:0;">
-            <label>Method</label>
-            <select name="method" class="ac-input" required>
-                <?php foreach ($methods as $m): ?>
-                    <option value="<?= esc($m) ?>"><?= esc(ucfirst(str_replace('_', ' ', $m))) ?></option>
-                <?php endforeach ?>
-            </select>
-        </div>
-        <div class="ac-field" style="margin:0;">
-            <label>Reference No.</label>
-            <input type="text" name="reference_no" class="ac-input" placeholder="Optional">
-        </div>
-        <button type="submit" class="ac-btn ac-btn-primary" data-confirm="Record this payment and issue an Official Receipt?">Record &amp; Issue OR</button>
-    </form>
-</div>
-
 <?php
+    $s = $student;
+    $primary = $assessments[0] ?? null;
+    $pendingProofs = array_filter($proofs, static fn (array $p) => $p['status'] === 'pending');
+
     // What's actually saved right now for each academic year (every
     // schedule row except the separately-tracked "Additional Fees" line)
-    // — so the plan picker below starts pointed at reality instead of
-    // always defaulting to "Full Payment" regardless of what's saved.
+    // — so the plan picker starts pointed at reality instead of always
+    // defaulting to "Full Payment" regardless of what's saved.
     $currentCountByYear = [];
     foreach ($assessments as $a) {
         $rows  = $schedules[(int) $a['assessment_id']] ?? [];
@@ -179,38 +20,282 @@
         }
     }
 ?>
-<div class="ac-card" style="margin-bottom:20px;">
-    <h3>Change Installment Plan</h3>
-    <form method="post" action="<?= site_url('finance/cashier/student/' . $s['student_id'] . '/installments') ?>" id="installmentForm" style="display:grid; grid-template-columns:1.5fr 1.5fr auto; gap:10px; align-items:end;">
-        <?= csrf_field() ?>
-        <div class="ac-field" style="margin:0;">
-            <label>Academic Year</label>
-            <select name="academic_year" id="installmentYear" class="ac-input" required>
-                <?php foreach ($assessments as $a): ?>
-                    <option value="<?= esc($a['academic_year']) ?>"><?= esc($a['academic_year']) ?> (Total: <?= number_format((float) $a['total_amount'], 2) ?>)</option>
-                <?php endforeach ?>
-            </select>
-        </div>
-        <div class="ac-field" style="margin:0;">
-            <label>Installment Plan</label>
-            <select name="installment_count" id="installmentCount" class="ac-input" required>
-                <option value="1">Full Payment</option>
-                <option value="2">2 Payments</option>
-                <option value="3">3 Payments</option>
-                <option value="4">4 Payments</option>
-                <option value="5">5 Payments</option>
-            </select>
-        </div>
-        <button type="submit" class="ac-btn ac-btn-primary" id="installmentSubmit" data-confirm="Rebuild this student's installment schedule with the selected plan?">Update Plan</button>
-    </form>
 
-    <div id="installmentPreview" style="margin-top:16px;">
-        <p style="font-size:11px; font-weight:700; color:var(--color-text-secondary); text-transform:uppercase; letter-spacing:.04em; margin:0 0 8px;">Preview — what this plan will generate</p>
-        <div id="installmentPreviewBody" class="ac-muted" style="font-size:13px;">Loading…</div>
+<div class="ac-page-header">
+    <div>
+        <a href="<?= site_url('finance/cashier') ?>" style="font-size:12.5px; color:var(--color-text-secondary);">&larr; Back to Cashier</a>
+        <h2 class="ac-page-header__title" style="margin-top:6px;"><?= esc(trim($s['first_name'] . ' ' . $s['last_name'])) ?></h2>
+        <p class="ac-page-header__sub">
+            <?= esc($s['student_number']) ?> &middot; <?= esc($s['program_name'] ?? 'No program set') ?>
+            <?php if ($primary !== null): ?>
+                &middot; <span class="ac-status-dot ac-status-dot--<?= $primary['status'] === 'paid' ? 'active' : 'pending' ?>"><?= esc(ucfirst($primary['status'])) ?></span>
+            <?php endif ?>
+        </p>
+    </div>
+</div>
+
+<?php if (session()->has('message')): ?>
+    <div class="ac-notice" style="margin-bottom:16px;">
+        <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-success); margin-top:1px;" aria-hidden="true">check_circle</span>
+        <span class="ac-notice__text"><?= esc(session('message')) ?></span>
+    </div>
+<?php endif ?>
+
+<?php if ($primary === null): ?>
+    <div class="ac-empty-block"><p>No assessment exists yet for this student.</p></div>
+<?php else: ?>
+
+<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-bottom:24px;">
+    <div class="ac-metric-card">
+        <div class="ac-metric-card__top"><span class="material-symbols-outlined" style="font-size:18px;" aria-hidden="true">receipt_long</span><span><?= esc($primary['academic_year']) ?> — Total</span></div>
+        <div class="ac-metric-card__value">₱<?= number_format((float) $primary['total_amount'], 2) ?></div>
+    </div>
+    <div class="ac-metric-card">
+        <div class="ac-metric-card__top"><span class="material-symbols-outlined" style="font-size:18px; color:var(--color-success);" aria-hidden="true">check_circle</span><span>Paid</span></div>
+        <div class="ac-metric-card__value" style="color:var(--color-success);">₱<?= number_format((float) $primary['amount_paid'], 2) ?></div>
+    </div>
+    <div class="ac-metric-card">
+        <div class="ac-metric-card__top"><span class="material-symbols-outlined" style="font-size:18px; color:var(--color-warning);" aria-hidden="true">account_balance_wallet</span><span>Balance</span></div>
+        <div class="ac-metric-card__value" style="color:<?= (float) $primary['balance'] > 0 ? 'var(--color-warning)' : 'var(--color-success)' ?>;">₱<?= number_format((float) $primary['balance'], 2) ?></div>
+    </div>
+</div>
+
+<div class="ac-tabs">
+    <div class="ac-tabs__links">
+        <a href="#" class="ac-tabs__link is-active" data-tab="plan" onclick="return csTab(event,'plan')">Payment Plan</a>
+        <a href="#" class="ac-tabs__link" data-tab="proofs" onclick="return csTab(event,'proofs')">Payment Proofs<?= $pendingProofs !== [] ? ' <span class="ac-pill ac-pill--warning">' . count($pendingProofs) . '</span>' : '' ?></a>
+        <a href="#" class="ac-tabs__link" data-tab="record" onclick="return csTab(event,'record')">Record Payment</a>
+        <a href="#" class="ac-tabs__link" data-tab="change" onclick="return csTab(event,'change')">Change Plan</a>
+        <a href="#" class="ac-tabs__link" data-tab="history" onclick="return csTab(event,'history')">History</a>
+    </div>
+</div>
+
+<!-- Payment Plan -->
+<div class="cs-panel" id="cs-plan">
+    <?php foreach ($assessments as $a): ?>
+        <?php $schedule = $schedules[(int) $a['assessment_id']] ?? []; ?>
+        <?php if ($schedule === []) continue; ?>
+        <div class="ac-table-card" style="margin-bottom:20px;">
+            <div style="padding:14px 20px; border-bottom:1px solid var(--color-border); font-size:12.5px; font-weight:700; color:var(--color-text-secondary);"><?= esc($a['academic_year']) ?></div>
+            <table class="ac-table">
+                <thead><tr><th>Installment</th><th>Due Date</th><th>Amount</th><th>Paid</th><th>Remaining</th><th>Status</th></tr></thead>
+                <tbody>
+                    <?php foreach ($schedule as $row): ?>
+                        <?php
+                            $installmentAmount  = (float) $row['amount'];
+                            $installmentBalance = (float) $row['balance'];
+                            $installmentPaid    = (float) $row['paid'];
+                            $installmentStatus  = $installmentBalance <= 0 ? 'Paid' : ($installmentPaid > 0 ? 'Partial' : 'Due');
+                            $statusPill = match ($installmentStatus) {
+                                'Paid'    => 'ac-pill--success',
+                                'Partial' => 'ac-pill--warning',
+                                default   => 'ac-pill--neutral',
+                            };
+                        ?>
+                        <tr>
+                            <td><strong><?= esc($row['label']) ?></strong></td>
+                            <td><?= $row['due_date'] ? esc(date('M j, Y', strtotime($row['due_date']))) : ($row['label'] === 'Downpayment' ? 'Due on enrollment' : '—') ?></td>
+                            <td>₱<?= number_format($installmentAmount, 2) ?></td>
+                            <td>₱<?= number_format($installmentPaid, 2) ?></td>
+                            <td>₱<?= number_format($installmentBalance, 2) ?></td>
+                            <td><span class="ac-pill <?= $statusPill ?>"><?= esc($installmentStatus) ?></span></td>
+                        </tr>
+                    <?php endforeach ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endforeach ?>
+</div>
+
+<!-- Payment Proofs -->
+<div class="cs-panel" id="cs-proofs" hidden>
+    <?php if ($proofs === []): ?>
+        <div class="ac-empty-block"><p>No payment proofs submitted yet.</p></div>
+    <?php else: ?>
+    <div class="ac-table-card">
+        <table class="ac-table">
+            <thead><tr><th>Uploaded</th><th>Amount &amp; Installment</th><th>File</th><th>Reference</th><th>Status</th><th style="width:300px;"></th></tr></thead>
+            <tbody>
+                <?php foreach ($proofs as $p): ?>
+                    <?php
+                        $amount    = $p['schedule_id'] !== null ? (float) $p['schedule_amount'] : (float) $p['assessment_balance'];
+                        $planLabel = $p['schedule_id'] !== null ? $p['schedule_label'] : 'General Payment (full balance)';
+                        $statusPill = match ($p['status']) {
+                            'approved' => 'ac-pill--success',
+                            'rejected' => 'ac-pill--danger',
+                            default    => 'ac-pill--warning',
+                        };
+                    ?>
+                    <tr>
+                        <td><?= esc(date('M j, Y g:i A', strtotime($p['created_at']))) ?></td>
+                        <td>
+                            ₱<?= number_format($amount, 2) ?>
+                            <br><span class="ac-pill ac-pill--neutral"><?= esc($planLabel) ?></span>
+                        </td>
+                        <td>
+                            <button type="button" class="ac-btn-outline" onclick="acOpenFileModal('<?= site_url('student/tuition/proof/' . $p['proof_id']) ?>', '<?= esc($p['original_filename'], 'js') ?>')" title="<?= esc($p['original_filename'], 'attr') ?>">
+                                <span class="material-symbols-outlined" aria-hidden="true" style="font-size:16px; vertical-align:-3px;">visibility</span> View
+                            </button>
+                        </td>
+                        <td><?= esc($p['remarks'] ?: '—') ?></td>
+                        <td>
+                            <span class="ac-pill <?= $statusPill ?>"><?= esc(ucfirst($p['status'])) ?></span>
+                            <?php if ($p['status'] === 'rejected' && $p['cashier_remarks']): ?>
+                                <div class="ac-muted" style="font-size:11.5px; margin-top:4px;"><?= esc($p['cashier_remarks']) ?></div>
+                            <?php endif ?>
+                        </td>
+                        <td>
+                            <?php if ($p['status'] === 'pending'): ?>
+                                <div style="display:flex; gap:8px;">
+                                    <form method="post" action="<?= site_url('finance/payment-proofs/' . $p['proof_id'] . '/approve') ?>" data-confirm="Approve this proof and record ₱<?= number_format($amount, 2) ?> as the <?= esc($planLabel, 'attr') ?> payment?">
+                                        <?= csrf_field() ?>
+                                        <button type="submit" class="ac-btn ac-btn-primary">Approve</button>
+                                    </form>
+                                    <form method="post" action="<?= site_url('finance/payment-proofs/' . $p['proof_id'] . '/reject') ?>" style="display:flex; gap:6px;" data-confirm="Reject this payment proof? The student will see your reason.">
+                                        <?= csrf_field() ?>
+                                        <input type="text" name="cashier_remarks" class="ac-input" placeholder="Reason (required)" required minlength="3" style="min-width:120px;">
+                                        <button type="submit" class="ac-btn-outline">Reject</button>
+                                    </form>
+                                </div>
+                            <?php endif ?>
+                        </td>
+                    </tr>
+                <?php endforeach ?>
+            </tbody>
+        </table>
+    </div>
+    <?php endif ?>
+</div>
+
+<!-- Record Payment -->
+<div class="cs-panel" id="cs-record" hidden>
+    <div class="ac-card">
+        <h3 style="margin-top:0;">Record a Payment</h3>
+        <form method="post" action="<?= site_url('finance/cashier/student/' . $s['student_id'] . '/payment') ?>" style="display:grid; grid-template-columns:1.5fr 1fr 1fr 1fr auto; gap:10px; align-items:end;">
+            <?= csrf_field() ?>
+            <div class="ac-field" style="margin:0;">
+                <label>Academic Year</label>
+                <select name="academic_year" class="ac-input" required>
+                    <?php foreach ($assessments as $a): ?>
+                        <option value="<?= esc($a['academic_year']) ?>"><?= esc($a['academic_year']) ?> (Bal: <?= number_format((float) $a['balance'], 2) ?>)</option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+            <div class="ac-field" style="margin:0;">
+                <label>Amount</label>
+                <input type="number" name="amount" class="ac-input" step="0.01" min="0.01" required>
+            </div>
+            <div class="ac-field" style="margin:0;">
+                <label>Method</label>
+                <select name="method" class="ac-input" required>
+                    <?php foreach ($methods as $m): ?>
+                        <option value="<?= esc($m) ?>"><?= esc(ucfirst(str_replace('_', ' ', $m))) ?></option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+            <div class="ac-field" style="margin:0;">
+                <label>Reference No.</label>
+                <input type="text" name="reference_no" class="ac-input" placeholder="Optional">
+            </div>
+            <button type="submit" class="ac-btn ac-btn-primary" data-confirm="Record this payment and issue an Official Receipt?">Record &amp; Issue OR</button>
+        </form>
+    </div>
+</div>
+
+<!-- Change Plan -->
+<div class="cs-panel" id="cs-change" hidden>
+    <div class="ac-card">
+        <h3 style="margin-top:0;">Change Installment Plan</h3>
+        <form method="post" action="<?= site_url('finance/cashier/student/' . $s['student_id'] . '/installments') ?>" id="installmentForm" style="display:grid; grid-template-columns:1.5fr 1.5fr auto; gap:10px; align-items:end;">
+            <?= csrf_field() ?>
+            <div class="ac-field" style="margin:0;">
+                <label>Academic Year</label>
+                <select name="academic_year" id="installmentYear" class="ac-input" required>
+                    <?php foreach ($assessments as $a): ?>
+                        <option value="<?= esc($a['academic_year']) ?>"><?= esc($a['academic_year']) ?> (Total: <?= number_format((float) $a['total_amount'], 2) ?>)</option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+            <div class="ac-field" style="margin:0;">
+                <label>Installment Plan</label>
+                <select name="installment_count" id="installmentCount" class="ac-input" required>
+                    <option value="1">Full Payment</option>
+                    <option value="2">2 Payments</option>
+                    <option value="3">3 Payments</option>
+                    <option value="4">4 Payments</option>
+                    <option value="5">5 Payments</option>
+                </select>
+            </div>
+            <button type="submit" class="ac-btn ac-btn-primary" id="installmentSubmit" data-confirm="Rebuild this student's installment schedule with the selected plan?">Update Plan</button>
+        </form>
+
+        <div id="installmentPreview" style="margin-top:16px;">
+            <p style="font-size:11px; font-weight:700; color:var(--color-text-secondary); text-transform:uppercase; letter-spacing:.04em; margin:0 0 8px;">Preview — what this plan will generate</p>
+            <div id="installmentPreviewBody" class="ac-muted" style="font-size:13px;">Loading…</div>
+        </div>
+    </div>
+</div>
+
+<!-- History -->
+<div class="cs-panel" id="cs-history" hidden>
+    <h3 style="margin-top:0;">Assessment History</h3>
+    <div class="ac-table-card" style="margin-bottom:24px;">
+        <table class="ac-table">
+            <thead><tr><th>Academic Year</th><th>Total</th><th>Discounts</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+            <tbody>
+                <?php foreach ($assessments as $a): ?>
+                    <tr>
+                        <td><?= esc($a['academic_year']) ?></td>
+                        <td><?= number_format((float) $a['total_amount'], 2) ?></td>
+                        <td><?= ((float) ($a['discount_amount'] ?? 0)) > 0 ? '−' . number_format((float) $a['discount_amount'], 2) : '—' ?></td>
+                        <td><?= number_format((float) $a['amount_paid'], 2) ?></td>
+                        <td><?= number_format((float) $a['balance'], 2) ?></td>
+                        <td><span class="ac-status <?= $a['status'] === 'paid' ? 'locked' : '' ?>"><?= esc(ucfirst($a['status'])) ?></span></td>
+                    </tr>
+                <?php endforeach ?>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Payment History</h3>
+    <div class="ac-table-card">
+        <table class="ac-table">
+            <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th><th>Receipt</th></tr></thead>
+            <tbody>
+                <?php if ($payments === []): ?>
+                    <tr><td colspan="5" class="ac-muted">No payments recorded yet.</td></tr>
+                <?php endif ?>
+                <?php foreach ($payments as $p): ?>
+                    <tr>
+                        <td><?= esc(date('M j, Y g:i A', strtotime($p['payment_date']))) ?></td>
+                        <td><?= number_format((float) $p['amount'], 2) ?></td>
+                        <td><?= esc(ucfirst(str_replace('_', ' ', $p['method']))) ?></td>
+                        <td><?= $p['reference_no'] !== null ? esc($p['reference_no']) : '—' ?></td>
+                        <td>
+                            <?php if (! empty($p['or_number'])): ?>
+                                <a href="<?= site_url('student/tuition/receipt/' . $p['receipt_id']) ?>" target="_blank"><?= esc($p['or_number']) ?></a>
+                                <?php if ($p['receipt_status'] === 'voided'): ?><span class="ac-muted">(voided)</span><?php endif ?>
+                            <?php else: ?>
+                                —
+                            <?php endif ?>
+                        </td>
+                    </tr>
+                <?php endforeach ?>
+            </tbody>
+        </table>
     </div>
 </div>
 
 <script>
+function csTab(e, name) {
+    e.preventDefault();
+    document.querySelectorAll('.cs-panel').forEach(function (p) { p.hidden = true; });
+    document.querySelectorAll('.ac-tabs__link').forEach(function (l) { l.classList.remove('is-active'); });
+    document.getElementById('cs-' + name).hidden = false;
+    document.querySelector('.ac-tabs__link[data-tab="' + name + '"]').classList.add('is-active');
+    return false;
+}
+
 (function () {
     var yearEl   = document.getElementById('installmentYear');
     var countEl  = document.getElementById('installmentCount');
@@ -219,6 +304,7 @@
     var previewUrl = <?= json_encode(site_url('finance/cashier/student/' . $s['student_id'] . '/installments/preview')) ?>;
     var currentCountByYear = <?= json_encode($currentCountByYear) ?>;
     var fetchToken = 0;
+    var loaded = false;
 
     // Start the picker pointed at what's actually saved for the chosen
     // year, not whatever option happens to be first in the <select> — a
@@ -228,9 +314,6 @@
         var current = currentCountByYear[yearEl.value];
         if (current) countEl.value = String(current);
     }
-
-    yearEl.addEventListener('change', syncToCurrentPlan);
-    syncToCurrentPlan();
 
     function loadPreview() {
         var year = yearEl.value, count = countEl.value;
@@ -279,39 +362,23 @@
             });
     }
 
-    yearEl.addEventListener('change', loadPreview);
-    countEl.addEventListener('change', loadPreview);
-    loadPreview();
+    if (yearEl && countEl) {
+        yearEl.addEventListener('change', function () { syncToCurrentPlan(); loadPreview(); });
+        countEl.addEventListener('change', loadPreview);
+
+        // The Change Plan tab starts hidden — no point fetching a preview
+        // nobody can see yet. Load it lazily the first time that tab is
+        // actually opened.
+        document.querySelector('.ac-tabs__link[data-tab="change"]').addEventListener('click', function () {
+            if (loaded) return;
+            loaded = true;
+            syncToCurrentPlan();
+            loadPreview();
+        });
+    }
 })();
 </script>
-<?php endif ?>
 
-<h3>Payment History</h3>
-<div class="ac-table-card">
-    <table class="ac-table">
-        <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th><th>Receipt</th></tr></thead>
-        <tbody>
-            <?php if ($payments === []): ?>
-                <tr><td colspan="5" class="ac-muted">No payments recorded yet.</td></tr>
-            <?php endif ?>
-            <?php foreach ($payments as $p): ?>
-                <tr>
-                    <td><?= esc(date('M j, Y g:i A', strtotime($p['payment_date']))) ?></td>
-                    <td><?= number_format((float) $p['amount'], 2) ?></td>
-                    <td><?= esc(ucfirst(str_replace('_', ' ', $p['method']))) ?></td>
-                    <td><?= $p['reference_no'] !== null ? esc($p['reference_no']) : '—' ?></td>
-                    <td>
-                        <?php if (! empty($p['or_number'])): ?>
-                            <a href="<?= site_url('student/tuition/receipt/' . $p['receipt_id']) ?>" target="_blank"><?= esc($p['or_number']) ?></a>
-                            <?php if ($p['receipt_status'] === 'voided'): ?><span class="ac-muted">(voided)</span><?php endif ?>
-                        <?php else: ?>
-                            —
-                        <?php endif ?>
-                    </td>
-                </tr>
-            <?php endforeach ?>
-        </tbody>
-    </table>
-</div>
+<?php endif ?>
 
 <?= $this->endSection() ?>
