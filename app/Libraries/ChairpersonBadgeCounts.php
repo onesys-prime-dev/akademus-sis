@@ -3,7 +3,6 @@
 namespace App\Libraries;
 
 use App\Models\AcademicYearModel;
-use App\Models\CourseOfferingModel;
 use App\Models\DepartmentModel;
 use App\Models\GradeChangeRequestModel;
 use App\Models\GradeModel;
@@ -59,6 +58,16 @@ class ChairpersonBadgeCounts
      * chairperson's owned subjects plotted, computed fresh from current
      * demand (SubjectDemandService), never cached. See Shared Subject
      * Dashboard / Merged Classes -> "Needs Plotting" to act on them.
+     *
+     * "Plotted" is decided against plotted_schedules — the table the actual
+     * Schedule Plotting grid writes to (ChairpersonController::index()/
+     * sync(), matched the same way via PlottedScheduleModel::forContext():
+     * academic_year + program + year_level + section + subject_code) — not
+     * against course_offerings/offering_sections. That pair backs the
+     * separate offering-based Shared Subject Dashboard/Merged Classes model
+     * and is never populated by plotting a class, so checking it here left
+     * this count stuck at its original value forever, no matter how much a
+     * chairperson actually plotted.
      */
     private function needsPlottingCount(array $subDeptIds): int
     {
@@ -81,18 +90,21 @@ class ChairpersonBadgeCounts
         }
 
         $demandService = new SubjectDemandService();
-        $offeringModel = new CourseOfferingModel();
-        $count         = 0;
+        $db            = db_connect();
+
+        // Every (subject_code, section_id) pair with unmet demand, across
+        // every owned subject — gathered first so sections/plotted_schedules
+        // are each queried once for the whole batch, not once per pair.
+        $pairs      = [];
+        $sectionIds = [];
 
         foreach ($ownedSubjects as $subject) {
             $summary = $demandService->summary((int) $subject['subject_id'], $activeYear);
 
             // Every expected student already has a real seat somewhere
-            // (direct enrollment, a merged class, etc.) — "no course_offerings
-            // row exists yet" is just missing Step-6 bookkeeping at that
-            // point, not an unmet need. Without this gate a fully-served
-            // subject falsely counts as "needs plotting" forever, since
-            // nothing ever prompts anyone to create that offering row.
+            // (direct enrollment, a merged class, etc.) — nothing left to
+            // plot for them. Without this gate a fully-served subject
+            // falsely counts as "needs plotting" forever.
             if (($summary['unassigned_count'] ?? 0) <= 0) {
                 continue;
             }
@@ -102,9 +114,45 @@ class ChairpersonBadgeCounts
                     continue;
                 }
 
-                if ($offeringModel->offeringForSection((int) $bySection['section_id'], $subject['subject_code']) === null) {
-                    $count++;
-                }
+                $sectionId    = (int) $bySection['section_id'];
+                $pairs[]      = ['subject_code' => $subject['subject_code'], 'section_id' => $sectionId];
+                $sectionIds[] = $sectionId;
+            }
+        }
+
+        if ($pairs === []) {
+            return 0;
+        }
+
+        $sectionById = [];
+
+        foreach ($db->table('sections')->select('section_id, program, year_level, section')->whereIn('section_id', array_values(array_unique($sectionIds)))->get()->getResultArray() as $r) {
+            $sectionById[(int) $r['section_id']] = $r;
+        }
+
+        $subjectCodes = array_values(array_unique(array_column($pairs, 'subject_code')));
+
+        $plottedKeys = [];
+
+        foreach ($db->table('plotted_schedules')->select('subject_code, program, year_level, section')->where('academic_year', $activeYear)->whereIn('subject_code', $subjectCodes)->get()->getResultArray() as $r) {
+            $plottedKeys[$r['subject_code'] . '|' . $r['program'] . '|' . $r['year_level'] . '|' . $r['section']] = true;
+        }
+
+        $count = 0;
+
+        foreach ($pairs as $pair) {
+            $section = $sectionById[$pair['section_id']] ?? null;
+
+            if ($section === null) {
+                $count++;
+
+                continue;
+            }
+
+            $key = $pair['subject_code'] . '|' . $section['program'] . '|' . $section['year_level'] . '|' . $section['section'];
+
+            if (! isset($plottedKeys[$key])) {
+                $count++;
             }
         }
 
