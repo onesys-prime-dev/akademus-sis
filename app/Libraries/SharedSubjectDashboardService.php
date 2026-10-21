@@ -158,13 +158,25 @@ class SharedSubjectDashboardService
             foreach ($offeringsBySubject[$subjectId] ?? [] as $o) {
                 $offeringId = (int) $o['offering_id'];
                 $roster     = $rosterCounts[$offeringId] ?? 0;
+                $sections   = $sectionsByOffering[$offeringId] ?? [];
+
+                // An offering with no section attached and nobody rostered
+                // to it is an empty shell — created (e.g. mid-setup, or by a
+                // since-abandoned flow) but never actually tied to any real
+                // class. Showing it would flag a false "needs schedule" for
+                // something nobody is waiting on; the subject-level
+                // unassigned_demand attention already covers "this subject
+                // has real demand with nowhere to go" without it.
+                if ($sections === [] && $roster <= 0) {
+                    continue;
+                }
+
                 $capacity   = $o['capacity'] !== null ? (int) $o['capacity'] : null;
                 $overBy     = $capacity !== null && $roster > $capacity ? $roster - $capacity : 0;
                 // Never silently clamped to 0 — a negative value here IS
                 // the "how far over capacity" signal; over_capacity_by
                 // mirrors it for display convenience only.
                 $meetings   = $meetingsByOffering[$offeringId] ?? [];
-                $sections   = $sectionsByOffering[$offeringId] ?? [];
                 $programs   = array_values(array_unique(array_column($sections, 'program')));
 
                 $completeness = $completenessByOffering[$offeringId] ?? null;
