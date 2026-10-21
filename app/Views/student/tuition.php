@@ -593,5 +593,54 @@ function tfPrintFile() {
         }
     }).observe(modal, { attributes: true, attributeFilter: ['class'] });
 })();
+
+// Animates the fee-breakdown <details> drawers: native <details> snaps
+// open/closed with no transition, so the toggle is intercepted here and the
+// height is animated manually, then the `open` attribute is only flipped
+// once the collapse animation finishes (so content doesn't vanish mid-slide).
+(function () {
+    document.querySelectorAll('.tf-fee-group').forEach(function (details) {
+        var content = details.querySelector('.tf-fee-items');
+        var summary = details.querySelector('summary');
+        if (!content || !summary) return;
+
+        summary.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (details.classList.contains('tf-animating')) return;
+            details.classList.add('tf-animating');
+
+            if (details.open) {
+                content.style.height = content.scrollHeight + 'px';
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        content.style.height = '0px';
+                    });
+                });
+                content.addEventListener('transitionend', function handler(ev) {
+                    if (ev.propertyName !== 'height') return;
+                    content.removeEventListener('transitionend', handler);
+                    details.open = false;
+                    content.style.height = '';
+                    details.classList.remove('tf-animating');
+                }, { once: true });
+            } else {
+                details.open = true;
+                var target = content.scrollHeight;
+                content.style.height = '0px';
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        content.style.height = target + 'px';
+                    });
+                });
+                content.addEventListener('transitionend', function handler(ev) {
+                    if (ev.propertyName !== 'height') return;
+                    content.removeEventListener('transitionend', handler);
+                    content.style.height = '';
+                    details.classList.remove('tf-animating');
+                }, { once: true });
+            }
+        });
+    });
+})();
 </script>
 <?= $this->endSection() ?>

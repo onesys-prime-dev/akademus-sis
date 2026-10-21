@@ -963,9 +963,10 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     display: flex;
     gap: 10px;
     margin-top: 20px;
+    flex-wrap: wrap;
 }
 
-.ac-modal__actions .ac-btn { flex: 1; }
+.ac-modal__actions .ac-btn { flex: 1 1 auto; }
 
 /* Global "unsaved changes" confirm modal (public/assets/js/unsaved-changes.js).
    Visually matches .ac-modal but is intentionally its own element/handlers
@@ -990,8 +991,8 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .uc-modal.is-open .uc-modal__panel { transform: scale(1) translateY(0); opacity: 1; }
 .uc-modal__title { font-size: 17px; font-weight: 650; color: var(--color-text-primary); }
 .uc-modal__body { margin-top: 10px; font-size: 13.5px; line-height: 1.55; color: var(--color-text-secondary); }
-.uc-modal__actions { display: flex; gap: 10px; margin-top: 20px; }
-.uc-modal__actions .ac-btn { flex: 1; }
+.uc-modal__actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+.uc-modal__actions .ac-btn { flex: 1 1 auto; }
 
 .ac-field label {
     font-size: 11px;
@@ -1987,4 +1988,17 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     .ac-content { padding: 24px 16px 40px; }
     .ac-sidebar { width: min(288px, calc(100vw - 40px)); }
     .ac-page-header { margin-bottom: 22px; }
+
+    /* Every confirmation modal's action row — stacked full-width so a
+       button's label (however long) always has room to sit on one line
+       instead of being clipped by a cramped two-up flex row. Applies to
+       both the generic .ac-modal system and the standalone
+       unsaved-changes guard's own .uc-modal, which otherwise duplicates
+       the same two-button layout outside .ac-modal's markup. */
+    .ac-modal { padding: 12px; }
+    .ac-modal__panel { padding: 18px; }
+    .uc-modal { padding: 12px; }
+    .uc-modal__panel { padding: 18px; }
+    .ac-modal__actions, .uc-modal__actions, .ac-confirm__actions { flex-direction: column-reverse; flex-wrap: nowrap; }
+    .ac-modal__actions .ac-btn, .uc-modal__actions .ac-btn, .ac-confirm__actions .ac-btn { width: 100%; white-space: normal; text-align: center; }
 }

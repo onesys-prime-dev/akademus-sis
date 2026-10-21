@@ -189,6 +189,7 @@
 .avatar-crop-actions {
     display: flex;
     justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 20px;
     padding-top: 16px;
@@ -440,4 +441,10 @@ table.grade-table tr:last-child td { border-bottom: none; }
     table.grade-table { display: block; overflow-x: auto; white-space: nowrap; }
     .view-toggle { width: 100%; }
     .view-toggle button { flex: 1; }
+
+    .avatar-crop-backdrop { padding: 10px; }
+    .avatar-crop-modal, .avatar-confirm-modal { padding: 16px; }
+    .avatar-crop-stage { width: min(280px, 100%); height: auto; aspect-ratio: 1; }
+    .avatar-crop-actions { flex-direction: column-reverse; flex-wrap: nowrap; }
+    .avatar-crop-actions .btn { width: 100%; justify-content: center; }
 }

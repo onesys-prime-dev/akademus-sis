@@ -33,7 +33,11 @@
 .en-units-note { margin:0 0 12px; font-size:12.5px; color:var(--color-text-secondary); }
 
 .en-section-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:2px; }
+.en-section-head__right { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
 .en-units-pill { font-size:11.5px; font-weight:700; padding:4px 11px; border-radius:var(--radius-pill); background:var(--color-primary-soft); color:var(--color-primary); white-space:nowrap; }
+
+.en-select-all { display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:650; color:var(--color-text-secondary); cursor:pointer; user-select:none; }
+.en-select-all:hover { color:var(--color-text-primary); }
 
 /* Personal information panel */
 .en-info-card__head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
@@ -50,35 +54,86 @@
 .en-pending-banner strong { display:block; font-size:12.5px; color:#1d4ed8; margin-bottom:2px; }
 .en-pending-banner p { margin:0; font-size:12px; line-height:1.5; color:var(--color-text-secondary); }
 
-.en-subject { padding:16px 0; border-top:1px solid var(--color-border); }
-.en-subject:first-of-type { padding-top:4px; border-top:0; }
+/* Each subject is its own elevated card rather than a plain list row —
+   the visual unit the student scans for "do I still need this, and does a
+   section fit my timetable" — with a soft lift on hover instead of a flat
+   border separator. */
+.en-subject {
+    margin:0 0 14px; padding:18px 20px; border:1px solid var(--color-border); border-radius:var(--radius-lg);
+    background:var(--color-surface); box-shadow:var(--shadow-xs);
+    transition:box-shadow var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+.en-subject:hover { box-shadow:var(--shadow-sm); border-color:var(--color-border-medium); }
+.en-subject:last-child { margin-bottom:0; }
+
 .en-subject__head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
-.en-subject__code { font-weight:700; color:var(--color-text-primary); font-size:13.5px; }
-.en-subject__title { margin-left:8px; font-size:13px; color:var(--color-text-secondary); }
-.en-subject__units { margin-left:8px; font-size:11.5px; color:var(--color-text-tertiary); }
+.en-subject__code {
+    display:inline-flex; align-items:center; margin-right:10px; padding:3px 9px; border-radius:var(--radius-sm);
+    background:var(--color-primary-soft); color:var(--color-primary); font-weight:750; font-size:12.5px; letter-spacing:.02em;
+}
+.en-subject__title { font-size:14px; font-weight:650; color:var(--color-text-primary); }
+.en-subject__units { margin-left:8px; font-size:11.5px; color:var(--color-text-tertiary); font-weight:600; }
 .en-subject__badges { display:flex; align-items:center; gap:6px; }
 
-.en-badge { font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:var(--radius-pill); }
+.en-badge { font-size:10.5px; font-weight:750; letter-spacing:.02em; padding:3px 9px; border-radius:var(--radius-pill); }
 .en-badge--retake { background:var(--color-warning-soft); color:#713f12; }
 .en-badge--waived { background:var(--color-success-soft); color:#14532d; }
 
-.en-coreq-note { margin:6px 0 0; font-size:12px; color:var(--color-text-secondary); font-style:italic; }
+.en-coreq-note {
+    display:flex; align-items:center; gap:6px; margin:12px 0 0; padding:8px 12px; border-radius:var(--radius-md);
+    background:var(--color-info-soft); color:#1e3a8a; font-size:12px; font-weight:500;
+}
+.en-coreq-note .material-symbols-outlined { font-size:15px; color:#1d4ed8; }
 
-.en-table-scroll { overflow-x:auto; margin-top:10px; }
-.en-class-table { min-width:620px; }
+/* Offerings table sits inside its own rounded, bordered surface — separates
+   it from the card it lives in and gives rows somewhere to hover within. */
+.en-table-scroll { overflow-x:auto; margin-top:14px; border:1px solid var(--color-border); border-radius:var(--radius-md); transition:border-color var(--motion-fast) var(--ease-standard); }
+/* Once an offering is picked, the whole table box reads as selected — its
+   header included — not just the one checked row, so the box itself (not
+   the subject card around it) is the unit that visibly flips state. */
+.en-table-scroll.en-offerings--selected { border-color:var(--color-primary); }
+/* .ac-table th paints its own background per-cell (needed because
+   border-collapse makes a <tr> background invisible under its <th>s), so
+   the selected-state header has to target the cells directly, not the row. */
+.en-table-scroll.en-offerings--selected .en-class-table th { background:var(--color-primary); color:#fff; }
+.en-class-table { min-width:620px; border-collapse:collapse; }
 .en-class-table th, .en-class-table td { vertical-align:top; }
+.en-class-table thead tr { background:var(--color-surface-header); }
+.en-class-table th { padding:11px 16px; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; }
+.en-class-table td { padding:14px 16px; font-size:12.5px; border-top:1px solid var(--color-border); }
+.en-class-table tbody tr:first-child td { border-top:0; }
+.en-class-table tbody tr { transition:background var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard); }
+.en-class-table tbody tr.en-row-selectable { cursor:pointer; }
+.en-class-table tbody tr.en-row-selectable:hover { background:var(--color-primary-soft); }
+.en-class-table tbody tr.en-row-selected,
+.en-class-table tbody tr.en-row-selected:hover { background:var(--color-primary-soft); box-shadow:inset 3px 0 0 var(--color-primary); }
 .en-action-cell { white-space:nowrap; }
 
 .en-submit-form { margin-top:14px; }
 
+/* Custom checkbox — the native square reads as an afterthought; this gives
+   it the same rounded/accent-filled language as the rest of the page. */
 .en-select-check { display:flex; align-items:center; justify-content:center; }
-.en-select-check input[type="checkbox"] { width:18px; height:18px; accent-color:var(--color-primary); cursor:pointer; }
+.en-select-check input[type="checkbox"] {
+    appearance:none; -webkit-appearance:none; display:grid; place-items:center; width:20px; height:20px; margin:0;
+    border:1.5px solid var(--color-border-medium); border-radius:6px; background:var(--color-surface); cursor:pointer;
+    transition:border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard), transform var(--motion-instant) var(--ease-spring);
+}
+.en-select-check input[type="checkbox"]:hover { border-color:var(--color-primary); }
+.en-select-check input[type="checkbox"]:checked { background:var(--color-primary); border-color:var(--color-primary); }
+.en-select-check input[type="checkbox"]:checked::after {
+    content:''; width:5px; height:9px; margin-bottom:2px; border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg);
+}
+.en-select-check input[type="checkbox"]:active { transform:scale(.9); }
+.en-select-check input[type="checkbox"]:focus-visible { outline:3px solid rgba(23,78,166,.25); outline-offset:2px; }
 .en-sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 .en-add-selected-btn { margin-top:16px; }
 
+.en-action-cell .ac-pill--success::before { content:'\2713'; margin-right:3px; }
+
 .en-check {
     display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 7px; border-radius:var(--radius-pill);
-    font-weight:700; font-size:11px; background:var(--color-primary-soft); color:var(--color-primary);
+    font-weight:750; font-size:11px; letter-spacing:.02em; background:var(--color-primary-soft); color:var(--color-primary);
 }
 .en-check--lab { background:var(--color-lab-soft); color:var(--color-lab); border:1px solid var(--color-lab-border); }
 
@@ -87,6 +142,7 @@
 
 .en-muted { color:var(--color-text-tertiary); font-size:12px; }
 
+.en-slots-dot { display:inline-block; width:5px; height:5px; margin-right:5px; border-radius:50%; background:currentColor; vertical-align:middle; }
 .en-slots--full { color:var(--color-danger); background:var(--color-danger-soft); }
 
 /* Full-width splash for "window closed" / "ineligible" states — a bigger
@@ -115,9 +171,10 @@
     .en-info-card__head { margin-bottom:10px; }
     .en-info-grid { grid-template-columns:1fr 1fr; gap:12px 16px; }
 
-    .en-subject { padding:14px 0; }
+    .en-subject { padding:14px 16px; }
     .en-subject__head { flex-direction:column; align-items:flex-start; }
     .en-subject__title, .en-subject__units { display:block; margin-left:0; }
+    .en-subject__code { margin-bottom:4px; }
     .en-subject__title { margin-top:2px; }
     .en-subject__badges { flex-wrap:wrap; }
 
@@ -129,7 +186,7 @@
        become a stacked list of cards instead of a horizontally-scrolled
        table — the same data-label transform used elsewhere in this app
        (e.g. student-documents.css's request/document tables). */
-    .en-table-scroll { overflow:visible; margin-top:8px; }
+    .en-table-scroll { overflow:visible; margin-top:8px; border:0; border-radius:0; }
     .en-class-table, .en-mini-table { min-width:0; width:100%; }
     .en-class-table thead, .en-mini-table thead {
         position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap;
@@ -139,6 +196,7 @@
         display:block; padding:12px; border:1px solid var(--color-border); border-radius:var(--radius-md);
         background:var(--color-surface); box-shadow:var(--shadow-xs, 0 1px 2px rgba(16,24,40,.04));
     }
+    .en-class-table tbody tr.en-row-selected { border-color:var(--color-primary); }
     .en-class-table tbody td, .en-mini-table tbody td {
         display:block; padding:5px 0; border:0; text-align:left;
     }

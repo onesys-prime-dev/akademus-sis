@@ -80,17 +80,15 @@ class StudentEnlistment extends BaseController
 
         // Maps academic_years.semester ('1st'/'2nd'/'Summer') to the code
         // curriculum_subjects.semester actually stores ('1'/'2'/'3') — the
-        // two tables spell "semester" differently, so a subject curriculum-
-        // assigned to a different term than the one being enlisted into
-        // (e.g. a 2nd-semester subject showing up while enlisting for 1st
-        // semester — expected, since the due-subjects list deliberately
-        // isn't year/term-filtered, see StudentProgressService) can be told
-        // apart from one that's due THIS enlistment term but genuinely
-        // hasn't been scheduled by the chairperson yet.
-        $semesterCodes  = ['1st' => '1', '2nd' => '2', 'Summer' => '3'];
-        $semesterLabels = ['1' => '1st Semester', '2' => '2nd Semester', '3' => 'Summer'];
-        $enlistRow      = $ayModel->upcomingTerm();
-        $enlistSemCode  = $enlistRow !== null ? ($semesterCodes[$enlistRow['semester']] ?? null) : null;
+        // two tables spell "semester" differently. A subject the curriculum
+        // assigns to a different term than the one being enlisted into
+        // (e.g. a Summer-only subject while enlisting for 2nd Semester) is
+        // filtered out below — it isn't due yet and has no offerings queried
+        // against this term anyway, so it'd only ever render as unselectable
+        // noise. It'll appear on its own once its actual term comes around.
+        $semesterCodes = ['1st' => '1', '2nd' => '2', 'Summer' => '3'];
+        $enlistRow     = $ayModel->upcomingTerm();
+        $enlistSemCode = $enlistRow !== null ? ($semesterCodes[$enlistRow['semester']] ?? null) : null;
 
         if ($programName !== null) {
             $enrollments = new EnrollmentModel();
@@ -128,14 +126,23 @@ class StudentEnlistment extends BaseController
                         ->getRowArray()['semester'] ?? null;
                 }
 
+                // Only show what's actually due THIS enlistment term — a
+                // subject the curriculum assigns to a different term (e.g.
+                // Summer, while enlisting for 2nd Semester) isn't selectable
+                // here anyway (no offerings get queried against this term for
+                // it), so listing it was pure noise. It'll appear on its own
+                // once that term comes around. A subject with no curriculum
+                // term assigned at all ($curriculumSem === null) still shows,
+                // since there's nothing to say it ISN'T due now.
+                if ($curriculumSem !== null && $curriculumSem !== $enlistSemCode) {
+                    continue;
+                }
+
                 $item['has_lecture']      = $catalog !== null ? ($lecUnits !== null ? (float) $lecUnits > 0 : ! $isLab) : false;
                 $item['has_lab']          = $catalog !== null ? ($labUnits !== null ? (float) $labUnits > 0 : $isLab) : false;
                 $item['override_granted'] = $overrideGranted;
                 $item['corequisites']     = $enrollments->unmetCorequisites($userId, $item['code'], $enlistTerm);
                 $item['offerings']        = $enrollments->subjectOfferings($item['code'], $programName, $enlistTerm);
-                $item['curriculum_semester_label'] = $curriculumSem !== null && $curriculumSem !== $enlistSemCode
-                    ? ($semesterLabels[$curriculumSem] ?? null)
-                    : null;
 
                 $dueSubjects[] = $item;
             }

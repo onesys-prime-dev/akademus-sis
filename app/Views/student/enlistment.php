@@ -151,7 +151,15 @@ $STATUS_LABELS = [
             <div class="ac-card" style="margin-bottom:16px;">
                 <div class="en-section-head">
                     <div class="ac-dept-name">Course Selection</div>
-                    <span class="en-units-pill">Units: <?= esc((string) $unitsUsed) ?> / <?= esc((string) $cap) ?></span>
+                    <div class="en-section-head__right">
+                        <?php if ($dueSubjects !== []): ?>
+                            <label class="en-select-all">
+                                <span class="en-select-check"><input type="checkbox" id="enSelectAll" form="enCourseForm"></span>
+                                <span>Select all</span>
+                            </label>
+                        <?php endif ?>
+                        <span class="en-units-pill">Units: <?= esc((string) $unitsUsed) ?> / <?= esc((string) $cap) ?></span>
+                    </div>
                 </div>
                 <p class="en-units-note">Subjects your curriculum says you still need.</p>
 
@@ -185,16 +193,12 @@ $STATUS_LABELS = [
                                 </div>
                             </div>
                             <?php if (! empty($subj['corequisites'])): ?>
-                                <p class="en-coreq-note">Pairs with: <?= esc(implode(', ', $subj['corequisites'])) ?> — must both be selected together.</p>
+                                <p class="en-coreq-note"><span class="material-symbols-outlined" aria-hidden="true">link</span>Pairs with: <?= esc(implode(', ', $subj['corequisites'])) ?> — must both be selected together.</p>
                             <?php endif ?>
 
                             <?php if ($subj['offerings'] === []): ?>
                                 <div class="en-muted" style="padding:10px 0;">
-                                    <?php if ($subj['curriculum_semester_label'] !== null): ?>
-                                        Scheduled for <?= esc($subj['curriculum_semester_label']) ?> &mdash; not due this term.
-                                    <?php else: ?>
-                                        Not yet offered this term &mdash; check back once your chairperson schedules it.
-                                    <?php endif ?>
+                                    Not yet offered this term &mdash; check back once your chairperson schedules it.
                                 </div>
                             <?php else: ?>
                                 <div class="en-table-scroll">
@@ -209,7 +213,7 @@ $STATUS_LABELS = [
                                     <tbody>
                                     <?php foreach ($subj['offerings'] as $off): ?>
                                         <?php $rowInCart = in_array($off['section_id'] . '|' . $subj['code'], $itemIds, true); ?>
-                                        <tr>
+                                        <tr<?= (! $rowInCart && ! $subjectInCart) ? ' class="en-row-selectable"' : '' ?>>
                                             <td data-label="Section"><?= esc($off['section_label']) ?></td>
                                             <td data-label="Day & Time">
                                                 <?php if ($off['meetings'] === []): ?><span class="en-muted">TBA</span><?php endif ?>
@@ -223,7 +227,12 @@ $STATUS_LABELS = [
                                                 <?php if ($off['capacity'] === null): ?>
                                                     <span class="ac-pill ac-pill--neutral">Unlimited</span>
                                                 <?php else: ?>
-                                                    <span class="ac-pill <?= $off['available'] <= 0 ? 'en-slots--full' : '' ?>"><?= esc((string) max(0, $off['available'])) ?> / <?= esc((string) $off['capacity']) ?></span>
+                                                    <?php
+                                                        $slotsAvailable = max(0, $off['available']);
+                                                        $slotsFillPct   = $off['capacity'] > 0 ? $slotsAvailable / $off['capacity'] : 0;
+                                                        $slotsClass     = $slotsAvailable <= 0 ? 'en-slots--full' : ($slotsFillPct <= 0.2 ? 'ac-pill--warning' : 'ac-pill--success');
+                                                    ?>
+                                                    <span class="ac-pill <?= esc($slotsClass) ?>"><span class="en-slots-dot" aria-hidden="true"></span><?= esc((string) $slotsAvailable) ?> / <?= esc((string) $off['capacity']) ?></span>
                                                 <?php endif ?>
                                             </td>
                                             <td data-label="Select" class="en-action-cell">
@@ -338,4 +347,107 @@ $STATUS_LABELS = [
 
 <?php endif ?>
 
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+(function () {
+    var form = document.getElementById('enCourseForm');
+    if (!form) return;
+
+    var master = document.getElementById('enSelectAll');
+
+    function checkboxes() {
+        return Array.prototype.slice.call(form.querySelectorAll('.en-select-check input[type="checkbox"]'));
+    }
+
+    function groupOf(cb) {
+        return cb.closest('.en-subject');
+    }
+
+    function updateRowClass(cb) {
+        var tr = cb.closest('tr');
+        if (tr) tr.classList.toggle('en-row-selected', cb.checked);
+
+        var scroll = cb.closest('.en-table-scroll');
+        if (scroll) scroll.classList.toggle('en-offerings--selected', !!scroll.querySelector('.en-select-check input[type="checkbox"]:checked'));
+    }
+
+    // Only one section per subject can ever actually be added (the server
+    // rejects a second), so checking one offering in a subject's group
+    // clears any other checked offering in that same group instead of
+    // letting the student build a submission that's silently half-rejected.
+    function enforceSingleInGroup(changed) {
+        if (!changed.checked) return;
+        var group = groupOf(changed);
+        checkboxes().forEach(function (cb) {
+            if (cb !== changed && groupOf(cb) === group && cb.checked) {
+                cb.checked = false;
+                updateRowClass(cb);
+            }
+        });
+    }
+
+    function updateMaster() {
+        if (!master) return;
+        var groups = Array.prototype.slice.call(document.querySelectorAll('.en-subject'))
+            .filter(function (g) { return g.querySelector('.en-select-check input[type="checkbox"]'); });
+
+        if (groups.length === 0) {
+            master.checked = false;
+            master.indeterminate = false;
+            return;
+        }
+
+        var selectedGroups = groups.filter(function (g) {
+            return !!g.querySelector('.en-select-check input[type="checkbox"]:checked');
+        });
+
+        master.checked = selectedGroups.length === groups.length;
+        master.indeterminate = selectedGroups.length > 0 && selectedGroups.length < groups.length;
+    }
+
+    checkboxes().forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            enforceSingleInGroup(cb);
+            updateRowClass(cb);
+            updateMaster();
+        });
+    });
+
+    // Click anywhere on an offering's row to toggle it — not just the tiny
+    // checkbox — while leaving the checkbox's own native click alone so it
+    // doesn't get toggled twice.
+    form.querySelectorAll('tr.en-row-selectable').forEach(function (tr) {
+        tr.addEventListener('click', function (e) {
+            if (e.target.closest('.en-select-check')) return;
+            var cb = tr.querySelector('.en-select-check input[type="checkbox"]');
+            if (!cb) return;
+            cb.checked = !cb.checked;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    });
+
+    if (master) {
+        master.addEventListener('change', function () {
+            if (master.checked) {
+                document.querySelectorAll('.en-subject').forEach(function (group) {
+                    var boxes = Array.prototype.slice.call(group.querySelectorAll('.en-select-check input[type="checkbox"]'));
+                    if (boxes.length === 0 || boxes.some(function (b) { return b.checked; })) return;
+                    boxes[0].checked = true;
+                    updateRowClass(boxes[0]);
+                });
+            } else {
+                checkboxes().forEach(function (cb) {
+                    cb.checked = false;
+                    updateRowClass(cb);
+                });
+            }
+            updateMaster();
+        });
+    }
+
+    updateMaster();
+})();
+</script>
 <?= $this->endSection() ?>

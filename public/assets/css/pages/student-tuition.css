@@ -81,9 +81,10 @@
 .tf-fee-group summary strong { font-weight: 620; }
 .tf-fee-group summary > strong { margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tf-category small { display: block; margin-top: 3px; color: var(--tf-muted); font-size: 10px; }
-.tf-chevron { color: #8190a6; transition: transform .15s ease; }
+.tf-chevron { color: #8190a6; transition: transform .2s ease; }
 .tf-fee-group[open] .tf-chevron { transform: rotate(90deg); }
-.tf-fee-items { margin: 0 0 14px 26px; padding: 3px 12px; border-left: 2px solid #dbe4f1; background: #f8fafc; }
+.tf-fee-items { margin: 0 0 14px 26px; padding: 0 12px; border-left: 2px solid #dbe4f1; background: #f8fafc; overflow: hidden; height: 0; opacity: 0; transition: height .2s ease, opacity .2s ease, padding .2s ease; }
+.tf-fee-group[open] .tf-fee-items { height: auto; padding: 3px 12px; opacity: 1; }
 .tf-fee-items > div { display: flex; justify-content: space-between; gap: 20px; padding: 10px 0; color: #58677d; font-size: 11px; }
 .tf-fee-items > div + div { border-top: 1px solid #e7ebf1; }
 .tf-fee-items dd { margin: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -209,10 +210,10 @@
     .tf-metrics, .tf-breakdown { grid-template-columns: 1fr; gap: 14px; }
     .tf-metrics > div + div { padding: 14px 0 0; border-top: 1px solid var(--tf-line); border-left: 0; }
     .tf-action { width: 100%; justify-content: center; }
-    .tf-fee-items { padding: 3px 9px; }
+    .tf-fee-group[open] .tf-fee-items { padding: 3px 9px; }
     .tf-fee-items > div { gap: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .tf-action, .tf-chevron { transition: none; }
+    .tf-action, .tf-chevron, .tf-fee-items { transition: none; }
 }

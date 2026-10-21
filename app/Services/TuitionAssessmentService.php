@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AcademicYearModel;
 use App\Models\AssessmentItemModel;
 use App\Models\AuditLogModel;
 use App\Models\LedgerAdjustmentModel;
@@ -137,7 +138,7 @@ class TuitionAssessmentService
         // reshuffle a payment plan the student may already be paying
         // against (see payment_schedules migration docblock).
         if ($isNew && $rate !== null) {
-            $this->generateSchedule($assessmentId, (float) $finalAssessment['total_amount'], max(1, (int) $rate['installment_count']));
+            $this->generateSchedule($assessmentId, (float) $finalAssessment['total_amount'], max(1, (int) $rate['installment_count']), $academicYear);
         }
 
         return ['ok' => true, 'assessment' => $finalAssessment];
@@ -219,7 +220,7 @@ class TuitionAssessmentService
      * whatever rows currently exist — so replacing the row shape never
      * loses or misattributes money already paid.
      */
-    public function generateSchedule(int $assessmentId, float $totalAmount, int $installmentCount): void
+    public function generateSchedule(int $assessmentId, float $totalAmount, int $installmentCount, ?string $academicYear = null): void
     {
         $schedules = new PaymentScheduleModel();
         $schedules->where('assessment_id', $assessmentId)->delete();
@@ -238,6 +239,7 @@ class TuitionAssessmentService
         $share     = round($totalAmount / $installmentCount, 2);
         $allocated = 0.0;
         $labels    = $this->installmentLabels($installmentCount);
+        $dueDates  = $academicYear !== null ? $this->dueDatesFor($installmentCount, $academicYear) : [];
 
         foreach ($labels as $i => $label) {
             $isLast = $i === $installmentCount - 1;
@@ -247,10 +249,156 @@ class TuitionAssessmentService
             $schedules->insert([
                 'assessment_id' => $assessmentId,
                 'label'         => $label,
+                'due_date'      => $dueDates[$i] ?? null,
                 'amount'        => $amount,
                 'sort_order'    => $i,
             ]);
         }
+    }
+
+    /**
+     * One-time (but safely re-runnable) backfill for payment_schedules rows
+     * created before due-date auto-generation existed: every row inserted
+     * by generateSchedule() prior to this change has due_date NULL. Finds
+     * every assessment with at least one such row, recomputes that
+     * assessment's due dates from its academic_year the same way
+     * generateSchedule() does for new rows, and fills in only the NULL
+     * ones — amounts/labels/sort_order are left untouched, and a row that
+     * already has a due_date (hand-set, or already backfilled) is never
+     * overwritten. Assessments whose term has no start_date/end_date
+     * configured are silently skipped, same as dueDatesFor() does for a new
+     * schedule — nothing to backfill them with yet.
+     *
+     * @return int number of rows updated
+     */
+    public function backfillDueDates(): int
+    {
+        $schedules = new PaymentScheduleModel();
+
+        $assessmentIds = array_unique(array_column(
+            $schedules->select('assessment_id')->where('due_date', null)->where('sort_order >', 0)->findAll(),
+            'assessment_id'
+        ));
+
+        if ($assessmentIds === []) {
+            return 0;
+        }
+
+        $assessments = (new TuitionAssessmentModel())->whereIn('assessment_id', $assessmentIds)->findAll();
+        $updated     = 0;
+
+        foreach ($assessments as $assessment) {
+            $assessmentId = (int) $assessment['assessment_id'];
+            $rows         = $schedules->forAssessment($assessmentId);
+            $dueDates     = $this->dueDatesFor(count($rows), (string) $assessment['academic_year']);
+
+            foreach ($rows as $row) {
+                $sortOrder = (int) $row['sort_order'];
+
+                if ($row['due_date'] !== null || ! isset($dueDates[$sortOrder])) {
+                    continue;
+                }
+
+                $schedules->update((int) $row['schedule_id'], ['due_date' => $dueDates[$sortOrder]]);
+                $updated++;
+            }
+        }
+
+        return $updated;
+    }
+
+    /**
+     * Due dates for installments 2..N (the downpayment is always due on
+     * enrollment, so it never gets a fixed date — matching how this school's
+     * existing billing has always shown it). Spread evenly across the term's
+     * start_date/end_date, trimmed in 3 weeks from each end so nothing falls
+     * right at enrollment or right at the term's close, and snapped forward
+     * to the nearest Monday so due dates land on a predictable weekday
+     * instead of a different day each cycle.
+     *
+     * Returns null for any index whose date couldn't be resolved — including
+     * the whole thing when the term's academic_years row has no date range
+     * set yet — rather than guessing; the row is simply left with due_date
+     * null ("Not set") until the calendar is configured, same as before.
+     *
+     * @return array<int, ?string> keyed by the same 0-based index used in
+     *                              generateSchedule()'s $labels loop
+     */
+    private function dueDatesFor(int $installmentCount, string $academicYear): array
+    {
+        $remaining = $installmentCount - 1;
+
+        if ($remaining <= 0) {
+            return [];
+        }
+
+        $term = $this->termDateRange($academicYear);
+
+        if ($term === null) {
+            return [];
+        }
+
+        [$startDate, $endDate] = $term;
+
+        $start = (new \DateTimeImmutable($startDate))->modify('+21 days');
+        $end   = (new \DateTimeImmutable($endDate))->modify('-21 days');
+
+        if ($end <= $start) {
+            $start = new \DateTimeImmutable($startDate);
+            $end   = new \DateTimeImmutable($endDate);
+        }
+
+        $dates = [];
+
+        if ($remaining === 1) {
+            $dates[] = $this->nextMonday($start);
+        } else {
+            $stepSeconds = intdiv($end->getTimestamp() - $start->getTimestamp(), $remaining - 1);
+
+            for ($i = 0; $i < $remaining; $i++) {
+                $dates[] = $this->nextMonday($start->modify('+' . ($stepSeconds * $i) . ' seconds'));
+            }
+        }
+
+        // index 0 is the Downpayment (always undated); indexes 1..N-1 map to $dates[0..]
+        $byIndex = [];
+
+        foreach ($dates as $i => $date) {
+            $byIndex[$i + 1] = $date->format('Y-m-d');
+        }
+
+        return $byIndex;
+    }
+
+    private function nextMonday(\DateTimeImmutable $date): \DateTimeImmutable
+    {
+        return (int) $date->format('N') === 1 ? $date : $date->modify('next Monday');
+    }
+
+    /**
+     * Resolves a term-scoped academic_year string ("AY 2026 - 2027 · 1st
+     * Semester") back to its academic_years row's [start_date, end_date],
+     * or null when the string can't be parsed or that row has no date
+     * range configured. Mirrors StudentAccountNormalizer::splitAcademicYear().
+     *
+     * @return ?array{0: string, 1: string}
+     */
+    private function termDateRange(string $academicYear): ?array
+    {
+        if (preg_match('/AY\s*([\d]{4}\s*-\s*[\d]{4}).*?(1st|2nd|Summer)/u', $academicYear, $m) !== 1) {
+            return null;
+        }
+
+        $row = (new AcademicYearModel())
+            ->where('label', str_replace(' ', '', $m[1]))
+            ->where('semester', $m[2])
+            ->first();
+
+        if ($row === null || $row['start_date'] === null || $row['end_date'] === null) {
+            return null;
+        }
+
+        return [$row['start_date'], $row['end_date']];
     }
 
     /** @return string[] */
@@ -304,7 +452,7 @@ class TuitionAssessmentService
         $assessmentId = (int) $assessment['assessment_id'];
         $installmentCount = max(1, min(5, $installmentCount));
 
-        $this->generateSchedule($assessmentId, (float) $assessment['total_amount'], $installmentCount);
+        $this->generateSchedule($assessmentId, (float) $assessment['total_amount'], $installmentCount, (string) $assessment['academic_year']);
 
         (new AuditLogModel())->record(
             'tuition.installment_plan_changed',
