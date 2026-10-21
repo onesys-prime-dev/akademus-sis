@@ -16,6 +16,7 @@ class TuitionAssessmentModel extends Model
         'is_estimated',
         'tuition_amount',
         'discount_amount',
+        'additional_fees_amount',
         'total_amount',
         'amount_paid',
         'balance',

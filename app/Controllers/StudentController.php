@@ -10,6 +10,7 @@ use App\Models\OfficialReceiptModel;
 use App\Models\PaymentProofModel;
 use App\Models\PaymentScheduleModel;
 use App\Models\SectionModel;
+use App\Models\StudentAdditionalFeeModel;
 use App\Models\StudentModel;
 use App\Models\StudentPaymentModel;
 use App\Models\TuitionAssessmentModel;
@@ -156,6 +157,7 @@ class StudentController extends BaseController
         $itemsByCategory = [];
         $schedule    = [];
         $proofs      = [];
+        $additionalFees = [];
 
         if ($student !== null) {
             $this->ensureActiveTermAssessment($student, (new AcademicYearModel())->activeFormatted());
@@ -168,6 +170,7 @@ class StudentController extends BaseController
                 $current = $assessments[0];
                 $itemsByCategory = (new AssessmentItemModel())->forAssessment((int) $current['assessment_id']);
                 $schedule = (new PaymentScheduleModel())->withBalances((int) $current['assessment_id'], (float) $current['amount_paid']);
+                $additionalFees = (new StudentAdditionalFeeModel())->activeFor((int) $student['student_id'], (string) $current['academic_year']);
             }
         }
 
@@ -177,6 +180,7 @@ class StudentController extends BaseController
             'account'         => $account,
             'assessments'     => $assessments,
             'itemsByCategory' => $itemsByCategory,
+            'additionalFees'  => $additionalFees,
             'schedule'        => $schedule,
             'payments'        => $payments,
             'proofs'          => $proofs,

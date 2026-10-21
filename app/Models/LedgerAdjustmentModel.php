@@ -23,6 +23,7 @@ class LedgerAdjustmentModel extends Model
         'amount',
         'reason',
         'discount_grant_id',
+        'fee_grant_id',
         'reverses_adjustment_id',
         'created_by',
         'created_at',
@@ -31,12 +32,12 @@ class LedgerAdjustmentModel extends Model
     protected $useTimestamps = false;
 
     public const TYPES      = ['debit', 'credit'];
-    public const CATEGORIES = ['discount', 'waiver', 'correction', 'penalty', 'other'];
+    public const CATEGORIES = ['discount', 'waiver', 'correction', 'penalty', 'other', 'additional_fee'];
 
     /**
      * @return array{ok: bool, error?: string, id?: int}
      */
-    public function record(int $assessmentId, int $studentId, string $type, string $category, float $amount, ?string $reason, int $createdBy, ?int $discountGrantId = null): array
+    public function record(int $assessmentId, int $studentId, string $type, string $category, float $amount, ?string $reason, int $createdBy, ?int $discountGrantId = null, ?int $feeGrantId = null): array
     {
         if (! in_array($type, self::TYPES, true)) {
             return ['ok' => false, 'error' => 'Invalid adjustment type.'];
@@ -58,6 +59,7 @@ class LedgerAdjustmentModel extends Model
             'amount'             => round($amount, 2),
             'reason'             => $reason,
             'discount_grant_id'  => $discountGrantId,
+            'fee_grant_id'       => $feeGrantId,
             'created_by'         => $createdBy,
             'created_at'         => date('Y-m-d H:i:s'),
         ]);
@@ -119,6 +121,33 @@ class LedgerAdjustmentModel extends Model
             ->where('assessment_id', $assessmentId)
             ->where('reverses_adjustment_id', null)
             ->first();
+    }
+
+    /** Same idempotency check as activeForGrant(), for a student_additional_fees grant instead. */
+    public function activeForFeeGrant(int $feeGrantId, int $assessmentId): ?array
+    {
+        return $this->where('fee_grant_id', $feeGrantId)
+            ->where('assessment_id', $assessmentId)
+            ->where('reverses_adjustment_id', null)
+            ->first();
+    }
+
+    /**
+     * Every still-active row for a discount grant, across EVERY assessment
+     * it was ever applied to — unlike activeForGrant(), not scoped to one
+     * term. An "every term" grant (student_discounts.academic_year IS
+     * NULL) can have one adjustment row per term/assessment it's touched
+     * (see activeForGrant()'s own docblock), so revoking that grant has to
+     * reverse all of them, not just the current term's, or it would keep
+     * silently discounting whichever other assessment(s) it already hit.
+     *
+     * @return list<array>
+     */
+    public function allActiveForGrant(int $discountGrantId): array
+    {
+        return $this->where('discount_grant_id', $discountGrantId)
+            ->where('reverses_adjustment_id', null)
+            ->findAll();
     }
 
     public function update($id = null, $row = null): bool

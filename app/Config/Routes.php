@@ -303,6 +303,16 @@ $routes->group('finance', ['filter' => 'group:finance'], function ($routes) use 
     $routes->post('discounts/student/(:num)/grant', 'Finance\DiscountController::grant/$1', ['filter' => 'permission:finance.assess']);
     $routes->post('discounts/grant/(:num)/revoke', 'Finance\DiscountController::revoke/$1', ['filter' => 'permission:finance.assess']);
 
+    // additional fees (one-off campus event / penalty charges)
+    $routes->get('additional-fees', 'Finance\AdditionalFeeController::index', ['filter' => 'permission:finance.assess']);
+    $routes->get('additional-fees/search-students', 'Finance\AdditionalFeeController::searchStudents', ['filter' => 'permission:finance.assess']);
+    $routes->get('additional-fees/student/(:num)', 'Finance\AdditionalFeeController::studentFees/$1', ['filter' => 'permission:finance.assess']);
+    $routes->post('additional-fees/student/(:num)/grant', 'Finance\AdditionalFeeController::grant/$1', ['filter' => 'permission:finance.assess']);
+    $routes->post('additional-fees/fee/(:num)/revoke', 'Finance\AdditionalFeeController::revoke/$1', ['filter' => 'permission:finance.assess']);
+    $routes->get('additional-fees/bulk', 'Finance\AdditionalFeeController::bulkForm', ['filter' => 'permission:finance.assess']);
+    $routes->get('additional-fees/bulk/preview', 'Finance\AdditionalFeeController::bulkPreview', ['filter' => 'permission:finance.assess']);
+    $routes->post('additional-fees/bulk/apply', 'Finance\AdditionalFeeController::bulkApply', ['filter' => 'permission:finance.assess']);
+
     // cashier — dedicated record-payment screen
     $routes->get('cashier', 'Finance\CashierController::index', ['filter' => 'permission:finance.cashier']);
     $routes->get('cashier/search-students', 'Finance\CashierController::searchStudents', ['filter' => 'permission:finance.cashier']);

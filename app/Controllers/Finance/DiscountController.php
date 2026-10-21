@@ -5,9 +5,11 @@ namespace App\Controllers\Finance;
 use App\Controllers\BaseController;
 use App\Libraries\FinancePortal;
 use App\Models\DiscountTypeModel;
+use App\Models\LedgerAdjustmentModel;
 use App\Models\NotificationModel;
 use App\Models\StudentDiscountModel;
 use App\Models\StudentModel;
+use App\Models\TuitionAssessmentModel;
 use App\Services\TuitionAssessmentService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
@@ -171,6 +173,42 @@ class DiscountController extends BaseController
 
         if (! $result['ok']) {
             return redirect()->back()->with('errors', [$result['error']]);
+        }
+
+        // revoke() above only flips student_discounts.status — it never
+        // touched the ledger, and nothing here used to call recompute()
+        // either. ensureDiscountAdjustments() only ever ADDS a missing
+        // adjustment for a currently-active grant; it never reverses one
+        // for a grant that just went inactive, so sumActiveDiscounts()
+        // would keep counting a "revoked" discount forever (it only
+        // excludes a row that's been explicitly reversed). Reverse every
+        // still-active adjustment this grant ever produced — not just the
+        // current term's, since an "every term" grant (academic_year IS
+        // NULL) can carry one row per assessment it's touched — then
+        // recompute each affected assessment so the drop is actually
+        // visible immediately instead of waiting on some unrelated
+        // enrollment/payment event to happen to trigger a recompute.
+        $ledger          = new LedgerAdjustmentModel();
+        $assessments     = new TuitionAssessmentModel();
+        $recomputedTerms = [];
+
+        foreach ($ledger->allActiveForGrant((int) $id) as $adjustment) {
+            $ledger->reverse((int) $adjustment['id'], 'Discount revoked by Finance', (int) auth()->id());
+
+            $assessment = $assessments->find((int) $adjustment['assessment_id']);
+
+            if ($assessment === null) {
+                continue;
+            }
+
+            $termKey = $assessment['student_id'] . '|' . $assessment['academic_year'];
+
+            if (isset($recomputedTerms[$termKey])) {
+                continue;
+            }
+
+            $recomputedTerms[$termKey] = true;
+            (new TuitionAssessmentService())->recompute((int) $assessment['student_id'], (string) $assessment['academic_year']);
         }
 
         $student      = (new StudentModel())->find((int) $grant['student_id']);

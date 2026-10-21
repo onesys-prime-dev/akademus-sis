@@ -39,8 +39,14 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 $current = $assessments[0] ?? null;
 
 // Tuition-first waterfall for the two-bucket Balances split: payments apply
-// to the tuition line before the itemized/added fees.
-$addedFeesTotal = 0.0;
+// to the tuition line before the itemized/added fees. "Added fees" here
+// covers BOTH the curriculum-driven itemized lines (Miscellaneous/Other/
+// Additional/Course, from assessment_items) AND one-off Finance-charged
+// fees (student_additional_fees, e.g. a campus event fee) — the latter is
+// what total_amount's own additional_fees_amount reflects, so it has to be
+// folded in here too or this two-bucket split would stop summing to the
+// real total/balance the moment Finance charges one.
+$addedFeesTotal = (float) ($current['additional_fees_amount'] ?? 0);
 foreach ($itemsByCategory as $category => $rows) {
     foreach ($rows as $row) {
         $addedFeesTotal += (float) $row['amount'];
@@ -138,6 +144,13 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
     <header class="tf-section-heading"><div><h2 id="assessment-title">Assessment breakdown</h2><p>An itemized statement of charges for this term.</p></div></header>
     <div class="tf-column-labels"><span>Fee description</span><span>Amount · PHP</span></div>
     <div class="tf-tuition-line"><div><strong>Tuition fee</strong><span>Academic tuition for this term</span></div><strong>₱<?= number_format($tuitionAmount, 2) ?></strong></div>
+    <?php if ($additionalFees !== []): ?>
+        <?php $additionalFeesTotal = array_sum(array_column($additionalFees, 'amount')); ?>
+        <details class="tf-fee-group" open>
+            <summary><span class="material-symbols-outlined tf-chevron" aria-hidden="true">chevron_right</span><span class="tf-category"><strong>Added fees</strong><small><?= count($additionalFees) ?> <?= count($additionalFees) === 1 ? 'fee item' : 'fee items' ?></small></span><strong>₱<?= number_format($additionalFeesTotal, 2) ?></strong></summary>
+            <dl class="tf-fee-items"><?php foreach ($additionalFees as $fee): ?><div><dt><?= esc($fee['label']) ?></dt><dd>₱<?= number_format((float) $fee['amount'], 2) ?></dd></div><?php endforeach ?></dl>
+        </details>
+    <?php endif ?>
     <?php foreach (['miscellaneous' => 'Miscellaneous fees', 'other' => 'Other fees', 'additional' => 'Additional fees', 'course' => 'Course fees'] as $catKey => $catLabel): ?>
         <?php if (empty($itemsByCategory[$catKey])) continue; ?>
         <?php $catTotal = array_sum(array_column($itemsByCategory[$catKey], 'amount')); ?>

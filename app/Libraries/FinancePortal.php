@@ -41,6 +41,10 @@ class FinancePortal
                         'title' => 'Discounts & Scholarships',
                         'text'  => "Define discount/scholarship types (percentage or fixed amount) in the catalog, then grant them to individual students. A grant is applied to the student's balance immediately, and they're notified when one is granted or revoked.",
                     ]],
+                    'additional-fees' => ['label' => 'Additional Fees',     'icon' => 'add_card', 'url' => 'finance/additional-fees', 'help' => [
+                        'title' => 'Additional Fees',
+                        'text'  => "One-off charges outside the regular tuition/miscellaneous structure — campus event fees, penalties, surcharges. Charge one student from a search, or apply the same fee to an entire program/year level/section at once from Bulk Apply. Applied to balances immediately; students are notified either way.",
+                    ]],
                     'clearance'       => ['label' => 'Graduation Clearance', 'icon' => 'checklist',    'url' => 'finance/clearance', 'help' => [
                         'title' => 'Graduation Clearance',
                         'text'  => "Finance's sign-off on a graduating student's clearance checklist — confirming they have no outstanding financial obligations before the registrar can finalize their graduation.",

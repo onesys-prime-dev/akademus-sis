@@ -11,6 +11,7 @@ use App\Models\OfficialReceiptModel;
 use App\Models\PaymentProofModel;
 use App\Models\PaymentScheduleModel;
 use App\Models\ProgramFeeRateModel;
+use App\Models\StudentAdditionalFeeModel;
 use App\Models\StudentDiscountModel;
 use App\Libraries\TermCurriculum;
 use App\Models\StudentModel;
@@ -136,28 +137,45 @@ class TuitionAssessmentService
 
         (new AssessmentItemModel())->replaceFor($assessmentId, $feeItems);
 
+        // Additional fees (Finance-granted one-off charges — campus events,
+        // penalties, surcharges; see CreateStudentAdditionalFees) are fixed
+        // amounts, so unlike a percentage discount they carry no re-basing
+        // risk — applied even to a preliminary estimate, since a charge
+        // like a late-enrollment surcharge is independent of enrollment/
+        // unit load.
+        //
         // Discounts need assessmentId to exist first (ledger_adjustments
         // rows are keyed to it) — ensureDiscountAdjustments() creates any
         // missing ones idempotently, then total_amount/balance/status are
-        // recomputed net of every discount on record for this assessment.
+        // recomputed net of every discount and additional fee on record for
+        // this assessment.
         //
-        // Never applied to a preliminary estimate: a percentage scholarship
-        // would be frozen at the value it computed on estimated units, and
-        // ensureDiscountAdjustments() is idempotent per grant, so it would
-        // never be recalculated once real enrollment changes the gross
-        // amount. The first recompute with real enrollment applies them.
-        if ($rate !== null && ! $isEstimated) {
-            $this->ensureDiscountAdjustments($assessmentId, $studentId, $academicYear, $data['total_amount']);
+        // Discounts specifically are never applied to a preliminary
+        // estimate: a percentage scholarship would be frozen at the value
+        // it computed on estimated units, and ensureDiscountAdjustments()
+        // is idempotent per grant, so it would never be recalculated once
+        // real enrollment changes the gross amount. The first recompute
+        // with real enrollment applies them.
+        if ($rate !== null) {
+            $this->ensureAdditionalFeeAdjustments($assessmentId, $studentId, $academicYear);
+            $additionalFeesAmount = $this->sumActiveAdditionalFees($assessmentId);
 
-            $discountAmount = $this->sumActiveDiscounts($assessmentId);
-            $netAmount      = max(0, $data['total_amount'] - $discountAmount);
-            $balance        = max(0, $netAmount - $amountPaid);
+            $discountAmount = 0.0;
+
+            if (! $isEstimated) {
+                $this->ensureDiscountAdjustments($assessmentId, $studentId, $academicYear, $data['total_amount']);
+                $discountAmount = $this->sumActiveDiscounts($assessmentId);
+            }
+
+            $netAmount = max(0, $data['total_amount'] - $discountAmount + $additionalFeesAmount);
+            $balance   = max(0, $netAmount - $amountPaid);
 
             $assessments->update($assessmentId, [
-                'discount_amount' => $discountAmount,
-                'total_amount'    => $netAmount,
-                'balance'         => $balance,
-                'status'          => $this->statusFor($netAmount, $amountPaid),
+                'discount_amount'        => $discountAmount,
+                'additional_fees_amount' => $additionalFeesAmount,
+                'total_amount'           => $netAmount,
+                'balance'                => $balance,
+                'status'                 => $this->statusFor($netAmount, $amountPaid),
             ]);
         }
 
@@ -192,11 +210,79 @@ class TuitionAssessmentService
         // generateSchedule()).
         if ($isEstimated) {
             (new PaymentScheduleModel())->where('assessment_id', $assessmentId)->delete();
-        } elseif ($rate !== null && ($isNew || $wasEstimated || $scheduleIsStale)) {
-            $this->generateSchedule($assessmentId, (float) $finalAssessment['total_amount'], max(1, (int) $rate['installment_count']), $academicYear);
+        } elseif ($rate !== null) {
+            if ($isNew || $wasEstimated || $scheduleIsStale) {
+                $this->generateSchedule($assessmentId, (float) $finalAssessment['total_amount'], max(1, (int) $rate['installment_count']), $academicYear);
+            } else {
+                // Total moved (e.g. Finance just charged an additional fee)
+                // but the plan is locked — amount_paid > 0, so a full
+                // regenerate would reshuffle installments already paid
+                // against. Reconciled as one extra catch-up line instead;
+                // idempotent, so calling this on every recompute is safe.
+                $this->reconcileLockedSchedule($assessmentId, (float) $finalAssessment['total_amount']);
+            }
         }
 
         return ['ok' => true, 'assessment' => $finalAssessment];
+    }
+
+    /**
+     * Keeps a LOCKED schedule's rows summing to the real total without
+     * touching any existing installment — appends (or updates) one
+     * dedicated "Additional Fees" row covering exactly the gap between
+     * total_amount and what the other rows already add up to, and removes
+     * that row once there's no gap left (e.g. the fee causing it was
+     * reversed). Only called when generateSchedule() itself is off-limits
+     * (see the scheduleIsStale guard above) — a fresh/estimate-transition/
+     * amount_paid=0 schedule is always fully regenerated instead, which
+     * already produces exact installments with no gap to reconcile.
+     */
+    private function reconcileLockedSchedule(int $assessmentId, float $totalAmount): void
+    {
+        $schedules = new PaymentScheduleModel();
+        $rows      = $schedules->forAssessment($assessmentId);
+
+        if ($rows === []) {
+            return;
+        }
+
+        $catchUpLabel = 'Additional Fees';
+        $baseTotal    = 0.0;
+        $catchUpRow   = null;
+        $maxSortOrder = 0;
+
+        foreach ($rows as $row) {
+            $maxSortOrder = max($maxSortOrder, (int) $row['sort_order']);
+
+            if ($row['label'] === $catchUpLabel) {
+                $catchUpRow = $row;
+
+                continue;
+            }
+
+            $baseTotal += (float) $row['amount'];
+        }
+
+        $gap = round($totalAmount - $baseTotal, 2);
+
+        if ($gap <= 0) {
+            if ($catchUpRow !== null) {
+                $schedules->delete((int) $catchUpRow['schedule_id']);
+            }
+
+            return;
+        }
+
+        if ($catchUpRow !== null) {
+            $schedules->update((int) $catchUpRow['schedule_id'], ['amount' => $gap]);
+        } else {
+            $schedules->insert([
+                'assessment_id' => $assessmentId,
+                'label'         => $catchUpLabel,
+                'amount'        => $gap,
+                'sort_order'    => $maxSortOrder + 1,
+            ]);
+        }
     }
 
     /**
@@ -325,6 +411,60 @@ class TuitionAssessmentService
     {
         $ledger = new LedgerAdjustmentModel();
         $rows   = $ledger->where('assessment_id', $assessmentId)->where('category', 'discount')->findAll();
+
+        if ($rows === []) {
+            return 0.0;
+        }
+
+        $reversedIds = array_column(
+            $ledger->whereIn('reverses_adjustment_id', array_column($rows, 'id'))->findAll(),
+            'reverses_adjustment_id'
+        );
+
+        $total = 0.0;
+
+        foreach ($rows as $row) {
+            if (in_array($row['id'], $reversedIds, true)) {
+                continue;
+            }
+
+            $total += (float) $row['amount'];
+        }
+
+        return round($total, 2);
+    }
+
+    /**
+     * Ensures one 'additional_fee' ledger_adjustments debit row exists per
+     * active student_additional_fees grant for this exact student/term.
+     * Idempotent via LedgerAdjustmentModel::activeForFeeGrant() — safe to
+     * call on every recompute, mirrors ensureDiscountAdjustments() but with
+     * no percentage math (every grant is already a fixed peso amount).
+     */
+    private function ensureAdditionalFeeAdjustments(int $assessmentId, int $studentId, string $academicYear): void
+    {
+        $grants = (new StudentAdditionalFeeModel())->activeFor($studentId, $academicYear);
+        $ledger = new LedgerAdjustmentModel();
+
+        foreach ($grants as $grant) {
+            if ($ledger->activeForFeeGrant((int) $grant['id'], $assessmentId) !== null) {
+                continue;
+            }
+
+            $grantedBy = $grant['granted_by'] !== null ? (int) $grant['granted_by'] : $studentId;
+            $ledger->record($assessmentId, $studentId, 'debit', 'additional_fee', (float) $grant['amount'], $grant['label'], $grantedBy, null, (int) $grant['id']);
+        }
+    }
+
+    /**
+     * Sum of every still-active (never-reversed) 'additional_fee' debit
+     * adjustment for this assessment — mirrors sumActiveDiscounts()'s own
+     * reversal-aware filtering exactly.
+     */
+    private function sumActiveAdditionalFees(int $assessmentId): float
+    {
+        $ledger = new LedgerAdjustmentModel();
+        $rows   = $ledger->where('assessment_id', $assessmentId)->where('category', 'additional_fee')->findAll();
 
         if ($rows === []) {
             return 0.0;
