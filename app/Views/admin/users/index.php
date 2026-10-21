@@ -158,7 +158,7 @@
             </button>
         </div>
 
-        <form method="post" action="<?= site_url('admin/users/store') ?>">
+        <form method="post" action="<?= site_url('admin/users/store') ?>" id="formCreateAccount">
             <?= csrf_field() ?>
             <div class="ac-modal__body">
                 <div class="ac-field">
@@ -170,7 +170,7 @@
                     <input type="email" name="email" class="ac-input" placeholder="name@example.com" value="<?= old('email') ?>" required>
                 </div>
 
-                <div class="ac-field">
+                <div class="ac-field" id="acPasswordField">
                     <label>Password</label>
                     <div style="display:flex; gap:8px;">
                         <input type="text" name="password" id="acNewPassword" class="ac-input" placeholder="Leave blank to auto-generate" minlength="8" value="<?= old('password') ?>">
@@ -185,20 +185,27 @@
                         <select name="role" id="acRoleSelect" class="ac-input" required onchange="acToggleDeptField()">
                             <option value="faculty" <?= old('role') === 'faculty' ? 'selected' : '' ?>>Faculty</option>
                             <option value="dean" <?= old('role') === 'dean' ? 'selected' : '' ?>>Dean</option>
+                            <option value="chairperson" <?= old('role') === 'chairperson' ? 'selected' : '' ?>>Chairperson</option>
                             <option value="registrar" <?= old('role') === 'registrar' ? 'selected' : '' ?>>Registrar</option>
                             <option value="student" <?= old('role') === 'student' ? 'selected' : '' ?>>Student</option>
                             <option value="admin" <?= old('role') === 'admin' ? 'selected' : '' ?>>Admin</option>
                         </select>
-                        <p style="font-size:11.5px; color:var(--color-text-secondary); margin-top:4px;">Chairpersons are assigned from a department's own page.</p>
                     </div>
                     <div class="ac-field" id="acDeptField">
                         <label>College</label>
-                        <select name="department_id" id="acCollegeSelect" class="ac-input" onchange="acCascadeSections('')">
+                        <select name="department_id" id="acCollegeSelect" class="ac-input" onchange="acCascadeSections(''); acCascadeChairDept();">
                             <?php foreach ($departments as $d): ?>
                                 <option value="<?= esc($d['dept_id']) ?>"><?= esc($d['code']) ?> — <?= esc($d['name']) ?></option>
                             <?php endforeach ?>
                         </select>
                     </div>
+                </div>
+
+                <div class="ac-field" id="acChairDeptField" style="display:none;">
+                    <label>Department to chair</label>
+                    <select id="acChairDeptSelect" class="ac-input">
+                        <option value="">— Select a department —</option>
+                    </select>
                 </div>
 
                 <div class="ac-field" id="acEmpStatusField" style="display:none;">
@@ -273,6 +280,11 @@
                 <div class="ac-notice" id="acChairNotice" style="display:none;">
                     <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-info); margin-top:1px;">info</span>
                     <span class="ac-notice__text">This will set the account as the selected college's dean, replacing the current one if any.</span>
+                </div>
+
+                <div class="ac-notice" id="acChairDeptNotice" style="display:none;">
+                    <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-info); margin-top:1px;">info</span>
+                    <span class="ac-notice__text">This will set the account as the selected department's chairperson, replacing the current one if any.</span>
                 </div>
             </div>
 
@@ -495,6 +507,7 @@
 <?= $this->section('scripts') ?>
 <script>
     var AC_USERS_BASE = '<?= site_url('admin/users') ?>';
+    var AC_SUBDEPT_BASE = '<?= site_url('admin/sub-departments') ?>';
 
     // College -> Department -> Section cascade data. A section carries a
     // program display-name string, not an FK, so this list is pre-resolved
@@ -580,12 +593,62 @@
         var role = document.getElementById('acRoleSelect').value;
         document.getElementById('acDeptField').style.display = (role === 'admin' || role === 'registrar') ? 'none' : 'block';
         document.getElementById('acChairNotice').style.display = role === 'dean' ? 'flex' : 'none';
+        document.getElementById('acChairDeptField').style.display = role === 'chairperson' ? 'block' : 'none';
+        document.getElementById('acChairDeptNotice').style.display = role === 'chairperson' ? 'flex' : 'none';
         document.getElementById('acSectionRow').style.display = role === 'student' ? 'grid' : 'none';
         document.getElementById('acSectionHint').style.display = role === 'student' ? 'block' : 'none';
         document.getElementById('acPersonalRow').style.display = role === 'student' ? 'block' : 'none';
         document.getElementById('acEmpStatusField').style.display = role === 'faculty' ? 'block' : 'none';
         if (role === 'student') acCascadeSections('');
+        if (role === 'chairperson') acCascadeChairDept();
     }
+
+    /**
+     * Fills "Department to chair" from AC_SUBDEPTS (already loaded for the
+     * student section cascade above), narrowed to the chosen College — same
+     * source data, independent of the student cascade's own Department
+     * select so picking a student's department elsewhere on this form can
+     * never cross-contaminate this one.
+     */
+    function acCascadeChairDept() {
+        var collegeId = acNum(document.getElementById('acCollegeSelect').value);
+        var chairDeptEl = document.getElementById('acChairDeptSelect');
+        var keep = acNum(chairDeptEl.value);
+
+        chairDeptEl.innerHTML = '<option value="">— Select a department —</option>';
+        AC_SUBDEPTS.filter(function (sd) { return collegeId === null || sd.college_id === collegeId; })
+            .forEach(function (sd) {
+                var opt = document.createElement('option');
+                opt.value = sd.id;
+                opt.textContent = sd.label;
+                chairDeptEl.appendChild(opt);
+            });
+        chairDeptEl.value = keep !== null ? String(keep) : '';
+    }
+
+    // Reuses the same create/reassign-chairperson endpoint and business
+    // rules (one chair per department, replacing the current one) that the
+    // department's own "Assign Chairperson" modal uses — this form just
+    // retargets itself there instead of duplicating that logic, so the two
+    // entry points can never drift apart.
+    document.getElementById('formCreateAccount').addEventListener('submit', function (e) {
+        // Always reset first — otherwise a chairperson attempt that got
+        // retargeted here on a previous submit would stick around and
+        // hijack a later, different-role submission from the same open
+        // modal.
+        this.action = AC_USERS_BASE + '/store';
+
+        if (document.getElementById('acRoleSelect').value !== 'chairperson') return;
+
+        var subDeptId = document.getElementById('acChairDeptSelect').value;
+        if (!subDeptId) {
+            e.preventDefault();
+            alert('Choose which department this account will chair.');
+            return;
+        }
+
+        this.action = AC_SUBDEPT_BASE + '/' + subDeptId + '/store-chair';
+    });
 
     function acGeneratePassword(targetId) {
         var bytes = new Uint8Array(9);

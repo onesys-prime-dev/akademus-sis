@@ -142,6 +142,7 @@ class SubDepartmentController extends BaseController
         $rules = [
             'username' => 'required|max_length[100]',
             'email'    => 'required|valid_email',
+            'password' => 'permit_empty|min_length[8]',
         ];
 
         if (! $this->validate($rules)) {
@@ -174,7 +175,10 @@ class SubDepartmentController extends BaseController
             $user = $existing;
             $user->username = $username;
         } else {
-            $tempPassword = bin2hex(random_bytes(6));
+            // Same optional-password pattern as UserController::store() —
+            // an admin may set one explicitly, or leave it blank to
+            // auto-generate.
+            $tempPassword = (string) $this->request->getPost('password') ?: bin2hex(random_bytes(6));
             $user = new User([
                 'username' => $username,
                 'email'    => $email,
