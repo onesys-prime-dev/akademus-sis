@@ -57,32 +57,45 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <div class="panel">
     <?php $photoUrl = avatar_photo_url((int) $account->id, $studentDetail['photo_mime'] ?? null); ?>
     <div class="avatar-row">
-        <div class="avatar" style="<?= $photoUrl === null ? 'background:' . esc(avatar_color($account->username), 'attr') . ';' : '' ?> overflow:hidden;">
+        <div class="avatar-wrap">
+            <div class="avatar" style="<?= $photoUrl === null ? 'background:' . esc(avatar_color($account->username), 'attr') . ';' : '' ?> overflow:hidden;">
+                <?php if ($photoUrl !== null): ?>
+                    <img src="<?= esc($photoUrl) ?>" alt="" style="width:100%;height:100%;object-fit:cover;">
+                <?php else: ?>
+                    <?= esc(mb_strtoupper(mb_substr($account->username, 0, 1))) ?>
+                <?php endif ?>
+            </div>
+
+            <form method="post" action="<?= site_url('student/profile/photo') ?>" enctype="multipart/form-data" id="avatarUploadForm" hidden>
+                <?= csrf_field() ?>
+                <input type="file" name="photo" id="avatarFileInput" accept="image/jpeg,image/png,image/webp" hidden>
+            </form>
             <?php if ($photoUrl !== null): ?>
-                <img src="<?= esc($photoUrl) ?>" alt="" style="width:100%;height:100%;object-fit:cover;">
-            <?php else: ?>
-                <?= esc(mb_strtoupper(mb_substr($account->username, 0, 1))) ?>
+                <form method="post" action="<?= site_url('student/profile/photo/remove') ?>" id="avatarRemoveForm" hidden>
+                    <?= csrf_field() ?>
+                </form>
             <?php endif ?>
+
+            <button type="button" class="avatar-edit-btn" id="avatarEditTrigger" aria-haspopup="true" aria-expanded="false" aria-controls="avatarEditMenu" aria-label="Edit profile photo">
+                <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>
+            </button>
+            <div class="avatar-edit-menu" id="avatarEditMenu" role="menu" hidden>
+                <label class="avatar-edit-menu__item" for="avatarFileInput" role="menuitem">
+                    <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>
+                    <?= $photoUrl !== null ? 'Change photo' : 'Upload photo' ?>
+                </label>
+                <?php if ($photoUrl !== null): ?>
+                    <button type="button" class="avatar-edit-menu__item avatar-edit-menu__item--danger" id="avatarRemoveBtn" role="menuitem">
+                        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                        Remove photo
+                    </button>
+                <?php endif ?>
+            </div>
         </div>
         <div>
             <div class="avatar-name"><?= esc($account->username) ?></div>
             <div class="avatar-role">
                 <?= $section !== null ? esc($section['program']) . ' · ' . esc($section['year_level']) . ' · Section ' . esc($section['section']) : 'No section assigned' ?>
-            </div>
-            <div class="avatar-photo-actions">
-                <form method="post" action="<?= site_url('student/profile/photo') ?>" enctype="multipart/form-data" id="avatarUploadForm">
-                    <?= csrf_field() ?>
-                    <label class="btn btn-secondary avatar-upload-btn">
-                        Change photo
-                        <input type="file" name="photo" id="avatarFileInput" accept="image/jpeg,image/png,image/webp" hidden>
-                    </label>
-                </form>
-                <?php if ($photoUrl !== null): ?>
-                    <form method="post" action="<?= site_url('student/profile/photo/remove') ?>" id="avatarRemoveForm">
-                        <?= csrf_field() ?>
-                        <button type="button" class="btn btn-secondary" id="avatarRemoveBtn">Remove photo</button>
-                    </form>
-                <?php endif ?>
             </div>
         </div>
     </div>
@@ -433,6 +446,38 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         removeBackdrop.addEventListener('click', function (e) { if (e.target === removeBackdrop) removeBackdrop.hidden = true; });
         removeConfirmBtn.addEventListener('click', function () { removeForm.requestSubmit(); });
     }
+})();
+
+// Facebook-style "pencil badge" on the avatar: a small trigger that opens a
+// tiny menu with Change/Remove, instead of two full-size buttons sitting
+// under the name.
+(function () {
+    var trigger = document.getElementById('avatarEditTrigger');
+    var menu    = document.getElementById('avatarEditMenu');
+    if (!trigger || !menu) return;
+
+    function closeMenu() {
+        menu.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+    }
+    function openMenu() {
+        menu.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+    }
+
+    trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (menu.hidden) openMenu(); else closeMenu();
+    });
+    menu.querySelectorAll('.avatar-edit-menu__item').forEach(function (item) {
+        item.addEventListener('click', closeMenu);
+    });
+    document.addEventListener('click', function (e) {
+        if (!menu.hidden && !menu.contains(e.target) && e.target !== trigger) closeMenu();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !menu.hidden) { closeMenu(); trigger.focus(); }
+    });
 })();
 </script>
 
