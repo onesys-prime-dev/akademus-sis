@@ -112,13 +112,36 @@ window.enhanceSelect = function (select) {
         }
     }
 
+    // The panel is right-anchored to the trigger (CSS: right:0) and sizes
+    // itself to its longest option, which can be wider than the trigger
+    // (e.g. "AY 2026 - 2027 · 1st Semester"). That's fine when the trigger
+    // sits away from the screen edge, but on a narrow/mobile viewport with
+    // the trigger near the left edge, growing leftward from the right
+    // pushes the panel's left edge past x=0 — clipped by the viewport.
+    // Re-anchor to the trigger's left edge instead whenever that would
+    // happen, measured fresh each open() since content/viewport can change.
+    function positionPanel() {
+        panel.style.left = '';
+        panel.style.right = '0';
+        var margin = 8;
+        var wrapRect = wrap.getBoundingClientRect();
+        var panelWidth = panel.getBoundingClientRect().width;
+        var naturalLeft = wrapRect.right - panelWidth;
+        if (naturalLeft < margin) {
+            panel.style.right = 'auto';
+            panel.style.left = (margin - wrapRect.left) + 'px';
+        }
+    }
+
     function open() {
         if (!select.options.length) return;
         buildPanel();
         wrap.classList.add('is-open');
         trigger.setAttribute('aria-expanded', 'true');
+        positionPanel();
         document.addEventListener('click', onOutside, true);
         document.addEventListener('keydown', onKeydown, true);
+        window.addEventListener('resize', positionPanel);
     }
 
     function close() {
@@ -126,6 +149,7 @@ window.enhanceSelect = function (select) {
         trigger.setAttribute('aria-expanded', 'false');
         document.removeEventListener('click', onOutside, true);
         document.removeEventListener('keydown', onKeydown, true);
+        window.removeEventListener('resize', positionPanel);
     }
 
     trigger.addEventListener('click', function () {

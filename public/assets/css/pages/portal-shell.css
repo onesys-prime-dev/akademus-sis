@@ -136,8 +136,7 @@
 .avatar-edit-menu {
     position: absolute;
     top: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
     z-index: 30;
     min-width: 172px;
     padding: 6px;
