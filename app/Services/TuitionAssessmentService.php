@@ -503,6 +503,23 @@ class TuitionAssessmentService
         $schedules = new PaymentScheduleModel();
         $schedules->where('assessment_id', $assessmentId)->delete();
 
+        foreach ($this->computeScheduleRows($totalAmount, $installmentCount, $academicYear, $additionalFeesAmount) as $row) {
+            $schedules->insert($row + ['assessment_id' => $assessmentId]);
+        }
+    }
+
+    /**
+     * The row shape generateSchedule() writes, computed without touching the
+     * database — same math, same due-date rules, same "Additional Fees"
+     * carve-out, just handed back instead of inserted. Lets a caller show
+     * what a plan change WOULD produce (CashierController::previewInstallments())
+     * before committing to it, with zero risk of the preview and the real
+     * save ever drifting apart since they're the same code path.
+     *
+     * @return list<array{label: string, due_date: ?string, amount: float, sort_order: int}>
+     */
+    public function computeScheduleRows(float $totalAmount, int $installmentCount, ?string $academicYear = null, float $additionalFeesAmount = 0.0): array
+    {
         // Carved out of the regular installments into its own line, same
         // "Additional Fees" label reconcileLockedSchedule() uses for a
         // schedule that's locked (amount_paid > 0) and can't be rebuilt —
@@ -517,52 +534,54 @@ class TuitionAssessmentService
         $baseTotal            = $hasFeeLine ? $baseAmount : $totalAmount;
 
         if ($installmentCount <= 1) {
-            $schedules->insert([
-                'assessment_id' => $assessmentId,
-                'label'         => 'Full Payment',
-                'amount'        => round($baseTotal, 2),
-                'sort_order'    => 0,
-            ]);
+            $rows = [[
+                'label'      => 'Full Payment',
+                'due_date'   => null,
+                'amount'     => round($baseTotal, 2),
+                'sort_order' => 0,
+            ]];
 
             if ($hasFeeLine) {
-                $schedules->insert([
-                    'assessment_id' => $assessmentId,
-                    'label'         => 'Additional Fees',
-                    'amount'        => $additionalFeesAmount,
-                    'sort_order'    => 1,
-                ]);
+                $rows[] = [
+                    'label'      => 'Additional Fees',
+                    'due_date'   => null,
+                    'amount'     => $additionalFeesAmount,
+                    'sort_order' => 1,
+                ];
             }
 
-            return;
+            return $rows;
         }
 
         $share     = round($baseTotal / $installmentCount, 2);
         $allocated = 0.0;
         $labels    = $this->installmentLabels($installmentCount);
         $dueDates  = $academicYear !== null ? $this->dueDatesFor($installmentCount, $academicYear) : [];
+        $rows      = [];
 
         foreach ($labels as $i => $label) {
             $isLast = $i === $installmentCount - 1;
             $amount = $isLast ? round($baseTotal - $allocated, 2) : $share;
             $allocated += $amount;
 
-            $schedules->insert([
-                'assessment_id' => $assessmentId,
-                'label'         => $label,
-                'due_date'      => $dueDates[$i] ?? null,
-                'amount'        => $amount,
-                'sort_order'    => $i,
-            ]);
+            $rows[] = [
+                'label'      => $label,
+                'due_date'   => $dueDates[$i] ?? null,
+                'amount'     => $amount,
+                'sort_order' => $i,
+            ];
         }
 
         if ($hasFeeLine) {
-            $schedules->insert([
-                'assessment_id' => $assessmentId,
-                'label'         => 'Additional Fees',
-                'amount'        => $additionalFeesAmount,
-                'sort_order'    => $installmentCount,
-            ]);
+            $rows[] = [
+                'label'      => 'Additional Fees',
+                'due_date'   => null,
+                'amount'     => $additionalFeesAmount,
+                'sort_order' => $installmentCount,
+            ];
         }
+
+        return $rows;
     }
 
     /**

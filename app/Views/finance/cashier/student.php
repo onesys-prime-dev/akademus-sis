@@ -133,11 +133,11 @@
 
 <div class="ac-card" style="margin-bottom:20px;">
     <h3>Change Installment Plan</h3>
-    <form method="post" action="<?= site_url('finance/cashier/student/' . $s['student_id'] . '/installments') ?>" style="display:grid; grid-template-columns:1.5fr 1.5fr auto; gap:10px; align-items:end;">
+    <form method="post" action="<?= site_url('finance/cashier/student/' . $s['student_id'] . '/installments') ?>" id="installmentForm" style="display:grid; grid-template-columns:1.5fr 1.5fr auto; gap:10px; align-items:end;">
         <?= csrf_field() ?>
         <div class="ac-field" style="margin:0;">
             <label>Academic Year</label>
-            <select name="academic_year" class="ac-input" required>
+            <select name="academic_year" id="installmentYear" class="ac-input" required>
                 <?php foreach ($assessments as $a): ?>
                     <option value="<?= esc($a['academic_year']) ?>"><?= esc($a['academic_year']) ?> (Total: <?= number_format((float) $a['total_amount'], 2) ?>)</option>
                 <?php endforeach ?>
@@ -145,7 +145,7 @@
         </div>
         <div class="ac-field" style="margin:0;">
             <label>Installment Plan</label>
-            <select name="installment_count" class="ac-input" required>
+            <select name="installment_count" id="installmentCount" class="ac-input" required>
                 <option value="1">Full Payment</option>
                 <option value="2">2 Payments</option>
                 <option value="3">3 Payments</option>
@@ -153,9 +153,76 @@
                 <option value="5">5 Payments</option>
             </select>
         </div>
-        <button type="submit" class="ac-btn ac-btn-primary" data-confirm="Rebuild this student's installment schedule with the selected plan?">Update Plan</button>
+        <button type="submit" class="ac-btn ac-btn-primary" id="installmentSubmit" data-confirm="Rebuild this student's installment schedule with the selected plan?">Update Plan</button>
     </form>
+
+    <div id="installmentPreview" style="margin-top:16px;">
+        <p style="font-size:11px; font-weight:700; color:var(--color-text-secondary); text-transform:uppercase; letter-spacing:.04em; margin:0 0 8px;">Preview — what this plan will generate</p>
+        <div id="installmentPreviewBody" class="ac-muted" style="font-size:13px;">Loading…</div>
+    </div>
 </div>
+
+<script>
+(function () {
+    var yearEl   = document.getElementById('installmentYear');
+    var countEl  = document.getElementById('installmentCount');
+    var body     = document.getElementById('installmentPreviewBody');
+    var submit   = document.getElementById('installmentSubmit');
+    var previewUrl = <?= json_encode(site_url('finance/cashier/student/' . $s['student_id'] . '/installments/preview')) ?>;
+    var fetchToken = 0;
+
+    function loadPreview() {
+        var year = yearEl.value, count = countEl.value;
+        if (!year || !count) return;
+
+        var ticket = ++fetchToken;
+        body.textContent = 'Loading…';
+        body.className = 'ac-muted';
+
+        fetch(previewUrl + '?academic_year=' + encodeURIComponent(year) + '&installment_count=' + encodeURIComponent(count), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (ticket !== fetchToken) return; // a newer request superseded this one
+
+                if (!data.ok) {
+                    body.textContent = data.error || 'Could not generate a preview.';
+                    body.className = 'ac-muted';
+                    submit.dataset.confirm = 'Rebuild this student\'s installment schedule with the selected plan?';
+                    return;
+                }
+
+                var table = document.createElement('table');
+                table.className = 'ac-table';
+                table.innerHTML = '<thead><tr><th>Installment</th><th>Due Date</th><th>Amount</th></tr></thead>';
+                var tbody = document.createElement('tbody');
+
+                data.rows.forEach(function (row) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td>' + row.label + '</td><td>' + (row.due_date || '—') + '</td><td>' + row.amount + '</td>';
+                    tbody.appendChild(tr);
+                });
+
+                table.appendChild(tbody);
+                body.className = '';
+                body.replaceChildren(table);
+
+                var summary = data.rows.map(function (row) { return row.label + ' ' + row.amount + (row.due_date ? ' (' + row.due_date + ')' : ''); }).join('; ');
+                submit.dataset.confirm = 'Rebuild this student\'s installment schedule as follows: ' + summary + '?';
+            })
+            .catch(function () {
+                if (ticket !== fetchToken) return;
+                body.textContent = 'Could not load a preview — you can still save, but double-check the result afterward.';
+                body.className = 'ac-muted';
+            });
+    }
+
+    yearEl.addEventListener('change', loadPreview);
+    countEl.addEventListener('change', loadPreview);
+    loadPreview();
+})();
+</script>
 <?php endif ?>
 
 <h3>Payment History</h3>

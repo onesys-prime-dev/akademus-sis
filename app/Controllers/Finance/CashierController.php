@@ -110,6 +110,49 @@ class CashierController extends BaseController
         return redirect()->to('/finance/cashier/student/' . $studentId)->with('message', 'Payment recorded. Official Receipt ' . $result['or_number'] . ' issued.');
     }
 
+    /**
+     * What changeInstallments() WOULD produce for the given academic year +
+     * installment count — same computeScheduleRows() call the real save
+     * uses, just not written to the database. Lets Finance see the exact
+     * due dates and per-installment amounts before committing to a plan.
+     */
+    public function previewInstallments($studentId)
+    {
+        $academicYear     = (string) $this->request->getGet('academic_year');
+        $installmentCount = (int) $this->request->getGet('installment_count');
+
+        if ($academicYear === '' || $installmentCount < 1 || $installmentCount > 5) {
+            return $this->response->setJSON(['ok' => false, 'error' => 'Invalid academic year or installment count.']);
+        }
+
+        $assessment = (new TuitionAssessmentModel())->forStudentYear((int) $studentId, $academicYear);
+
+        if ($assessment === null || (float) $assessment['total_amount'] <= 0) {
+            return $this->response->setJSON(['ok' => false, 'error' => 'No assessment exists yet for this student/academic year.']);
+        }
+
+        $rows = (new TuitionAssessmentService())->computeScheduleRows(
+            (float) $assessment['total_amount'],
+            $installmentCount,
+            $academicYear,
+            (float) ($assessment['additional_fees_amount'] ?? 0)
+        );
+
+        return $this->response->setJSON([
+            'ok'   => true,
+            'rows' => array_map(static function (array $r) use ($installmentCount) {
+                $dueDateText = match (true) {
+                    $r['due_date'] !== null                                        => date('M j, Y', strtotime($r['due_date'])),
+                    $r['label'] === 'Downpayment' && $installmentCount > 1         => 'Due on enrollment',
+                    $r['label'] === 'Full Payment' || $r['label'] === 'Additional Fees' => null,
+                    default                                                        => 'Not set — academic year dates not configured',
+                };
+
+                return ['label' => $r['label'], 'due_date' => $dueDateText, 'amount' => number_format($r['amount'], 2)];
+            }, $rows),
+        ]);
+    }
+
     public function changeInstallments($studentId)
     {
         $rules = [

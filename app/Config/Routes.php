@@ -318,6 +318,7 @@ $routes->group('finance', ['filter' => 'group:finance'], function ($routes) use 
     $routes->get('cashier/search-students', 'Finance\CashierController::searchStudents', ['filter' => 'permission:finance.cashier']);
     $routes->get('cashier/student/(:num)', 'Finance\CashierController::studentLedger/$1', ['filter' => 'permission:finance.cashier']);
     $routes->post('cashier/student/(:num)/payment', 'Finance\CashierController::recordPayment/$1', ['filter' => 'permission:finance.cashier']);
+    $routes->get('cashier/student/(:num)/installments/preview', 'Finance\CashierController::previewInstallments/$1', ['filter' => 'permission:finance.cashier']);
     $routes->post('cashier/student/(:num)/installments', 'Finance\CashierController::changeInstallments/$1', ['filter' => 'permission:finance.cashier']);
 
     // reports
