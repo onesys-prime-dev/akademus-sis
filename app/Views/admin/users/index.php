@@ -57,8 +57,15 @@
         <?php $initials = strtoupper(substr($u['username'], 0, 1) . (strpos($u['username'], ' ') !== false ? substr(strrchr($u['username'], ' '), 1, 1) : '')); ?>
         <div class="ac-dtable__row">
 
+            <?php $photoUrl = avatar_photo_url((int) $u['id'], $u['photo_mime'] ?? null); ?>
             <div class="ac-user-cell" data-label="Name">
-                <div class="ac-avatar" style="background:<?= esc(avatar_color($u['username']), 'attr') ?>;color:#fff;" aria-hidden="true"><?= esc($initials) ?></div>
+                <div class="ac-avatar" style="<?= $photoUrl === null ? 'background:' . esc(avatar_color($u['username']), 'attr') . ';color:#fff;' : '' ?>" aria-hidden="true">
+                    <?php if ($photoUrl !== null): ?>
+                        <img src="<?= esc($photoUrl) ?>" alt="">
+                    <?php else: ?>
+                        <?= esc($initials) ?>
+                    <?php endif ?>
+                </div>
                 <div>
                     <p class="ac-user-cell__name"><?= esc($u['username']) ?></p>
                     <p class="ac-user-cell__id">ID #<?= esc($u['id']) ?></p>

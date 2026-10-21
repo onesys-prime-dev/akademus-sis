@@ -34,7 +34,7 @@ class UserController extends BaseController
         $search     = trim((string) $this->request->getGet('q'));
 
         $builder = db_connect()->table('users u')
-            ->select('u.id, u.username, i.secret as email, u.active, u.department_id, u.section_id, u.employment_status, g.group, d.code as dept_code, d.name as dept_name,
+            ->select('u.id, u.username, u.photo_mime, i.secret as email, u.active, u.department_id, u.section_id, u.employment_status, g.group, d.code as dept_code, d.name as dept_name,
                       s.student_number, s.date_of_birth, s.gender, s.home_address, s.city, s.emergency_contact_name, s.emergency_contact_number')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->join('departments d', 'd.dept_id = u.department_id', 'left')
