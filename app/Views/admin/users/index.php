@@ -287,7 +287,12 @@
                         </div>
                         <div class="ac-field">
                             <label>Gender</label>
-                            <input type="text" name="gender" class="ac-input" maxlength="20" placeholder="e.g. Male, Female">
+                            <select name="gender" class="ac-input">
+                                <option value="">Not set</option>
+                                <option value="Male" <?= old('gender') === 'Male' ? 'selected' : '' ?>>Male</option>
+                                <option value="Female" <?= old('gender') === 'Female' ? 'selected' : '' ?>>Female</option>
+                                <option value="Non-binary" <?= old('gender') === 'Non-binary' ? 'selected' : '' ?>>Non-binary</option>
+                            </select>
                         </div>
                     </div>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
@@ -421,7 +426,12 @@
                         </div>
                         <div class="ac-field">
                             <label>Gender</label>
-                            <input type="text" name="gender" id="acEditGender" class="ac-input" maxlength="20" placeholder="e.g. Male, Female">
+                            <select name="gender" id="acEditGender" class="ac-input">
+                                <option value="">Not set</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Non-binary">Non-binary</option>
+                            </select>
                         </div>
                     </div>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
