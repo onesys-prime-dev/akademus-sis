@@ -278,6 +278,41 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
     (function () {
         if (window.enhanceSelect) window.enhanceSelect(document.getElementById('tf-schedule'));
 
+        // The browser's native fragment-jump "scroll into view" walks past
+        // the app shell's internal scroll container (.ac-content) and ends
+        // up scrolling the outer document instead, which drags the fixed
+        // sidebar/topbar shell out of view along with it on mobile. Scroll
+        // the target into view ourselves, confined to .ac-content, and
+        // focus it without letting the browser take a second, uncontrolled
+        // scroll pass.
+        // Same fix for a direct/refresh load that already carries the hash —
+        // the browser's native jump-on-load has the identical problem.
+        if (window.location.hash === '#payment-proof') {
+            window.addEventListener('load', function () {
+                var target = document.getElementById('payment-proof');
+                var scroller = document.querySelector('.ac-content');
+                if (target && scroller) {
+                    var top = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+                    scroller.scrollTop = top;
+                }
+                document.scrollingElement.scrollTop = 0;
+            });
+        }
+
+        document.querySelectorAll('a[href="#payment-proof"]').forEach(function (link) {
+            link.addEventListener('click', function (e) {
+                var target = document.getElementById('payment-proof');
+                var scroller = document.querySelector('.ac-content');
+                if (!target || !scroller) return;
+                e.preventDefault();
+                var top = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+                scroller.scrollTo({ top: top, behavior: 'smooth' });
+                if (target.focus) target.focus({ preventScroll: true });
+                document.scrollingElement.scrollTop = 0;
+                history.replaceState(null, '', '#payment-proof');
+            });
+        });
+
         var form         = document.getElementById('tfUploadForm');
         var dropzone      = document.getElementById('tfDropzone');
         var fileInput     = document.getElementById('tf-proof');
