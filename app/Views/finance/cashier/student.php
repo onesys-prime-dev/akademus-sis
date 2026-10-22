@@ -329,8 +329,19 @@ function csToggleReject(proofId, show) {
         if (!year || !count) return;
 
         var ticket = ++fetchToken;
-        body.textContent = 'Loading…';
-        body.className = 'ac-muted';
+
+        // A shimmering row per installment about to appear — the generation
+        // itself is a real request (computing due dates against the term's
+        // calendar), so this fills that beat instead of a flat "Loading…".
+        var skeleton = document.createElement('div');
+        skeleton.className = 'cs-skeleton-rows';
+        for (var i = 0; i < Number(count); i++) {
+            var bar = document.createElement('div');
+            bar.className = 'cs-skeleton-row';
+            skeleton.appendChild(bar);
+        }
+        body.className = '';
+        body.replaceChildren(skeleton);
 
         fetch(previewUrl + '?academic_year=' + encodeURIComponent(year) + '&installment_count=' + encodeURIComponent(count), {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -347,7 +358,7 @@ function csToggleReject(proofId, show) {
                 }
 
                 var table = document.createElement('table');
-                table.className = 'ac-table';
+                table.className = 'ac-table animate-enter';
                 table.innerHTML = '<thead><tr><th>Installment</th><th>Due Date</th><th>Amount</th></tr></thead>';
                 var tbody = document.createElement('tbody');
 
@@ -370,6 +381,16 @@ function csToggleReject(proofId, show) {
                 body.className = 'ac-muted';
             });
     }
+
+    // Fires only on the real, confirmed submission (the global data-confirm
+    // handler intercepts and stops the first dispatch entirely when a
+    // confirm is pending — this listener only ever sees the one that's
+    // actually about to navigate and save), so the button visibly commits
+    // right as the schedule is actually being generated server-side.
+    document.getElementById('installmentForm').addEventListener('submit', function () {
+        submit.disabled = true;
+        submit.innerHTML = '<span class="ac-spinner" aria-hidden="true"></span>Generating…';
+    });
 
     if (yearEl && countEl) {
         yearEl.addEventListener('change', function () { syncToCurrentPlan(); loadPreview(); });

@@ -1713,6 +1713,31 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .cs-assesstable .ac-dtable__head, .cs-assesstable .ac-dtable__row { grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr .9fr; }
 .cs-paymenttable .ac-dtable__head, .cs-paymenttable .ac-dtable__row { grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr; }
 
+/* Installment-plan preview: a shimmering skeleton while the schedule is
+   being generated, then the real table fades/slides in in its place
+   (.animate-enter, defined above) instead of just popping in — the
+   generation itself takes a beat (a real request to compute due dates),
+   so this is what makes that beat feel alive instead of like a stall. */
+.cs-skeleton-rows { display: grid; gap: 10px; padding: 4px 0; }
+.cs-skeleton-row { height: 36px; border-radius: var(--radius-sm); background: var(--color-surface-sunken); animation: acSkeleton 1.1s ease-in-out infinite alternate; }
+.cs-skeleton-row:nth-child(2) { animation-delay: .12s; }
+.cs-skeleton-row:nth-child(3) { animation-delay: .24s; }
+.cs-skeleton-row:nth-child(4) { animation-delay: .36s; }
+.cs-skeleton-row:nth-child(5) { animation-delay: .48s; }
+
+.ac-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    vertical-align: -2px;
+    margin-right: 6px;
+    animation: acSpin .7s linear infinite;
+}
+@keyframes acSpin { to { transform: rotate(360deg); } }
+
 .ac-user-cell { display: flex; align-items: center; gap: 12px; }
 .ac-user-cell__name { font-size: 13px; font-weight: 700; color: var(--color-text-primary); margin: 0; }
 .ac-user-cell__id { font-size: 10.5px; font-weight: 700; color: var(--color-text-secondary); margin: 2px 0 0; }
