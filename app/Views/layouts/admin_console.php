@@ -868,7 +868,7 @@ $pageHelp ??= [
         }
 
         refreshUnread();
-        setInterval(refreshUnread, 30000);
+        setInterval(refreshUnread, 5000);
     })();
 </script>
 
