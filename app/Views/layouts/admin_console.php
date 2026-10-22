@@ -819,7 +819,50 @@ $pageHelp ??= [
                 });
         }
 
+        // A short two-tone chime, synthesized on the fly (Web Audio API) —
+        // no audio file to ship/host. Browsers refuse to play audio before
+        // the user has interacted with the page at all, so the context is
+        // created lazily on the first click/keypress anywhere and reused
+        // after that; if it's still not unlocked by the time a notification
+        // arrives, the chime is just silently skipped (the visual badge/
+        // ring animation still happens either way).
+        var audioCtx = null;
+        function unlockAudio() {
+            if (audioCtx) return;
+            var Ctx = window.AudioContext || window.webkitAudioContext;
+            if (Ctx) audioCtx = new Ctx();
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('keydown', unlockAudio);
+        }
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('keydown', unlockAudio);
+
+        function playChime() {
+            if (!audioCtx || audioCtx.state !== 'running') return;
+            [880, 1318.5].forEach(function (freq, i) {
+                var osc  = audioCtx.createOscillator();
+                var gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                var start = audioCtx.currentTime + i * 0.09;
+                gain.gain.setValueAtTime(0, start);
+                gain.gain.linearRampToValueAtTime(0.12, start + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.3);
+                osc.connect(gain).connect(audioCtx.destination);
+                osc.start(start);
+                osc.stop(start + 0.32);
+            });
+        }
+
+        // Only chimes when the count actually goes UP from what this tab
+        // already knew about — never on the first load of a page (which
+        // would chime for every already-unread notification every time
+        // any page loads) and never when it drops from marking things read.
+        var lastUnread = null;
         function setDot(unread) {
+            if (lastUnread !== null && unread > lastUnread) playChime();
+            lastUnread = unread;
+
             dot.style.display = unread > 0 ? 'flex' : 'none';
             dot.textContent = unread > 99 ? '99+' : (unread > 0 ? String(unread) : '');
             if (bell) bell.classList.toggle('is-ringing', unread > 0);
