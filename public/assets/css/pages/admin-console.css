@@ -1725,6 +1725,19 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .cs-skeleton-row:nth-child(4) { animation-delay: .36s; }
 .cs-skeleton-row:nth-child(5) { animation-delay: .48s; }
 
+/* Tab switching: the panel settles in (.animate-enter, defined above),
+   then each row/card inside it steps in just after (animation-delay set
+   per element in JS) — content arriving in sequence instead of the whole
+   tab snapping into place at once. */
+.cs-stagger-in {
+    opacity: 0;
+    animation: acSpringFadeIn var(--motion-fast) var(--ease-enter) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cs-panel.animate-enter, .cs-stagger-in { animation: none; opacity: 1; }
+}
+
 .ac-spinner {
     display: inline-block;
     width: 14px;

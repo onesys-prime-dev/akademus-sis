@@ -46,15 +46,15 @@
 <?php else: ?>
 
 <div class="ac-stat-grid" style="margin-bottom:24px;">
-    <div class="ac-metric-card">
+    <div class="ac-metric-card cs-stagger-in" style="animation-delay:0ms;">
         <div class="ac-metric-card__top"><span class="material-symbols-outlined" style="font-size:18px;" aria-hidden="true">receipt_long</span><span><?= esc($primary['academic_year']) ?> — Total</span></div>
         <div class="ac-metric-card__value">₱<?= number_format((float) $primary['total_amount'], 2) ?></div>
     </div>
-    <div class="ac-metric-card">
+    <div class="ac-metric-card cs-stagger-in" style="animation-delay:35ms;">
         <div class="ac-metric-card__top"><span class="material-symbols-outlined" style="font-size:18px; color:var(--color-success);" aria-hidden="true">check_circle</span><span>Paid</span></div>
         <div class="ac-metric-card__value" style="color:var(--color-success);">₱<?= number_format((float) $primary['amount_paid'], 2) ?></div>
     </div>
-    <div class="ac-metric-card">
+    <div class="ac-metric-card cs-stagger-in" style="animation-delay:70ms;">
         <div class="ac-metric-card__top"><span class="material-symbols-outlined" style="font-size:18px; color:var(--color-warning);" aria-hidden="true">account_balance_wallet</span><span>Balance</span></div>
         <div class="ac-metric-card__value" style="color:<?= (float) $primary['balance'] > 0 ? 'var(--color-warning)' : 'var(--color-success)' ?>;">₱<?= number_format((float) $primary['balance'], 2) ?></div>
     </div>
@@ -293,14 +293,37 @@
     if (el && window.enhanceSelect) window.enhanceSelect(el);
 });
 
+// The panel itself settles in, and each row/card inside it steps in just
+// after — the same "content arriving" read a native app gives you,
+// instead of the whole tab just snapping into place at once. Classes
+// don't replay an animation just by being re-added, so each call removes
+// then re-adds them after a forced reflow.
+function csAnimatePanel(panel) {
+    panel.classList.remove('animate-enter');
+    var staggered = panel.querySelectorAll('.ac-dtable__row, .ac-table-card, .ac-card, .ac-empty-block');
+    staggered.forEach(function (el) { el.classList.remove('cs-stagger-in'); el.style.animationDelay = ''; });
+    void panel.offsetWidth; // force reflow so the class removal above actually "took" before re-adding
+    panel.classList.add('animate-enter');
+    staggered.forEach(function (el, i) {
+        el.style.animationDelay = Math.min(i * 35, 350) + 'ms';
+        el.classList.add('cs-stagger-in');
+    });
+}
+
 function csTab(e, name) {
     e.preventDefault();
     document.querySelectorAll('.cs-panel').forEach(function (p) { p.hidden = true; });
     document.querySelectorAll('.ac-tabs__link').forEach(function (l) { l.classList.remove('is-active'); });
-    document.getElementById('cs-' + name).hidden = false;
+
+    var panel = document.getElementById('cs-' + name);
+    panel.hidden = false;
     document.querySelector('.ac-tabs__link[data-tab="' + name + '"]').classList.add('is-active');
+    csAnimatePanel(panel);
+
     return false;
 }
+
+csAnimatePanel(document.getElementById('cs-plan'));
 
 // Reject starts collapsed to a single button — the reason field only
 // appears once the reviewer actually commits to rejecting, instead of a
