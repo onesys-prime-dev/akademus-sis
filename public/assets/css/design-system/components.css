@@ -309,6 +309,11 @@ html.is-resizing *, html.is-resizing *::before, html.is-resizing *::after { tran
 @keyframes acFadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .ac-search-results:not([hidden]),
 .sr-panel:not([hidden]),
+.cb-search-results:not([hidden]),
+.avatar-edit-menu:not([hidden]),
+.fin-results:not([hidden]),
+.doc-results:not([hidden]),
+.issue-results:not([hidden]),
 #acDeptField, #acChairNotice, #acSectionRow, #acSectionHint, #acEmpStatusField,
 #acEditRoleRow, #acEditChairNotice, #acEditDeptField, #acEditSectionRow, #acEditSectionHint, #acEditEmpStatusField,
 #numericFields, #letterFields {

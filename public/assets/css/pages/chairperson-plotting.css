@@ -232,6 +232,13 @@
 .cx-select.is-open .cx-select__chevron { transform: rotate(180deg); }
 
 .cx-select__list {
+    /* JS toggles both [hidden] and .is-open together (see
+       enhanceContextSelect) — overriding the browser's default
+       [hidden]{display:none} with an explicit display here keeps the list
+       in the render tree so opacity/transform can actually transition,
+       same scale/fade/spring entrance every other dropdown in the shell
+       uses instead of an instant pop. */
+    display: block;
     position: absolute;
     z-index: 20;
     top: calc(100% + 4px);
@@ -246,6 +253,14 @@
     border-radius: var(--radius-md);
     background: var(--color-surface);
     box-shadow: var(--shadow-lg);
+    transform-origin: top center;
+    opacity: 0; transform: scale(.96) translateY(-4px); pointer-events: none;
+    transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-spring), visibility 0s linear var(--motion-fast);
+    visibility: hidden;
+}
+.cx-select.is-open .cx-select__list { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; visibility: visible; transition-delay: 0s; }
+@media (prefers-reduced-motion: reduce) {
+    .cx-select__list, .cx-select__chevron { transition: none; }
 }
 .cx-select__option {
     display: flex;
