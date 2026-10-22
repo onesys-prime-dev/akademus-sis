@@ -142,11 +142,20 @@ class StudentEnlistmentModel extends Model
         return ['ok' => true];
     }
 
+    /**
+     * The subjects on one enlistment, with the section context each was
+     * picked from. `subject_name` is joined in so the chair's review modal
+     * can show a readable title without a second lookup per row (the cart
+     * and conversion steps simply ignore the extra column).
+     *
+     * @return list<array{id: int, section_id: int, subject_code: string, units: float|string, subject_name: ?string, academic_year: string, program: string, year_level: string, section: string}>
+     */
     public function itemsFor(int $enlistmentId): array
     {
         return $this->db->table('enlistment_items i')
-            ->select('i.id, i.section_id, i.subject_code, i.units, s.academic_year, s.program, s.year_level, s.section')
+            ->select('i.id, i.section_id, i.subject_code, i.units, subj.subject_name, s.academic_year, s.program, s.year_level, s.section')
             ->join('sections s', 's.section_id = i.section_id')
+            ->join('subjects subj', 'subj.subject_code = i.subject_code', 'left')
             ->where('i.enlistment_id', $enlistmentId)
             ->orderBy('i.subject_code')
             ->get()
@@ -558,7 +567,7 @@ class StudentEnlistmentModel extends Model
 
         $rows = $this->db->table('student_enlistments se')
             ->select('se.id, se.academic_year, se.status, se.submitted_at, se.chair_recommended_at, se.dean_noted_at,
-                      st.student_id, st.student_number, st.program_id, u.username')
+                      st.student_id, st.student_number, st.program_id, u.id AS user_id, u.username, u.photo_mime')
             ->join('students st', 'st.student_id = se.student_id')
             ->join('users u', 'u.id = st.user_id')
             ->where('se.status', $status)

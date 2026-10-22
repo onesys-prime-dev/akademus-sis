@@ -5,6 +5,7 @@ namespace App\Controllers\Chairperson;
 use App\Controllers\BaseController;
 use App\Libraries\SchedulingAuthorization;
 use App\Models\DepartmentModel;
+use App\Models\GradeModel;
 use App\Models\StudentEnlistmentModel;
 
 /**
@@ -24,6 +25,36 @@ class EnlistmentApprovalController extends BaseController
             'pageTitle' => 'Enlistment Approvals',
             'user'      => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
             'requests'  => (new StudentEnlistmentModel())->pendingChairRecommendation($programs),
+        ]);
+    }
+
+    /**
+     * What the queue list alone never showed: the subjects this enlistment
+     * actually contains, and the student's locked grade history for
+     * context — fetched lazily, only for the one row a chair opens, rather
+     * than loading it for every pending request up front.
+     */
+    public function detail($id)
+    {
+        $enlistment = (new StudentEnlistmentModel())->find((int) $id);
+
+        if ($enlistment === null) {
+            return $this->response->setStatusCode(404)->setJSON(['ok' => false, 'error' => 'That enlistment could not be found.']);
+        }
+
+        if (! $this->ownsEnlistment($enlistment)) {
+            return $this->response->setStatusCode(403)->setJSON(['ok' => false, 'error' => 'That enlistment does not belong to your department.']);
+        }
+
+        $student = (new \App\Models\StudentModel())->find((int) $enlistment['student_id']);
+        $items   = (new StudentEnlistmentModel())->itemsFor((int) $id);
+        $grades  = $student !== null ? (new GradeModel())->recentForStudent((int) $student['user_id']) : [];
+
+        return $this->response->setJSON([
+            'ok'     => true,
+            'items'  => $items,
+            'units'  => array_sum(array_column($items, 'units')),
+            'grades' => $grades,
         ]);
     }
 

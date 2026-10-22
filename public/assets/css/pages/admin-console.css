@@ -1749,6 +1749,16 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .cs-assesstable .ac-dtable__head, .cs-assesstable .ac-dtable__row { grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr .9fr; }
 .cs-paymenttable .ac-dtable__head, .cs-paymenttable .ac-dtable__row { grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr; }
 
+/* Chairperson Enlistment Approvals — clickable rows (opens the subjects +
+   grade history modal), Actions column given a hard minmax floor so
+   Recommend/Return/the reason field never wrap onto their own lines (see
+   .cs-prooftable above for why that minmax floor matters). */
+.ea-table .ac-dtable__head, .ea-table .ac-dtable__row { grid-template-columns: minmax(160px,1.4fr) minmax(140px,1.2fr) minmax(140px,1fr) minmax(130px,1fr) minmax(320px,1.6fr); }
+.ea-row:hover { background: var(--color-primary-soft, rgba(37,99,235,.06)); }
+.ea-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+.ea-actions__default, .ea-actions__return { align-items: center; flex-wrap: wrap; }
+.ea-actions form { margin: 0; }
+
 /* Installment-plan preview: a shimmering skeleton while the schedule is
    being generated, then the real table fades/slides in in its place
    (.animate-enter, defined above) instead of just popping in — the

@@ -879,6 +879,29 @@ class GradeModel extends Model
     }
 
     /**
+     * A student's locked grade history, newest term first — lighter than
+     * forStudent() (no per-row schedule/meeting lookup): just what a
+     * chairperson needs for context when reviewing an enlistment, e.g.
+     * whether this student actually passed the prerequisite they're now
+     * enlisting the follow-up subject for.
+     *
+     * @return list<array{subject_code: string, subject_name: ?string, academic_year: string, grade_value: string, is_passing: bool|int|string|null}>
+     */
+    public function recentForStudent(int $userId, int $limit = 15): array
+    {
+        return $this->db->table('grades g')
+            ->select('g.subject_code, subj.subject_name, g.academic_year, g.grade_value, g.is_passing')
+            ->join('subjects subj', 'subj.subject_code = g.subject_code', 'left')
+            ->where('g.user_id', $userId)
+            ->where('g.status', 'locked')
+            ->orderBy('g.academic_year', 'DESC')
+            ->orderBy('subj.subject_name', 'ASC')
+            ->limit($limit)
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
      * Every locked grade for a student, newest term first — the student's
      * own read-only "My Grades" view. Enriched with the subject's title/units
      * and its class context (program/year/section + weekly meetings, the

@@ -550,6 +550,7 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('enlistment-window/update'         , 'Chairperson\EnlistmentWindowController::update');
     $routes->post('enlistment-window/save-offerings' , 'Chairperson\EnlistmentWindowController::saveOfferings');
     $routes->get('enlistment-approvals'          , 'Chairperson\EnlistmentApprovalController::index');
+    $routes->get('enlistment-approvals/(:num)/detail', 'Chairperson\EnlistmentApprovalController::detail/$1');
     $routes->post('enlistment-approvals/recommend', 'Chairperson\EnlistmentApprovalController::recommend');
     $routes->post('enlistment-approvals/return'   , 'Chairperson\EnlistmentApprovalController::returnToStudent');
 });
