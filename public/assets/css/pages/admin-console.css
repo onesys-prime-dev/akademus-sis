@@ -935,6 +935,27 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     color: var(--color-text-tertiary);
 }
 
+/* Dashboard "Attention Needed" style task rows — a generic, reusable
+   list-of-actionable-items component (first built for the Finance
+   dashboard, not tied to it). */
+.ac-task-list { display: flex; flex-direction: column; gap: 8px; }
+.ac-task-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);
+    background: #fff; text-decoration: none; color: inherit;
+    transition: background-color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
+}
+.ac-task-row:hover { background: var(--color-surface-sunken); border-color: var(--color-border-medium); transform: translateX(2px); }
+.ac-task-row__icon { width: 36px; height: 36px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--color-primary-soft); color: var(--color-primary); }
+.ac-task-row--warning .ac-task-row__icon { background: var(--color-warning-soft); color: var(--color-warning); }
+.ac-task-row__body { flex: 1; min-width: 0; }
+.ac-task-row__title { font-size: 13px; font-weight: 650; color: var(--color-text-primary); margin: 0; }
+.ac-task-row__sub { font-size: 12px; color: var(--color-text-secondary); margin: 2px 0 0; }
+.ac-task-row__arrow { color: var(--color-text-tertiary); flex-shrink: 0; }
+
+.ac-attention-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 32px 16px; color: var(--color-text-secondary); }
+.ac-attention-empty .material-symbols-outlined { font-size: 32px; color: var(--color-success); }
+
 /* Modal */
 
 .ac-modal {

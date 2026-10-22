@@ -55,6 +55,25 @@ class StudentPaymentModel extends Model
         return $this->where('assessment_id', $assessmentId)->orderBy('payment_date', 'DESC')->findAll();
     }
 
+    /**
+     * Most recent payments across every student, for a dashboard activity
+     * feed — same receipt join as historyFor(), plus the student's own
+     * name/number since this isn't scoped to one student.
+     */
+    public function recentAcrossStudents(int $limit): array
+    {
+        return $this->db->table('student_payments sp')
+            ->select('sp.payment_id, sp.amount, sp.payment_date, sp.method, sp.student_id,
+                      r.id AS receipt_id, r.or_number, s.student_number, u.first_name, u.last_name')
+            ->join('official_receipts r', 'r.payment_id = sp.payment_id', 'left')
+            ->join('students s', 's.student_id = sp.student_id')
+            ->join('users u', 'u.id = s.user_id')
+            ->orderBy('sp.payment_date', 'DESC')
+            ->limit($limit)
+            ->get()
+            ->getResultArray();
+    }
+
     public function update($id = null, $row = null): bool
     {
         throw new \LogicException('student_payments is append-only.');

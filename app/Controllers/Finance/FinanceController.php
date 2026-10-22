@@ -3,8 +3,10 @@
 namespace App\Controllers\Finance;
 
 use App\Controllers\BaseController;
+use App\Libraries\FinanceBadgeCounts;
 use App\Libraries\FinancePortal;
 use App\Models\PaymentProofModel;
+use App\Models\StudentPaymentModel;
 use CodeIgniter\Shield\Entities\User;
 
 /**
@@ -23,17 +25,29 @@ class FinanceController extends BaseController
             ->get()
             ->getRowArray()['amount'] ?? 0);
 
+        $monthCollections = (float) ($db->table('student_payments')
+            ->selectSum('amount')
+            ->where('YEAR(payment_date)', date('Y'))
+            ->where('MONTH(payment_date)', date('n'))
+            ->get()
+            ->getRowArray()['amount'] ?? 0);
+
         $pendingProofs = count((new PaymentProofModel())->pendingQueue());
 
         $highBalanceCount = (int) ($db->table('tuition_assessments')
             ->where('balance >', 0)
             ->countAllResults());
 
+        $badges = (new FinanceBadgeCounts())->forUser((int) auth()->id());
+
         return view('finance/dashboard', [
             'pageTitle'         => 'Finance Dashboard',
             'todayCollections'  => $todayCollections,
+            'monthCollections'  => $monthCollections,
             'pendingProofs'     => $pendingProofs,
             'highBalanceCount'  => $highBalanceCount,
+            'pendingClearance'  => $badges['clearance'] ?? 0,
+            'recentPayments'    => (new StudentPaymentModel())->recentAcrossStudents(8),
         ] + FinancePortal::shell('dashboard'));
     }
 
