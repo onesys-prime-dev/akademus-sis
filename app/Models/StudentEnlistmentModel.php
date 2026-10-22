@@ -144,19 +144,28 @@ class StudentEnlistmentModel extends Model
 
     /**
      * The subjects on one enlistment, with the section context each was
-     * picked from. `subject_name` is joined in so the chair's review modal
-     * can show a readable title without a second lookup per row (the cart
-     * and conversion steps simply ignore the extra column).
+     * picked from. `subject_name`, `prof`, and `room` are joined in so the
+     * chair's review modal can show a readable title and meeting details
+     * without a second lookup per row (the cart and conversion steps simply
+     * ignore the extra columns). prof/room come from plotted_schedules —
+     * the same table Schedule Plotting writes to — matched on this item's
+     * academic year/program/year level/section/subject; a subject with no
+     * plotted meeting (or no assigned faculty yet) comes back null, which
+     * the modal renders as "TBA".
      *
-     * @return list<array{id: int, section_id: int, subject_code: string, units: float|string, subject_name: ?string, academic_year: string, program: string, year_level: string, section: string}>
+     * @return list<array{id: int, section_id: int, subject_code: string, units: float|string, subject_name: ?string, academic_year: string, program: string, year_level: string, section: string, prof: ?string, room: ?string}>
      */
     public function itemsFor(int $enlistmentId): array
     {
         return $this->db->table('enlistment_items i')
-            ->select('i.id, i.section_id, i.subject_code, i.units, subj.subject_name, s.academic_year, s.program, s.year_level, s.section')
+            ->select("i.id, i.section_id, i.subject_code, i.units, subj.subject_name, s.academic_year, s.program, s.year_level, s.section,
+                      GROUP_CONCAT(DISTINCT p.prof SEPARATOR ', ') AS prof,
+                      GROUP_CONCAT(DISTINCT p.room SEPARATOR ', ') AS room")
             ->join('sections s', 's.section_id = i.section_id')
             ->join('subjects subj', 'subj.subject_code = i.subject_code', 'left')
+            ->join('plotted_schedules p', 'p.academic_year = s.academic_year AND p.program = s.program AND p.year_level = s.year_level AND p.section = s.section AND p.subject_code = i.subject_code', 'left')
             ->where('i.enlistment_id', $enlistmentId)
+            ->groupBy('i.id, i.section_id, i.subject_code, i.units, subj.subject_name, s.academic_year, s.program, s.year_level, s.section')
             ->orderBy('i.subject_code')
             ->get()
             ->getResultArray();

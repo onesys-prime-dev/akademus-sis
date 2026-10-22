@@ -137,11 +137,12 @@ function eaToggleReturn(e, id, show) {
         if (items.length === 0) {
             html += '<p class="ac-muted" style="font-size:13px; margin:0 0 20px;">No subjects on this enlistment.</p>';
         } else {
-            html += '<table class="ac-table" style="margin-bottom:20px;"><thead><tr><th>Code</th><th>Subject</th><th>Section</th><th>Units</th></tr></thead><tbody>';
+            html += '<table class="ac-table" style="margin-bottom:20px;"><thead><tr><th>Code</th><th>Subject</th><th>Section</th><th>Room</th><th>Professor</th><th>Units</th></tr></thead><tbody>';
             items.forEach(function (it) {
                 var section = it.program ? (escapeHtml(it.program) + ' · ' + escapeHtml(it.year_level) + ' · ' + escapeHtml(it.section)) : '—';
-                html += '<tr><td style="white-space:nowrap;"><strong>' + escapeHtml(it.subject_code) + '</strong></td><td>' + escapeHtml(it.subject_name || '—') + '</td><td>' + section + '</td><td>' + escapeHtml(it.units) + '</td></tr>';
+                html += '<tr><td style="white-space:nowrap;"><strong>' + escapeHtml(it.subject_code) + '</strong></td><td>' + escapeHtml(it.subject_name || '—') + '</td><td>' + section + '</td><td>' + escapeHtml(it.room || 'TBA') + '</td><td>' + escapeHtml(it.prof || 'TBA') + '</td><td>' + escapeHtml(it.units) + '</td></tr>';
             });
+            html += '<tr><td colspan="5" style="text-align:right; font-weight:700;">Total</td><td style="font-weight:700;">' + escapeHtml(data.units) + '</td></tr>';
             html += '</tbody></table>';
         }
 
