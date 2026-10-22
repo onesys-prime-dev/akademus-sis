@@ -222,6 +222,8 @@ $routes->group('registrar', ['filter' => 'group:registrar'], function ($routes) 
     $routes->get('profile', 'Registrar\ProfileController::edit');
     $routes->post('profile/update', 'Registrar\ProfileController::updateProfile');
     $routes->post('profile/password', 'Registrar\ProfileController::updatePassword');
+    $routes->post('profile/photo', 'Registrar\ProfileController::uploadPhoto');
+    $routes->post('profile/photo/remove', 'Registrar\ProfileController::removePhoto');
 
     // notifications (shared controller, scoped by auth()->id())
     $routes->get('notifications', 'NotificationController::index');
@@ -283,6 +285,8 @@ $routes->group('finance', ['filter' => 'group:finance'], function ($routes) use 
     $routes->get('profile', 'Finance\FinanceController::profile');
     $routes->post('profile/update', 'Finance\FinanceController::updateProfile');
     $routes->post('profile/password', 'Finance\FinanceController::updatePassword');
+    $routes->post('profile/photo', 'Finance\FinanceController::uploadPhoto');
+    $routes->post('profile/photo/remove', 'Finance\FinanceController::removePhoto');
 
     // tuition rates / fee catalog / payment-proof queue — moved here from
     // Registrar; same controllers, same fees.view/fees.manage permission
@@ -355,6 +359,8 @@ $routes->group('dean', ['filter' => 'group:dean'], function ($routes) {
     $routes->get('profile', 'Dean\DeanController::profile');
     $routes->post('profile/update', 'Dean\DeanController::updateProfile');
     $routes->post('profile/password', 'Dean\DeanController::updatePassword');
+    $routes->post('profile/photo', 'Dean\DeanController::uploadPhoto');
+    $routes->post('profile/photo/remove', 'Dean\DeanController::removePhoto');
 
     // grade approvals — second stage of the chain (chair_recommended ->
     // dean_noted), scoped to this dean's authorized colleges.
@@ -396,6 +402,8 @@ $routes->group('faculty', ['filter' => 'group:faculty'], function ($routes) {
     $routes->get('profile', 'Faculty\ProfileController::edit');
     $routes->post('profile/update', 'Faculty\ProfileController::updateProfile');
     $routes->post('profile/password', 'Faculty\ProfileController::updatePassword');
+    $routes->post('profile/photo', 'Faculty\ProfileController::uploadPhoto');
+    $routes->post('profile/photo/remove', 'Faculty\ProfileController::removePhoto');
 
     // read-only weekly schedule (this faculty member's own plotted classes)
     $routes->get('schedule', 'Faculty\ScheduleController::index');
@@ -458,6 +466,8 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->get('profile', 'ChairpersonController::profile');
     $routes->post('profile/update', 'ChairpersonController::updateProfile');
     $routes->post('profile/password', 'ChairpersonController::updatePassword');
+    $routes->post('profile/photo', 'ChairpersonController::uploadPhoto');
+    $routes->post('profile/photo/remove', 'ChairpersonController::removePhoto');
     $routes->post('schedule/sync', 'ChairpersonController::sync');
     $routes->post('schedule/faculty-override', 'ChairpersonController::recordFacultyOverride');
     $routes->get('schedule/state', 'ChairpersonController::state');

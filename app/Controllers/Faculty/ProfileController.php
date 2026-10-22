@@ -9,8 +9,9 @@ class ProfileController extends BaseController
 {
     public function edit()
     {
-        $account = auth()->user();
-        $dept    = (new DepartmentModel())->codeOfUser((int) auth()->id());
+        $account   = auth()->user();
+        $dept      = (new DepartmentModel())->codeOfUser((int) auth()->id());
+        $photoMime = db_connect()->table('users')->select('photo_mime')->where('id', (int) auth()->id())->get()->getRowArray()['photo_mime'] ?? null;
 
         return view('faculty/profile/edit', [
             'user' => [
@@ -18,11 +19,51 @@ class ProfileController extends BaseController
                 'role' => ($dept !== null ? $dept . ' Department · ' : '') . 'Faculty',
             ],
             'account' => [
-                'username' => $account->username ?? '',
-                'email'    => $account->getEmail() ?? '',
+                'id'         => (int) auth()->id(),
+                'username'   => $account->username ?? '',
+                'email'      => $account->getEmail() ?? '',
+                'photo_mime' => $photoMime,
             ],
             'deptName' => $dept,
         ]);
+    }
+
+    /** Same contract as StudentController::uploadPhoto() — generic users.photo_blob/photo_mime storage. */
+    public function uploadPhoto()
+    {
+        $userId = (int) auth()->id();
+
+        $rules = [
+            'photo' => 'uploaded[photo]|max_size[photo,2048]|ext_in[photo,jpg,jpeg,png,webp]|mime_in[photo,image/jpeg,image/png,image/webp]|is_image[photo]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()->to('/faculty/profile')->with('profile_error', implode(' ', $this->validator->getErrors()));
+        }
+
+        $file = $this->request->getFile('photo');
+
+        if ($file === null || ! $file->isValid()) {
+            return redirect()->to('/faculty/profile')->with('profile_error', 'Upload failed. Please try again.');
+        }
+
+        db_connect()->table('users')->where('id', $userId)->update([
+            'photo_blob' => file_get_contents($file->getTempName()),
+            'photo_mime' => $file->getClientMimeType(),
+        ]);
+
+        return redirect()->to('/faculty/profile')->with('profile_message', 'Profile photo updated.');
+    }
+
+    /** Same contract as StudentController::removePhoto(). */
+    public function removePhoto()
+    {
+        db_connect()->table('users')->where('id', (int) auth()->id())->update([
+            'photo_blob' => null,
+            'photo_mime' => null,
+        ]);
+
+        return redirect()->to('/faculty/profile')->with('profile_message', 'Profile photo removed.');
     }
 
     public function updateProfile()
