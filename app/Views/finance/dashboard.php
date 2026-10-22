@@ -60,7 +60,10 @@
                 <h2 id="finRecentTitle" style="font-size:15px; margin:0;">Recent Payments</h2>
                 <p class="ac-muted" style="font-size:12px; margin:2px 0 0;">The last <?= count($recentPayments) ?> payments recorded across all students.</p>
             </div>
-            <a href="<?= site_url('finance/cashier') ?>" style="font-size:12.5px; color:var(--color-primary); text-decoration:none; white-space:nowrap;">Open Cashier →</a>
+            <a href="<?= site_url('finance/cashier') ?>" class="ac-panel-action">
+                Open Cashier
+                <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+            </a>
         </div>
 
         <?php if ($recentPayments === []): ?>
