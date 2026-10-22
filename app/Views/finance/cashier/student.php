@@ -175,7 +175,7 @@
             <?= csrf_field() ?>
             <div class="ac-field" style="margin:0;">
                 <label>Academic Year</label>
-                <select name="academic_year" class="ac-input" required>
+                <select name="academic_year" id="paymentYear" class="ac-input" required>
                     <?php foreach ($assessments as $a): ?>
                         <option value="<?= esc($a['academic_year']) ?>"><?= esc($a['academic_year']) ?> (Bal: <?= number_format((float) $a['balance'], 2) ?>)</option>
                     <?php endforeach ?>
@@ -187,7 +187,7 @@
             </div>
             <div class="ac-field" style="margin:0;">
                 <label>Method</label>
-                <select name="method" class="ac-input" required>
+                <select name="method" id="paymentMethod" class="ac-input" required>
                     <?php foreach ($methods as $m): ?>
                         <option value="<?= esc($m) ?>"><?= esc(ucfirst(str_replace('_', ' ', $m))) ?></option>
                     <?php endforeach ?>
@@ -284,6 +284,15 @@
 </div>
 
 <script>
+// Native <select> dropdowns can't be styled or animated by any browser —
+// swap each one for the same animated floating listbox the rest of the
+// app already uses (account menu, notifications) instead of leaving the
+// OS's own unstyled, unanimated popup.
+['paymentYear', 'paymentMethod', 'installmentYear', 'installmentCount'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && window.enhanceSelect) window.enhanceSelect(el);
+});
+
 function csTab(e, name) {
     e.preventDefault();
     document.querySelectorAll('.cs-panel').forEach(function (p) { p.hidden = true; });
@@ -321,7 +330,15 @@ function csToggleReject(proofId, show) {
     // whatever's already selected.
     function syncToCurrentPlan() {
         var current = currentCountByYear[yearEl.value];
-        if (current) countEl.value = String(current);
+        if (!current) return;
+        countEl.value = String(current);
+        // Setting .value programmatically doesn't touch the <option>'s
+        // `selected` attribute the enhanced dropdown's label-sync watches
+        // for — dispatch the 'change' it already listens for instead, so
+        // its visible trigger label ("5 Payments") actually updates to
+        // match instead of silently falling out of sync with the real
+        // <select> underneath it.
+        countEl.dispatchEvent(new Event('change'));
     }
 
     function loadPreview() {
@@ -393,7 +410,15 @@ function csToggleReject(proofId, show) {
     });
 
     if (yearEl && countEl) {
-        yearEl.addEventListener('change', function () { syncToCurrentPlan(); loadPreview(); });
+        // countEl's own 'change' listener below covers the reload —
+        // syncToCurrentPlan() dispatches 'change' on it whenever it
+        // actually updates the value, so calling loadPreview() again here
+        // too would just fire the same request twice.
+        yearEl.addEventListener('change', function () {
+            var before = countEl.value;
+            syncToCurrentPlan();
+            if (countEl.value === before) loadPreview();
+        });
         countEl.addEventListener('change', loadPreview);
 
         // The Change Plan tab starts hidden — no point fetching a preview
@@ -402,8 +427,9 @@ function csToggleReject(proofId, show) {
         document.querySelector('.ac-tabs__link[data-tab="change"]').addEventListener('click', function () {
             if (loaded) return;
             loaded = true;
+            var before = countEl.value;
             syncToCurrentPlan();
-            loadPreview();
+            if (countEl.value === before) loadPreview();
         });
     }
 })();
