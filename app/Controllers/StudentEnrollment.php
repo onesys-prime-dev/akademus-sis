@@ -177,11 +177,36 @@ class StudentEnrollment extends BaseController
                 ->getResultArray();
 
             foreach ($classMeetings as $meeting) {
+                // A merged class — this same room/time slot plotted once for
+                // more than one section — should read as merged here too,
+                // not just in the chairperson/faculty views: find every
+                // section sharing this exact physical meeting and combine
+                // their program codes ("BSIT, BSCS") instead of showing only
+                // the student's own program.
+                $siblingPrograms = db_connect()->table('plotted_schedules ps')
+                    ->select('programs.program_code')
+                    ->join('sections', "sections.program = ps.program
+                        AND sections.year_level = ps.year_level
+                        AND sections.section = ps.section
+                        AND ps.academic_year LIKE CONCAT(sections.academic_year, '%')", 'left')
+                    ->join('programs', 'programs.program_id = sections.program_id', 'left')
+                    ->where('ps.academic_year', $row['academic_year'])
+                    ->where('ps.subject_code', $row['subject_code'])
+                    ->where('ps.day', $meeting['day'])
+                    ->where('ps.start_time', $meeting['start_time'])
+                    ->where('ps.end_time', $meeting['end_time'])
+                    ->where('ps.room', $meeting['room'])
+                    ->get()
+                    ->getResultArray();
+
+                $programCodes = array_values(array_unique(array_filter(array_column($siblingPrograms, 'program_code'))));
+                sort($programCodes);
+
                 $meetings[] = array_merge($meeting, [
                     'subject_code'  => $row['subject_code'],
                     'academic_year' => $row['academic_year'],
                     'program'       => $row['program'],
-                    'program_code'  => $row['program_code'],
+                    'program_code'  => $programCodes === [] ? $row['program_code'] : implode(', ', $programCodes),
                     'year_level'    => $row['year_level'],
                     'section'       => $row['section'],
                 ]);
