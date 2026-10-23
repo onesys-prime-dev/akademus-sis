@@ -102,6 +102,20 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
     // just that term's subjects and patch the DOM in place instead.
     const termBody = document.querySelector('.cb-term-body');
     let navSeq = 0;
+    // Same sliding "active" pill every other tab/toggle group in the console
+    // uses (acInitSegmented, defined once in the layout) — the year-level
+    // list and semester bar used to just snap their highlight to the new
+    // button; this animates it sliding there instead.
+    let ylIndicator = null, semIndicator = null;
+    if (window.acInitSegmented) {
+        ylIndicator = window.acInitSegmented(document.querySelector('.cb-years nav'), { buttonSelector: '.yl-tab' });
+        semIndicator = window.acInitSegmented(document.querySelector('.cb-semesters'), { buttonSelector: '.sem-tab' });
+        // Its own auto-detect looks for .active/aria-pressed, which these
+        // tabs don't use (.is-active / aria-current) — position it on the
+        // server-rendered active tab directly instead.
+        ylIndicator?.move(document.querySelector('.yl-tab.is-active'), false);
+        semIndicator?.move(document.querySelector('.sem-tab.is-active'), false);
+    }
     function rowHtml(s) {
         const isLab = !!s.is_laboratory;
         return `<div class="ac-dtable__row" data-cs-id="${s.curriculum_subject_id}" data-units="${s.units}">`
@@ -116,10 +130,12 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
         document.querySelectorAll('.yl-tab').forEach(btn => {
             const active = Number(btn.dataset.year) === YEAR_LEVEL;
             btn.classList.toggle('is-active', active); btn.setAttribute('aria-current', String(active));
+            if (active) ylIndicator?.move(btn, true);
         });
         document.querySelectorAll('.sem-tab').forEach(btn => {
             const active = btn.dataset.sem === SEMESTER;
             btn.classList.toggle('is-active', active); btn.setAttribute('aria-current', String(active));
+            if (active) semIndicator?.move(btn, true);
         });
         document.querySelector('.cb-term-heading .cb-eyebrow').textContent = YEAR_NAMES[YEAR_LEVEL];
         document.querySelector('.cb-term-heading h3').textContent = data.semester_label;
@@ -137,8 +153,16 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
     async function loadTerm(year, semester, pushState) {
         year = Number(year); semester = String(semester);
         const seq = ++navSeq;
-        document.querySelectorAll('.yl-tab').forEach(btn => btn.classList.toggle('is-active', Number(btn.dataset.year) === year));
-        document.querySelectorAll('.sem-tab').forEach(btn => btn.classList.toggle('is-active', btn.dataset.sem === semester));
+        document.querySelectorAll('.yl-tab').forEach(btn => {
+            const active = Number(btn.dataset.year) === year;
+            btn.classList.toggle('is-active', active);
+            if (active) ylIndicator?.move(btn, true);
+        });
+        document.querySelectorAll('.sem-tab').forEach(btn => {
+            const active = btn.dataset.sem === semester;
+            btn.classList.toggle('is-active', active);
+            if (active) semIndicator?.move(btn, true);
+        });
         termBody.classList.add('is-loading');
         if (pushState) {
             const pageUrl = new URL(location.href);

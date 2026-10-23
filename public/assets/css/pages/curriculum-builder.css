@@ -29,21 +29,32 @@
 .cb-editor { display: grid; grid-template-columns: 200px minmax(0, 1fr); }
 .cb-years { padding: 28px 16px; background: #fafbfd; border-right: 1px solid var(--cb-line); }
 .cb-years > .cb-eyebrow { margin: 0 12px 17px; }
-.cb-years nav { display: grid; gap: 7px; }
-.cb-years button { display: flex; align-items: center; gap: 12px; text-align: left; border: 1px solid transparent; background: transparent; color: #5a6980; padding: 12px; border-radius: 9px; font-size: 12px; font-weight: 600; }
+.cb-years nav { position: relative; display: grid; gap: 7px; }
+.cb-years button { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; text-align: left; border: 1px solid transparent; background: transparent; color: #5a6980; padding: 12px; border-radius: 9px; font-size: 12px; font-weight: 600; }
 .cb-year-number { font-size: 10px; color: #8390a3; }
-.cb-year-arrow { margin-left: auto; opacity: 0; }
+.cb-year-arrow { margin-left: auto; opacity: 0; transition: opacity var(--motion-fast) var(--ease-standard); }
 .cb-years button:hover { background: #f0f3f9; }
-.cb-years button.is-active { background: #eaf0fc; color: #214fae; border-color: #dae5fc; }
+/* Background/border now live on the sliding indicator below instead of
+   snapping per-button, so only the text/icon colors change here. */
+.cb-years button.is-active { color: #214fae; }
 .cb-years button.is-active .cb-year-number { color: #537ac8; }
 .cb-years button.is-active .cb-year-arrow { opacity: 1; }
+.cb-years nav .ac-segmented__indicator { background: #eaf0fc; border: 1px solid #dae5fc; border-radius: 9px; }
 .cb-year-help { margin: 40px 12px 0; padding-top: 20px; border-top: 1px solid var(--cb-line); color: #78869a; }
 .cb-year-help .material-symbols-outlined { font-size: 18px; }
 .cb-year-help p { font-size: 11px; line-height: 1.8; margin: 8px 0 0; }
-.cb-semesters { display: flex; gap: 28px; padding: 0 28px; border-bottom: 1px solid var(--cb-line); }
-.cb-semesters button { border: 0; border-bottom: 2px solid transparent; padding: 19px 0 17px; background: transparent; color: var(--cb-muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.cb-semesters { position: relative; display: flex; gap: 28px; padding: 0 28px; border-bottom: 1px solid var(--cb-line); }
+.cb-semesters button { position: relative; z-index: 1; border: 0; border-bottom: 2px solid transparent; padding: 19px 0 17px; background: transparent; color: var(--cb-muted); font-size: 12px; font-weight: 600; white-space: nowrap; transition: color var(--motion-fast) var(--ease-standard); }
 .cb-semesters button:hover { color: var(--cb-blue); }
-.cb-semesters button.is-active { color: var(--cb-blue); border-bottom-color: var(--cb-blue); }
+/* A slim sliding bar standing in for each button's own border-bottom —
+   acInitSegmented always sizes the indicator to the button's full box, so
+   height/position are pinned here with !important to flatten that into a
+   2px underline instead of a full-height pill. */
+.cb-semesters .ac-segmented__indicator { top: auto !important; bottom: 0 !important; height: 2px !important; background: var(--cb-blue); }
+/* The underline itself now comes from the sliding indicator, not a static
+   border-bottom — leaving that in too would make the slide invisible,
+   since the right border would already be sitting there before it animates. */
+.cb-semesters button.is-active { color: var(--cb-blue); }
 .cb-term-body { padding: 28px; transition: opacity .15s ease; }
 .cb-term-body.is-loading { opacity: .45; pointer-events: none; }
 .yl-tab, .sem-tab { transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
