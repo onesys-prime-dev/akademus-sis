@@ -149,7 +149,7 @@
             const lengthLabel = mixed
                 ? `Lec ${formatHrMin(r.lecture.duration)} · Lab ${formatHrMin(r.lab.duration)}`
                 : formatHrMin((r.lecture || r.lab).duration);
-            return `<div class="ac-dtable__row so-row so-row--${kind} ${r.active ? '' : 'is-inactive'}" data-id="${r.id}">
+            return `<div class="ac-dtable__row so-row so-row--${kind} ${r.active ? '' : 'is-inactive'}" data-id="${r.id}" tabindex="0" role="button" aria-label="View details for ${escape(r.code)}">
             <div data-label="Subject"><div class="so-subject"><span class="so-subject-icon material-symbols-outlined" aria-hidden="true">${mixed ? 'science' : (r.lab ? 'science' : 'menu_book')}</span><div><strong class="so-subject-code">${escape(r.code)}${r.secondaryCode ? ` <small class="so-subject-dept">+ ${escape(r.secondaryCode)}</small>` : ''}</strong><span class="so-subject-title">${escape(r.title)}</span>${Object.keys(config.departments).length > 1 ? `<small class="so-subject-dept">${escape(config.departments[r.department] || 'Department')}</small>` : ''}</div></div></div>
             <div data-label="Units" class="so-units">${formatNum(r.totalUnits)}</div><div data-label="Class type"><span class="so-type so-type--${kind}">${typeLabel}</span></div><div data-label="Meeting length" class="so-duration">${lengthLabel}</div>
             <div data-label="Status"><span class="so-status ${r.active ? 'so-status--active' : ''}"><i class="so-dot"></i>${r.active ? 'Active' : 'Inactive'}</span></div>
@@ -292,14 +292,71 @@
         } catch (error) { errorIn('soFormError', error.message); }
         finally { setBusy(false); byId('soSave').textContent = wasEditing ? 'Save changes' : 'Add subject'; }
     });
+    // Every course this subject (either component) is assigned to, across
+    // every department's course list, de-duplicated by program/year/term —
+    // a lecture+lab pair can carry the same assignment on both halves.
+    const courseById = new Map(Object.values(config.courses).flat().map(c => [c.id, c]));
+    function assignmentsFor(row) {
+        const seen = new Set(), list = [];
+        [row.lecture?.id, row.lab?.id].filter(Boolean).forEach(id => (config.subjectCourses[id] || []).forEach(a => {
+            const key = `${a.program_id}-${a.year_level}-${a.semester}`;
+            if (seen.has(key)) return;
+            seen.add(key); list.push(a);
+        }));
+        return list;
+    }
+    let detailRow = null;
+    function openDetail(row) {
+        detailRow = row;
+        const mixed = row.lecture && row.lab;
+        const kind = mixed ? 'mixed' : (row.lab ? 'lab' : 'lecture');
+        const typeLabel = mixed ? 'Lecture + Lab' : (row.lab ? 'Laboratory' : 'Lecture');
+        byId('soDetailTitle').textContent = row.code + (row.secondaryCode ? ' + ' + row.secondaryCode : '');
+        byId('soDetailSubtitle').textContent = row.title;
+        const componentRows = [row.lecture && ['Lecture', row.lecture], row.lab && ['Laboratory', row.lab]]
+            .filter(Boolean)
+            .map(([label, c]) => `<div><span>${label} units</span><strong>${formatNum(c.units)} · ${formatHrMin(c.duration)}/week</strong></div>`)
+            .join('');
+        const assignments = assignmentsFor(row);
+        const chips = assignments.length
+            ? assignments.map(a => {
+                const course = courseById.get(a.program_id);
+                return `<span class="so-chip">${escape(course ? course.code : 'Program')} · Yr ${a.year_level} · ${escape(SEMESTERS[a.semester] || `Term ${a.semester}`)}</span>`;
+            }).join('')
+            : '<p class="so-course-empty">Not yet assigned to a course term. Add it through the Curriculum Builder.</p>';
+        byId('soDetailBody').innerHTML = `
+            <div class="so-detail-facts">
+                <div><span>Department</span><strong>${escape(config.departments[row.department] || 'Department')}</strong></div>
+                <div><span>Class type</span><span class="so-type so-type--${kind}">${typeLabel}</span></div>
+                ${componentRows}
+                <div><span>Total units</span><strong>${formatNum(row.totalUnits)}</strong></div>
+                <div><span>Total weekly hours</span><strong>${formatHrMin(row.totalHours)}</strong></div>
+                <div><span>Status</span><span class="so-status ${row.active ? 'so-status--active' : ''}"><i class="so-dot"></i>${row.active ? 'Active' : 'Inactive'}</span></div>
+            </div>
+            <div class="so-detail-courses"><h4>Assigned to</h4><div class="so-course-chips">${chips}</div></div>
+        `;
+        byId('soDetail').showModal();
+    }
+    document.querySelectorAll('[data-close-detail]').forEach(button => button.addEventListener('click', () => byId('soDetail').close()));
+    byId('soDetailEdit').addEventListener('click', () => {
+        byId('soDetail').close();
+        if (detailRow) openEditor(detailRow);
+    });
     function focusRow(id) {
         const button = byId('soRows').querySelector(`.ac-dtable__row[data-id="${id}"] [data-action="edit"]`);
         (button || search).focus({ preventScroll: true });
     }
-    byId('soRows').addEventListener('click', evt => {
-        const button = evt.target.closest('button[data-action]'); if (!button || busy) return;
-        const row = displayRows.find(r => r.id === Number(button.closest('.ac-dtable__row').dataset.id));
+    // The whole row opens a read-only details dialog — Edit and the
+    // activate/deactivate toggle stay their own separate actions, picked
+    // out by a closest('button[data-action]') check before falling through
+    // to "it was just a row click".
+    function handleRowActivation(target) {
+        const wrap = target.closest('.ac-dtable__row'); if (!wrap) return;
+        const row = displayRows.find(r => r.id === Number(wrap.dataset.id));
         if (!row) return;
+        const button = target.closest('button[data-action]');
+        if (!button) { openDetail(row); return; }
+        if (busy) return;
         if (button.dataset.action === 'edit') { openEditor(row); return; }
         statusId = row.id; byId('soStatusError').hidden = true;
         const mixed = row.lecture && row.lab;
@@ -311,6 +368,13 @@
         byId('soConfirmStatus').textContent = row.active ? 'Deactivate subject' : 'Activate subject';
         byId('soConfirmStatus').className = 'so-button ' + (row.active ? 'so-button--danger' : 'so-button--primary');
         statusDialog.showModal(); byId('soCancelStatus').focus();
+    }
+    byId('soRows').addEventListener('click', evt => handleRowActivation(evt.target));
+    byId('soRows').addEventListener('keydown', evt => {
+        if (evt.key !== 'Enter' && evt.key !== ' ') return;
+        if (evt.target.closest('button')) return; // native buttons already handle their own Enter/Space
+        evt.preventDefault();
+        handleRowActivation(evt.target);
     });
     [byId('soCloseStatus'), byId('soCancelStatus')].forEach(button => button.addEventListener('click', () => { if (!busy) statusDialog.close(); }));
     byId('soConfirmStatus').addEventListener('click', async () => {

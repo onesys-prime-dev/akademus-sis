@@ -88,6 +88,11 @@ $catalog = array_map(static fn ($s) => [
             </form>
         </dialog>
         <dialog class="so-dialog so-dialog--small" id="soStatusDialog" aria-labelledby="soStatusTitle" aria-describedby="soStatusDescription"><div class="so-dialog-header"><div><div class="so-eyebrow">CATALOG AVAILABILITY</div><h3 id="soStatusTitle">Deactivate subject?</h3></div><button type="button" class="so-icon-button" id="soCloseStatus" aria-label="Close status dialog"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div><div class="so-dialog-body"><div class="so-feedback is-error" id="soStatusError" role="alert" hidden></div><strong id="soStatusSubject"></strong><p id="soStatusDescription"></p></div><footer class="so-dialog-footer"><button type="button" class="so-button" id="soCancelStatus">Cancel</button><button type="button" class="so-button so-button--danger" id="soConfirmStatus">Deactivate subject</button></footer></dialog>
+        <dialog class="so-dialog so-dialog--small" id="soDetail" aria-labelledby="soDetailTitle">
+            <div class="so-dialog-header"><div><div class="so-eyebrow">SUBJECT DETAILS</div><h3 id="soDetailTitle"></h3><p id="soDetailSubtitle"></p></div><button type="button" class="so-icon-button" data-close-detail aria-label="Close subject details"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div>
+            <div class="so-dialog-body" id="soDetailBody"></div>
+            <footer class="so-dialog-footer"><button type="button" class="so-button" data-close-detail>Close</button><button type="button" class="so-button so-button--primary" id="soDetailEdit">Edit subject</button></footer>
+        </dialog>
     <?php endif ?>
 </div>
 <?= $this->endSection() ?>

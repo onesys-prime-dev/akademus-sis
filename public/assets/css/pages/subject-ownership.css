@@ -104,6 +104,18 @@
 .so-icon-button { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 6px; color: #8794a6; background: transparent; flex-shrink: 0; transition: color var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard); }
 .so-icon-button:hover { background: #f0f3f8; color: #526889; }
 .so-toggle:hover { background: #fff3e8; color: #9f692e; }
+/* The row itself opens a read-only details dialog (openDetail() in JS) —
+   Edit/pause-play stay their own separate actions via a target check in
+   the click handler, same as the enlistment approvals table's clickable
+   rows. */
+.so-row { cursor: pointer; }
+.so-row:focus-visible { outline: 3px solid #9ab8f3; outline-offset: -3px; }
+.so-detail-facts { display: grid; gap: 12px; margin-bottom: 20px; }
+.so-detail-facts > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--so-line); font-size: 12px; }
+.so-detail-facts > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.so-detail-facts span:first-child { color: var(--so-muted); }
+.so-detail-facts strong { font-weight: 650; color: var(--so-ink); }
+.so-detail-courses h4 { margin: 0 0 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #8494a9; }
 .so-row.is-inactive .so-subject-icon { color: #a6afbd; background: #fafbfd; }
 .so-row.is-inactive .so-subject-code { color: #78879d; }
 .so-pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--so-line); padding: 16px 28px; }
