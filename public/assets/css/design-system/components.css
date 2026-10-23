@@ -170,7 +170,31 @@ textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
     .ac-topbar__icons { padding-left: 0; margin-left: 0; border-left: 0; }
     .ac-topbar__actions > .ac-btn { order: 3; white-space: normal; }
     .ac-sidebar { width: min(304px, calc(100vw - 40px)); }
-    .ac-notif__panel { position: fixed; top: 76px; left: 16px; right: 16px; width: auto; max-height: calc(100dvh - 100px); }
+    /* A proper elevated card, not a sliver pinned to the corner or a sheet
+       swallowing the screen — floats with real margins on every side,
+       rounded all the way around, with its own soft shadow doing the
+       separation instead of a hard edge-to-edge border. */
+    .ac-notif__panel {
+        position: fixed;
+        top: 72px;
+        left: 16px;
+        right: 16px;
+        width: auto;
+        max-height: min(70vh, 480px);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--color-border);
+        box-shadow: var(--shadow-lg);
+        display: flex;
+        flex-direction: column;
+        transform-origin: top center;
+        transform: scale(.97) translateY(-6px);
+    }
+    .ac-notif.is-open .ac-notif__panel { transform: scale(1) translateY(0); }
+    .ac-notif__head { flex: 0 0 auto; position: sticky; top: 0; padding: 14px 16px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--color-surface); }
+    .ac-notif__head strong { font-size: 15px; }
+    .ac-notif__list { flex: 1 1 auto; overflow-y: auto; padding: 6px 10px 12px; }
+    .ac-notif__item { padding: 12px 10px; font-size: 13px; }
+    .ac-notif__close { display: inline-flex; }
     .ac-page-header__title, .page-head h1 { font-size: 24px; }
     .ac-card, .ac-stat-card, .stat-card, .panel { padding: 20px; }
     .ac-dtable__row { min-width: 0 !important; }

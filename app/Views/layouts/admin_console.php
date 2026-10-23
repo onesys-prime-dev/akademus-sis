@@ -389,7 +389,10 @@ $pageHelp ??= [
                     <div class="ac-notif__panel" id="acNotifPanel" role="region" aria-label="Notifications">
                         <div class="ac-notif__head">
                             <strong>Notifications</strong>
-                            <button type="button" id="acNotifMarkAll">Mark all read</button>
+                            <div class="ac-notif__head-actions">
+                                <button type="button" id="acNotifMarkAll">Mark all read</button>
+                                <button type="button" class="ac-notif__close" id="acNotifClose" aria-label="Close notifications"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
+                            </div>
                         </div>
                         <div class="ac-notif__list" id="acNotifList">
                             <p class="ac-notif__empty">Loading…</p>
@@ -772,6 +775,7 @@ $pageHelp ??= [
         var dot   = document.getElementById('acNotifDot');
         var list  = document.getElementById('acNotifList');
         var bell  = document.getElementById('acBellSvg');
+        var closeBtn = document.getElementById('acNotifClose');
         var markAllBtn = document.getElementById('acNotifMarkAll');
         if (!wrap || !btn) return;
         panel.addEventListener('click', function (e) { e.stopPropagation(); });
@@ -899,6 +903,16 @@ $pageHelp ??= [
                 btn.setAttribute('aria-expanded', 'false');
                 btn.focus();
             }
+        });
+        // On a phone the panel covers the bell button it toggles from, so
+        // tapping it again isn't an option there — this close affordance is
+        // what the mobile full-screen layout relies on (CSS only shows it
+        // at that width, but it's harmless to wire up unconditionally).
+        closeBtn && closeBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            wrap.classList.remove('is-open');
+            btn.setAttribute('aria-expanded', 'false');
+            btn.focus();
         });
         if (markAllBtn) {
             markAllBtn.addEventListener('click', function (e) {

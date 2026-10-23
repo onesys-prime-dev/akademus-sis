@@ -282,6 +282,8 @@ html, .ac-page { height: 100%; }
 
 .ac-notif__head strong { font-size: 13px; color: var(--color-text-primary); }
 
+.ac-notif__head-actions { display: flex; align-items: center; gap: 10px; }
+
 .ac-notif__head button {
     border: none;
     background: none;
@@ -290,6 +292,23 @@ html, .ac-page { height: 100%; }
     font-weight: 600;
     cursor: pointer;
 }
+
+/* Only shown at the mobile breakpoint below, where the panel becomes a
+   full-screen takeover and tapping the bell again isn't reachable to
+   close it — an explicit close button is the only way out there. */
+.ac-notif__close {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
+    color: var(--color-text-secondary) !important;
+}
+
+.ac-notif__close:hover { background: var(--color-surface-sunken); }
+.ac-notif__close .material-symbols-outlined { font-size: 20px; }
 
 .ac-notif__list { padding: 6px; display: grid; gap: 2px; }
 
@@ -2050,6 +2069,10 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     .ac-sidebar { width: 56px; }
     .ac-search { display: none; }
     .ac-topbar__actions { gap: 10px; }
+
+    /* The actual mobile layout for .ac-notif__panel lives in
+       design-system/components.css, which this stylesheet loads before —
+       a rule here would just lose that cascade fight. */
 
     .ac-page-header,
     .ac-detail-header { flex-direction: column; align-items: flex-start; }
