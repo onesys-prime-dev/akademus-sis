@@ -44,7 +44,10 @@
 .cb-semesters button { border: 0; border-bottom: 2px solid transparent; padding: 19px 0 17px; background: transparent; color: var(--cb-muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .cb-semesters button:hover { color: var(--cb-blue); }
 .cb-semesters button.is-active { color: var(--cb-blue); border-bottom-color: var(--cb-blue); }
-.cb-term-body { padding: 28px; }
+.cb-term-body { padding: 28px; transition: opacity .15s ease; }
+.cb-term-body.is-loading { opacity: .45; pointer-events: none; }
+.yl-tab, .sem-tab { transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
+@media (prefers-reduced-motion: reduce) { .cb-term-body, .cb-term-body.animate-enter { transition: none; animation: none; opacity: 1; transform: none; } }
 .cb-term-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 24px; }
 .cb-term-heading h3 { font-size: 23px; letter-spacing: -.5px; margin: 5px 0 6px; }
 .cb-term-heading p { color: var(--cb-muted); font-size: 12px; margin: 0; }

@@ -62,16 +62,7 @@ class CurriculumBuilderController extends BaseController
 
         $curriculum = (new CurriculumModel())->liveFor($programId);
 
-        $termSubjects = db_connect()->table('curriculum_subjects cs')
-            ->select('cs.curriculum_subject_id, cs.is_required, cs.is_laboratory AS assignment_is_laboratory, s.subject_id, s.subject_code, s.subject_name, s.units, s.is_laboratory AS default_is_laboratory, s.sub_department_id')
-            ->join('subjects s', 's.subject_id = cs.subject_id')
-            ->where('cs.curriculum_id', $curriculum['curriculum_id'])
-            ->where('cs.year_level', $yearLevel)
-            ->where('cs.semester', (int) $semester)
-            ->where('cs.is_active', 1)
-            ->orderBy('s.subject_code')
-            ->get()
-            ->getResultArray();
+        $termSubjects = $this->termSubjectsFor((int) $curriculum['curriculum_id'], $yearLevel, $semester);
 
         return view('chairperson/curriculum_builder', [
             'pageTitle' => 'Curriculum Builder',
@@ -83,6 +74,55 @@ class CurriculumBuilderController extends BaseController
             'yearLevel' => $yearLevel,
             'semester'  => $semester,
             'semesters' => self::SEMESTERS,
+        ]);
+    }
+
+    /**
+     * JSON data for one year/semester cell — same query index() runs, just
+     * without the full page around it. Backs the year-level/semester tabs'
+     * client-side swap (see curriculum_builder.php's navigate()): switching
+     * terms used to be a full page reload (~600-800ms, the whole console
+     * chrome re-painting with it); this lets it re-render just the
+     * workspace in place instead.
+     */
+    public function term()
+    {
+        $userId    = (int) auth()->id();
+        $programId = (int) ($this->request->getGet('program_id') ?? 0);
+
+        if (! $this->authorizedForProgram($userId, $programId)) {
+            return $this->fail('Not authorized for this program.');
+        }
+
+        $yearLevel = max(1, min(4, (int) ($this->request->getGet('year_level') ?? 1)));
+        $semester  = (string) ($this->request->getGet('semester') ?? '1');
+
+        if (! isset(self::SEMESTERS[$semester])) {
+            $semester = '1';
+        }
+
+        $curriculum = (new CurriculumModel())->liveFor($programId);
+
+        $termSubjects = $this->termSubjectsFor((int) $curriculum['curriculum_id'], $yearLevel, $semester);
+
+        $subjects = array_map(static function (array $ts): array {
+            $isLab = $ts['assignment_is_laboratory'] !== null ? (bool) $ts['assignment_is_laboratory'] : (bool) $ts['default_is_laboratory'];
+
+            return [
+                'curriculum_subject_id' => (int) $ts['curriculum_subject_id'],
+                'subject_code'          => $ts['subject_code'],
+                'subject_name'          => $ts['subject_name'],
+                'units'                 => (float) $ts['units'],
+                'is_laboratory'         => $isLab,
+            ];
+        }, $termSubjects);
+
+        return $this->response->setJSON([
+            'ok'             => true,
+            'year_level'     => $yearLevel,
+            'semester'       => $semester,
+            'semester_label' => self::SEMESTERS[$semester],
+            'subjects'       => $subjects,
         ]);
     }
 
@@ -238,6 +278,20 @@ class CurriculumBuilderController extends BaseController
         }
 
         return $this->authorizedForProgram($userId, (int) $curriculum['program_id']) ? $curriculum : null;
+    }
+
+    private function termSubjectsFor(int $curriculumId, int $yearLevel, string $semester): array
+    {
+        return db_connect()->table('curriculum_subjects cs')
+            ->select('cs.curriculum_subject_id, cs.is_required, cs.is_laboratory AS assignment_is_laboratory, s.subject_id, s.subject_code, s.subject_name, s.units, s.is_laboratory AS default_is_laboratory, s.sub_department_id')
+            ->join('subjects s', 's.subject_id = cs.subject_id')
+            ->where('cs.curriculum_id', $curriculumId)
+            ->where('cs.year_level', $yearLevel)
+            ->where('cs.semester', (int) $semester)
+            ->where('cs.is_active', 1)
+            ->orderBy('s.subject_code')
+            ->get()
+            ->getResultArray();
     }
 
     private function fail(string $message)

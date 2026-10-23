@@ -68,9 +68,10 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
 <script>
 (() => {
     const CURRICULUM_ID = <?= $curriculum ? (int) $curriculum['curriculum_id'] : 'null' ?>;
-    const YEAR_LEVEL = <?= (int) $yearLevel ?>;
-    const SEMESTER = '<?= esc($semester, 'js') ?>';
+    let YEAR_LEVEL = <?= (int) $yearLevel ?>;
+    let SEMESTER = '<?= esc($semester, 'js') ?>';
     const PROGRAM_ID = <?= (int) $selectedProgram ?>;
+    const YEAR_NAMES = <?= json_encode($yearNames) ?>;
     const endpoint = '<?= site_url('chairperson/curriculum-builder') ?>';
     const searchInput = document.getElementById('subjectSearch');
     const searchResults = document.getElementById('subjectSearchResults');
@@ -94,13 +95,79 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
         if (!res.ok || !data?.ok) throw new Error(data?.error || 'Unable to save. Please try again.');
         return data;
     }
-    function navigate(year, semester) {
-        const url = new URL(location.href);
-        url.searchParams.set('program_id', PROGRAM_ID);
-        url.searchParams.set('year_level', year);
-        url.searchParams.set('semester', semester);
-        location.href = url.toString();
+    // Switching year level / semester used to be a full page reload (the
+    // whole console chrome — sidebar, topbar, notifications poll — repainting
+    // along with it, ~600-800ms per click). It's the same curriculum editor
+    // either way, so only the term workspace actually needs to change: fetch
+    // just that term's subjects and patch the DOM in place instead.
+    const termBody = document.querySelector('.cb-term-body');
+    let navSeq = 0;
+    function rowHtml(s) {
+        const isLab = !!s.is_laboratory;
+        return `<div class="ac-dtable__row" data-cs-id="${s.curriculum_subject_id}" data-units="${s.units}">`
+            + `<div data-label="Subject"><span class="cb-subject-code">${escapeHtml(s.subject_code)}</span><span class="cb-subject-name">${escapeHtml(s.subject_name)}</span></div>`
+            + `<div data-label="Units"><span class="cb-unit" data-unit-word="${s.units === 1 ? 'unit' : 'units'}">${s.units}</span></div>`
+            + `<div data-label="Class type"><select class="type-select" aria-label="Class type for ${escapeHtml(s.subject_code)}" data-saved="${isLab ? '1' : '0'}"><option value="0" ${!isLab ? 'selected' : ''}>Lecture</option><option value="1" ${isLab ? 'selected' : ''}>Laboratory</option></select></div>`
+            + `<div data-label="Actions"><button type="button" class="cb-remove" data-act="remove" aria-label="Remove ${escapeHtml(s.subject_code)}"><span class="material-symbols-outlined" aria-hidden="true">delete</span><span>Remove</span></button></div>`
+            + `</div>`;
     }
+    function renderTerm(data) {
+        YEAR_LEVEL = data.year_level; SEMESTER = String(data.semester);
+        document.querySelectorAll('.yl-tab').forEach(btn => {
+            const active = Number(btn.dataset.year) === YEAR_LEVEL;
+            btn.classList.toggle('is-active', active); btn.setAttribute('aria-current', String(active));
+        });
+        document.querySelectorAll('.sem-tab').forEach(btn => {
+            const active = btn.dataset.sem === SEMESTER;
+            btn.classList.toggle('is-active', active); btn.setAttribute('aria-current', String(active));
+        });
+        document.querySelector('.cb-term-heading .cb-eyebrow').textContent = YEAR_NAMES[YEAR_LEVEL];
+        document.querySelector('.cb-term-heading h3').textContent = data.semester_label;
+        const rows = document.getElementById('subjectRows');
+        rows.innerHTML = data.subjects.map(rowHtml).join('');
+        document.getElementById('subjectCount').textContent = data.subjects.length;
+        document.getElementById('unitCount').textContent = Number(data.subjects.reduce((sum, s) => sum + Number(s.units), 0).toFixed(2));
+        document.getElementById('subjectTableWrap').hidden = !data.subjects.length;
+        document.getElementById('termEmpty').hidden = !!data.subjects.length;
+        if (window.enhanceSelect) rows.querySelectorAll('.type-select').forEach(select => window.enhanceSelect(select));
+        // Settles in the same spring-fade every other freshly-loaded panel in
+        // the console uses, instead of just popping into place.
+        termBody.classList.remove('animate-enter'); void termBody.offsetWidth; termBody.classList.add('animate-enter');
+    }
+    async function loadTerm(year, semester, pushState) {
+        year = Number(year); semester = String(semester);
+        const seq = ++navSeq;
+        document.querySelectorAll('.yl-tab').forEach(btn => btn.classList.toggle('is-active', Number(btn.dataset.year) === year));
+        document.querySelectorAll('.sem-tab').forEach(btn => btn.classList.toggle('is-active', btn.dataset.sem === semester));
+        termBody.classList.add('is-loading');
+        if (pushState) {
+            const pageUrl = new URL(location.href);
+            pageUrl.searchParams.set('program_id', PROGRAM_ID);
+            pageUrl.searchParams.set('year_level', year);
+            pageUrl.searchParams.set('semester', semester);
+            history.pushState({ year, semester }, '', pageUrl);
+        }
+        try {
+            const url = new URL(endpoint + '/term');
+            url.searchParams.set('program_id', PROGRAM_ID);
+            url.searchParams.set('year_level', year);
+            url.searchParams.set('semester', semester);
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json().catch(() => null);
+            if (seq !== navSeq) return;
+            if (!res.ok || !data?.ok) throw new Error(data?.error || 'Unable to load this term.');
+            renderTerm(data);
+        } catch (error) {
+            if (seq === navSeq) feedback(error.message, true);
+        } finally {
+            if (seq === navSeq) termBody.classList.remove('is-loading');
+        }
+    }
+    function navigate(year, semester) { loadTerm(year, semester, true); }
+    window.addEventListener('popstate', () => {
+        const params = new URLSearchParams(location.search);
+        loadTerm(params.get('year_level') || 1, params.get('semester') || '1', false);
+    });
     document.getElementById('programSelect')?.addEventListener('change', evt => {
         const url = new URL(location.href);
         url.searchParams.set('program_id', evt.target.value);
@@ -114,7 +181,13 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
         document.querySelectorAll('.type-select, .cb-remove, .cb-result, .yl-tab, .sem-tab, #programSelect').forEach(el => el.disabled = busy);
         if (searchInput) searchInput.disabled = busy;
     }
-    document.querySelectorAll('.type-select').forEach(select => select.addEventListener('change', async () => {
+    // Delegated on the stable #subjectRows container, not the rows
+    // themselves — renderTerm() replaces those wholesale on every
+    // year/semester switch, so a listener bound to one specific row
+    // wouldn't survive it.
+    document.getElementById('subjectRows').addEventListener('change', async evt => {
+        const select = evt.target.closest('.type-select');
+        if (!select) return;
         const row = select.closest('.ac-dtable__row');
         setBusy(true); saveStatus('Saving changes…');
         try {
@@ -122,8 +195,10 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
             select.dataset.saved = select.value; saveStatus('All changes saved');
         } catch (error) { select.value = select.dataset.saved; feedback(error.message, true); saveStatus('Change not saved'); }
         finally { setBusy(false); }
-    }));
-    document.querySelectorAll('[data-act="remove"]').forEach(btn => btn.addEventListener('click', async () => {
+    });
+    document.getElementById('subjectRows').addEventListener('click', async evt => {
+        const btn = evt.target.closest('[data-act="remove"]');
+        if (!btn) return;
         const row = btn.closest('.ac-dtable__row');
         setBusy(true); saveStatus('Saving changes…');
         try {
@@ -138,7 +213,7 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
             saveStatus('All changes saved'); feedback(code + ' removed from this term.');
         } catch (error) { feedback(error.message, true); saveStatus('Change not saved'); }
         finally { setBusy(false); }
-    }));
+    });
     function closeSearch() {
         clearTimeout(searchTimer); searchController?.abort(); searchSequence++;
         if (searchResults) { searchResults.hidden = true; searchResults.replaceChildren(); searchInput.setAttribute('aria-expanded', 'false'); }
@@ -193,8 +268,11 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
                             const failed = results.filter(r => r.status === 'rejected');
                             if (failed.length === results.length) throw new Error(failed[0].reason?.message || 'Unable to add this subject.');
                             feedback(m.primary.code + (mixed ? ' (lecture + lab)' : '') + ' added to this term.' + (failed.length ? ' One component was already assigned.' : ''));
-                            location.reload();
-                        } catch (error) { feedback(error.message, true); saveStatus('Subject not added'); setBusy(false); }
+                            closeSearch(); searchInput.value = '';
+                            await loadTerm(YEAR_LEVEL, SEMESTER, false);
+                            saveStatus('All changes saved');
+                        } catch (error) { feedback(error.message, true); saveStatus('Subject not added'); }
+                        finally { setBusy(false); }
                     });
                     searchResults.append(button);
                 });

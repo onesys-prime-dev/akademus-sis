@@ -476,6 +476,7 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     // Curriculum Builder (formal curriculum/curriculum_subjects, draft-scoped —
     // the sole supported curriculum source of truth)
     $routes->get('curriculum', 'Chairperson\CurriculumBuilderController::index');
+    $routes->get('curriculum-builder/term', 'Chairperson\CurriculumBuilderController::term');
     $routes->post('curriculum-builder/add-subject', 'Chairperson\CurriculumBuilderController::addSubject');
     $routes->post('curriculum-builder/subject/(:num)/remove', 'Chairperson\CurriculumBuilderController::removeSubject/$1');
     $routes->post('curriculum-builder/subject/(:num)/classification', 'Chairperson\CurriculumBuilderController::updateClassification/$1');
