@@ -185,8 +185,11 @@
         return data;
     }
     function updateComponentVisibility() {
-        byId('soLectureComponent').hidden = !byId('soHasLecture').checked;
-        byId('soLabComponent').hidden = !byId('soHasLab').checked;
+        // A class instead of the `hidden` attribute — `hidden` maps to
+        // display:none, which can't be transitioned, so toggling it just
+        // snapped the panel in and out with no animation at all.
+        byId('soLectureComponent').classList.toggle('is-collapsed', !byId('soHasLecture').checked);
+        byId('soLabComponent').classList.toggle('is-collapsed', !byId('soHasLab').checked);
     }
     function updateComputedPreview() {
         const hasLecture = byId('soHasLecture').checked, hasLab = byId('soHasLab').checked;

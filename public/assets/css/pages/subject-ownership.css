@@ -156,14 +156,38 @@
 .so-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .so-type-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; padding: 0; border: 0; min-width: 0; }
 .so-type-options legend { padding: 0; }
-.so-type-options label { display: flex; align-items: center; gap: 10px; padding: 13px 12px; border: 1px solid #dfe5ef; border-radius: 8px; cursor: pointer; }
+.so-type-options label {
+    display: flex; align-items: center; gap: 10px; padding: 13px 12px; border: 1px solid #dfe5ef; border-radius: 8px; cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
+}
 .so-type-options label:has(input:checked) { background: #f1f5ff; border-color: #8ba9e5; }
+.so-type-options label:active { transform: scale(.98); }
 .so-type-options input { accent-color: var(--so-blue); margin: 0; }
-.so-type-options .material-symbols-outlined { color: #7792bc; font-size: 19px; }
+.so-type-options .material-symbols-outlined { color: #7792bc; font-size: 19px; transition: color var(--motion-fast) var(--ease-standard); }
+.so-type-options label:has(input:checked) .material-symbols-outlined { color: var(--so-blue); }
 .so-type-options strong, .so-type-options small { display: block; }
 .so-type-options strong { font-size: 12px; font-weight: 600; }
 .so-type-options small { font-size: 10px; color: #8190a5; margin-top: 4px; }
-.so-component { margin: 14px 0 0; padding: 14px; border: 1px solid #e4eaf3; border-radius: 8px; background: #fafbfd; }
+@media (prefers-reduced-motion: reduce) {
+    .so-type-options label { transition: none; }
+    .so-type-options label:active { transform: none; }
+}
+/* Checking/unchecking Lecture or Laboratory used to just snap this panel's
+   visibility via the `hidden` attribute (no transitionable state at all) —
+   collapses/expands on height+opacity instead. max-height is a flat ceiling
+   above the panel's real content, not a measured value, since it only has
+   to be big enough for the transition to read as smooth. */
+.so-component {
+    margin: 14px 0 0; padding: 14px; border: 1px solid #e4eaf3; border-radius: 8px; background: #fafbfd;
+    max-height: 240px; overflow: hidden; opacity: 1;
+    transition: max-height var(--motion-normal) var(--ease-standard), opacity var(--motion-normal) var(--ease-standard), margin var(--motion-normal) var(--ease-standard), padding var(--motion-normal) var(--ease-standard), border-width var(--motion-normal) var(--ease-standard);
+}
+.so-component.is-collapsed {
+    max-height: 0; opacity: 0;
+    margin-top: 0; padding-top: 0; padding-bottom: 0; border-width: 0;
+    pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) { .so-component { transition: none; } }
 .so-component .so-field { margin-bottom: 10px; }
 .so-computed { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #6b7a90; margin: 0; }
 .so-computed strong { font-size: 15px; color: var(--so-ink); }
