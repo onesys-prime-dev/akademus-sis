@@ -23,13 +23,28 @@ class ScheduleController extends BaseController
         $dept       = (new DepartmentModel())->codeOfUser((int) auth()->id());
         $activeYear = (new AcademicYearModel())->activeFormatted();
 
+        // program_code (e.g. "BSIT") is joined in via sections/programs so a
+        // merged class — the same room/time slot shared by two sections —
+        // can show a short "BSCS, BSIT" label instead of two separate rows;
+        // plotted_schedules itself only stores the spelled-out program name.
         $meetings = $activeYear === null || $username === ''
             ? []
             : (new PlottedScheduleModel())
-                ->where('prof', $username)
-                ->where('academic_year', $activeYear)
-                ->orderBy('day')
-                ->orderBy('start_time')
+                ->select('plotted_schedules.*, programs.program_code')
+                // sections.academic_year spans the whole school year (no
+                // semester suffix) while plotted_schedules.academic_year is
+                // term-scoped ("... · 1st Semester"), so it's matched with a
+                // prefix LIKE rather than "=" — dropping it entirely would
+                // risk joining a same-named section from a different year.
+                ->join('sections', "sections.program = plotted_schedules.program
+                    AND sections.year_level = plotted_schedules.year_level
+                    AND sections.section = plotted_schedules.section
+                    AND plotted_schedules.academic_year LIKE CONCAT(sections.academic_year, '%')", 'left')
+                ->join('programs', 'programs.program_id = sections.program_id', 'left')
+                ->where('plotted_schedules.prof', $username)
+                ->where('plotted_schedules.academic_year', $activeYear)
+                ->orderBy('plotted_schedules.day')
+                ->orderBy('plotted_schedules.start_time')
                 ->findAll();
 
         return view('faculty/schedule/index', [

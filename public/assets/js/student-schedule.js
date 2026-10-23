@@ -83,7 +83,27 @@
         if (!classes.has(key)) classes.set(key, { ...m, id: classes.size, meetings: [] });
         classes.get(key).meetings.push({ ...m, from: minutes(m.start), to: minutes(m.end) });
     });
-    const classList = [...classes.values()];
+    // Two "classes" (different sections) that meet at the exact same
+    // day/time/room every week aren't a coincidence — that's a merged class,
+    // one physical session plotted once for two sections at once (see
+    // ChairpersonController::sync()'s merge handling). Combine them into a
+    // single displayed class instead of duplicate, overlapping blocks, with
+    // the section/program shown as a short combined list.
+    const meetingSignature = c => c.meetings.map(m => `${m.day}|${m.from}|${m.to}|${m.room}`).sort().join(';');
+    const mergeGroups = new Map();
+    [...classes.values()].forEach(c => {
+        const key = `${c.term}|${c.code}|${meetingSignature(c)}`;
+        if (!mergeGroups.has(key)) mergeGroups.set(key, []);
+        mergeGroups.get(key).push(c);
+    });
+    const classList = [...mergeGroups.values()].map((group, index) => {
+        const primary = group[0];
+        if (group.length === 1) return { ...primary, id: index };
+        const programs = [...new Set(group.map(c => c.programCode || c.program))];
+        const sections = [...new Set(group.map(c => c.section))];
+        const years = [...new Set(group.map(c => c.year))];
+        return { ...primary, id: index, program: programs.join(', '), section: sections.join(', '), year: years.join(', ') };
+    });
     const meetings = [];
     classList.forEach(c => {
         const merged = [];
@@ -253,9 +273,12 @@
             // name back at them, so that portal leaves it out of its config.
             ...(showInstructor ? [['person', 'Instructor', selected.faculty || 'To be assigned']] : []),
             ['location_on', 'Room', selected.room || 'To be assigned'],
-            ['groups', 'Section', selected.section],
-            ['school', 'Program', selected.program],
-            ['stairs', 'Year level', selected.year],
+            // Pulled from the class (not the raw meeting) so a merged class
+            // — the same session shared by more than one section — shows
+            // its combined "A, B" / "BSCS, BSIT" labels here too.
+            ['groups', 'Section', c.section],
+            ['school', 'Program', c.program],
+            ['stairs', 'Year level', c.year],
         ];
         $('ssDetailFacts').innerHTML = facts.map(([icon, label, value]) => `<div><dt><span class="material-symbols-outlined" aria-hidden="true">${icon}</span>${label}</dt><dd>${escape(value || 'Not available')}</dd></div>`).join('');
         $('ssDetailHours').textContent = `${hours(totalMinutes(c.meetings))} hours / week`;
