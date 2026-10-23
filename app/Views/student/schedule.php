@@ -108,6 +108,6 @@ $scheduleData = array_map(static fn (array $m) => [
 </div>
 <?= $this->endSection() ?>
 <?= $this->section('scripts') ?>
-<script type="application/json" id="ssConfig"><?= json_encode(['meetings' => $scheduleData], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+<script type="application/json" id="ssConfig"><?= json_encode(['meetings' => $scheduleData, 'portalLabel' => 'Student Portal'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="<?= base_url('assets/js/student-schedule.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/student-schedule.js') ?>"></script>
 <?= $this->endSection() ?>

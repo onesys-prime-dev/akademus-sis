@@ -60,7 +60,13 @@
             reduceMotion.addEventListener('change', event => { if (event.matches) resetEnrollments(); });
         }
     }
-    const raw = JSON.parse(config.textContent).meetings;
+    const configData = JSON.parse(config.textContent);
+    const raw = configData.meetings;
+    // Shared verbatim with the faculty portal's own schedule page — the print
+    // header/footer need to say which portal printed it rather than always
+    // claiming "Student Portal".
+    const portalLabel = configData.portalLabel || 'Student Portal';
+    const showInstructor = configData.showInstructor !== false;
     if (!raw.length) return;
     const $ = id => document.getElementById(id);
     const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -243,7 +249,9 @@
         $('ssDetailTime').textContent = range(selected);
         $('ssDetailDuration').textContent = `${hours(selected.to - selected.from)} hrs`;
         const facts = [
-            ['person', 'Instructor', selected.faculty || 'To be assigned'],
+            // On the faculty's own schedule this would just repeat their own
+            // name back at them, so that portal leaves it out of its config.
+            ...(showInstructor ? [['person', 'Instructor', selected.faculty || 'To be assigned']] : []),
             ['location_on', 'Room', selected.room || 'To be assigned'],
             ['groups', 'Section', selected.section],
             ['school', 'Program', selected.program],
@@ -273,7 +281,7 @@
             return `<span class="${onHour ? 'is-hour' : ''}" style="top:${i * 30 / span * 100}%">${onHour ? time(t).replace(':00', '') : time(t)}</span>`;
         }).join('');
         const columns = days.slice(0, dayCount).map((_, index) => `<div class="ss-print-column">${positionMeetings(list.filter(m => m.day === index)).map(m => `<div class="ss-print-class ss-accent-${m.accent} ${m.to - m.from <= 60 ? 'is-short' : ''} ${m.to - m.from <= 30 ? 'is-tiny' : ''}" style="top:calc(${(m.from - start) / span * 100}% + 1px);height:calc(${(m.to - m.from) / span * 100}% - 2px);left:calc(${m.lane / m.lanes * 100}% + 2px);width:calc(${100 / m.lanes}% - 4px)"><small>${range(m)}</small><strong>${escape(m.code)}</strong><span>${escape(m.room || 'Room to be assigned')}</span><span class="ss-print-faculty">${escape(m.faculty || 'Instructor to be assigned')}</span></div>`).join('')}</div>`).join('');
-        documentNode.innerHTML = `<header class="ss-print-header"><div class="ss-print-brand"><strong>Akademus <span> / Student Portal</span></strong><span>WEEKLY TIMETABLE</span></div><h1>My class schedule</h1><p>${escape($('ssTerm').value)}</p><p>${escape(context)}</p><div class="ss-print-meta"><span>${new Set(list.map(m => m.code)).size} subjects · ${list.length} meetings · ${hours(totalMinutes(list))} hours / week</span><span>Printed ${escape(date)}</span></div></header><div class="ss-print-grid" style="--ss-days:${dayCount};--ss-print-hour:${124 * 30 / span}mm"><div class="ss-print-head">Time</div>${days.slice(0, dayCount).map(d => `<div class="ss-print-head">${d}</div>`).join('')}<div class="ss-print-times">${labels}</div>${columns}</div><footer class="ss-print-footer"><span>All times are in Philippine Standard Time (GMT+8).</span><span>Akademus SIS · Student schedule</span></footer>`;
+        documentNode.innerHTML = `<header class="ss-print-header"><div class="ss-print-brand"><strong>Akademus <span> / ${escape(portalLabel)}</span></strong><span>WEEKLY TIMETABLE</span></div><h1>My class schedule</h1><p>${escape($('ssTerm').value)}</p><p>${escape(context)}</p><div class="ss-print-meta"><span>${new Set(list.map(m => m.code)).size} subjects · ${list.length} meetings · ${hours(totalMinutes(list))} hours / week</span><span>Printed ${escape(date)}</span></div></header><div class="ss-print-grid" style="--ss-days:${dayCount};--ss-print-hour:${124 * 30 / span}mm"><div class="ss-print-head">Time</div>${days.slice(0, dayCount).map(d => `<div class="ss-print-head">${d}</div>`).join('')}<div class="ss-print-times">${labels}</div>${columns}</div><footer class="ss-print-footer"><span>All times are in Philippine Standard Time (GMT+8).</span><span>Akademus SIS · ${escape(portalLabel)} schedule</span></footer>`;
         // Dense/short meetings get a readable continuation instead of losing
         // their room or instructor details inside a small timetable cell.
         const dense = days.some((_, index) => positionMeetings(list.filter(m => m.day === index)).some(m => m.lanes > 1));
