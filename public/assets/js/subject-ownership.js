@@ -262,6 +262,10 @@
             feedback(`${body.code} ${wasEditing ? 'updated' : 'added to your catalog'}.`);
             const focusId = (data.rows || []).find(r => r.active)?.id ?? editingId;
             focusRow(focusId);
+            // Search is narrowed to the new code right above, so this is
+            // reliably just the subject that was added — give it a beat of
+            // highlight instead of letting it appear in the list cold.
+            if (!wasEditing) byId('soRows').querySelector('tr')?.classList.add('so-row-added');
         } catch (error) { errorIn('soFormError', error.message); }
         finally { setBusy(false); byId('soSave').textContent = wasEditing ? 'Save changes' : 'Add subject'; }
     });

@@ -61,6 +61,17 @@
 .so-table th:first-child, .so-table td:first-child { padding-left: 28px; width: 43%; }
 .so-table th:last-child, .so-table td:last-child { padding-right: 28px; }
 .so-table tbody tr:hover { background: #fcfdff; }
+/* The row for whatever subject was just added — render() rebuilds the whole
+   table from scratch, so there's nothing to transition in on its own; this
+   is applied once, by hand, right after a successful add, so the new row
+   settles in and its highlight fades instead of just appearing mid-list. */
+@keyframes soRowIn {
+    from { opacity: 0; transform: translateY(-8px); background: var(--color-primary-soft); }
+    55% { opacity: 1; transform: translateY(0); }
+    to { background: transparent; }
+}
+.so-row-added { animation: soRowIn 1.4s var(--ease-standard) both; }
+@media (prefers-reduced-motion: reduce) { .so-row-added { animation: none; } }
 .so-subject { display: flex; align-items: center; gap: 12px; }
 .so-subject-icon { width: 35px; height: 39px; display: grid; place-items: center; border: 1px solid #e7edf6; border-radius: 8px; background: #f7f9fd; color: #8098bf; font-size: 18px !important; }
 .so-subject-code { display: block; font-size: 12px; font-weight: 700; color: #23477c; }
@@ -100,8 +111,36 @@
 .so-empty p { font-size: 12px; color: var(--so-muted); max-width: 400px; margin: 0 auto 22px; line-height: 1.8; }
 .so-feedback { border: 1px solid #d3e8dc; background: #edf8f2; color: #316748; font-size: 12px; padding: 13px 16px; border-radius: 8px; margin-bottom: 18px; }
 .so-feedback.is-error { color: #a13c3c; border-color: #f0d2d2; background: #fff2f2; }
-.so-dialog { position: fixed; inset: 0; margin: auto; width: min(580px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); padding: 0; border: 1px solid #e4eaf3; border-radius: var(--radius-lg); background: #fff; color: var(--so-ink); box-shadow: var(--shadow-lg); overflow: auto; }
-.so-dialog::backdrop { background: #15233d70; backdrop-filter: blur(4px); }
+/* Same native-<dialog> entrance the student schedule's class-detail dialog
+   uses (@starting-style + allow-discrete) — a plain showModal() otherwise
+   just snaps the dialog and its backdrop into place with no transition. */
+.so-dialog {
+    position: fixed; inset: 0; margin: auto; width: min(580px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); padding: 0; border: 1px solid #e4eaf3; border-radius: var(--radius-lg); background: #fff; color: var(--so-ink); box-shadow: var(--shadow-lg); overflow: auto;
+    transform: scale(.96) translateY(8px);
+    opacity: 0;
+    transition: transform var(--motion-slow) var(--ease-enter), opacity var(--motion-slow) var(--ease-enter), overlay var(--motion-slow) var(--ease-enter) allow-discrete, display var(--motion-slow) var(--ease-enter) allow-discrete;
+}
+.so-dialog[open] { transform: scale(1) translateY(0); opacity: 1; }
+@starting-style {
+    .so-dialog[open] { transform: scale(.96) translateY(8px); opacity: 0; }
+}
+.so-dialog::backdrop {
+    /* backdrop-filter: blur() here forced an expensive recomposite of
+       everything behind the dialog on every repaint — including, on this
+       software-rendered dev VM, every single keystroke while typing in the
+       form, measured at 80-100ms+ per character. A flatter, slightly
+       darker overlay reads almost the same and costs nothing to maintain. */
+    background: #15233d85;
+    opacity: 0;
+    transition: opacity var(--motion-slow) var(--ease-enter), overlay var(--motion-slow) var(--ease-enter) allow-discrete, display var(--motion-slow) var(--ease-enter) allow-discrete;
+}
+.so-dialog[open]::backdrop { opacity: 1; }
+@starting-style {
+    .so-dialog[open]::backdrop { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .so-dialog, .so-dialog::backdrop { transition: none; }
+}
 .so-dialog--small { width: min(450px, calc(100vw - 32px)); }
 .so-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px 26px 21px; border-bottom: 1px solid var(--so-line); }
 .so-dialog-header h3 { margin: 6px 0; font-size: 23px; letter-spacing: -.5px; }
