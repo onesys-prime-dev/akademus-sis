@@ -21,6 +21,16 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
 <?= $this->section('content') ?>
 <div class="pl-page">
 
+    <div class="pl-mobile-gate">
+        <span class="pl-mobile-gate__icon material-symbols-outlined" aria-hidden="true">desktop_windows</span>
+        <h2>Switch to a bigger screen</h2>
+        <p>Schedule Plotting is a drag-and-drop timetable with room, faculty, and swap tools built for a wide screen — it doesn't fit a phone. Please open this page on a desktop, laptop, or tablet to plot schedules.</p>
+        <a class="btn btn-secondary" href="<?= site_url('chairperson/overview') ?>">
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+            Back to Dashboard
+        </a>
+    </div>
+
     <header class="pl-head">
         <div class="pl-head__title">
             <h1>Scheduling</h1>

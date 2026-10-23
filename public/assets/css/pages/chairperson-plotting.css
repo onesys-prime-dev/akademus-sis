@@ -1302,6 +1302,48 @@ body.is-plot-dragging .block.is-other { opacity: .7; }
     .pl-page .btn.btn-sm { min-height: 40px; }
 }
 
+/* ---------- phone gate ----------
+   A drag-and-drop weekly timetable with room/faculty side panels genuinely
+   doesn't fit a phone screen — rather than ship a squeezed, unusable grid
+   (truncated labels, 1px drag targets), swap the entire page for a plain
+   "use a bigger screen" message below the phone breakpoint. Tablets and up
+   still get the real workspace. */
+.pl-mobile-gate { display: none; }
+
+@media (max-width: 680px) {
+    .pl-page > *:not(.pl-mobile-gate) { display: none !important; }
+
+    .pl-mobile-gate {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        max-width: 360px;
+        margin: 15vh auto 0;
+        padding: 32px 24px;
+        text-align: center;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-xs);
+    }
+
+    .pl-mobile-gate__icon {
+        display: grid;
+        place-items: center;
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        background: var(--color-primary-soft);
+        color: var(--color-primary);
+        font-size: 27px;
+    }
+
+    .pl-mobile-gate h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--color-text-primary); }
+    .pl-mobile-gate p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--color-text-secondary); }
+    .pl-mobile-gate .btn { margin-top: 4px; }
+}
+
 /* ---------- print ---------- */
 .pl-print-head { display: none; }
 
