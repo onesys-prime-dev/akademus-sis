@@ -15,6 +15,21 @@
     const courseGroups = byId('soCourseGroups'), courseDept = byId('soCourseDept');
     let displayRows = [];
 
+    // Same animated floating-listbox select every other portal page uses
+    // (window.enhanceSelect, loaded globally in the layout) instead of the
+    // browser's own unstyled popup, which on "Owning department" was wide
+    // enough to spill over the field below it. The underlying <select> is
+    // still the real value holder, so `.disabled =` elsewhere keeps working
+    // untouched (that reflects to the DOM attribute, which the picker
+    // watches) — but `.value =` does NOT reflect to an attribute the same
+    // way, so openEditor() below calls ownerPicker.sync() right after
+    // setting it, or the visible trigger would keep showing the old pick.
+    let ownerPicker = null;
+    if (window.enhanceSelect) {
+        [type, department, byId('soSort'), courseDept].filter(Boolean).forEach(window.enhanceSelect);
+        ownerPicker = window.enhanceSelect(byId('soOwner'));
+    }
+
     function roundHalf(n) { return Math.round(n * 2) / 2; }
     function formatNum(n) { return Number.isInteger(n) ? String(n) : n.toFixed(1); }
     function formatHrMin(hours) {
@@ -231,6 +246,11 @@
         byId('soLabUnits').value = row?.lab?.units ?? 1;
         if (row) byId('soOwner').value = String(row.department);
         byId('soOwner').disabled = !!row;
+        // Covers both branches: form.reset() above already reverted the
+        // underlying <select> to its default option for the add case, and
+        // the explicit .value= just above for the edit case — neither one
+        // fires anything the picker listens for on its own.
+        ownerPicker?.sync();
         byId('soEditorHint').lastChild.textContent = isEdit ? ' A component that’s on a live schedule can’t change its meeting length, or be removed, until those classes are taken off the schedule.' : ' Already in the catalog? Reuse it through the Curriculum Builder.';
         updateComponentVisibility();
         updateComputedPreview();
