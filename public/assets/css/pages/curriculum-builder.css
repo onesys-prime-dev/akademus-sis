@@ -70,18 +70,15 @@
 .cb-result small { font-size: 11px; white-space: nowrap; }
 .cb-result > .material-symbols-outlined { color: var(--cb-blue); }
 .cb-search-message { margin: 0; padding: 18px; font-size: 12px; color: var(--cb-muted); }
-.cb-table-wrap { position: relative; overflow-x: auto; }
-.cb-table { width: 100%; border-collapse: collapse; text-align: left; }
-.cb-table th { background: #f7f9fc; padding: 11px 14px; font-size: 10px; font-weight: 650; color: #748198; }
-.cb-table th:first-child { border-radius: 6px 0 0 6px; width: 52%; }
-.cb-table th:last-child { border-radius: 0 6px 6px 0; }
-.cb-table td { padding: 20px 14px; border-bottom: 1px solid var(--cb-line); font-size: 12px; }
-.cb-table tbody tr:hover { background: #fcfdff; }
+/* Subjects table — the shared .ac-dtable stacked-card system (admin-console.css):
+   a 4-column grid on desktop, collapsing to one labeled column per phone-width
+   row at its 640px breakpoint. No horizontal scroll at any width. */
+.cb-dtable .ac-dtable__head, .cb-dtable .ac-dtable__row { grid-template-columns: minmax(0,1.8fr) minmax(56px,.5fr) minmax(150px,1fr) minmax(90px,.6fr); }
+@media (min-width: 641px) { .cb-dtable .ac-dtable__row > div:last-child { display: flex; justify-content: flex-end; } }
 .cb-subject-code { display: block; font-size: 12px; font-weight: 750; color: #23477c; }
 .cb-subject-name { display: block; font-size: 12px; margin-top: 5px; line-height: 1.5; }
 .cb-unit { font-variant-numeric: tabular-nums; font-weight: 600; }
-.cb-table select { border: 1px solid #dce3ee; border-radius: 7px; background: #fff; color: #4b5b72; padding: 8px 9px; font-size: 11px; min-width: 108px; }
-.cb-remove { display: flex; align-items: center; justify-content: center; gap: 5px; border: 0; background: transparent; padding: 8px; border-radius: 6px; color: #7c8799; font-size: 10px !important; margin-left: auto; }
+.cb-remove { display: flex; align-items: center; justify-content: center; gap: 5px; border: 0; background: transparent; padding: 8px; border-radius: 6px; color: #7c8799; font-size: 10px !important; }
 .cb-remove .material-symbols-outlined { font-size: 18px; }
 .cb-remove:hover { background: #fff0ef; color: #b34040; }
 .cb-empty { text-align: center; padding: 60px 24px; }
@@ -96,6 +93,6 @@
 .cb-feedback { padding: 13px 17px; margin-bottom: 18px; border: 1px solid #cde6d9; background: #edf8f2; color: #286344; border-radius: 9px; font-size: 13px; }
 .cb-feedback.is-error { color: #9c3737; border-color: #f0d1d1; background: #fff1f1; }
 .cb-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-@media (max-width: 1150px) { .cb-editor { grid-template-columns: 160px minmax(0, 1fr); } .cb-term-body { padding: 22px; } .cb-remove > span:last-child { display: none; } .cb-table td, .cb-table th { padding-left: 9px; padding-right: 9px; } .cb-heading-note { display: none; } }
+@media (max-width: 1150px) { .cb-editor { grid-template-columns: 160px minmax(0, 1fr); } .cb-term-body { padding: 22px; } .cb-remove > span:last-child { display: none; } .cb-heading-note { display: none; } }
 @media (max-width: 900px) { .cb-editor { grid-template-columns: minmax(0, 1fr); } .cb-years { border-right: 0; border-bottom: 1px solid var(--cb-line); padding: 16px; } .cb-years nav { grid-template-columns: repeat(4, 1fr); } .cb-years > .cb-eyebrow { margin: 0 0 10px; } .cb-years button { justify-content: center; padding: 10px 4px; } .cb-year-number, .cb-year-arrow, .cb-year-help { display: none !important; } .cb-save-note { max-width: 145px; } .cb-program { flex-wrap: wrap; } .cb-published { max-width: 100%; margin-left: 64px; align-items: flex-start; } }
-@media (max-width: 540px) { .cb-heading { margin-bottom: 20px; } .cb-program { padding: 16px; gap: 12px; } .cb-program-icon { display: none; } .cb-program-field { flex-basis: 100%; } .cb-published { margin-left: 0; } .cb-draft-header { padding: 18px; align-items: flex-start; flex-direction: column; } .cb-save-note { max-width: none; } .cb-term-body { padding: 18px 14px; } .cb-semesters { padding: 0 16px; gap: 22px; } .cb-semesters button { font-size: 11px; } .cb-term-heading { align-items: flex-start; } .cb-term-heading h3 { font-size: 20px; } .cb-term-heading p { max-width: 140px; line-height: 1.6; } .cb-totals { gap: 12px; } .cb-totals > div + div { padding-left: 12px; } .cb-totals strong { font-size: 23px; } .cb-table { min-width: 435px; } }
+@media (max-width: 540px) { .cb-heading { margin-bottom: 20px; } .cb-program { padding: 16px; gap: 12px; } .cb-program-icon { display: none; } .cb-program-field { flex-basis: 100%; } .cb-published { margin-left: 0; } .cb-draft-header { padding: 18px; align-items: flex-start; flex-direction: column; } .cb-save-note { max-width: none; } .cb-term-body { padding: 18px 14px; } .cb-semesters { padding: 0 16px; gap: 22px; } .cb-semesters button { font-size: 11px; } .cb-term-heading { align-items: flex-start; } .cb-term-heading h3 { font-size: 20px; } .cb-term-heading p { max-width: 140px; line-height: 1.6; } .cb-totals { gap: 12px; } .cb-totals > div + div { padding-left: 12px; } .cb-totals strong { font-size: 23px; } }

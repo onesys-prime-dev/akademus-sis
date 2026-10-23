@@ -61,6 +61,13 @@ window.enhanceSelect = function (select) {
         label.textContent = opt ? opt.textContent : '';
     }
 
+    // The native select is hidden, so a page toggling `select.disabled`
+    // (e.g. while an autosave is in flight) would otherwise do nothing
+    // visible — mirror it onto the real, clickable trigger.
+    function syncDisabled() {
+        trigger.disabled = select.disabled;
+    }
+
     function activeOptions() {
         return Array.prototype.slice.call(panel.querySelectorAll('.cs-select__option'));
     }
@@ -158,9 +165,11 @@ window.enhanceSelect = function (select) {
 
     // Catches option lists rebuilt (replaceChildren/innerHTML) or the
     // selection changed from outside this module.
-    new MutationObserver(syncLabel).observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['selected'] });
+    new MutationObserver(function () { syncLabel(); syncDisabled(); })
+        .observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['selected', 'disabled'] });
     select.addEventListener('change', syncLabel);
 
     syncLabel();
+    syncDisabled();
     return { sync: syncLabel, close: close, trigger: trigger };
 };

@@ -37,7 +37,25 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
                         <nav class="cb-semesters" aria-label="Semester"><?php foreach ($semesters as $val => $label): ?><button type="button" class="sem-tab <?= (string) $val === (string) $semester ? 'is-active' : '' ?>" data-sem="<?= esc((string) $val) ?>" aria-current="<?= (string) $val === (string) $semester ? 'true' : 'false' ?>"><?= esc($label) ?></button><?php endforeach ?></nav>
                         <div class="cb-term-body"><div class="cb-term-heading"><div><div class="cb-eyebrow"><?= esc($yearNames[$yearLevel]) ?></div><h3><?= esc($semesters[$semester]) ?></h3><p>Manage the subjects for this term.</p></div><div class="cb-totals"><div><strong id="subjectCount"><?= count($termSubjects) ?></strong><span>Subjects</span></div><div><strong id="unitCount"><?= (float) $termUnits ?></strong><span>Total units</span></div></div></div>
                         <div class="cb-catalog"><label for="subjectSearch">Add a subject</label><div class="cb-search-field"><span class="material-symbols-outlined" aria-hidden="true">search</span><input type="search" id="subjectSearch" placeholder="Search the catalog by code or title…" autocomplete="off" aria-describedby="searchHint" aria-controls="subjectSearchResults" aria-expanded="false"><kbd>/</kbd></div><div id="subjectSearchResults" class="cb-search-results" hidden></div><p id="searchHint">Subjects from all departments are available in the shared catalog.</p></div>
-                        <div class="cb-table-wrap" id="subjectTableWrap" <?= empty($termSubjects) ? 'hidden' : '' ?>><table class="cb-table"><caption class="cb-sr-only">Subjects assigned to <?= esc($yearNames[$yearLevel] . ', ' . $semesters[$semester]) ?></caption><thead><tr><th scope="col">Subject</th><th scope="col">Units</th><th scope="col">Class type</th><th scope="col"><span class="cb-sr-only">Actions</span></th></tr></thead><tbody id="subjectRows"><?php foreach ($termSubjects as $ts): ?><?php $isLab = $ts['assignment_is_laboratory'] !== null ? (bool) $ts['assignment_is_laboratory'] : (bool) $ts['default_is_laboratory']; ?><tr data-cs-id="<?= (int) $ts['curriculum_subject_id'] ?>" data-units="<?= (float) $ts['units'] ?>"><td><span class="cb-subject-code"><?= esc($ts['subject_code']) ?></span><span class="cb-subject-name"><?= esc($ts['subject_name']) ?></span></td><td><span class="cb-unit"><?= (float) $ts['units'] ?></span></td><td><select class="type-select" aria-label="Class type for <?= esc($ts['subject_code'], 'attr') ?>" data-saved="<?= $isLab ? '1' : '0' ?>"><option value="0" <?= !$isLab ? 'selected' : '' ?>>Lecture</option><option value="1" <?= $isLab ? 'selected' : '' ?>>Laboratory</option></select></td><td><button type="button" class="cb-remove" data-act="remove" aria-label="Remove <?= esc($ts['subject_code'], 'attr') ?>"><span class="material-symbols-outlined" aria-hidden="true">delete</span><span>Remove</span></button></td></tr><?php endforeach ?></tbody></table></div>
+                        <div class="ac-dtable cb-dtable" id="subjectTableWrap" <?= empty($termSubjects) ? 'hidden' : '' ?>>
+                            <div class="ac-dtable__head">
+                                <div>Subject</div>
+                                <div>Units</div>
+                                <div>Class type</div>
+                                <div class="cb-sr-only">Actions</div>
+                            </div>
+                            <div id="subjectRows">
+                                <?php foreach ($termSubjects as $ts): ?>
+                                    <?php $isLab = $ts['assignment_is_laboratory'] !== null ? (bool) $ts['assignment_is_laboratory'] : (bool) $ts['default_is_laboratory']; ?>
+                                    <div class="ac-dtable__row" data-cs-id="<?= (int) $ts['curriculum_subject_id'] ?>" data-units="<?= (float) $ts['units'] ?>">
+                                        <div data-label="Subject"><span class="cb-subject-code"><?= esc($ts['subject_code']) ?></span><span class="cb-subject-name"><?= esc($ts['subject_name']) ?></span></div>
+                                        <div data-label="Units"><span class="cb-unit"><?= (float) $ts['units'] ?></span></div>
+                                        <div data-label="Class type"><select class="type-select" aria-label="Class type for <?= esc($ts['subject_code'], 'attr') ?>" data-saved="<?= $isLab ? '1' : '0' ?>"><option value="0" <?= !$isLab ? 'selected' : '' ?>>Lecture</option><option value="1" <?= $isLab ? 'selected' : '' ?>>Laboratory</option></select></div>
+                                        <div data-label="Actions"><button type="button" class="cb-remove" data-act="remove" aria-label="Remove <?= esc($ts['subject_code'], 'attr') ?>"><span class="material-symbols-outlined" aria-hidden="true">delete</span><span>Remove</span></button></div>
+                                    </div>
+                                <?php endforeach ?>
+                            </div>
+                        </div>
                         <div class="cb-empty cb-term-empty" id="termEmpty" <?= !empty($termSubjects) ? 'hidden' : '' ?>><span class="material-symbols-outlined" aria-hidden="true">library_books</span><h3>No subjects added yet</h3><p>Search the catalog above to add subjects.</p></div>
                         </div>
                     </div>
@@ -97,7 +115,7 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
         if (searchInput) searchInput.disabled = busy;
     }
     document.querySelectorAll('.type-select').forEach(select => select.addEventListener('change', async () => {
-        const row = select.closest('tr');
+        const row = select.closest('.ac-dtable__row');
         setBusy(true); saveStatus('Saving changes…');
         try {
             await post('/subject/' + row.dataset.csId + '/classification', { is_laboratory: select.value === '1' });
@@ -106,13 +124,13 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
         finally { setBusy(false); }
     }));
     document.querySelectorAll('[data-act="remove"]').forEach(btn => btn.addEventListener('click', async () => {
-        const row = btn.closest('tr');
+        const row = btn.closest('.ac-dtable__row');
         setBusy(true); saveStatus('Saving changes…');
         try {
             await post('/subject/' + row.dataset.csId + '/remove', {});
             const code = row.querySelector('.cb-subject-code').textContent;
             row.remove();
-            const rows = [...document.querySelectorAll('#subjectRows tr')];
+            const rows = [...document.querySelectorAll('#subjectRows .ac-dtable__row')];
             document.getElementById('subjectCount').textContent = rows.length;
             document.getElementById('unitCount').textContent = Number(rows.reduce((sum, item) => sum + Number(item.dataset.units), 0).toFixed(2));
             document.getElementById('subjectTableWrap').hidden = !rows.length;
