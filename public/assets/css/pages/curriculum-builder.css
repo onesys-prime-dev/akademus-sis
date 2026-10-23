@@ -81,6 +81,43 @@
 .cb-remove { display: flex; align-items: center; justify-content: center; gap: 5px; border: 0; background: transparent; padding: 8px; border-radius: 6px; color: #7c8799; font-size: 10px !important; }
 .cb-remove .material-symbols-outlined { font-size: 18px; }
 .cb-remove:hover { background: #fff0ef; color: #b34040; }
+
+/* Mobile card: the generic .ac-dtable collapse (admin-console.css) just
+   stacks every field under its own all-caps label, which reads as a plain
+   form rather than a card — Subject/Units/Class type/Remove are given a
+   bespoke layout instead: code+title and a unit badge share one header
+   line, Class type is the one field that keeps its label (it's the only
+   interactive one), and Remove becomes a quiet corner icon instead of its
+   own full-width "ACTIONS" row. */
+@media (max-width: 640px) {
+    .cb-dtable .ac-dtable__row {
+        position: relative;
+        grid-template-columns: 1fr auto !important;
+        column-gap: 12px;
+        padding: 18px 54px 18px 18px;
+    }
+    .cb-dtable .ac-dtable__row > [data-label="Subject"] { grid-column: 1; }
+    .cb-dtable .ac-dtable__row > [data-label="Units"] { grid-column: 2; align-self: start; }
+    .cb-dtable .ac-dtable__row > [data-label="Class type"] { grid-column: 1 / -1; }
+    .cb-dtable .ac-dtable__row > [data-label="Actions"] { position: absolute; top: 14px; right: 10px; }
+
+    .cb-dtable .ac-dtable__row > [data-label="Subject"]::before,
+    .cb-dtable .ac-dtable__row > [data-label="Units"]::before,
+    .cb-dtable .ac-dtable__row > [data-label="Actions"]::before { content: none; }
+
+    .cb-dtable .cb-unit {
+        display: inline-flex; align-items: center;
+        padding: 4px 10px; border-radius: var(--radius-pill);
+        background: var(--color-primary-soft); color: var(--cb-blue);
+        font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+    .cb-dtable .cb-unit::after { content: "\00a0" attr(data-unit-word); font-weight: 600; }
+
+    .cb-dtable .cb-remove {
+        width: 36px; height: 36px; padding: 0; border-radius: 50%;
+        background: var(--color-surface-secondary);
+    }
+}
 .cb-empty { text-align: center; padding: 60px 24px; }
 .cb-empty > .material-symbols-outlined { display: inline-grid; place-items: center; width: 58px; height: 58px; border-radius: var(--radius-lg); color: #6686bc; background: #eef3fb; font-size: 28px; }
 .cb-empty h3 { font-size: 17px; margin: 18px 0 8px; }

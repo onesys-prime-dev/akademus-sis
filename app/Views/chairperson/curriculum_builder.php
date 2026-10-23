@@ -49,7 +49,7 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
                                     <?php $isLab = $ts['assignment_is_laboratory'] !== null ? (bool) $ts['assignment_is_laboratory'] : (bool) $ts['default_is_laboratory']; ?>
                                     <div class="ac-dtable__row" data-cs-id="<?= (int) $ts['curriculum_subject_id'] ?>" data-units="<?= (float) $ts['units'] ?>">
                                         <div data-label="Subject"><span class="cb-subject-code"><?= esc($ts['subject_code']) ?></span><span class="cb-subject-name"><?= esc($ts['subject_name']) ?></span></div>
-                                        <div data-label="Units"><span class="cb-unit"><?= (float) $ts['units'] ?></span></div>
+                                        <div data-label="Units"><span class="cb-unit" data-unit-word="<?= (float) $ts['units'] === 1.0 ? 'unit' : 'units' ?>"><?= (float) $ts['units'] ?></span></div>
                                         <div data-label="Class type"><select class="type-select" aria-label="Class type for <?= esc($ts['subject_code'], 'attr') ?>" data-saved="<?= $isLab ? '1' : '0' ?>"><option value="0" <?= !$isLab ? 'selected' : '' ?>>Lecture</option><option value="1" <?= $isLab ? 'selected' : '' ?>>Laboratory</option></select></div>
                                         <div data-label="Actions"><button type="button" class="cb-remove" data-act="remove" aria-label="Remove <?= esc($ts['subject_code'], 'attr') ?>"><span class="material-symbols-outlined" aria-hidden="true">delete</span><span>Remove</span></button></div>
                                     </div>
