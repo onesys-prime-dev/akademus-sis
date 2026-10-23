@@ -116,6 +116,16 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
         ylIndicator?.move(document.querySelector('.yl-tab.is-active'), false);
         semIndicator?.move(document.querySelector('.sem-tab.is-active'), false);
     }
+    function skeletonRows(count) {
+        return Array.from({ length: count }, () => (
+            '<div class="cb-skeleton-row">'
+            + '<span class="cb-skeleton-bar cb-skeleton-bar--code"></span>'
+            + '<span class="cb-skeleton-bar cb-skeleton-bar--title"></span>'
+            + '<span class="cb-skeleton-bar cb-skeleton-bar--pill"></span>'
+            + '<span class="cb-skeleton-bar cb-skeleton-bar--select"></span>'
+            + '</div>'
+        )).join('');
+    }
     function rowHtml(s) {
         const isLab = !!s.is_laboratory;
         return `<div class="ac-dtable__row" data-cs-id="${s.curriculum_subject_id}" data-units="${s.units}">`
@@ -163,7 +173,13 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
             btn.classList.toggle('is-active', active);
             if (active) semIndicator?.move(btn, true);
         });
-        termBody.classList.add('is-loading');
+        setBusy(true);
+        // Shimmering placeholder rows (same pattern as the cashier's
+        // installment-plan preview) instead of just dimming the old
+        // content — reads as "fetching the new term" rather than "frozen".
+        document.getElementById('subjectRows').innerHTML = skeletonRows(3);
+        document.getElementById('subjectTableWrap').hidden = false;
+        document.getElementById('termEmpty').hidden = true;
         if (pushState) {
             const pageUrl = new URL(location.href);
             pageUrl.searchParams.set('program_id', PROGRAM_ID);
@@ -184,7 +200,7 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
         } catch (error) {
             if (seq === navSeq) feedback(error.message, true);
         } finally {
-            if (seq === navSeq) termBody.classList.remove('is-loading');
+            if (seq === navSeq) setBusy(false);
         }
     }
     function navigate(year, semester) { loadTerm(year, semester, true); }
