@@ -191,6 +191,16 @@ $termUnits = array_sum(array_column($termSubjects, 'units'));
         if (evt.key === 'ArrowDown' && evt.target === searchInput) { const first = searchResults.querySelector('button'); if (first) { evt.preventDefault(); first.focus(); } }
         if (evt.target.matches('.cb-result') && ['ArrowDown', 'ArrowUp'].includes(evt.key)) { evt.preventDefault(); const next = evt.key === 'ArrowDown' ? evt.target.nextElementSibling : evt.target.previousElementSibling; (next || searchInput).focus(); }
     });
+    // Same animated floating-listbox select every other portal page uses
+    // (window.enhanceSelect, loaded globally in the layout) instead of the
+    // browser's own unstyled popup — wraps the native <select> in place, so
+    // the change listeners above keep working untouched. Rows only ever
+    // disappear (remove) or the whole page reloads (add subject), never grow
+    // in place, so a one-time pass at load is all this needs.
+    if (window.enhanceSelect) {
+        window.enhanceSelect(document.getElementById('programSelect'));
+        document.querySelectorAll('.type-select').forEach(select => window.enhanceSelect(select));
+    }
 })();
 </script>
 <?= $this->endSection() ?>
