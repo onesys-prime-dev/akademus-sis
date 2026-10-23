@@ -98,7 +98,10 @@
     });
     const classList = [...mergeGroups.values()].map((group, index) => {
         const primary = group[0];
-        if (group.length === 1) return { ...primary, id: index };
+        // The short program code ("BSIT") reads cleaner than the spelled-out
+        // name everywhere this shows up — not just once merging joins two of
+        // them together.
+        if (group.length === 1) return { ...primary, id: index, program: primary.programCode || primary.program };
         const programs = [...new Set(group.map(c => c.programCode || c.program))];
         const sections = [...new Set(group.map(c => c.section))];
         const years = [...new Set(group.map(c => c.year))];

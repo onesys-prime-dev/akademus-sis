@@ -44,6 +44,7 @@ $scheduleData = array_map(static fn (array $m) => [
     'start' => substr($m['start_time'], 0, 5), 'end' => substr($m['end_time'], 0, 5),
     'room' => $m['room'] ?? '', 'faculty' => $m['prof'] ?? '',
     'term' => $m['academic_year'], 'program' => $m['program'],
+    'programCode' => $m['program_code'] ?? $m['program'],
     'year' => $m['year_level'], 'section' => $m['section'],
     'accent' => $accents[$m['theme'] ?? 'blue'] ?? 'blue',
 ], $meetings);

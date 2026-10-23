@@ -153,8 +153,9 @@ class StudentEnrollment extends BaseController
         $userId = (int) auth()->id();
 
         $rows = db_connect()->table('enrollments e')
-            ->select('e.subject_code, e.academic_year, s.program, s.year_level, s.section')
+            ->select('e.subject_code, e.academic_year, s.program, s.year_level, s.section, p.program_code')
             ->join('sections s', 's.section_id = e.section_id')
+            ->join('programs p', 'p.program_id = s.program_id', 'left')
             ->where('e.user_id', $userId)
             ->where('e.status', 'enrolled')
             ->orderBy('e.academic_year', 'DESC')
@@ -180,6 +181,7 @@ class StudentEnrollment extends BaseController
                     'subject_code'  => $row['subject_code'],
                     'academic_year' => $row['academic_year'],
                     'program'       => $row['program'],
+                    'program_code'  => $row['program_code'],
                     'year_level'    => $row['year_level'],
                     'section'       => $row['section'],
                 ]);
