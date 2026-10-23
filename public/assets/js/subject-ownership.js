@@ -144,16 +144,16 @@
         displayRows = filtered.slice(start, start + pageSize);
         byId('soRows').innerHTML = displayRows.map(r => {
             const mixed = r.lecture && r.lab;
+            const kind = mixed ? 'mixed' : (r.lab ? 'lab' : 'lecture');
             const typeLabel = mixed ? 'Lecture + Lab' : (r.lab ? 'Laboratory' : 'Lecture');
-            const typeClass = mixed ? 'so-type--mixed' : (r.lab ? 'so-type--lab' : '');
             const lengthLabel = mixed
                 ? `Lec ${formatHrMin(r.lecture.duration)} · Lab ${formatHrMin(r.lab.duration)}`
                 : formatHrMin((r.lecture || r.lab).duration);
-            return `<tr data-id="${r.id}" class="${r.active ? '' : 'is-inactive'}">
-            <td><div class="so-subject"><span class="so-subject-icon material-symbols-outlined" aria-hidden="true">${mixed ? 'science' : (r.lab ? 'science' : 'menu_book')}</span><div><strong class="so-subject-code">${escape(r.code)}${r.secondaryCode ? ` <small class="so-subject-dept">+ ${escape(r.secondaryCode)}</small>` : ''}</strong><span class="so-subject-title">${escape(r.title)}</span>${Object.keys(config.departments).length > 1 ? `<small class="so-subject-dept">${escape(config.departments[r.department] || 'Department')}</small>` : ''}</div></div></td>
-            <td class="so-units">${formatNum(r.totalUnits)}</td><td><span class="so-type ${typeClass}">${typeLabel}</span></td><td class="so-duration">${lengthLabel}</td>
-            <td><span class="so-status ${r.active ? 'so-status--active' : ''}"><i class="so-dot"></i>${r.active ? 'Active' : 'Inactive'}</span></td>
-            <td><div class="so-row-actions"><button type="button" class="so-edit" data-action="edit" aria-label="Edit ${escape(r.code)}"><span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit</button><button type="button" class="so-icon-button so-toggle" data-action="status" title="${r.active ? 'Deactivate' : 'Activate'} ${escape(r.code)}" aria-label="${r.active ? 'Deactivate' : 'Activate'} ${escape(r.code)}"><span class="material-symbols-outlined" aria-hidden="true">${r.active ? 'pause_circle' : 'play_circle'}</span></button></div></td></tr>`;
+            return `<div class="ac-dtable__row so-row so-row--${kind} ${r.active ? '' : 'is-inactive'}" data-id="${r.id}">
+            <div data-label="Subject"><div class="so-subject"><span class="so-subject-icon material-symbols-outlined" aria-hidden="true">${mixed ? 'science' : (r.lab ? 'science' : 'menu_book')}</span><div><strong class="so-subject-code">${escape(r.code)}${r.secondaryCode ? ` <small class="so-subject-dept">+ ${escape(r.secondaryCode)}</small>` : ''}</strong><span class="so-subject-title">${escape(r.title)}</span>${Object.keys(config.departments).length > 1 ? `<small class="so-subject-dept">${escape(config.departments[r.department] || 'Department')}</small>` : ''}</div></div></div>
+            <div data-label="Units" class="so-units">${formatNum(r.totalUnits)}</div><div data-label="Class type"><span class="so-type so-type--${kind}">${typeLabel}</span></div><div data-label="Meeting length" class="so-duration">${lengthLabel}</div>
+            <div data-label="Status"><span class="so-status ${r.active ? 'so-status--active' : ''}"><i class="so-dot"></i>${r.active ? 'Active' : 'Inactive'}</span></div>
+            <div data-label="Actions"><div class="so-row-actions"><button type="button" class="so-edit" data-action="edit" aria-label="Edit ${escape(r.code)}"><span class="material-symbols-outlined" aria-hidden="true">edit</span>Edit</button><button type="button" class="so-icon-button so-toggle" data-action="status" title="${r.active ? 'Deactivate' : 'Activate'} ${escape(r.code)}" aria-label="${r.active ? 'Deactivate' : 'Activate'} ${escape(r.code)}"><span class="material-symbols-outlined" aria-hidden="true">${r.active ? 'pause_circle' : 'play_circle'}</span></button></div></div></div>`;
         }).join('');
         byId('soTableWrap').hidden = !filtered.length;
         byId('soEmpty').hidden = !!filtered.length;
@@ -288,17 +288,17 @@
             // Search is narrowed to the new code right above, so this is
             // reliably just the subject that was added — give it a beat of
             // highlight instead of letting it appear in the list cold.
-            if (!wasEditing) byId('soRows').querySelector('tr')?.classList.add('so-row-added');
+            if (!wasEditing) byId('soRows').querySelector('.ac-dtable__row')?.classList.add('so-row-added');
         } catch (error) { errorIn('soFormError', error.message); }
         finally { setBusy(false); byId('soSave').textContent = wasEditing ? 'Save changes' : 'Add subject'; }
     });
     function focusRow(id) {
-        const button = byId('soRows').querySelector(`tr[data-id="${id}"] [data-action="edit"]`);
+        const button = byId('soRows').querySelector(`.ac-dtable__row[data-id="${id}"] [data-action="edit"]`);
         (button || search).focus({ preventScroll: true });
     }
     byId('soRows').addEventListener('click', evt => {
         const button = evt.target.closest('button[data-action]'); if (!button || busy) return;
-        const row = displayRows.find(r => r.id === Number(button.closest('tr').dataset.id));
+        const row = displayRows.find(r => r.id === Number(button.closest('.ac-dtable__row').dataset.id));
         if (!row) return;
         if (button.dataset.action === 'edit') { openEditor(row); return; }
         statusId = row.id; byId('soStatusError').hidden = true;

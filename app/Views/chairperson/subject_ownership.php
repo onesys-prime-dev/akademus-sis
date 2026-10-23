@@ -50,7 +50,17 @@ $catalog = array_map(static fn ($s) => [
                 <?php if (count($deptNames) > 1): ?><div class="so-filter"><label for="soDepartment">Department</label><select id="soDepartment"><option value="all">All departments</option><?php foreach ($deptNames as $id => $name): ?><option value="<?= (int) $id ?>"><?= esc($name) ?></option><?php endforeach ?></select></div><?php endif ?>
             </div>
             <div class="so-list-controls"><nav class="so-status-tabs" aria-label="Filter subjects by status"><button type="button" class="is-active" data-status="all" aria-pressed="true">All subjects <span id="soAllTab"><?= count($catalog) ?></span></button><button type="button" data-status="active" aria-pressed="false">Active</button><button type="button" data-status="inactive" aria-pressed="false">Inactive</button></nav><div class="so-sort"><label for="soSort">Sort by</label><select id="soSort"><option value="code">Subject code</option><option value="title">Subject title</option></select></div></div>
-            <div class="so-table-wrap" id="soTableWrap"><table class="so-table"><caption class="so-sr-only">Subjects owned by your departments</caption><thead><tr><th scope="col">Subject</th><th scope="col">Units</th><th scope="col">Class type</th><th scope="col">Meeting length</th><th scope="col">Status</th><th scope="col" class="so-actions-heading">Actions</th></tr></thead><tbody id="soRows"></tbody></table></div>
+            <div class="ac-dtable so-dtable" id="soTableWrap">
+                <div class="ac-dtable__head">
+                    <div>Subject</div>
+                    <div>Units</div>
+                    <div>Class type</div>
+                    <div>Meeting length</div>
+                    <div>Status</div>
+                    <div class="so-sr-only">Actions</div>
+                </div>
+                <div id="soRows"></div>
+            </div>
             <div class="so-empty" id="soEmpty" hidden><span class="material-symbols-outlined" aria-hidden="true">search_off</span><h3 id="soEmptyTitle">No matching subjects</h3><p id="soEmptyText">Try a different search or adjust your filters.</p><button type="button" class="so-button" id="soClearFilters">Clear filters</button><button type="button" class="so-button so-button--primary" id="soEmptyAdd" data-open-add hidden>Add your first subject</button></div>
             <footer class="so-pagination"><p id="soRange" role="status" aria-live="polite"></p><div><button type="button" class="so-page-button" id="soPrevious" aria-label="Previous page"><span class="material-symbols-outlined" aria-hidden="true">chevron_left</span></button><span id="soPageNumber"></span><button type="button" class="so-page-button" id="soNext" aria-label="Next page"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button></div></footer>
             <noscript><p class="so-notice">Enable JavaScript to browse and manage your subject catalog.</p></noscript>
