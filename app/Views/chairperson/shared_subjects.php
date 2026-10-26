@@ -279,3 +279,15 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <?php endif ?>
 
 <?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+    // Same styled floating-listbox every other portal page uses
+    // (window.enhanceSelect, loaded globally in the layout) instead of the
+    // browser's own unstyled popup. The native <select> stays the real
+    // value holder, so the existing onchange="this.form.submit()" keeps
+    // firing untouched — enhanceSelect's choose() dispatches a real
+    // 'change' event on it rather than just updating a visible label.
+    if (window.enhanceSelect) window.enhanceSelect(document.getElementById('ssd-term'));
+</script>
+<?= $this->endSection() ?>
