@@ -15,6 +15,18 @@
     const courseGroups = byId('soCourseGroups'), courseDept = byId('soCourseDept');
     let displayRows = [];
 
+    // Same sliding "active" pill every other tab group in the console uses
+    // (acInitSegmented, layouts/admin_console.php) instead of the status
+    // tabs' underline just snapping to whichever one was clicked.
+    let statusIndicator = null;
+    if (window.acInitSegmented) {
+        statusIndicator = window.acInitSegmented(document.querySelector('.so-status-tabs'), { buttonSelector: '[data-status]' });
+        // Its own auto-detect looks for .active/aria-pressed; this group
+        // uses .is-active instead — position it on the server-rendered
+        // active tab directly rather than relying on that.
+        statusIndicator?.move(document.querySelector('.so-status-tabs [data-status].is-active'), false);
+    }
+
     // Same animated floating-listbox select every other portal page uses
     // (window.enhanceSelect, loaded globally in the layout) instead of the
     // browser's own unstyled popup, which on "Owning department" was wide
@@ -151,14 +163,14 @@
         page = Math.min(page, pages);
         const start = (page - 1) * pageSize;
         displayRows = filtered.slice(start, start + pageSize);
-        byId('soRows').innerHTML = displayRows.map(r => {
+        byId('soRows').innerHTML = displayRows.map((r, i) => {
             const mixed = r.lecture && r.lab;
             const kind = mixed ? 'mixed' : (r.lab ? 'lab' : 'lecture');
             const typeLabel = mixed ? 'Lecture + Lab' : (r.lab ? 'Laboratory' : 'Lecture');
             const lengthLabel = mixed
                 ? `Lec ${formatHrMin(r.lecture.duration)} · Lab ${formatHrMin(r.lab.duration)}`
                 : formatHrMin((r.lecture || r.lab).duration);
-            return `<div class="ac-dtable__row so-row so-row--${kind} ${r.active ? '' : 'is-inactive'}" data-id="${r.id}" tabindex="0" role="button" aria-label="View details for ${escape(r.code)}">
+            return `<div class="ac-dtable__row so-row so-row--${kind} so-row-enter ${r.active ? '' : 'is-inactive'}" style="--so-row-i:${i}" data-id="${r.id}" tabindex="0" role="button" aria-label="View details for ${escape(r.code)}">
             <div data-label="Subject"><div class="so-subject"><span class="so-subject-icon material-symbols-outlined" aria-hidden="true">${mixed ? 'science' : (r.lab ? 'science' : 'menu_book')}</span><div><strong class="so-subject-code">${escape(r.code)}${r.secondaryCode ? ` <small class="so-subject-dept">+ ${escape(r.secondaryCode)}</small>` : ''}</strong><span class="so-subject-title">${escape(r.title)}</span>${Object.keys(config.departments).length > 1 ? `<small class="so-subject-dept">${escape(config.departments[r.department] || 'Department')}</small>` : ''}</div></div></div>
             <div data-label="Units" class="so-units">${formatNum(r.totalUnits)}</div><div data-label="Class type"><span class="so-type so-type--${kind}">${typeLabel}</span></div><div data-label="Meeting length" class="so-duration">${lengthLabel}</div>
             <div data-label="Status"><span class="so-status ${r.active ? 'so-status--active' : ''}"><i class="so-dot"></i>${r.active ? 'Active' : 'Inactive'}</span></div>
@@ -182,6 +194,7 @@
         document.querySelectorAll('[data-status]').forEach(button => {
             const selected = button.dataset.status === status;
             button.classList.toggle('is-active', selected); button.setAttribute('aria-pressed', String(selected));
+            if (selected) statusIndicator?.move(button, true);
         });
         render();
     }
@@ -189,6 +202,7 @@
     document.querySelectorAll('[data-status]').forEach(button => button.addEventListener('click', () => {
         status = button.dataset.status; page = 1;
         document.querySelectorAll('[data-status]').forEach(tab => { tab.classList.toggle('is-active', tab === button); tab.setAttribute('aria-pressed', String(tab === button)); });
+        statusIndicator?.move(button, true);
         render();
     }));
     byId('soClearFilters').addEventListener('click', resetFilters);
@@ -297,7 +311,7 @@
             // Search is narrowed to the new code right above, so this is
             // reliably just the subject that was added — give it a beat of
             // highlight instead of letting it appear in the list cold.
-            if (!wasEditing) byId('soRows').querySelector('.ac-dtable__row')?.classList.add('so-row-added');
+            if (!wasEditing) byId('soRows').querySelector('.ac-dtable__row')?.classList.replace('so-row-enter', 'so-row-added');
         } catch (error) { errorIn('soFormError', error.message); }
         finally { setBusy(false); byId('soSave').textContent = wasEditing ? 'Save changes' : 'Add subject'; }
     });

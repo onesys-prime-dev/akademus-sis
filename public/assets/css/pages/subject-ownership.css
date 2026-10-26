@@ -50,10 +50,17 @@
 .so-filter .cs-select { flex: 1; min-width: 0; max-width: 210px; }
 .so-filter .cs-select__trigger { border: 0; padding: 10px 2px; min-height: 0; font-size: 12px; color: #425670; }
 .so-list-controls { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 28px; border-bottom: 1px solid var(--so-line); }
-.so-status-tabs { display: flex; gap: 25px; }
-.so-status-tabs button { display: flex; align-items: center; gap: 6px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--so-muted); padding: 0 0 16px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.so-status-tabs button.is-active { color: var(--so-blue); border-bottom-color: var(--so-blue); }
+.so-status-tabs { position: relative; display: flex; gap: 25px; }
+.so-status-tabs button { position: relative; z-index: 1; display: flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--so-muted); padding: 0 0 16px; font-size: 12px; font-weight: 600; white-space: nowrap; transition: color var(--motion-fast) var(--ease-standard); }
+.so-status-tabs button.is-active { color: var(--so-blue); }
 .so-status-tabs button:hover { color: var(--so-blue); }
+@media (prefers-reduced-motion: reduce) { .so-status-tabs button { transition: none; } }
+/* Same sliding-pill mechanism (acInitSegmented, layouts/admin_console.php)
+   every other tab group in the console uses, flattened into a 2px
+   underline — see .cb-semesters in curriculum-builder.css for the same
+   pattern. The static border-bottom above is gone entirely now: leaving
+   it would sit under the indicator before any slide even happens. */
+.so-status-tabs .ac-segmented__indicator { top: auto !important; bottom: 0 !important; height: 2px !important; background: var(--so-blue); }
 .so-status-tabs button span { background: #edf2fd; border-radius: 5px; font-size: 10px; padding: 1px 6px; }
 .so-sort { display: flex; align-items: center; gap: 7px; margin-bottom: 15px; }
 .so-sort label { font-size: 10px; color: #8090a6; }
@@ -77,6 +84,14 @@
 }
 .so-row-added { animation: soRowIn 1.4s var(--ease-standard) both; }
 @media (prefers-reduced-motion: reduce) { .so-row-added { animation: none; } }
+/* Every render() rebuilds the table from scratch — switching status tabs,
+   typing a search, changing filters/sort/page — so without this the new
+   rows just appear mid-click with no sense that the list actually changed.
+   Each row fades/slides in with a small stagger, capped so a full page of
+   10 doesn't take forever to settle. */
+@keyframes soRowEnter { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.so-row-enter { animation: soRowEnter .32s var(--ease-standard) both; animation-delay: calc(var(--so-row-i, 0) * 25ms); }
+@media (prefers-reduced-motion: reduce) { .so-row-enter { animation: none; } }
 .so-subject { display: flex; align-items: center; gap: 12px; }
 .so-subject-icon { width: 35px; height: 39px; display: grid; place-items: center; border: 1px solid #e7edf6; border-radius: 8px; background: #f7f9fd; color: #8098bf; font-size: 18px !important; transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
 /* Each class type reads as its own color everywhere it shows up — the
