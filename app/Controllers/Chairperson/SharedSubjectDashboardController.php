@@ -18,13 +18,29 @@ class SharedSubjectDashboardController extends BaseController
 {
     public function index()
     {
+        $yearRows = (new AcademicYearModel())->orderBy('is_active', 'desc')->orderBy('label', 'desc')->orderBy('semester', 'asc')->findAll();
+
         $requested = $this->request->getGet('academic_year');
-        $academicYear = is_string($requested) && $requested !== '' ? $requested : (new AcademicYearModel())->activeFormatted();
+        $activeFormatted = (new AcademicYearModel())->activeFormatted();
+        $academicYear = is_string($requested) && $requested !== '' ? $requested : $activeFormatted;
 
         $terms = array_values(array_unique(array_map(
             static fn (array $row) => AcademicYearModel::format($row['label'], $row['semester']),
-            (new AcademicYearModel())->orderBy('is_active', 'desc')->orderBy('label', 'desc')->orderBy('semester', 'asc')->findAll()
+            $yearRows
         )));
+
+        // The selected term's raw label/semester — needed to build "Plot
+        // it"'s deep link into Schedule Plotting (?ay_label=...&semester=...),
+        // which wants the DB's raw values, not the "AY 2026 - 2027 · 1st
+        // Semester" display string.
+        $selectedYearRow = null;
+
+        foreach ($yearRows as $row) {
+            if (AcademicYearModel::format($row['label'], $row['semester']) === $academicYear) {
+                $selectedYearRow = $row;
+                break;
+            }
+        }
 
         $includeInactive = $this->request->getGet('show_inactive') === '1';
 
@@ -37,6 +53,8 @@ class SharedSubjectDashboardController extends BaseController
             'user'            => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
             'terms'           => $terms,
             'selectedTerm'    => $academicYear,
+            'ayLabel'         => $selectedYearRow['label'] ?? null,
+            'semester'        => $selectedYearRow['semester'] ?? null,
             'dashboard'       => $dashboard,
             'includeInactive' => $includeInactive,
         ]);

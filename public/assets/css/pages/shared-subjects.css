@@ -1,0 +1,120 @@
+/* Shared Subject Dashboard — quiet-premium pass: elevation + proportion
+   instead of boxed borders everywhere, consistent with the rest of the
+   console's "quiet-premium system pass" (see design-system/components.css). */
+
+.ssd-toolbar { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 24px; }
+.ssd-term-form { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ssd-term-form label { font-size: 12.5px; font-weight: 650; color: var(--color-text-secondary); }
+.ssd-toggle { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--color-text-secondary); cursor: pointer; }
+.ssd-toggle input { accent-color: var(--color-primary); width: 15px; height: 15px; }
+
+/* Card: soft elevation at rest, lifts slightly on hover instead of just
+   snapping a border color — same elevation language as Subject
+   Ownership's course cards. */
+.ssd-card {
+    background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm); margin-bottom: 18px; overflow: hidden;
+    transition: box-shadow var(--transition-normal), transform var(--transition-normal), border-color var(--transition-normal);
+}
+.ssd-card:hover { box-shadow: var(--shadow-md); border-color: var(--color-border-medium); transform: translateY(-1px); }
+@media (prefers-reduced-motion: reduce) { .ssd-card { transition: none; } .ssd-card:hover { transform: none; } }
+
+.ssd-card__head { display: flex; align-items: center; gap: 14px; padding: 20px 24px; }
+.ssd-card__icon {
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 42px; height: 42px; border-radius: var(--radius-md);
+    background: var(--color-primary-soft); color: var(--color-primary);
+}
+.ssd-card__icon .material-symbols-outlined { font-size: 21px; }
+.ssd-card__title { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ssd-card__title strong { font-size: 15px; font-weight: 750; letter-spacing: -.01em; color: var(--color-text-primary); }
+.ssd-card__title span { font-size: 12.5px; color: var(--color-text-secondary); }
+
+.ssd-card__body { padding: 0 24px 24px; }
+
+.ssd-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.ssd-badge { font-size: 10.5px; font-weight: 700; letter-spacing: .01em; padding: 4px 11px; border-radius: var(--radius-pill); white-space: nowrap; }
+.ssd-badge--warn { background: var(--color-warning-soft); color: var(--color-warning); }
+.ssd-badge--danger { background: var(--color-danger-soft); color: var(--color-danger); }
+.ssd-badge--info { background: var(--color-info-soft); color: var(--color-info); }
+
+/* Quiet number/label pairs separated by hairlines instead of three boxed
+   stat-cards — less "admin table," more dashboard. */
+.ssd-stats { display: flex; border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); margin: 2px 0 18px; }
+.ssd-stat { flex: 1; padding: 14px 18px; display: flex; flex-direction: column; gap: 4px; }
+.ssd-stat + .ssd-stat { border-left: 1px solid var(--color-border); }
+.ssd-stat__value { font-size: 22px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--color-text-primary); }
+.ssd-stat--warn .ssd-stat__value { color: var(--color-warning); }
+.ssd-stat__label { font-size: 10.5px; font-weight: 650; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: .035em; }
+@media (max-width: 720px) {
+    .ssd-stats { flex-direction: column; }
+    .ssd-stat + .ssd-stat { border-left: 0; border-top: 1px solid var(--color-border); }
+}
+
+/* Program breakdown / Data notes drawers — a button+div pair driven by a
+   small inline toggle script instead of native <details>/<summary>, which
+   can't animate its open/close (display:none snaps instantly). Same
+   max-height+opacity technique as Subject Ownership's course-card drawers. */
+.ssd-drawer-group + .ssd-drawer-group { margin-top: 4px; }
+.ssd-drawer-trigger {
+    display: flex; align-items: center; gap: 5px; width: 100%;
+    border: 0; background: none; padding: 4px 0; font: inherit;
+    font-size: 12.5px; font-weight: 650; color: var(--color-text-secondary); cursor: pointer;
+    transition: color var(--transition-fast);
+}
+.ssd-drawer-trigger:hover { color: var(--color-primary); }
+.ssd-drawer-group.is-open .ssd-drawer-trigger { color: var(--color-primary); }
+.ssd-drawer-trigger .material-symbols-outlined { font-size: 17px; transition: transform var(--transition-fast); }
+.ssd-drawer-group.is-open .ssd-drawer-trigger .material-symbols-outlined { transform: rotate(180deg); }
+.ssd-drawer { max-height: 0; opacity: 0; overflow: hidden; transition: max-height var(--motion-normal) var(--ease-standard), opacity var(--motion-normal) var(--ease-standard); }
+.ssd-drawer-group.is-open .ssd-drawer { max-height: 400px; opacity: 1; margin-top: 8px; }
+@media (prefers-reduced-motion: reduce) { .ssd-drawer-trigger .material-symbols-outlined, .ssd-drawer { transition: none; } }
+
+.mc-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.mc-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--color-surface-sunken); border: 1px solid var(--color-border);
+    border-radius: var(--radius-md); padding: 5px 12px;
+    font-size: 12px; font-weight: 600; color: var(--color-text-primary);
+}
+
+.ssd-note { font-size: 11.5px; color: var(--color-text-secondary); line-height: 1.7; margin: 0; padding-left: 16px; }
+
+.ssd-requests {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+    margin-top: 16px; padding: 12px 14px;
+    background: var(--color-primary-soft); border-radius: var(--radius-md);
+    font-size: 12.5px; color: var(--color-text-secondary);
+}
+.ssd-requests b { color: var(--color-text-primary); }
+.ssd-requests a { margin-left: auto; font-weight: 700; color: var(--color-primary); text-decoration: none; white-space: nowrap; }
+.ssd-requests a:hover { text-decoration: underline; }
+
+.ssd-offering {
+    border: 1px solid var(--color-border); border-radius: var(--radius-md);
+    padding: 14px 16px; margin-top: 12px;
+    transition: border-color var(--transition-fast);
+}
+.ssd-offering:hover { border-color: var(--color-border-medium); }
+.ssd-offering__top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ssd-offering__title { font-weight: 700; font-size: 13.5px; color: var(--color-text-primary); }
+.mc-cap-pill {
+    font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill);
+    background: var(--color-surface-sunken); color: var(--color-text-secondary); white-space: nowrap;
+}
+.mc-cap-pill--over { background: var(--color-danger-soft); color: var(--color-danger); }
+.ssd-meetings { font-size: 12.5px; color: var(--color-text-secondary); margin-top: 8px; line-height: 1.7; }
+.ssd-meeting-row { margin-bottom: 2px; }
+.ssd-offering__manage { margin-top: 10px; font-size: 12.5px; font-weight: 700; color: var(--color-primary); text-decoration: none; }
+.ssd-offering__manage:hover { text-decoration: underline; }
+
+/* "Not yet scheduled" row + its Plot it action, replacing the plain
+   italic line that used to sit there with nothing to do about it. */
+.ssd-unscheduled { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.ssd-unscheduled__label { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--color-text-secondary); }
+.ssd-unscheduled__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-warning); flex-shrink: 0; }
+.ssd-plot-btn { display: inline-flex; align-items: center; gap: 5px; }
+.ssd-plot-btn .material-symbols-outlined { font-size: 16px; }
+
+.ssd-card__body > .empty-state { padding: 28px 0; }
+.ssd-empty-cta { margin-top: 14px; }

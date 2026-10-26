@@ -96,8 +96,14 @@ class SharedSubjectDashboardService
 
             foreach ($sectionRows as $r) {
                 $sectionsByOffering[(int) $r['offering_id']][] = [
-                    'label'   => "{$r['program']} · {$r['year_level']} · {$r['section']}",
-                    'program' => $r['program'],
+                    'label'      => "{$r['program']} · {$r['year_level']} · {$r['section']}",
+                    'program'    => $r['program'],
+                    // Carried through to 'Plot it' so it can deep-link into
+                    // Schedule Plotting with program/year_level/section
+                    // pre-filled — same query shape ChairpersonController
+                    // already builds for the Dashboard's "sections to plot".
+                    'year_level' => $r['year_level'],
+                    'section'    => $r['section'],
                 ];
             }
         }
@@ -200,6 +206,13 @@ class SharedSubjectDashboardService
                     'is_scheduled'   => $isScheduled,
                     'has_no_faculty' => $meetings !== [] && array_reduce($meetings, static fn ($carry, $m) => $carry || $m['no_faculty'], false),
                     'components'     => $completeness,
+                    // The view's "Plot it" deep link into Schedule Plotting
+                    // needs one concrete program/year_level/section to land
+                    // on — an offering can span several (a merged class), so
+                    // this is just the first attached section, a starting
+                    // point the chairperson can navigate from, not a claim
+                    // that it's the only one.
+                    'plot_context'   => $sections[0] ?? null,
                 ];
             }
 

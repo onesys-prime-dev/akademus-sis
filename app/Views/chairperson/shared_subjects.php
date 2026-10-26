@@ -12,93 +12,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
 <?= $this->section('styles') ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/pages/portal-shell.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/portal-shell.css') ?>">
-<style>
-    .ssd-toolbar { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 22px; }
-    .ssd-term-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .ssd-term-form label { font-size: 12.5px; font-weight: 650; color: var(--color-text-secondary); }
-    .ssd-term-form select {
-        font-size: 13px; font-family: inherit; padding: 8px 12px;
-        border: 1px solid var(--color-border-control); border-radius: var(--radius-md);
-        background: var(--color-surface); color: var(--color-text-primary);
-    }
-    .ssd-term-form select:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
-    .ssd-toggle { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--color-text-secondary); cursor: pointer; }
-    .ssd-toggle input { accent-color: var(--color-primary); width: 15px; height: 15px; }
-
-    /* Card header, borrowed from the Merged Classes page's mc-card pattern
-       plus a subject icon badge for visual identity. */
-    .mc-card { padding: 0; }
-    .mc-card__head { display: flex; align-items: flex-start; gap: 14px; padding: 20px 24px; border-bottom: 1px solid var(--color-border); }
-    .mc-card__icon {
-        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        width: 40px; height: 40px; border-radius: var(--radius-md);
-        background: var(--color-primary-soft); color: var(--color-primary);
-    }
-    .mc-card__icon .material-symbols-outlined { font-size: 20px; }
-    .mc-card__title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .mc-card__title-row h2 { margin: 0; font-size: 15.5px; font-weight: 750; letter-spacing: -.01em; color: var(--color-text-primary); }
-
-    .mc-card__body { padding: 20px 24px 24px; }
-
-    .ssd-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
-    .ssd-badge { font-size: 11px; font-weight: 700; padding: 4px 11px; border-radius: var(--radius-pill); white-space: nowrap; }
-    .ssd-badge--warn { background: var(--color-warning-soft); color: var(--color-warning); }
-    .ssd-badge--danger { background: var(--color-danger-soft); color: var(--color-danger); }
-    .ssd-badge--info { background: var(--color-info-soft); color: var(--color-info); }
-
-    .ssd-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
-    @media (max-width: 720px) { .ssd-stats { grid-template-columns: 1fr; } }
-    .ssd-stats .stat-card { padding: 16px 18px; gap: 8px; box-shadow: none; }
-    .ssd-stats .stat-icon { width: 32px; height: 32px; }
-    .ssd-stats .stat-icon .material-symbols-outlined { font-size: 17px; }
-    .ssd-stats .stat-value { font-size: 24px; }
-
-    details > summary { font-size: 12.5px; font-weight: 650; color: var(--color-text-secondary); cursor: pointer; list-style: none; }
-    details > summary::-webkit-details-marker { display: none; }
-    details > summary:hover { color: var(--color-primary); }
-    details[open] > summary { color: var(--color-primary); margin-bottom: 8px; }
-    details + details { margin-top: 6px; }
-
-    .mc-pills { display: flex; flex-wrap: wrap; gap: 8px; }
-    .mc-pill {
-        display: inline-flex; align-items: center; gap: 4px;
-        background: var(--color-surface); border: 1px solid var(--color-border);
-        border-radius: var(--radius-md); padding: 5px 12px;
-        font-size: 12px; font-weight: 600; color: var(--color-text-primary);
-    }
-
-    .ssd-note { font-size: 11.5px; color: var(--color-text-secondary); line-height: 1.65; }
-
-    .ssd-requests {
-        display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
-        margin-top: 16px; padding: 12px 14px;
-        background: var(--color-primary-soft); border-radius: var(--radius-md);
-        font-size: 12.5px; color: var(--color-text-secondary);
-    }
-    .ssd-requests b { color: var(--color-text-primary); }
-    .ssd-requests a { margin-left: auto; font-weight: 700; color: var(--color-primary); text-decoration: none; white-space: nowrap; }
-    .ssd-requests a:hover { text-decoration: underline; }
-
-    .ssd-offering {
-        border: 1px solid var(--color-border); border-radius: var(--radius-md);
-        padding: 14px 16px; margin-top: 12px;
-        transition: border-color var(--transition-fast);
-    }
-    .ssd-offering:hover { border-color: var(--color-border-medium); }
-    .ssd-offering__top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-    .ssd-offering__title { font-weight: 700; font-size: 13.5px; color: var(--color-text-primary); }
-    .mc-cap-pill {
-        font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill);
-        background: var(--color-surface-sunken); color: var(--color-text-secondary); white-space: nowrap;
-    }
-    .mc-cap-pill--over { background: var(--color-danger-soft); color: var(--color-danger); }
-    .ssd-meetings { font-size: 12.5px; color: var(--color-text-secondary); margin-top: 8px; line-height: 1.65; }
-    .ssd-meeting-row { margin-bottom: 2px; }
-    .ssd-offering a { font-size: 12.5px; font-weight: 700; color: var(--color-primary); text-decoration: none; }
-    .ssd-offering a:hover { text-decoration: underline; }
-
-    .mc-card__body > .empty-state { padding: 28px 0; }
-</style>
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/shared-subjects.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/shared-subjects.css') ?>">
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -159,15 +73,16 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
     <?php foreach ($dashboard['subjects'] as $s): ?>
         <?php $d = $s['demand']; ?>
-        <div class="panel mc-card">
-            <div class="mc-card__head">
-                <span class="mc-card__icon"><span class="material-symbols-outlined" aria-hidden="true">subject</span></span>
-                <div class="mc-card__title-row">
-                    <h2><?= esc($s['subject_code']) ?> — <?= esc($s['subject_name']) ?></h2>
+        <div class="panel ssd-card">
+            <div class="ssd-card__head">
+                <span class="ssd-card__icon"><span class="material-symbols-outlined" aria-hidden="true">subject</span></span>
+                <div class="ssd-card__title">
+                    <strong><?= esc($s['subject_code']) ?></strong>
+                    <span><?= esc($s['subject_name']) ?></span>
                 </div>
             </div>
 
-            <div class="mc-card__body">
+            <div class="ssd-card__body">
                 <?php if (! empty($s['attention'])): ?>
                     <div class="ssd-badges">
                         <?php foreach (array_unique($s['attention']) as $a): ?>
@@ -178,42 +93,43 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <?php endif ?>
 
                 <div class="ssd-stats">
-                    <div class="stat-card">
-                        <span class="stat-icon"><span class="material-symbols-outlined" aria-hidden="true">groups</span></span>
-                        <div class="stat-value"><?= esc($d['expected_count'] ?? 0) ?></div>
-                        <div class="stat-label">Expected Demand</div>
+                    <div class="ssd-stat">
+                        <div class="ssd-stat__value"><?= esc($d['expected_count'] ?? 0) ?></div>
+                        <div class="ssd-stat__label">Expected Demand</div>
                     </div>
-                    <div class="stat-card" title="Assignment and enrollment are currently the same state in this SIS.">
-                        <span class="stat-icon"><span class="material-symbols-outlined" aria-hidden="true">how_to_reg</span></span>
-                        <div class="stat-value"><?= esc($d['assigned_count'] ?? 0) ?></div>
-                        <div class="stat-label">Enrolled / Assigned</div>
+                    <div class="ssd-stat" title="Assignment and enrollment are currently the same state in this SIS.">
+                        <div class="ssd-stat__value"><?= esc($d['assigned_count'] ?? 0) ?></div>
+                        <div class="ssd-stat__label">Enrolled / Assigned</div>
                     </div>
-                    <div class="stat-card <?= ($d['unassigned_count'] ?? 0) > 0 ? 'warning' : '' ?>">
-                        <span class="stat-icon"><span class="material-symbols-outlined" aria-hidden="true">person_off</span></span>
-                        <div class="stat-value"><?= esc($d['unassigned_count'] ?? 0) ?></div>
-                        <div class="stat-label">Unassigned</div>
+                    <div class="ssd-stat<?= ($d['unassigned_count'] ?? 0) > 0 ? ' ssd-stat--warn' : '' ?>">
+                        <div class="ssd-stat__value"><?= esc($d['unassigned_count'] ?? 0) ?></div>
+                        <div class="ssd-stat__label">Unassigned</div>
                     </div>
                 </div>
 
                 <?php if (! empty($d['by_program'])): ?>
-                    <details>
-                        <summary>Program breakdown</summary>
-                        <div class="mc-pills">
-                            <?php foreach ($d['by_program'] as $bp): ?>
-                                <span class="mc-pill"><?= esc($bp['program_name'] ?? 'Unknown') ?>: <?= esc($bp['expected_count']) ?></span>
-                            <?php endforeach ?>
+                    <div class="ssd-drawer-group">
+                        <button type="button" class="ssd-drawer-trigger" aria-expanded="false">Program breakdown<span class="material-symbols-outlined" aria-hidden="true">expand_more</span></button>
+                        <div class="ssd-drawer">
+                            <div class="mc-pills">
+                                <?php foreach ($d['by_program'] as $bp): ?>
+                                    <span class="mc-pill"><?= esc($bp['program_name'] ?? 'Unknown') ?>: <?= esc($bp['expected_count']) ?></span>
+                                <?php endforeach ?>
+                            </div>
                         </div>
-                    </details>
+                    </div>
                 <?php endif ?>
 
                 <?php if (! empty($d['limitations'])): ?>
-                    <details>
-                        <summary>&#9888; Data notes</summary>
-                        <ul class="ssd-note" style="margin:0 0 0 16px;">
-                            <li>Demand reflects students currently sectioned this term; it may not include retakers who've advanced past this subject's nominal term, and cannot yet exclude credited/transferee exemptions.</li>
-                            <li>"Enrolled" and "Assigned" are the same underlying state today — there is no separate "reserved but unconfirmed" status in this system yet.</li>
-                        </ul>
-                    </details>
+                    <div class="ssd-drawer-group">
+                        <button type="button" class="ssd-drawer-trigger" aria-expanded="false">&#9888; Data notes<span class="material-symbols-outlined" aria-hidden="true">expand_more</span></button>
+                        <div class="ssd-drawer">
+                            <ul class="ssd-note">
+                                <li>Demand reflects students currently sectioned this term; it may not include retakers who've advanced past this subject's nominal term, and cannot yet exclude credited/transferee exemptions.</li>
+                                <li>"Enrolled" and "Assigned" are the same underlying state today — there is no separate "reserved but unconfirmed" status in this system yet.</li>
+                            </ul>
+                        </div>
+                    </div>
                 <?php endif ?>
 
                 <?php if ($s['requests']['pending_total'] > 0 || $s['requests']['approved_not_fulfilled'] > 0): ?>
@@ -230,9 +146,26 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <?php if (empty($s['offerings'])): ?>
                     <div class="empty-state">
                         <p>No offering exists for this subject yet this term.</p>
+                        <div class="ssd-empty-cta">
+                            <a class="ac-btn ac-btn-sm ac-btn-secondary ssd-plot-btn" href="<?= site_url('chairperson/offerings') ?>">
+                                Create offering<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                            </a>
+                        </div>
                     </div>
                 <?php else: ?>
                     <?php foreach ($s['offerings'] as $o): ?>
+                        <?php
+                            $ctx = $o['plot_context'];
+                            $plotUrl = ($ctx !== null && $ayLabel !== null && $semester !== null)
+                                ? site_url('chairperson/dashboard') . '?' . http_build_query([
+                                    'ay_label'   => $ayLabel,
+                                    'semester'   => $semester,
+                                    'program'    => $ctx['program'],
+                                    'year_level' => $ctx['year_level'],
+                                    'section'    => $ctx['section'],
+                                ])
+                                : null;
+                        ?>
                         <div class="ssd-offering">
                             <div class="ssd-offering__top">
                                 <span class="ssd-offering__title"><?= esc($o['label']) ?></span>
@@ -262,13 +195,18 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                         </div>
                                     <?php endforeach ?>
                                 <?php else: ?>
-                                    <em>Not yet scheduled</em>
+                                    <div class="ssd-unscheduled">
+                                        <span class="ssd-unscheduled__label"><span class="ssd-unscheduled__dot" aria-hidden="true"></span>Not yet scheduled</span>
+                                        <?php if ($plotUrl !== null): ?>
+                                            <a class="ac-btn ac-btn-sm ac-btn-secondary ssd-plot-btn" href="<?= esc($plotUrl, 'attr') ?>">
+                                                Plot it<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                                            </a>
+                                        <?php endif ?>
+                                    </div>
                                 <?php endif ?>
                             </div>
 
-                            <div style="margin-top:10px;">
-                                <a href="<?= site_url('chairperson/offerings') ?>">Manage offering →</a>
-                            </div>
+                            <a class="ssd-offering__manage" href="<?= site_url('chairperson/offerings') ?>">Manage offering →</a>
                         </div>
                     <?php endforeach ?>
                 <?php endif ?>
@@ -289,5 +227,17 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     // firing untouched — enhanceSelect's choose() dispatches a real
     // 'change' event on it rather than just updating a visible label.
     if (window.enhanceSelect) window.enhanceSelect(document.getElementById('ssd-term'));
+
+    // Program breakdown / Data notes: a button+div pair instead of native
+    // <details>/<summary>, so the open/close can actually animate (see
+    // .ssd-drawer in shared-subjects.css) — native <details> just snaps
+    // via display:none, which can't be transitioned.
+    document.querySelectorAll('.ssd-drawer-trigger').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var open = btn.getAttribute('aria-expanded') !== 'true';
+            btn.setAttribute('aria-expanded', String(open));
+            btn.closest('.ssd-drawer-group').classList.toggle('is-open', open);
+        });
+    });
 </script>
 <?= $this->endSection() ?>
