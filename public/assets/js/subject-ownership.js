@@ -70,7 +70,7 @@
 
     function renderCourses() {
         if (!courseGroups) return;
-        const expanded = new Set([...courseGroups.querySelectorAll('details[open]')].map(node => node.dataset.course));
+        const expanded = new Set([...courseGroups.querySelectorAll('.so-course-card.is-open')].map(node => node.dataset.course));
         const deptIds = Object.keys(config.departments).map(Number);
         const deptId = courseDept ? Number(courseDept.value) : deptIds[0];
         const courses = config.courses[deptId] || [];
@@ -97,21 +97,30 @@
                     <span class="so-course-term-label">Year ${t.year} · ${escape(SEMESTERS[t.semester] || `Term ${t.semester}`)}</span>
                     <div class="so-course-chips">${t.subjects.map(s => `<span class="so-chip ${s.active ? '' : 'is-inactive'}" title="${escape(s.title)}">${escape(s.code)}</span>`).join('')}</div>
                 </div>`).join('');
-            return `<details class="so-course-card" data-course="${escape(course.id)}" ${expanded.has(String(course.id)) ? 'open' : ''}>
-                <summary><span class="so-course-icon material-symbols-outlined" aria-hidden="true">school</span><span class="so-course-name"><strong>${escape(course.code)}</strong><span>${escape(course.name)}</span></span><span class="so-course-total">${courseSubjects.size} <span>subjects</span></span><span class="so-course-chevron material-symbols-outlined" aria-hidden="true">expand_more</span></summary>
-                <div class="so-course-content">${termRows || '<p class="so-course-empty">No subjects from your department are assigned to this course yet.</p>'}</div>
-            </details>`;
+            const open = expanded.has(String(course.id));
+            return `<div class="so-course-card${open ? ' is-open' : ''}" data-course="${escape(course.id)}">
+                <button type="button" class="so-course-summary" aria-expanded="${open}"><span class="so-course-icon material-symbols-outlined" aria-hidden="true">school</span><span class="so-course-name"><strong>${escape(course.code)}</strong><span>${escape(course.name)}</span></span><span class="so-course-total">${courseSubjects.size} <span>subjects</span></span><span class="so-course-chevron material-symbols-outlined" aria-hidden="true">expand_more</span></button>
+                <div class="so-course-drawer"><div class="so-course-content">${termRows || '<p class="so-course-empty">No subjects from your department are assigned to this course yet.</p>'}</div></div>
+            </div>`;
         }).join('');
 
         const unassigned = deptSubjects.filter(s => !assigned.has(s.id));
-        const unassignedHtml = unassigned.length ? `<details class="so-course-card so-course-card--unassigned" data-course="unassigned" ${expanded.has('unassigned') ? 'open' : ''}>
-            <summary><span class="so-course-icon material-symbols-outlined" aria-hidden="true">inventory_2</span><span class="so-course-name"><strong>Not yet assigned</strong><span>Subjects awaiting course placement</span></span><span class="so-course-total">${unassigned.length} <span>subjects</span></span><span class="so-course-chevron material-symbols-outlined" aria-hidden="true">expand_more</span></summary>
-            <div class="so-course-content"><div class="so-course-chips">${unassigned.map(s => `<span class="so-chip ${s.active ? '' : 'is-inactive'}" title="${escape(s.title)}">${escape(s.code)}</span>`).join('')}</div></div>
-        </details>` : '';
+        const unassignedOpen = expanded.has('unassigned');
+        const unassignedHtml = unassigned.length ? `<div class="so-course-card so-course-card--unassigned${unassignedOpen ? ' is-open' : ''}" data-course="unassigned">
+            <button type="button" class="so-course-summary" aria-expanded="${unassignedOpen}"><span class="so-course-icon material-symbols-outlined" aria-hidden="true">inventory_2</span><span class="so-course-name"><strong>Not yet assigned</strong><span>Subjects awaiting course placement</span></span><span class="so-course-total">${unassigned.length} <span>subjects</span></span><span class="so-course-chevron material-symbols-outlined" aria-hidden="true">expand_more</span></button>
+            <div class="so-course-drawer"><div class="so-course-content"><div class="so-course-chips">${unassigned.map(s => `<span class="so-chip ${s.active ? '' : 'is-inactive'}" title="${escape(s.title)}">${escape(s.code)}</span>`).join('')}</div></div></div>
+        </div>` : '';
 
         courseGroups.innerHTML = courseHtml + unassignedHtml;
     }
     courseDept?.addEventListener('change', renderCourses);
+    courseGroups?.addEventListener('click', e => {
+        const summary = e.target.closest('.so-course-summary');
+        if (!summary) return;
+        const card = summary.closest('.so-course-card');
+        const open = card.classList.toggle('is-open');
+        summary.setAttribute('aria-expanded', String(open));
+    });
 
     function feedback(message) {
         byId('soFeedback').textContent = message;

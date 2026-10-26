@@ -228,11 +228,10 @@
 .so-course-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items: start; gap: 12px; padding: 0 28px 25px; }
 .so-course-card { min-width: 0; border: 1px solid var(--so-line); border-radius: 10px; background: #fff; overflow: hidden; transition: box-shadow var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
 .so-course-card:hover { border-color: #c7d4ea; box-shadow: 0 6px 18px -8px rgba(37, 89, 196, .18); }
-.so-course-card summary { display: flex; align-items: center; gap: 12px; padding: 18px 16px; cursor: pointer; list-style: none; transition: background-color var(--motion-fast) var(--ease-standard); }
-.so-course-card summary::-webkit-details-marker { display: none; }
-.so-course-card summary:hover { background: #f8faff; }
+.so-course-summary { display: flex; align-items: center; gap: 12px; width: 100%; padding: 18px 16px; border: 0; background: none; font: inherit; text-align: left; color: inherit; cursor: pointer; transition: background-color var(--motion-fast) var(--ease-standard); }
+.so-course-summary:hover { background: #f8faff; }
 @media (prefers-reduced-motion: reduce) { .so-course-card { transition: none; } }
-.so-course-card summary:focus-visible { outline-offset: -3px; }
+.so-course-summary:focus-visible { outline-offset: -3px; }
 .so-course-icon { display: grid; place-items: center; width: 36px; height: 40px; border-radius: 9px; background: #f0f3fb; color: #526baa; }
 .so-course-name { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 5px; }
 .so-course-name strong { font-size: 13px; font-weight: 650; }
@@ -247,8 +246,14 @@
    as one deliberate unit instead. */
 .so-course-total { display: flex; flex-direction: column; align-items: center; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .so-course-total > span { font-size: 10px; font-weight: 400; color: var(--so-muted); margin-top: 3px; }
-.so-course-chevron { color: #8994a5; transition: transform .18s ease; }
-.so-course-card[open] .so-course-chevron { transform: rotate(180deg); }
+.so-course-chevron { color: #8994a5; transition: transform .22s ease; }
+.so-course-card.is-open .so-course-chevron { transform: rotate(180deg); }
+/* Same max-height+opacity trick as .so-component above: the drawer's real
+   height isn't knowable in CSS, so the ceiling just needs to be generous
+   enough that the transition reads as a smooth slide either way. */
+.so-course-drawer { max-height: 0; opacity: 0; overflow: hidden; transition: max-height var(--motion-normal) var(--ease-standard), opacity var(--motion-normal) var(--ease-standard); }
+.so-course-card.is-open .so-course-drawer { max-height: 600px; opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .so-course-drawer { transition: none; } }
 .so-course-content { border-top: 1px solid var(--so-line); padding: 18px; background: #fafbfd; }
 .so-course-card--unassigned .so-course-icon { background: #faf3e6; color: #967435; }
 .so-course-term { margin-bottom: 18px; }
