@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\CourseOfferingModel;
 use App\Models\SectionModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
 use CodeIgniter\Test\CIUnitTestCase;
@@ -107,5 +108,38 @@ final class OfferingControllerMergeAcceptTest extends CIUnitTestCase
         $this->assertNotEmpty($body['suggestions']);
         $this->assertNull($body['suggestions'][0]['offering_id']);
         $this->assertSame($sectionA, $body['suggestions'][0]['target_section_id']);
+    }
+
+    public function testMergeSuggestionsForAnOfferingCarriesOfferingIdAndNoTargetSection(): void
+    {
+        $subDept = $this->newSubDept();
+        $chair   = $this->seedChairperson($subDept);
+        $this->seedProgramForSubDept('BSIT', $subDept);
+        $this->seedSubject('ITE101', $subDept);
+        $sectionA = $this->seedSection('BSIT', 'A');
+        $this->seedSection('BSIT', 'B');
+        $sectionC = $this->seedSection('BSIT', 'C');
+        db_connect()->table('rooms')->insert(['name' => 'Room 201', 'capacity' => 40, 'type' => 'Lecture', 'floor' => '2nd Floor', 'is_active' => 1]);
+
+        // A real offering for ITE101 spanning sections A and C (B is not attached), with its one plotted schedule.
+        $merge = (new CourseOfferingModel())->createMerge(self::TERM, 'ITE101', [$sectionA, $sectionC], 40);
+        $this->assertTrue($merge['ok'], $merge['error'] ?? '');
+        $offeringId = (int) $merge['offering_id'];
+        db_connect()->table('plotted_schedules')->insert([
+            'offering_id' => $offeringId, 'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => null,
+            'day' => 0, 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'time_label' => '08:00-09:30',
+            'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 201', 'status' => 'published',
+        ]);
+
+        $this->actingAs(auth()->getProvider()->findById($chair));
+        $result = $this->withSession()->get('/chairperson/offerings/merge-suggestions?' . http_build_query([
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'B',
+        ]));
+
+        $body = json_decode($result->response()->getJSON(), true);
+        $this->assertTrue($body['ok']);
+        $this->assertNotEmpty($body['suggestions']);
+        $this->assertSame($offeringId, $body['suggestions'][0]['offering_id']);
+        $this->assertNull($body['suggestions'][0]['target_section_id']);
     }
 }
