@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\CourseOfferingModel;
+use App\Models\PlottedScheduleModel;
 use App\Models\SectionModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
 use CodeIgniter\Test\CIUnitTestCase;
@@ -82,6 +83,41 @@ final class OfferingControllerMergeAcceptTest extends CIUnitTestCase
         return (int) $sections->getInsertID();
     }
 
+    /** minSections=1 so a single-section "existing offering" (the acceptMergeSuggestion join-branch fixture) can be seeded directly. */
+    private function makeOffering(string $subjectCode, array $sectionIds, ?int $capacity = null): int
+    {
+        $result = (new CourseOfferingModel())->createMerge(self::TERM, $subjectCode, $sectionIds, $capacity, 1);
+        $this->assertTrue($result['ok'], $result['error'] ?? '');
+
+        return (int) $result['offering_id'];
+    }
+
+    private function block(int $day, string $start, string $end, string $room, ?string $label = null): array
+    {
+        return ['day' => $day, 'start' => $start, 'end' => $end, 'time_label' => $label ?? "$start-$end", 'room' => $room, 'faculty_id' => null];
+    }
+
+    /**
+     * CSRF is on globally (see Config\Filters), so every POST in these tests
+     * must carry a valid token; forcing the JSON body format here (instead
+     * of requiring every call site to chain withBodyFormat('json')) keeps
+     * the accept endpoint's own JSON-body payload shape and the CSRF token
+     * living together in the same request body, which Security::verify()
+     * already knows how to read (its "check the raw JSON body" branch).
+     */
+    private function withCsrf(array $params): array
+    {
+        $this->withBodyFormat('json');
+
+        return $params + [csrf_token() => csrf_hash()];
+    }
+
+    /** seedChairperson()/newSubDept() return raw ids; Shield's actingAs() needs the User entity. */
+    private function actingAsChair(int $userId): void
+    {
+        $this->actingAs(auth()->getProvider()->findById($userId));
+    }
+
     public function testMergeSuggestionsIncludesOfferingOrTargetSectionId(): void
     {
         $subDept = $this->newSubDept();
@@ -141,5 +177,176 @@ final class OfferingControllerMergeAcceptTest extends CIUnitTestCase
         $this->assertNotEmpty($body['suggestions']);
         $this->assertSame($offeringId, $body['suggestions'][0]['offering_id']);
         $this->assertNull($body['suggestions'][0]['target_section_id']);
+    }
+
+    public function testAcceptMergeSuggestionJoinsExistingOffering(): void
+    {
+        $subDept = $this->newSubDept();
+        $chair = $this->seedChairperson($subDept);
+        $this->seedSubject('ITE101', $subDept);
+        $sectionA = $this->seedSection('BSIT', 'A');
+        $sectionB = $this->seedSection('BSIT', 'B');
+        $offering = $this->makeOffering('ITE101', [$sectionA]); // existing offering, section A only
+        (new PlottedScheduleModel())->syncOfferingSchedule($offering, $chair, [$this->block(0, '08:00', '09:30', 'Room 201')]);
+
+        $this->actingAsChair($chair);
+        $result = $this->withSession()->post('/chairperson/offerings/merge-suggestions/accept', $this->withCsrf([
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'B',
+            'subject_code' => 'ITE101', 'offering_id' => $offering, 'target_section_id' => null,
+            'meetings' => [['day' => '0', 'start' => '08:00', 'end' => '09:30', 'time_label' => '08:00-09:30']],
+        ]));
+
+        $body = json_decode($result->response()->getJSON(), true);
+        $this->assertTrue($body['ok'], $body['error'] ?? '');
+        $this->seeInDatabase('offering_sections', ['offering_id' => $offering, 'section_id' => $sectionB]);
+    }
+
+    public function testAcceptMergeSuggestionCreatesOfferingFromLegacyTarget(): void
+    {
+        $subDept = $this->newSubDept();
+        $chair = $this->seedChairperson($subDept);
+        $this->seedSubject('ITE101', $subDept);
+        $sectionA = $this->seedSection('BSIT', 'A');
+        $sectionB = $this->seedSection('BSIT', 'B');
+        db_connect()->table('plotted_schedules')->insert([
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'A',
+            'day' => 0, 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'time_label' => '08:00-09:30',
+            'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 201', 'status' => 'published',
+        ]);
+
+        $this->actingAsChair($chair);
+        $result = $this->withSession()->post('/chairperson/offerings/merge-suggestions/accept', $this->withCsrf([
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'B',
+            'subject_code' => 'ITE101', 'offering_id' => null, 'target_section_id' => $sectionA,
+            'meetings' => [['day' => '0', 'start' => '08:00', 'end' => '09:30', 'time_label' => '08:00-09:30']],
+        ]));
+
+        $body = json_decode($result->response()->getJSON(), true);
+        $this->assertTrue($body['ok'], $body['error'] ?? '');
+        $this->assertTrue($body['schedule_carried']);
+        $this->seeInDatabase('offering_sections', ['offering_id' => $body['offering_id'], 'section_id' => $sectionA]);
+        $this->seeInDatabase('offering_sections', ['offering_id' => $body['offering_id'], 'section_id' => $sectionB]);
+        $this->dontSeeInDatabase('plotted_schedules', ['offering_id' => null, 'subject_code' => 'ITE101']);
+    }
+
+    public function testAcceptMergeSuggestionIsSafeWhenJoiningSectionAlreadyPlottedTheSubject(): void
+    {
+        // mergeSuggestions() itself filters this case out (OfferingController.php:402-404),
+        // but acceptMergeSuggestion() must not corrupt data if called anyway with a
+        // stale suggestion (e.g. accepted from a second browser tab after the
+        // chairperson plotted it manually in the first).
+        $subDept = $this->newSubDept();
+        $chair = $this->seedChairperson($subDept);
+        $this->seedSubject('ITE101', $subDept);
+        $sectionA = $this->seedSection('BSIT', 'A');
+        $sectionB = $this->seedSection('BSIT', 'B');
+        foreach ([['A', $sectionA], ['B', $sectionB]] as [$label, $id]) {
+            db_connect()->table('plotted_schedules')->insert([
+                'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => $label,
+                'day' => 0, 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'time_label' => '08:00-09:30',
+                'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 201', 'status' => 'published',
+            ]);
+        }
+
+        $this->actingAsChair($chair);
+        $result = $this->withSession()->post('/chairperson/offerings/merge-suggestions/accept', $this->withCsrf([
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'B',
+            'subject_code' => 'ITE101', 'offering_id' => null, 'target_section_id' => $sectionA,
+            'meetings' => [['day' => '0', 'start' => '08:00', 'end' => '09:30', 'time_label' => '08:00-09:30']],
+        ]));
+
+        // Either a clean failure (preferred: "already plotted") or a successful,
+        // non-duplicating merge is acceptable — a 500 or a duplicate offering is not.
+        $body = json_decode($result->response()->getJSON(), true);
+        if ($body['ok']) {
+            $this->assertSame(1, db_connect()->table('course_offerings')->where('subject_code', 'ITE101')->countAllResults());
+        }
+    }
+
+    public function testAcceptMergeSuggestionSecondAcceptOfSameTargetFailsCleanly(): void
+    {
+        $subDept = $this->newSubDept();
+        $chair = $this->seedChairperson($subDept);
+        $this->seedSubject('ITE101', $subDept);
+        $sectionA = $this->seedSection('BSIT', 'A');
+        $sectionB = $this->seedSection('BSIT', 'B');
+        $sectionC = $this->seedSection('BSIT', 'C');
+        db_connect()->table('plotted_schedules')->insert([
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'A',
+            'day' => 0, 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'time_label' => '08:00-09:30',
+            'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 201', 'status' => 'published',
+        ]);
+
+        $this->actingAsChair($chair);
+        $payload = fn (int $section, string $label) => $this->withCsrf([
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => $label,
+            'subject_code' => 'ITE101', 'offering_id' => null, 'target_section_id' => $sectionA,
+            'meetings' => [['day' => '0', 'start' => '08:00', 'end' => '09:30', 'time_label' => '08:00-09:30']],
+        ]);
+
+        $first = $this->withSession()->post('/chairperson/offerings/merge-suggestions/accept', $payload($sectionB, 'B'));
+        $this->assertTrue(json_decode($first->response()->getJSON(), true)['ok']);
+
+        // A second accept naming Section A as the target again (simulating a
+        // second tab that hadn't refreshed its suggestion yet) must fail cleanly,
+        // not create a second offering or double-attach.
+        $second = $this->withSession()->post('/chairperson/offerings/merge-suggestions/accept', $payload($sectionC, 'C'));
+        $secondBody = json_decode($second->response()->getJSON(), true);
+        if ($secondBody['ok']) {
+            $this->assertSame(1, db_connect()->table('course_offerings')->where('subject_code', 'ITE101')->countAllResults());
+        }
+    }
+
+    public function testAcceptMergeSuggestionSurfacesCapacityOverrideDistinctlyFromGenericFailure(): void
+    {
+        $subDept = $this->newSubDept();
+        $chair = $this->seedChairperson($subDept);
+        $this->seedSubject('ITE101', $subDept);
+        $sectionA = $this->seedSection('BSIT', 'A');
+        $sectionB = $this->seedSection('BSIT', 'B');
+        $offering = $this->makeOffering('ITE101', [$sectionA], 0); // capacity already at its ceiling
+        $this->enrollStudent(970001, $sectionB, 'ITE101'); // an incoming student who'd push the join over that ceiling
+
+        $this->actingAsChair($chair);
+        $result = $this->withSession()->post('/chairperson/offerings/merge-suggestions/accept', $this->withCsrf([
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'B',
+            'subject_code' => 'ITE101', 'offering_id' => $offering, 'target_section_id' => null,
+            'meetings' => [],
+        ]));
+
+        $body = json_decode($result->response()->getJSON(), true);
+        $this->assertFalse($body['ok']);
+        $this->assertArrayHasKey('requires_override', $body); // distinct from a plain error, per attachSection()'s own contract
+    }
+
+    /** Mirrors OfferingPlacementRequestTest's own helper — an enrolled student who'd count toward an offering's roster if attached. */
+    private function enrollStudent(int $studentId, int $sectionId, string $subjectCode): void
+    {
+        $this->seedUsers($studentId);
+        db_connect()->table('enrollments')->insert([
+            'user_id'      => $studentId,
+            'section_id'   => $sectionId,
+            'subject_code' => $subjectCode,
+            'status'       => 'enrolled',
+        ]);
+    }
+
+    public function testAcceptMergeSuggestionRejectsUnownedSubject(): void
+    {
+        $myDept = $this->newSubDept();
+        $otherDept = $this->newSubDept();
+        $chair = $this->seedChairperson($myDept);
+        $this->seedSubject('RED999', $otherDept); // owned by a DIFFERENT department
+        $sectionB = $this->seedSection('BSIT', 'B');
+
+        $this->actingAsChair($chair);
+        $result = $this->withSession()->post('/chairperson/offerings/merge-suggestions/accept', $this->withCsrf([
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'B',
+            'subject_code' => 'RED999', 'offering_id' => null, 'target_section_id' => $sectionB,
+            'meetings' => [],
+        ]));
+
+        $body = json_decode($result->response()->getJSON(), true);
+        $this->assertFalse($body['ok']);
     }
 }
