@@ -205,6 +205,8 @@ class OfferingController extends BaseController
 
         $demandService = new SubjectDemandService();
         $offeringModel = new CourseOfferingModel();
+        $sectionModel  = new SectionModel();
+        $plottedModel  = new PlottedScheduleModel();
         $needsPlotting = [];
 
         foreach ($ownedSubjects as $subject) {
@@ -238,8 +240,8 @@ class OfferingController extends BaseController
                 // NULL) — "Create & Plot" for this row only links
                 // bookkeeping to what's already there, it doesn't start a
                 // new class from scratch.
-                $section = (new SectionModel())->find((int) $bySection['section_id']);
-                $alreadyScheduled = $section !== null && (new PlottedScheduleModel())->legacyRowsFor(
+                $section = $sectionModel->find((int) $bySection['section_id']);
+                $alreadyScheduled = $section !== null && $plottedModel->legacyRowsFor(
                     $activeYear,
                     $section['program'],
                     $section['year_level'],
@@ -827,6 +829,30 @@ class OfferingController extends BaseController
 
             if (! $result['ok']) {
                 return $this->response->setStatusCode(400)->setJSON(array_merge(['ok' => false], $result));
+            }
+
+            // A joining section's own legacy rows for this subject are now
+            // superseded by the offering's real schedule: forContext()
+            // returns a section's legacy rows PLUS every offering it is
+            // attached to, so leaving them would show the same class twice
+            // on that section's grid (spec §7: no duplicate plotted rows).
+            // Only when the offering really has a schedule, though — on an
+            // unscheduled offering those legacy rows are still the
+            // section's only visible class time.
+            $plotted = new PlottedScheduleModel();
+
+            if ($plotted->forOffering($offeringId) !== []) {
+                $duplicates = $plotted->legacyRowsFor(
+                    (string) $payload['academic_year'],
+                    (string) $sectionRow['program'],
+                    (string) $sectionRow['year_level'],
+                    (string) $sectionRow['section'],
+                    $subjectCode
+                );
+
+                if ($duplicates !== []) {
+                    $plotted->whereIn('schedule_id', array_map('intval', array_column($duplicates, 'schedule_id')))->delete();
+                }
             }
 
             // Joining an existing offering inherits its schedule outright —

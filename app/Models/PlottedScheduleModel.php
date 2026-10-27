@@ -64,7 +64,22 @@ class PlottedScheduleModel extends Model
             'section'       => $section,
         ])->findAll();
 
-        $sectionRow = (new SectionModel())->forContext($academicYear, $program, $yearLevel, $section);
+        // $academicYear here is the term-scoped string plotted_schedules is
+        // keyed by ("AY2026-2027 · 1st Semester"), but sections.academic_year
+        // is year-scoped (every write path uses $context['section_year'] /
+        // AcademicYearModel::yearOnly()). Passing the term form straight
+        // through never matched a real section row, which silently dropped
+        // every offering-linked block from a section's own grid. The raw
+        // string is still tried as a fallback for sections rows written
+        // before identity became year-scoped.
+        $sectionModel = new SectionModel();
+        $yearOnly     = AcademicYearModel::yearOnly($academicYear);
+
+        $sectionRow = $sectionModel->forContext($yearOnly, $program, $yearLevel, $section);
+
+        if ($sectionRow === null && $yearOnly !== $academicYear) {
+            $sectionRow = $sectionModel->forContext($academicYear, $program, $yearLevel, $section);
+        }
 
         if ($sectionRow === null) {
             return $legacy;

@@ -212,6 +212,116 @@ final class CourseOfferingMergeScheduleTest extends CIUnitTestCase
         $this->assertTrue($result['schedule_carried']);
     }
 
+    public function testCarryingMergeCarriesEveryMeetingOfAMultiMeetingSchedule(): void
+    {
+        $a = $this->makeSection('A');
+        $this->seedSubject('ITE101');
+
+        // A class legitimately plotted twice a week (e.g. lecture + lab):
+        // two legacy rows for the SAME section. This is one schedule, not a
+        // self-conflict, so it must carry forward in full.
+        foreach ([[0, '08:00:00', '10:00:00', '08:00-10:00'], [2, '13:00:00', '15:00:00', '13:00-15:00']] as [$day, $start, $end, $label]) {
+            db_connect()->table('plotted_schedules')->insert([
+                'academic_year' => $a['academic_year'], 'program' => $a['program'], 'year_level' => $a['year_level'], 'section' => $a['section'],
+                'day' => $day, 'start_time' => $start, 'end_time' => $end, 'time_label' => $label,
+                'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 101', 'status' => 'published',
+            ]);
+        }
+
+        $result = (new CourseOfferingModel())->createMergeCarryingSchedule(
+            $a['academic_year'], 'ITE101', [$a['section_id']], null, 1, $this->seedChairForLegacyTest('ITE101')
+        );
+
+        $this->assertTrue($result['ok'], $result['error'] ?? '');
+        $this->assertTrue($result['schedule_carried']);
+        $this->assertArrayNotHasKey('schedule_carry_skipped_reason', $result);
+        $this->assertSame(2, db_connect()->table('plotted_schedules')
+            ->where('offering_id', $result['offering_id'])->countAllResults()); // both meetings carried
+        $this->assertSame(0, db_connect()->table('plotted_schedules')
+            ->where('offering_id', null)->where('subject_code', 'ITE101')->countAllResults());
+    }
+
+    public function testCarryingMergeCarriesWhenBothSectionsShareTheSameMeetingSet(): void
+    {
+        $a = $this->makeSection('A'); $b = $this->makeSection('B');
+        $this->seedSubject('ITE101');
+
+        // The same two weekly meetings, independently plotted for A and B.
+        foreach ([$a, $b] as $section) {
+            foreach ([[0, '08:00:00', '10:00:00', '08:00-10:00'], [2, '13:00:00', '15:00:00', '13:00-15:00']] as [$day, $start, $end, $label]) {
+                db_connect()->table('plotted_schedules')->insert([
+                    'academic_year' => $section['academic_year'], 'program' => $section['program'], 'year_level' => $section['year_level'], 'section' => $section['section'],
+                    'day' => $day, 'start_time' => $start, 'end_time' => $end, 'time_label' => $label,
+                    'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 101', 'status' => 'published',
+                ]);
+            }
+        }
+
+        $result = (new CourseOfferingModel())->createMergeCarryingSchedule(
+            $a['academic_year'], 'ITE101', [$a['section_id'], $b['section_id']], null, 2, $this->seedChairForLegacyTest('ITE101')
+        );
+
+        $this->assertTrue($result['ok'], $result['error'] ?? '');
+        $this->assertTrue($result['schedule_carried']);
+        $this->assertSame(2, db_connect()->table('plotted_schedules')
+            ->where('offering_id', $result['offering_id'])->countAllResults()); // one row per meeting, not per section
+        $this->assertSame(0, db_connect()->table('plotted_schedules')
+            ->where('offering_id', null)->where('subject_code', 'ITE101')->countAllResults());
+    }
+
+    public function testCarryingMergeSkipsCarryWhenMeetingSetsDiffer(): void
+    {
+        $a = $this->makeSection('A'); $b = $this->makeSection('B');
+        $this->seedSubject('ITE101');
+
+        // A meets twice a week; B only once — genuinely different schedules.
+        foreach ([[$a, 0, '08:00:00', '10:00:00', '08:00-10:00'], [$a, 2, '13:00:00', '15:00:00', '13:00-15:00'], [$b, 0, '08:00:00', '10:00:00', '08:00-10:00']] as [$section, $day, $start, $end, $label]) {
+            db_connect()->table('plotted_schedules')->insert([
+                'academic_year' => $section['academic_year'], 'program' => $section['program'], 'year_level' => $section['year_level'], 'section' => $section['section'],
+                'day' => $day, 'start_time' => $start, 'end_time' => $end, 'time_label' => $label,
+                'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 101', 'status' => 'published',
+            ]);
+        }
+
+        $result = (new CourseOfferingModel())->createMergeCarryingSchedule(
+            $a['academic_year'], 'ITE101', [$a['section_id'], $b['section_id']], null, 2, $this->seedChairForLegacyTest('ITE101')
+        );
+
+        $this->assertTrue($result['ok']);
+        $this->assertFalse($result['schedule_carried']);
+        $this->assertSame('conflicting_existing_schedules', $result['schedule_carry_skipped_reason']);
+        $this->assertSame(3, db_connect()->table('plotted_schedules')
+            ->where('offering_id', null)->where('subject_code', 'ITE101')->countAllResults()); // untouched
+    }
+
+    public function testForContextResolvesOfferingScheduleForASemesterScopedTerm(): void
+    {
+        $term = 'AY2026-2027 · 1st Semester';
+        $a = $this->makeSection('A'); // sections keep the YEAR-ONLY value
+        $b = $this->makeSection('B');
+        $this->seedSubject('ITE101');
+
+        // The plotting grid keys rows by the TERM-scoped string, as the app does.
+        db_connect()->table('plotted_schedules')->insert([
+            'academic_year' => $term, 'program' => $a['program'], 'year_level' => $a['year_level'], 'section' => $a['section'],
+            'day' => 0, 'start_time' => '08:00:00', 'end_time' => '10:00:00', 'time_label' => '08:00-10:00',
+            'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 101', 'status' => 'published',
+        ]);
+
+        $result = (new CourseOfferingModel())->createMergeCarryingSchedule(
+            $term, 'ITE101', [$a['section_id'], $b['section_id']], null, 2, $this->seedChairForLegacyTest('ITE101')
+        );
+
+        $this->assertTrue($result['ok'], $result['error'] ?? '');
+        $this->assertTrue($result['schedule_carried']);
+
+        // Both attached sections' grids must resolve the carried schedule via
+        // the offering join — this is exactly where the term-scoped vs
+        // year-only mismatch used to silently return nothing.
+        $this->assertCount(1, (new PlottedScheduleModel())->forContext($term, $a['program'], $a['year_level'], $a['section']));
+        $this->assertCount(1, (new PlottedScheduleModel())->forContext($term, $b['program'], $b['year_level'], $b['section']));
+    }
+
     public function testCarryingMergeTreatsSameTimeDifferentFacultyAsConflicting(): void
     {
         $a = $this->makeSection('A'); $b = $this->makeSection('B');

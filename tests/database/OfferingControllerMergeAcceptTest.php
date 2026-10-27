@@ -202,6 +202,43 @@ final class OfferingControllerMergeAcceptTest extends CIUnitTestCase
         $this->seeInDatabase('offering_sections', ['offering_id' => $offering, 'section_id' => $sectionB]);
     }
 
+    public function testAcceptMergeSuggestionJoinRemovesJoiningSectionsDuplicateLegacyRows(): void
+    {
+        // Stale/replayed suggestion: the section accepting the join already
+        // has its own legacy row for the same subject (at a different time —
+        // attachSection() itself blocks an exact time clash). After joining
+        // an offering that HAS a schedule, that legacy row is a duplicate of
+        // the subject's real class and would otherwise render twice on the
+        // section's grid.
+        $subDept = $this->newSubDept();
+        $chair = $this->seedChairperson($subDept);
+        $this->seedSubject('ITE101', $subDept);
+        $sectionA = $this->seedSection('BSIT', 'A');
+        $sectionB = $this->seedSection('BSIT', 'B');
+        $offering = $this->makeOffering('ITE101', [$sectionA]);
+        (new PlottedScheduleModel())->syncOfferingSchedule($offering, $chair, [$this->block(0, '08:00', '09:30', 'Room 201')]);
+        db_connect()->table('plotted_schedules')->insert([
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'B',
+            'day' => 1, 'start_time' => '13:00:00', 'end_time' => '14:30:00', 'time_label' => '13:00-14:30',
+            'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 9', 'status' => 'published',
+        ]);
+
+        $this->actingAsChair($chair);
+        $result = $this->withSession()->post('/chairperson/offerings/merge-suggestions/accept', $this->withCsrf([
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'B',
+            'subject_code' => 'ITE101', 'offering_id' => $offering, 'target_section_id' => null,
+            'meetings' => [['day' => '0', 'start' => '08:00', 'end' => '09:30', 'time_label' => '08:00-09:30']],
+        ]));
+
+        $body = json_decode($result->response()->getJSON(), true);
+        $this->assertTrue($body['ok'], $body['error'] ?? '');
+        $this->seeInDatabase('offering_sections', ['offering_id' => $offering, 'section_id' => $sectionB]);
+        // The offering's single real schedule row is all that's left.
+        $this->seeNumRecords(1, 'plotted_schedules', ['subject_code' => 'ITE101']);
+        $this->seeInDatabase('plotted_schedules', ['offering_id' => $offering, 'subject_code' => 'ITE101']);
+        $this->dontSeeInDatabase('plotted_schedules', ['offering_id' => null, 'subject_code' => 'ITE101']);
+    }
+
     public function testAcceptMergeSuggestionCreatesOfferingFromLegacyTarget(): void
     {
         $subDept = $this->newSubDept();
