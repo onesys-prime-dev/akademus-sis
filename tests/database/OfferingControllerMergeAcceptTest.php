@@ -349,4 +349,59 @@ final class OfferingControllerMergeAcceptTest extends CIUnitTestCase
         $body = json_decode($result->response()->getJSON(), true);
         $this->assertFalse($body['ok']);
     }
+
+    public function testPlotDemandCarriesExistingScheduleForward(): void
+    {
+        $subDept = $this->newSubDept();
+        $chair = $this->seedChairperson($subDept);
+        $this->seedSubject('ITE101', $subDept);
+        $sectionA = $this->seedSection('BSIT', 'A');
+        db_connect()->table('plotted_schedules')->insert([
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'A',
+            'day' => 0, 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'time_label' => '08:00-09:30',
+            'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 201', 'status' => 'published',
+        ]);
+
+        $this->actingAsChair($chair);
+        $result = $this->withSession()->post('/chairperson/offerings/plot-demand', $this->withCsrf([
+            'academic_year' => self::TERM, 'subject_code' => 'ITE101', 'section_id' => $sectionA,
+        ]));
+
+        $body = json_decode($result->response()->getJSON(), true);
+        $this->assertTrue($body['ok'], $body['error'] ?? '');
+        $this->assertTrue($body['schedule_carried']);
+    }
+
+    public function testCreateMergeSkipsCarryWhenSelectedSectionsConflict(): void
+    {
+        $subDept = $this->newSubDept();
+        $chair = $this->seedChairperson($subDept);
+        $this->seedProgramForSubDept('BSIT', $subDept);
+        $this->seedSubject('ITE101', $subDept);
+        $sectionA = $this->seedSection('BSIT', 'A');
+        $sectionB = $this->seedSection('BSIT', 'B');
+        db_connect()->table('plotted_schedules')->insert([ /* A at 08:00-09:30 Room 201 */
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'A',
+            'day' => 0, 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'time_label' => '08:00-09:30',
+            'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 201', 'status' => 'published',
+        ]);
+        db_connect()->table('plotted_schedules')->insert([ /* B at a DIFFERENT time */
+            'academic_year' => self::TERM, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'B',
+            'day' => 1, 'start_time' => '13:00:00', 'end_time' => '14:30:00', 'time_label' => '13:00-14:30',
+            'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 9', 'status' => 'published',
+        ]);
+
+        $this->actingAsChair($chair);
+        // section_ids must be strings here, not raw ints: FeatureTestTrait's JSON
+        // body path leaves array elements unfiltered by filter_var() (only
+        // top-level scalars get coerced), so a raw int leaf trips the
+        // InvalidChars filter's mb_check_encoding() call with a TypeError.
+        $result = $this->withSession()->post('/chairperson/offerings/create', $this->withCsrf([
+            'academic_year' => self::TERM, 'subject_code' => 'ITE101', 'section_ids' => [(string) $sectionA, (string) $sectionB],
+        ]));
+
+        $body = json_decode($result->response()->getJSON(), true);
+        $this->assertTrue($body['ok'], $body['error'] ?? '');
+        $this->assertFalse($body['schedule_carried']);
+    }
 }

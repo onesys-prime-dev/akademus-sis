@@ -267,19 +267,25 @@ class OfferingController extends BaseController
             return $this->fail("{$payload['subject_code']} is owned by another department.");
         }
 
-        $result = (new CourseOfferingModel())->createMerge(
+        $result = (new CourseOfferingModel())->createMergeCarryingSchedule(
             (string) $payload['academic_year'],
             (string) $payload['subject_code'],
             [(int) $payload['section_id']],
             null,
-            1
+            1,
+            (int) auth()->id()
         );
 
         if (! $result['ok']) {
             return $this->fail($result['error']);
         }
 
-        return $this->response->setJSON(['ok' => true, 'offering_id' => $result['offering_id']]);
+        return $this->response->setJSON([
+            'ok'                             => true,
+            'offering_id'                    => $result['offering_id'],
+            'schedule_carried'               => $result['schedule_carried'],
+            'schedule_carry_skipped_reason'  => $result['schedule_carry_skipped_reason'] ?? null,
+        ]);
     }
 
     public function create()
@@ -310,17 +316,26 @@ class OfferingController extends BaseController
             ? (int) $payload['capacity']
             : null;
 
-        $result = (new CourseOfferingModel())->createMerge($payload['academic_year'], $payload['subject_code'], $sectionIds, $capacity);
+        $result = (new CourseOfferingModel())->createMergeCarryingSchedule(
+            $payload['academic_year'],
+            $payload['subject_code'],
+            $sectionIds,
+            $capacity,
+            2,
+            (int) auth()->id()
+        );
 
         if (! $result['ok']) {
             return $this->fail($result['error']);
         }
 
         return $this->response->setJSON([
-            'ok'            => true,
-            'offering_id'   => $result['offering_id'],
-            'roster_count'  => $result['roster_count'],
-            'over_capacity' => $result['over_capacity'],
+            'ok'                             => true,
+            'offering_id'                    => $result['offering_id'],
+            'roster_count'                   => $result['roster_count'],
+            'over_capacity'                  => $result['over_capacity'],
+            'schedule_carried'               => $result['schedule_carried'],
+            'schedule_carry_skipped_reason'  => $result['schedule_carry_skipped_reason'] ?? null,
         ]);
     }
 
