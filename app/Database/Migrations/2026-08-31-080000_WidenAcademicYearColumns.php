@@ -39,6 +39,15 @@ class WidenAcademicYearColumns extends Migration
     public function down()
     {
         foreach (self::TABLES as $table) {
+            // Narrowing back to 20 chars is lossy whenever a row already
+            // holds a real term-scoped value (exactly what the up() comment
+            // above describes — the normal, expected shape once semester
+            // folds in) or any longer legacy label. Truncate first so the
+            // rollback degrades data instead of erroring outright — this
+            // only runs on an explicit down()/test-DB regress, never as part
+            // of normal forward migration.
+            $this->db->table($table)->set('academic_year', 'LEFT(academic_year, 20)', false)->update();
+
             $this->forge->modifyColumn($table, [
                 'academic_year' => [
                     'name'       => 'academic_year',
