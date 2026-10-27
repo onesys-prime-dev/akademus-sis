@@ -244,6 +244,163 @@ class CourseOfferingModel extends Model
     }
 
     /**
+     * createMerge(), but auto-carrying each section's already-plotted
+     * legacy schedule into the new merged offering instead of leaving the
+     * merge unscheduled.
+     *
+     * "Carrying" only ever happens when every section's legacy schedule for
+     * this subject agrees — the same full SET of (day, start_time, end_time,
+     * room, prof) meetings, exactly (spec §4.2). Comparing the set, not a
+     * single row, is what makes a class legitimately plotted twice a week
+     * (e.g. lecture Monday + lab Wednesday) carryable instead of looking
+     * like a section conflicting with itself. Anything else (nothing plotted
+     * anywhere, or two sections plotted at genuinely different
+     * times/rooms/faculty) is left for a human to resolve on the new
+     * offering afterward; the merge itself still succeeds either way — a
+     * schedule-carry problem is never a reason to refuse the merge.
+     *
+     * $academicYear is passed straight through to both createMerge() AND
+     * the legacy lookup below — it MUST be the term-scoped string
+     * plotted_schedules rows are keyed by (e.g. "AY2026-2027 · 1st
+     * Semester"), not a section's own (year-only) academic_year column; see
+     * AcademicYearModel::yearOnly() for why those two are never
+     * interchangeable.
+     *
+     * @param list<int> $sectionIds
+     *
+     * @return array{ok: bool, error?: string, offering_id?: int, roster_count?: int, over_capacity?: bool, schedule_carried?: bool, schedule_carry_skipped_reason?: string}
+     */
+    public function createMergeCarryingSchedule(string $academicYear, string $subjectCode, array $sectionIds, ?int $capacity, int $minSections, int $actorId): array
+    {
+        $result = $this->createMerge($academicYear, $subjectCode, $sectionIds, $capacity, $minSections);
+
+        if (! $result['ok']) {
+            // No side effects on failure — nothing below has run yet.
+            return $result;
+        }
+
+        $sections = new SectionModel();
+        $plotted  = new PlottedScheduleModel();
+
+        $legacyRows = [];
+        $bySection  = []; // section_id => [meeting signature => row], for the set comparison below
+
+        foreach (array_values(array_unique(array_map('intval', $sectionIds))) as $sectionId) {
+            $section = $sections->find($sectionId);
+
+            if ($section === null) {
+                continue;
+            }
+
+            $rows = $plotted->legacyRowsFor($academicYear, $section['program'], $section['year_level'], $section['section'], $subjectCode);
+
+            if ($rows === []) {
+                continue; // this section has nothing plotted for this subject
+            }
+
+            $bySection[$sectionId] = [];
+
+            foreach ($rows as $row) {
+                $legacyRows[] = $row;
+                $bySection[$sectionId][$this->meetingSignature($row)] = $row;
+            }
+        }
+
+        if ($bySection === []) {
+            // Nothing plotted anywhere yet — not a conflict, just nothing to carry.
+            return $result + ['schedule_carried' => false];
+        }
+
+        // "Identical" per spec §4.2: every section that already plots this
+        // subject must have the same full SET of meetings. Comparing sets
+        // (not a single tuple) is what keeps a twice-a-week class — same
+        // two blocks in both sections — carryable, instead of reading it as
+        // a section conflicting with itself. Each signature includes prof,
+        // so the same time/room with a different professor is still a
+        // genuine conflict, not a duplicate.
+        $referenceSignature = null;
+        $carriedRows        = [];
+
+        foreach ($bySection as $signatures) {
+            ksort($signatures);
+            $keys = array_keys($signatures);
+
+            if ($referenceSignature === null) {
+                $referenceSignature = $keys;
+                $carriedRows        = array_values($signatures);
+
+                continue;
+            }
+
+            if ($keys !== $referenceSignature) {
+                return $result + ['schedule_carried' => false, 'schedule_carry_skipped_reason' => 'conflicting_existing_schedules'];
+            }
+        }
+
+        // One block per meeting — a carried schedule can be more than one
+        // weekly block, and syncOfferingSchedule() writes the whole list.
+        $blocks = array_map(function (array $row): array {
+            $faculty = ($row['prof'] ?? null) !== null && $row['prof'] !== ''
+                ? $this->db->table('users')->select('id')->where('username', $row['prof'])->get()->getRowArray()
+                : null;
+
+            return [
+                'day'        => (int) $row['day'],
+                'start'      => substr((string) $row['start_time'], 0, 5),
+                'end'        => substr((string) $row['end_time'], 0, 5),
+                'time_label' => $row['time_label'],
+                'room'       => $row['room'],
+                'faculty_id' => $faculty !== null ? (int) $faculty['id'] : null,
+            ];
+        }, $carriedRows);
+
+        $db = $this->db;
+        $db->transStart();
+
+        $plotted->whereIn('schedule_id', array_map('intval', array_column($legacyRows, 'schedule_id')))->delete();
+
+        $sync = (new PlottedScheduleModel())->syncOfferingSchedule($result['offering_id'], $actorId, $blocks);
+
+        if (! $sync['ok']) {
+            // The merge itself must never fail because the schedule-carry
+            // step couldn't go through (e.g. an authorization or conflict
+            // check inside syncOfferingSchedule() rejected it) — undo only
+            // the legacy-row deletion above and report "not carried" rather
+            // than propagating syncOfferingSchedule()'s own error.
+            $db->transRollback();
+            $db->resetTransStatus();
+
+            return $result + ['schedule_carried' => false];
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return $result + ['schedule_carried' => false];
+        }
+
+        return $result + ['schedule_carried' => true];
+    }
+
+    /**
+     * One legacy meeting row's identity for the "are these sections'
+     * already-plotted schedules identical?" comparison above. Every
+     * scheduling-relevant field participates, not just day/time, so the
+     * same slot with a different room or professor reads as a conflict
+     * rather than a duplicate (spec §4.2's full tuple).
+     */
+    private function meetingSignature(array $row): string
+    {
+        return implode('|', [
+            (int) $row['day'],
+            (string) $row['start_time'],
+            (string) $row['end_time'],
+            (string) $row['room'],
+            (string) ($row['prof'] ?? ''),
+        ]);
+    }
+
+    /**
      * The sub_dept_id of the academic unit that owns this offering's
      * subject, derived (never duplicated) via subject_id -> subjects ->
      * sub_department_id. Null when the offering has no linked subject_id

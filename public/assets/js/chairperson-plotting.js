@@ -977,34 +977,40 @@ $('noProfAuto').addEventListener('click', () => {
             renderMergeBanner();
         });
 
-        document.getElementById('mergeAccept')?.addEventListener('click', () => {
+        document.getElementById('mergeAccept')?.addEventListener('click', async () => {
             const code = document.getElementById('mergeBanner').dataset.code;
             const suggestion = mergePlan.find(s => s.subject_code === code);
             if (!suggestion) return;
 
-            const subject = SUBJECTS.find(x => x.code === suggestion.subject_code);
-
-            pushUndo(`merged ${suggestion.subject_code}`);
-            clearPreview();
-            suggestion.meetings.forEach(m => {
-                blocks.push({
-                    day: m.day,
-                    code: suggestion.subject_code,
-                    title: subject ? subject.title : suggestion.subject_title,
-                    prof: suggestion.prof || undefined,
-                    faculty_id: suggestion.faculty_id || null,
-                    time_label: m.time_label,
-                    room: suggestion.room,
-                    theme: subject ? subject.color : 'blue',
-                    start: m.start,
-                    end: m.end,
+            try {
+                const response = await fetch(`${CONFIG.mergeSuggestionsUrl}/accept`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify(Object.assign({}, CONTEXT, {
+                        subject_code: suggestion.subject_code,
+                        offering_id: suggestion.offering_id,
+                        target_section_id: suggestion.target_section_id,
+                        meetings: suggestion.meetings,
+                    })),
                 });
-            });
+                const result = await response.json();
 
-            mergeDismissed.add(suggestion.subject_code);
-            renderBlocks();
-            scheduleSave();
-            showToast(`${suggestion.subject_code} merged into the existing class at ${suggestion.room}.`, 'success');
+                if (response.ok && result.ok) {
+                    mergeDismissed.add(suggestion.subject_code);
+                    await reloadFromServer();
+                    showToast(
+                        result.schedule_carried
+                            ? `${suggestion.subject_code} merged and scheduled at ${suggestion.room}.`
+                            : `${suggestion.subject_code} merged — set its time below.`,
+                        'success'
+                    );
+                } else {
+                    // Leave the banner showing so the chairperson can retry or dismiss explicitly.
+                    showToast(result.error || 'The server rejected this merge.', 'error');
+                }
+            } catch (err) {
+                showToast('The server rejected this merge.', 'error');
+            }
         });
 
         function aiEl(tag, className, text) {

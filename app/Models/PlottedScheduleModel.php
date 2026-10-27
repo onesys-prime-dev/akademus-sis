@@ -64,7 +64,22 @@ class PlottedScheduleModel extends Model
             'section'       => $section,
         ])->findAll();
 
-        $sectionRow = (new SectionModel())->forContext($academicYear, $program, $yearLevel, $section);
+        // $academicYear here is the term-scoped string plotted_schedules is
+        // keyed by ("AY2026-2027 · 1st Semester"), but sections.academic_year
+        // is year-scoped (every write path uses $context['section_year'] /
+        // AcademicYearModel::yearOnly()). Passing the term form straight
+        // through never matched a real section row, which silently dropped
+        // every offering-linked block from a section's own grid. The raw
+        // string is still tried as a fallback for sections rows written
+        // before identity became year-scoped.
+        $sectionModel = new SectionModel();
+        $yearOnly     = AcademicYearModel::yearOnly($academicYear);
+
+        $sectionRow = $sectionModel->forContext($yearOnly, $program, $yearLevel, $section);
+
+        if ($sectionRow === null && $yearOnly !== $academicYear) {
+            $sectionRow = $sectionModel->forContext($academicYear, $program, $yearLevel, $section);
+        }
 
         if ($sectionRow === null) {
             return $legacy;
@@ -79,6 +94,26 @@ class PlottedScheduleModel extends Model
         $offeringRows = $this->whereIn('offering_id', $offeringIds)->findAll();
 
         return array_merge($legacy, $offeringRows);
+    }
+
+    /**
+     * Legacy rows (offering_id IS NULL) for exactly one section's subject —
+     * the schedule a section already has plotted before it is merged into an
+     * offering. Read-only; used to carry that schedule forward into a new
+     * merge instead of starting blank. Offering-linked rows never match: their
+     * program/year_level/section are NULL, so the equality match excludes them.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function legacyRowsFor(string $academicYear, string $program, string $yearLevel, string $section, string $subjectCode): array
+    {
+        return $this->where([
+            'academic_year' => $academicYear,
+            'program'       => $program,
+            'year_level'    => $yearLevel,
+            'section'       => $section,
+            'subject_code'  => $subjectCode,
+        ])->where('offering_id IS NULL')->findAll();
     }
 
     /**

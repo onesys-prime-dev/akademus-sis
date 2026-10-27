@@ -175,7 +175,7 @@ class OfferingController extends BaseController
      * shows up here the moment its curriculum requires my subject, with no
      * placement request needed first.
      *
-     * @return list<array{subject_id: int, subject_code: string, subject_name: string, section_id: int, section_label: string, expected_count: int}>
+     * @return list<array{subject_id: int, subject_code: string, subject_name: string, section_id: int, section_label: string, expected_count: int, already_scheduled: bool}>
      */
     private function needsPlottingList(): array
     {
@@ -205,6 +205,8 @@ class OfferingController extends BaseController
 
         $demandService = new SubjectDemandService();
         $offeringModel = new CourseOfferingModel();
+        $sectionModel  = new SectionModel();
+        $plottedModel  = new PlottedScheduleModel();
         $needsPlotting = [];
 
         foreach ($ownedSubjects as $subject) {
@@ -232,14 +234,30 @@ class OfferingController extends BaseController
                     continue;
                 }
 
+                // No offering yet, but the section may already have a real
+                // class time plotted directly on the chairperson's own
+                // Schedule Plotting grid (a legacy row, offering_id IS
+                // NULL) — "Create & Plot" for this row only links
+                // bookkeeping to what's already there, it doesn't start a
+                // new class from scratch.
+                $section = $sectionModel->find((int) $bySection['section_id']);
+                $alreadyScheduled = $section !== null && $plottedModel->legacyRowsFor(
+                    $activeYear,
+                    $section['program'],
+                    $section['year_level'],
+                    $section['section'],
+                    $subject['subject_code']
+                ) !== [];
+
                 $needsPlotting[] = [
-                    'academic_year'  => $activeYear,
-                    'subject_id'     => (int) $subject['subject_id'],
-                    'subject_code'   => $subject['subject_code'],
-                    'subject_name'   => $subject['subject_name'],
-                    'section_id'     => (int) $bySection['section_id'],
-                    'section_label'  => $bySection['section_label'],
-                    'expected_count' => (int) $bySection['expected_count'],
+                    'academic_year'     => $activeYear,
+                    'subject_id'        => (int) $subject['subject_id'],
+                    'subject_code'      => $subject['subject_code'],
+                    'subject_name'      => $subject['subject_name'],
+                    'section_id'        => (int) $bySection['section_id'],
+                    'section_label'     => $bySection['section_label'],
+                    'expected_count'    => (int) $bySection['expected_count'],
+                    'already_scheduled' => $alreadyScheduled,
                 ];
             }
         }
@@ -267,19 +285,25 @@ class OfferingController extends BaseController
             return $this->fail("{$payload['subject_code']} is owned by another department.");
         }
 
-        $result = (new CourseOfferingModel())->createMerge(
+        $result = (new CourseOfferingModel())->createMergeCarryingSchedule(
             (string) $payload['academic_year'],
             (string) $payload['subject_code'],
             [(int) $payload['section_id']],
             null,
-            1
+            1,
+            (int) auth()->id()
         );
 
         if (! $result['ok']) {
             return $this->fail($result['error']);
         }
 
-        return $this->response->setJSON(['ok' => true, 'offering_id' => $result['offering_id']]);
+        return $this->response->setJSON([
+            'ok'                             => true,
+            'offering_id'                    => $result['offering_id'],
+            'schedule_carried'               => $result['schedule_carried'],
+            'schedule_carry_skipped_reason'  => $result['schedule_carry_skipped_reason'] ?? null,
+        ]);
     }
 
     public function create()
@@ -310,17 +334,26 @@ class OfferingController extends BaseController
             ? (int) $payload['capacity']
             : null;
 
-        $result = (new CourseOfferingModel())->createMerge($payload['academic_year'], $payload['subject_code'], $sectionIds, $capacity);
+        $result = (new CourseOfferingModel())->createMergeCarryingSchedule(
+            $payload['academic_year'],
+            $payload['subject_code'],
+            $sectionIds,
+            $capacity,
+            2,
+            (int) auth()->id()
+        );
 
         if (! $result['ok']) {
             return $this->fail($result['error']);
         }
 
         return $this->response->setJSON([
-            'ok'            => true,
-            'offering_id'   => $result['offering_id'],
-            'roster_count'  => $result['roster_count'],
-            'over_capacity' => $result['over_capacity'],
+            'ok'                             => true,
+            'offering_id'                    => $result['offering_id'],
+            'roster_count'                   => $result['roster_count'],
+            'over_capacity'                  => $result['over_capacity'],
+            'schedule_carried'               => $result['schedule_carried'],
+            'schedule_carry_skipped_reason'  => $result['schedule_carry_skipped_reason'] ?? null,
         ]);
     }
 
@@ -472,6 +505,8 @@ class OfferingController extends BaseController
             }
 
             $suggestions[] = [
+                'offering_id'         => $offeringId,
+                'target_section_id'   => $targetSectionId,
                 'subject_code'        => $code,
                 'subject_title'       => $first['subject_title'],
                 'room'                => $first['room'],
@@ -737,6 +772,108 @@ class OfferingController extends BaseController
         }
 
         return $this->response->setJSON($result);
+    }
+
+    /**
+     * The merge-suggestion banner's "accept" action, made real. The banner
+     * (mergeSuggestions()) hands back exactly one of offering_id (a real
+     * offering already exists for the suggested subject — join it) or
+     * target_section_id (only a legacy, offering-less plotted_schedules row
+     * exists — merge the two sections into a brand-new offering, carrying
+     * that legacy schedule over). meetings is accepted for payload-shape
+     * parity with what mergeSuggestions() returns (a later task wires the
+     * banner's JS to send it back) but is never read here: a join inherits
+     * the existing offering's own schedule outright, and a merge derives
+     * its carried schedule from the two sections' legacy rows itself, via
+     * createMergeCarryingSchedule() — never from client-supplied meetings.
+     */
+    public function acceptMergeSuggestion()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload) || empty($payload['academic_year']) || empty($payload['program']) || empty($payload['year_level']) || empty($payload['section']) || empty($payload['subject_code'])) {
+            return $this->fail('Missing academic_year, program, year_level, section, or subject_code.');
+        }
+
+        $offeringId      = ! empty($payload['offering_id']) ? (int) $payload['offering_id'] : null;
+        $targetSectionId = ! empty($payload['target_section_id']) ? (int) $payload['target_section_id'] : null;
+
+        if (($offeringId === null) === ($targetSectionId === null)) {
+            return $this->fail('Exactly one of offering_id or target_section_id is required.');
+        }
+
+        $subjectCode = (string) $payload['subject_code'];
+
+        // Same reasoning as create(): joining/merging is a delivery
+        // decision for the subject's owning department, even though the
+        // section being brought in belongs to a borrowing department.
+        if (! $this->authorizeSubjectCode($subjectCode)) {
+            return $this->fail("{$subjectCode} is owned by another department — only that department can create or merge offerings for it. Submit a Shared Subject Request instead.");
+        }
+
+        $sectionRow = (new SectionModel())->forContext(
+            AcademicYearModel::yearOnly((string) $payload['academic_year']),
+            (string) $payload['program'],
+            (string) $payload['year_level'],
+            (string) $payload['section']
+        );
+
+        if ($sectionRow === null) {
+            return $this->fail('Section not found.');
+        }
+
+        $mySectionId = (int) $sectionRow['section_id'];
+
+        if ($offeringId !== null) {
+            $result = (new CourseOfferingModel())->attachSection($offeringId, $mySectionId, $subjectCode);
+
+            if (! $result['ok']) {
+                return $this->response->setStatusCode(400)->setJSON(array_merge(['ok' => false], $result));
+            }
+
+            // A joining section's own legacy rows for this subject are now
+            // superseded by the offering's real schedule: forContext()
+            // returns a section's legacy rows PLUS every offering it is
+            // attached to, so leaving them would show the same class twice
+            // on that section's grid (spec §7: no duplicate plotted rows).
+            // Only when the offering really has a schedule, though — on an
+            // unscheduled offering those legacy rows are still the
+            // section's only visible class time.
+            $plotted = new PlottedScheduleModel();
+
+            if ($plotted->forOffering($offeringId) !== []) {
+                $duplicates = $plotted->legacyRowsFor(
+                    (string) $payload['academic_year'],
+                    (string) $sectionRow['program'],
+                    (string) $sectionRow['year_level'],
+                    (string) $sectionRow['section'],
+                    $subjectCode
+                );
+
+                if ($duplicates !== []) {
+                    $plotted->whereIn('schedule_id', array_map('intval', array_column($duplicates, 'schedule_id')))->delete();
+                }
+            }
+
+            // Joining an existing offering inherits its schedule outright —
+            // nothing new to carry, so this is always true for this branch.
+            return $this->response->setJSON(['ok' => true, 'offering_id' => $offeringId, 'schedule_carried' => true]);
+        }
+
+        $result = (new CourseOfferingModel())->createMergeCarryingSchedule(
+            (string) $payload['academic_year'],
+            $subjectCode,
+            [$targetSectionId, $mySectionId],
+            null,
+            2,
+            (int) auth()->id()
+        );
+
+        if (! $result['ok']) {
+            return $this->response->setStatusCode(400)->setJSON(array_merge(['ok' => false], $result));
+        }
+
+        return $this->response->setJSON(array_merge(['ok' => true], $result));
     }
 
     /**
