@@ -13,6 +13,19 @@ class NotificationController extends BaseController
 {
     public function index()
     {
+        // This is the console notification panel's JSON feed — the panel
+        // always fetches it with X-Requested-With: XMLHttpRequest (see
+        // layouts/admin_console.php's loadList()). A plain browser navigation
+        // must never dump raw JSON: the common way to land here is Shield
+        // sending a freshly logged-in user back to the URL that triggered the
+        // login redirect (Auth::$redirects / beforeLoginUrl), which stranded
+        // them on a JSON page right after signing in. Send those to the
+        // role-aware dashboard instead (DashboardController dispatches by
+        // group).
+        if (! $this->request->isAJAX()) {
+            return redirect()->to(site_url('dashboard'));
+        }
+
         $userId = (int) auth()->id();
         $model  = new NotificationModel();
 
