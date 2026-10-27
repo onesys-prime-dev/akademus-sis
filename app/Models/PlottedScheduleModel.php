@@ -82,6 +82,26 @@ class PlottedScheduleModel extends Model
     }
 
     /**
+     * Legacy rows (offering_id IS NULL) for exactly one section's subject —
+     * the schedule a section already has plotted before it is merged into an
+     * offering. Read-only; used to carry that schedule forward into a new
+     * merge instead of starting blank. Offering-linked rows never match: their
+     * program/year_level/section are NULL, so the equality match excludes them.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function legacyRowsFor(string $academicYear, string $program, string $yearLevel, string $section, string $subjectCode): array
+    {
+        return $this->where([
+            'academic_year' => $academicYear,
+            'program'       => $program,
+            'year_level'    => $yearLevel,
+            'section'       => $section,
+            'subject_code'  => $subjectCode,
+        ])->where('offering_id IS NULL')->findAll();
+    }
+
+    /**
      * Blocks plotted for every OTHER context in the same academic year.
      *
      * Pass $deptPrograms to restrict results to that list of program display
