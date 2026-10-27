@@ -175,7 +175,7 @@ class OfferingController extends BaseController
      * shows up here the moment its curriculum requires my subject, with no
      * placement request needed first.
      *
-     * @return list<array{subject_id: int, subject_code: string, subject_name: string, section_id: int, section_label: string, expected_count: int}>
+     * @return list<array{subject_id: int, subject_code: string, subject_name: string, section_id: int, section_label: string, expected_count: int, already_scheduled: bool}>
      */
     private function needsPlottingList(): array
     {
@@ -232,14 +232,30 @@ class OfferingController extends BaseController
                     continue;
                 }
 
+                // No offering yet, but the section may already have a real
+                // class time plotted directly on the chairperson's own
+                // Schedule Plotting grid (a legacy row, offering_id IS
+                // NULL) — "Create & Plot" for this row only links
+                // bookkeeping to what's already there, it doesn't start a
+                // new class from scratch.
+                $section = (new SectionModel())->find((int) $bySection['section_id']);
+                $alreadyScheduled = $section !== null && (new PlottedScheduleModel())->legacyRowsFor(
+                    $activeYear,
+                    $section['program'],
+                    $section['year_level'],
+                    $section['section'],
+                    $subject['subject_code']
+                ) !== [];
+
                 $needsPlotting[] = [
-                    'academic_year'  => $activeYear,
-                    'subject_id'     => (int) $subject['subject_id'],
-                    'subject_code'   => $subject['subject_code'],
-                    'subject_name'   => $subject['subject_name'],
-                    'section_id'     => (int) $bySection['section_id'],
-                    'section_label'  => $bySection['section_label'],
-                    'expected_count' => (int) $bySection['expected_count'],
+                    'academic_year'     => $activeYear,
+                    'subject_id'        => (int) $subject['subject_id'],
+                    'subject_code'      => $subject['subject_code'],
+                    'subject_name'      => $subject['subject_name'],
+                    'section_id'        => (int) $bySection['section_id'],
+                    'section_label'     => $bySection['section_label'],
+                    'expected_count'    => (int) $bySection['expected_count'],
+                    'already_scheduled' => $alreadyScheduled,
                 ];
             }
         }

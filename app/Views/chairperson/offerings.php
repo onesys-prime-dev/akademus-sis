@@ -140,7 +140,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             <div class="mc-plot-row">
                 <select id="needsPlottingSelect" class="mc-select">
                     <?php foreach ($needsPlotting as $i => $np): ?>
-                        <option value="<?= $i ?>"><?= esc($np['subject_code']) ?> — <?= esc($np['section_label']) ?> (<?= esc($np['expected_count']) ?> student<?= $np['expected_count'] === 1 ? '' : 's' ?>)</option>
+                        <option value="<?= $i ?>"><?= esc($np['subject_code']) ?> — <?= esc($np['section_label']) ?> (<?= esc($np['expected_count']) ?> student<?= $np['expected_count'] === 1 ? '' : 's' ?>)<?= $np['already_scheduled'] ? ' - Already on the schedule' : '' ?></option>
                     <?php endforeach ?>
                 </select>
                 <button type="button" class="btn btn-primary" onclick="plotDemand()">
@@ -432,6 +432,11 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         let msg = `${subjectCode} merged across ${checked.length} sections (roster ${result.roster_count}).`;
         if (result.over_capacity) {
             msg += ' Warning: the combined roster already exceeds the capacity you set.';
+        }
+        if (result.schedule_carry_skipped_reason === 'conflicting_existing_schedules') {
+            msg += ' Selected sections had different existing times - pick one below.';
+        } else if (result.schedule_carried) {
+            msg += ' Its existing schedule was carried over automatically.';
         }
         reloadWithMessage(msg);
     }

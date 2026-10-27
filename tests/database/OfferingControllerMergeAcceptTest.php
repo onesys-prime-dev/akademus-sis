@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
 use App\Models\PlottedScheduleModel;
 use App\Models\SectionModel;
@@ -403,5 +404,62 @@ final class OfferingControllerMergeAcceptTest extends CIUnitTestCase
         $body = json_decode($result->response()->getJSON(), true);
         $this->assertTrue($body['ok'], $body['error'] ?? '');
         $this->assertFalse($body['schedule_carried']);
+    }
+
+    public function testNeedsPlottingFlagsSectionsAlreadyOnTheGrid(): void
+    {
+        $subDept = $this->newSubDept();
+        $chair = $this->seedChairperson($subDept);
+        $this->seedProgramForSubDept('BSIT', $subDept);
+        $programId = (int) db_connect()->table('programs')->where('sub_department_id', $subDept)->get()->getRowArray()['program_id'];
+        $subjectId = $this->seedSubject('ITE101', $subDept);
+
+        // Active term: needsPlottingList() resolves it live via
+        // AcademicYearModel::activeFormatted(), so a real active row must
+        // exist — self::TERM is just a short literal, not something any
+        // seeder makes active on its own.
+        db_connect()->table('academic_years')->insert(['label' => '1', 'semester' => '1st', 'is_active' => 1]);
+        $activeYear = (new AcademicYearModel())->activeFormatted();
+        $this->assertNotNull($activeYear);
+
+        // Curriculum demand fixture (mirrors SubjectDemandServiceTest::makeExpectedStudent()):
+        // a 2nd-year, 1st-semester requirement plus one active student sectioned
+        // into it, so summary()'s unassigned_count > 0 gate at
+        // OfferingController.php:219-221 actually lets section A's row through.
+        db_connect()->table('curriculum')->insert([
+            'program_id' => $programId, 'curriculum_code' => 'C1', 'curriculum_name' => 'C1',
+            'academic_year' => '2026-2027', 'status' => 'published', 'is_current' => 1, 'is_active' => 1,
+        ]);
+        $curriculumId = (int) db_connect()->insertID();
+        db_connect()->table('curriculum_subjects')->insert([
+            'curriculum_id' => $curriculumId, 'subject_id' => $subjectId, 'year_level' => 2, 'semester' => 1,
+            'is_required' => 1, 'is_active' => 1,
+        ]);
+
+        $sectionA = $this->seedSection('BSIT', 'A', AcademicYearModel::yearOnly($activeYear));
+
+        $studentId = 980001;
+        $this->seedUsers($studentId);
+        db_connect()->table('users')->where('id', $studentId)->update(['section_id' => $sectionA]);
+        db_connect()->table('students')->insert([
+            'user_id' => $studentId, 'applicant_id' => 'APP' . $studentId, 'student_number' => 'SN' . $studentId,
+            'program_id' => $programId, 'curriculum_id' => $curriculumId, 'student_status' => 'active',
+        ]);
+
+        // Section A already has a real class time plotted on the chairperson's
+        // own Schedule Plotting grid — a legacy (offering_id IS NULL) row,
+        // never backed by a course_offerings row at all.
+        db_connect()->table('plotted_schedules')->insert([
+            'academic_year' => $activeYear, 'program' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'A',
+            'day' => 0, 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'time_label' => '08:00-09:30',
+            'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 201', 'status' => 'published',
+        ]);
+
+        $this->actingAsChair($chair);
+        $result = $this->withSession()->get('/chairperson/offerings');
+
+        // The Needs Plotting <select>'s option text for section A's row carries the
+        // new suffix (offerings.php:142-144 renders options server-side).
+        $result->assertSee('Already on the schedule');
     }
 }
