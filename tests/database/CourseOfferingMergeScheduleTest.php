@@ -19,7 +19,7 @@ final class CourseOfferingMergeScheduleTest extends CIUnitTestCase
     use SeedsUsers;
 
     protected $refresh   = true;
-    protected $namespace = ['CodeIgniter\Shield', 'App'];
+    protected $namespace = ['CodeIgniter\Shield', 'CodeIgniter\Settings', 'App'];
 
     private int $nextChairId = 60000;
     private int $deptSeq     = 1;
@@ -273,5 +273,72 @@ final class CourseOfferingMergeScheduleTest extends CIUnitTestCase
         $this->assertFalse($result['ok']);
         $this->assertSame(1, db_connect()->table('plotted_schedules')
             ->where('offering_id', null)->countAllResults()); // legacy row untouched — nothing happened
+    }
+
+    public function testCarryingMergeSkipsCarryWhenSyncRejectsRoomConflict(): void
+    {
+        // A and B agree on a single schedule (so the method reaches the
+        // syncOfferingSchedule() call at all), but that exact room/time is
+        // already taken by a THIRD, unrelated offering — syncOfferingSchedule()'s
+        // own roomAndFacultyConflicts() check rejects it before it ever opens
+        // its own transaction. The merge must still succeed, nothing carried,
+        // and — unlike the 2+-signature conflict case — no
+        // schedule_carry_skipped_reason key (that's spec'd only for
+        // conflicting EXISTING schedules between the merged sections
+        // themselves, not a rejection by the scheduling engine).
+        $a = $this->makeSection('A'); $b = $this->makeSection('B');
+        $this->seedSubject('ITE101');
+        $this->plotSubject($a, 'ITE101'); // 08:00-10:00 Room 101
+        $this->plotSubject($b, 'ITE101'); // identical — agrees with A
+
+        $this->seedSubject('ITE999');
+        $otherOffering = new CourseOfferingModel();
+        $otherOffering->insert(['academic_year' => $a['academic_year'], 'subject_code' => 'ITE999', 'subject_id' => null, 'capacity' => null]);
+        $otherOfferingId = $otherOffering->getInsertID();
+
+        db_connect()->table('plotted_schedules')->insert([
+            'offering_id' => $otherOfferingId,
+            'academic_year' => $a['academic_year'], 'program' => null, 'year_level' => null, 'section' => null,
+            'day' => 0, 'start_time' => '08:00:00', 'end_time' => '10:00:00', 'time_label' => '08:00-10:00',
+            'subject_code' => 'ITE999', 'subject_title' => 'ITE999 Title', 'room' => 'Room 101', 'status' => 'published',
+        ]);
+
+        $result = (new CourseOfferingModel())->createMergeCarryingSchedule(
+            $a['academic_year'], 'ITE101', [$a['section_id'], $b['section_id']], null, 2, $this->seedChairForLegacyTest('ITE101')
+        );
+
+        $this->assertTrue($result['ok'], $result['error'] ?? ''); // the merge still succeeds
+        $this->assertFalse($result['schedule_carried']);
+        $this->assertArrayNotHasKey('schedule_carry_skipped_reason', $result);
+        $this->assertSame(2, db_connect()->table('plotted_schedules')
+            ->where('offering_id', null)->where('subject_code', 'ITE101')->countAllResults()); // both legacy rows survive — the delete was rolled back
+        $this->assertSame(0, db_connect()->table('plotted_schedules')
+            ->where('offering_id', $result['offering_id'])->countAllResults()); // nothing carried onto the new offering
+    }
+
+    public function testCarryingMergeCarriesFacultyUsernameThroughToTheNewOfferingRow(): void
+    {
+        $a = $this->makeSection('A'); $b = $this->makeSection('B');
+        $this->seedSubject('ITE101');
+        $facultyUserId = 90001;
+        $this->seedUsers($facultyUserId);
+        $username = 'testuser' . $facultyUserId;
+
+        foreach ([$a, $b] as $section) {
+            db_connect()->table('plotted_schedules')->insert([
+                'academic_year' => $section['academic_year'], 'program' => $section['program'], 'year_level' => $section['year_level'], 'section' => $section['section'],
+                'day' => 0, 'start_time' => '08:00:00', 'end_time' => '10:00:00', 'time_label' => '08:00-10:00',
+                'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 101', 'prof' => $username, 'status' => 'published',
+            ]);
+        }
+
+        $result = (new CourseOfferingModel())->createMergeCarryingSchedule(
+            $a['academic_year'], 'ITE101', [$a['section_id'], $b['section_id']], null, 2, $this->seedChairForLegacyTest('ITE101')
+        );
+
+        $this->assertTrue($result['ok'], $result['error'] ?? '');
+        $this->assertTrue($result['schedule_carried']);
+        $carried = db_connect()->table('plotted_schedules')->where('offering_id', $result['offering_id'])->get()->getRowArray();
+        $this->assertSame($username, $carried['prof']);
     }
 }
