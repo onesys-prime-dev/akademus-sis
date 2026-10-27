@@ -472,6 +472,8 @@ class OfferingController extends BaseController
             }
 
             $suggestions[] = [
+                'offering_id'         => $offeringId,
+                'target_section_id'   => $targetSectionId,
                 'subject_code'        => $code,
                 'subject_title'       => $first['subject_title'],
                 'room'                => $first['room'],
