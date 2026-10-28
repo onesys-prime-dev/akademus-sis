@@ -1,0 +1,38 @@
+# Known pre-existing test failures, unrelated to any specific branch.
+#
+# Format: one "ClassName::methodName" per line (namespace included if the
+# test class has one). Lines starting with # and blank lines are ignored.
+# Used by scripts/run-tests.sh to separate "new" failures from backlog.
+#
+# IMPORTANT — this list is INCOMPLETE by design. See scripts/README.md for
+# why: the full 463-test suite is not currently reliable to run as one
+# process (apparent shared-DB contention causes dozens of tests that pass
+# cleanly in isolation to fail when run together — confirmed 2026-10-28:
+# OfferingScheduleTest, OfferingPlacementRequestTest, and
+# CourseOfferingMergeScheduleTest all show every test failing in a full-suite
+# run, then pass 100% clean when re-run alone or in a small group seconds
+# later). Only add a test here after confirming it fails in ISOLATION
+# (`scripts/run-tests.sh tests/path/To/TheFile.php`), not just because it
+# showed up in a noisy full-suite run.
+#
+# Entries below are each individually confirmed failing in isolation as of
+# 2026-10-28 (the first two also confirmed via a direct diff against the
+# exact pre-branch commit, so they predate all of today's work):
+
+# EnrollmentModel::meetingsFor() TypeError ($termAcademicYear null) — a
+# single root cause with a wide, not-yet-fully-mapped blast radius. Known to
+# hit at least:
+CourseOfferingModelTest::testMergedClassEnforcesCombinedCapacityAcrossBothSections
+CourseOfferingModelTest::testUnmergingASectionRevertsItToItsOwnCapacity
+EnrollmentModelTest::testPerSubjectEnrollmentSucceeds
+EnrollmentModelTest::testEnrollmentIsRejectedOnceSectionIsAtCapacity
+EnrollmentModelTest::testSameStudentEnrollingAnotherSubjectInAFullSectionIsNotBlocked
+EnrollmentModelTest::testTimeConflictAcrossDifferentSectionsIsRejected
+EnrollmentModelTest::testDoubleEnrollmentInTheSameSubjectIsRejected
+EnrollmentModelTest::testBlockEnrollmentProducesOneRowPerPlottedSubject
+
+# Unrelated — a SchedulingConflictService argument-type mismatch and a
+# demand-counting assertion, confirmed in OfferingComponentSchedulingTest.php
+# (a file this plan's merge/scheduling work never touches):
+OfferingComponentSchedulingTest::testIrregularStudentConflictIsDetectedViaTheirActualEnrollmentSection
+OfferingComponentSchedulingTest::testParentDemandIsNotMultipliedByComponentCount

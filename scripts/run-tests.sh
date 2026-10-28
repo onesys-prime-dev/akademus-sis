@@ -72,7 +72,9 @@ fi
 
 if [ -n "$NOW_PASSING" ]; then
     echo
-    echo "Fixed since the baseline was recorded (remove these from $BASELINE when confirmed):"
+    echo "In the baseline but not failing here — this may mean they're fixed, or just that"
+    echo "this run didn't include them. Only remove from $BASELINE after confirming with an"
+    echo "isolated run of that specific file:"
     echo "$NOW_PASSING" | sed 's/^/  - /'
 fi
 
