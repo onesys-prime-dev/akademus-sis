@@ -451,4 +451,41 @@ final class CourseOfferingMergeScheduleTest extends CIUnitTestCase
         $carried = db_connect()->table('plotted_schedules')->where('offering_id', $result['offering_id'])->get()->getRowArray();
         $this->assertSame($username, $carried['prof']);
     }
+
+    public function testCarryingMergeRemovesStaleFacultyAssignmentForTheSupersededLegacyRow(): void
+    {
+        $a = $this->makeSection('A');
+        $this->seedSubject('ITE101');
+
+        $facultyUserId = 300;
+        $this->seedUsers($facultyUserId);
+        $username = 'testuser' . $facultyUserId;
+
+        db_connect()->table('plotted_schedules')->insert([
+            'academic_year' => $a['academic_year'], 'program' => $a['program'], 'year_level' => $a['year_level'], 'section' => $a['section'],
+            'day' => 0, 'start_time' => '08:00:00', 'end_time' => '10:00:00', 'time_label' => '08:00-10:00',
+            'subject_code' => 'ITE101', 'subject_title' => 'ITE101 Title', 'room' => 'Room 101', 'prof' => $username, 'status' => 'published',
+        ]);
+
+        // The faculty_assignments row ChairpersonController::sync() would
+        // have created for this exact legacy (academic_year, program,
+        // year_level, section, subject_code) tuple when the class was
+        // originally plotted.
+        db_connect()->table('faculty_assignments')->insert([
+            'user_id' => $facultyUserId, 'academic_year' => $a['academic_year'], 'program' => $a['program'],
+            'year_level' => $a['year_level'], 'section' => $a['section'], 'subject_code' => 'ITE101',
+            'method' => 'assigned', 'status' => 'assigned',
+        ]);
+
+        $result = (new CourseOfferingModel())->createMergeCarryingSchedule(
+            $a['academic_year'], 'ITE101', [$a['section_id']], null, 1, $this->seedChairForLegacyTest('ITE101')
+        );
+
+        $this->assertTrue($result['ok'], $result['error'] ?? '');
+        $this->assertTrue($result['schedule_carried']);
+        $this->dontSeeInDatabase('faculty_assignments', [
+            'academic_year' => $a['academic_year'], 'program' => $a['program'],
+            'year_level' => $a['year_level'], 'section' => $a['section'], 'subject_code' => 'ITE101',
+        ]);
+    }
 }

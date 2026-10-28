@@ -282,8 +282,9 @@ class CourseOfferingModel extends Model
         $sections = new SectionModel();
         $plotted  = new PlottedScheduleModel();
 
-        $legacyRows = [];
-        $bySection  = []; // section_id => [meeting signature => row], for the set comparison below
+        $legacyRows       = [];
+        $bySection        = []; // section_id => [meeting signature => row], for the set comparison below
+        $legacyContexts   = []; // every (program, year_level, section) whose legacy row(s) are being superseded — see faculty_assignments cleanup below
 
         foreach (array_values(array_unique(array_map('intval', $sectionIds))) as $sectionId) {
             $section = $sections->find($sectionId);
@@ -299,6 +300,7 @@ class CourseOfferingModel extends Model
             }
 
             $bySection[$sectionId] = [];
+            $legacyContexts[]      = ['program' => $section['program'], 'year_level' => $section['year_level'], 'section' => $section['section']];
 
             foreach ($rows as $row) {
                 $legacyRows[] = $row;
@@ -358,6 +360,26 @@ class CourseOfferingModel extends Model
         $db->transStart();
 
         $plotted->whereIn('schedule_id', array_map('intval', array_column($legacyRows, 'schedule_id')))->delete();
+
+        // A superseded legacy row can leave behind a faculty_assignments row
+        // scoped to the same (academic_year, program, year_level, section,
+        // subject_code) tuple — the same bookkeeping ChairpersonController::
+        // sync() already does whenever a subject is removed from a section's
+        // grid ("a subject removed from the grid entirely must also drop its
+        // faculty assignment"). Without this, the faculty member stays
+        // credited with a class that's no longer plotted anywhere outside
+        // the new offering.
+        $assignments = new FacultyAssignmentModel();
+
+        foreach ($legacyContexts as $context) {
+            $assignments->where([
+                'academic_year' => $academicYear,
+                'program'       => $context['program'],
+                'year_level'    => $context['year_level'],
+                'section'       => $context['section'],
+                'subject_code'  => $subjectCode,
+            ])->delete();
+        }
 
         $sync = (new PlottedScheduleModel())->syncOfferingSchedule($result['offering_id'], $actorId, $blocks);
 

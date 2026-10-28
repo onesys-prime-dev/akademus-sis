@@ -9,6 +9,7 @@ use App\Libraries\SubjectDemandService;
 use App\Models\AcademicYearModel;
 use App\Models\CapacityPolicyModel;
 use App\Models\CourseOfferingModel;
+use App\Models\FacultyAssignmentModel;
 use App\Models\OfferingComponentModel;
 use App\Models\PlottedScheduleModel;
 use App\Models\RoomModel;
@@ -852,6 +853,22 @@ class OfferingController extends BaseController
 
                 if ($duplicates !== []) {
                     $plotted->whereIn('schedule_id', array_map('intval', array_column($duplicates, 'schedule_id')))->delete();
+
+                    // Same bookkeeping ChairpersonController::sync() does
+                    // whenever a subject is removed from a section's grid —
+                    // the deleted legacy rows can leave behind a
+                    // faculty_assignments row scoped to this exact
+                    // (academic_year, program, year_level, section,
+                    // subject_code) tuple, crediting a faculty member with a
+                    // class that's no longer plotted anywhere outside the
+                    // offering it just joined.
+                    (new FacultyAssignmentModel())->where([
+                        'academic_year' => (string) $payload['academic_year'],
+                        'program'       => (string) $sectionRow['program'],
+                        'year_level'    => (string) $sectionRow['year_level'],
+                        'section'       => (string) $sectionRow['section'],
+                        'subject_code'  => $subjectCode,
+                    ])->delete();
                 }
             }
 
