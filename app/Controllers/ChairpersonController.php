@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Libraries\ChairpersonBadgeCounts;
 use App\Libraries\ScheduleOverlap;
 use App\Models\AcademicYearModel;
+use App\Models\CourseOfferingModel;
 use App\Libraries\TermCurriculum;
 use App\Libraries\SchedulingAuthorization;
 use App\Models\DepartmentModel;
@@ -1645,6 +1646,24 @@ class ChairpersonController extends BaseController
             'subject_code'
         );
 
+        // A merged subject's block is excluded from $blocks below
+        // unconditionally (kept or not — see the guard above), so its mere
+        // absence there can't tell "the chairperson removed it" apart from
+        // "it was never resubmitted because it's merged." The RAW payload
+        // can: a merged code still present in $payload['blocks'] was kept
+        // as-is; one that's gone is the chairperson clicking "Remove from
+        // schedule" on it (removeBlock() in chairperson-plotting.js), which
+        // for a merged subject means leaving the merge — unmergeSection()
+        // is called inside the transaction below, once everything else has
+        // validated.
+        $removedMergedCodes = $mergedSubjectCodes === [] || ! is_array($payload['blocks']) ? [] : array_diff(
+            $mergedSubjectCodes,
+            array_values(array_filter(array_map(
+                static fn ($b) => is_array($b) && isset($b['code']) && is_string($b['code']) ? $b['code'] : null,
+                $payload['blocks']
+            )))
+        );
+
         $subjectsByCode = array_column($this->contextSubjects($context['academic_year'], $context['program'], $context['year_level']), null, 'code');
 
         // Program ownership generates demand; subject ownership controls
@@ -2107,6 +2126,14 @@ class ChairpersonController extends BaseController
             $context['section'],
             $rows
         );
+
+        foreach ($removedMergedCodes as $code) {
+            $offering = (new CourseOfferingModel())->offeringForSection((int) $sectionRow['section_id'], $code);
+
+            if ($offering !== null) {
+                (new CourseOfferingModel())->unmergeSection((int) $offering['offering_id'], (int) $sectionRow['section_id']);
+            }
+        }
 
         // A section becomes a real, stable row the moment it's plotted —
         // this is the anchor enrollment attaches to (unlike plotted_schedules

@@ -34,7 +34,8 @@ final class ChairpersonSyncMergedSubjectTest extends CIUnitTestCase
     protected $refresh   = true;
     protected $namespace = ['CodeIgniter\Shield', 'CodeIgniter\Settings', 'App'];
 
-    public function testSyncDoesNotDuplicateAMergedSubjectAsANewLegacyRow(): void
+    /** @return array{chairId: int, sectionA: int, sectionB: int, offeringId: int, term: string} */
+    private function seedMergedOffering(): array
     {
         $collegeId = 1;
         $subDeptId = 2;
@@ -86,6 +87,13 @@ final class ChairpersonSyncMergedSubjectTest extends CIUnitTestCase
 
         $this->seeNumRecords(1, 'plotted_schedules', ['subject_code' => 'ITE101']);
 
+        return ['chairId' => $chairId, 'sectionA' => $sectionA, 'sectionB' => $sectionB, 'offeringId' => $offeringId, 'term' => $term];
+    }
+
+    public function testSyncDoesNotDuplicateAMergedSubjectAsANewLegacyRow(): void
+    {
+        ['chairId' => $chairId, 'offeringId' => $offeringId, 'term' => $term] = $this->seedMergedOffering();
+
         // Grid save for section B, resubmitting exactly the block the grid is
         // currently showing — the same meeting the offering already owns.
         //
@@ -121,5 +129,40 @@ final class ChairpersonSyncMergedSubjectTest extends CIUnitTestCase
         $this->seeNumRecords(1, 'plotted_schedules', ['subject_code' => 'ITE101']);
         $this->seeInDatabase('plotted_schedules', ['offering_id' => $offeringId, 'subject_code' => 'ITE101']);
         $this->dontSeeInDatabase('plotted_schedules', ['offering_id' => null, 'subject_code' => 'ITE101', 'section' => 'B']);
+    }
+
+    public function testSyncOmittingAMergedBlockUnmergesTheSectionInsteadOfLeavingItStuck(): void
+    {
+        // Live bug: removeBlock() in chairperson-plotting.js only ever
+        // spliced the block out of the client's local array and resaved —
+        // for a merged subject, that resubmit never touches the offering's
+        // own row (replaceDraft() only manages this section's LEGACY rows),
+        // so the "removed" class silently reappeared on next reload, with
+        // no error and no way to actually clear it from the section.
+        ['chairId' => $chairId, 'sectionB' => $sectionB, 'offeringId' => $offeringId, 'term' => $term] = $this->seedMergedOffering();
+
+        $this->actingAs(auth()->getProvider()->findById($chairId));
+        $payload = [
+            'context' => [
+                'academic_year' => $term, 'program' => 'BSIT', 'year_level' => '2nd Year',
+                'semester' => '1st', 'section' => 'B',
+            ],
+            'blocks' => [], // the chairperson removed ITE101 from section B's grid
+            csrf_token() => csrf_hash(),
+        ];
+        $result = $this->withSession()
+            ->withBody(json_encode($payload))
+            ->withBodyFormat('json')
+            ->post('/chairperson/schedule/sync');
+
+        $body = json_decode($result->response()->getJSON(), true);
+        $this->assertTrue($body['ok'] ?? false, $body['error'] ?? json_encode($body));
+
+        // Section B is really out of the merge now — not just hidden
+        // locally until the next reload brings it back.
+        $this->dontSeeInDatabase('offering_sections', ['offering_id' => $offeringId, 'section_id' => $sectionB]);
+        // Section A is still attached; the offering and its schedule survive.
+        $this->seeNumRecords(1, 'plotted_schedules', ['subject_code' => 'ITE101']);
+        $this->seeInDatabase('plotted_schedules', ['offering_id' => $offeringId, 'subject_code' => 'ITE101']);
     }
 }
