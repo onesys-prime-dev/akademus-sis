@@ -1617,6 +1617,34 @@ class ChairpersonController extends BaseController
         // above stays term-scoped for plotted_schedules/faculty_assignments.
         $context['section_year'] = AcademicYearModel::yearOnly($context['academic_year']);
 
+        // A subject already merged into a course_offering for this section is
+        // scheduled there (course_offerings/plotted_schedules.offering_id),
+        // not as a legacy (program, year_level, section)-keyed row. The grid
+        // still renders that offering's blocks alongside the section's own
+        // legacy ones (see PlottedScheduleModel::forContext()), so any save
+        // from this page resubmits them unchanged in $payload['blocks'] too.
+        // Without this guard, every such save silently wrote a second,
+        // duplicate legacy row for the same meetings — the merged class's
+        // schedule stays owned by the offering (edited via the Merged
+        // Classes/OfferingController endpoints), so blocks for these codes
+        // are dropped here rather than persisted a second time.
+        $sectionRow = (new SectionModel())->forContext(
+            $context['section_year'],
+            $context['program'],
+            $context['year_level'],
+            $context['section']
+        );
+
+        $mergedSubjectCodes = $sectionRow === null ? [] : array_column(
+            db_connect()->table('offering_sections')
+                ->select('subject_code')
+                ->where('section_id', $sectionRow['section_id'])
+                ->distinct()
+                ->get()
+                ->getResultArray(),
+            'subject_code'
+        );
+
         $subjectsByCode = array_column($this->contextSubjects($context['academic_year'], $context['program'], $context['year_level']), null, 'code');
 
         // Program ownership generates demand; subject ownership controls
@@ -1704,6 +1732,14 @@ class ChairpersonController extends BaseController
 
             // The subject must exist in the curriculum; its details are
             // canonicalized from the curriculum, not trusted from the client.
+            if (in_array($block['code'], $mergedSubjectCodes, true)) {
+                // Already scheduled via the merged offering — see the guard
+                // above. Dropping here (not inserting as a legacy row) is
+                // the fix; the offering's own plotted_schedules row is what
+                // the grid actually renders this block from.
+                continue;
+            }
+
             if (! isset($subjectsByCode[$block['code']])) {
                 // Stale (already stored for this section) → drop it. A subject
                 // that was never plotted here is still rejected as invalid.
