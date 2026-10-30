@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use App\Libraries\ChairpersonBadgeCounts;
 use App\Libraries\ScheduleOverlap;
+use App\Libraries\SchedulingConflictService;
 use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
 use App\Libraries\TermCurriculum;
@@ -1958,6 +1959,33 @@ class ChairpersonController extends BaseController
             }
         }
 
+        // Merged-subject (offering-linked) meetings never appear in $blocks
+        // above — they're dropped from the payload entirely (see the guard
+        // around $mergedSubjectCodes) because their schedule is owned by the
+        // offering, not resubmitted here. That made them invisible to the
+        // "within the section" overlap check too: a legacy subject plotted
+        // through THIS save could land on the exact same day/time as a class
+        // this section already attends through a merged offering, and
+        // nothing caught it — a student in this section would be committed
+        // to two classes at once. Check the submitted legacy blocks against
+        // this section's own already-attached offering meetings as well.
+        if ($sectionRow !== null) {
+            $ownOfferingMeetings = array_filter(
+                (new SchedulingConflictService())->meetingsForSection((int) $sectionRow['section_id'], $context['academic_year']),
+                static fn (array $row) => $row['offering_id'] !== null
+            );
+
+            foreach ($blocks as $a) {
+                foreach ($ownOfferingMeetings as $om) {
+                    $omBlock = ['day' => (int) $om['day'], 'start' => substr($om['start_time'], 0, 5), 'end' => substr($om['end_time'], 0, 5)];
+
+                    if (ScheduleOverlap::clashes($a, $omBlock)) {
+                        return $this->fail("Section conflict: {$a['code']} overlaps {$om['subject_code']}, which this section already attends at that time.");
+                    }
+                }
+            }
+        }
+
         // Two chairpersons saving different sections of the same academic
         // year concurrently could both read the "others" conflict set before
         // either writes, both pass the check, and both commit into the same
@@ -3309,6 +3337,22 @@ class ChairpersonController extends BaseController
 
     private function rowToBlock(array $row): array
     {
+        // An offering-linked row's own section/year_level/program columns
+        // are always NULL by design (see PlottedScheduleModel's docblock) —
+        // the client used to silently fall back to whatever section/program
+        // the VIEWER currently had selected whenever these came back null
+        // (see chairperson-plotting.js's overviewSectionLabel()), which made
+        // every offering-linked class in the Room Overview/room picker look
+        // like it belonged to the viewer's own section even when it had
+        // nothing to do with it — including a fully UNATTACHED offering
+        // (0 rows in offering_sections, left behind by an unmerge; still
+        // genuinely occupies the room, but isn't any section's commitment
+        // any more). Resolve the real attached section(s) here instead, so
+        // the label shown is honest either way.
+        [$section, $yearLevel, $program] = $row['offering_id'] !== null
+            ? $this->offeringSectionLabel((int) $row['offering_id'])
+            : [$row['section'], $row['year_level'], $row['program']];
+
         return [
             'day'        => (int) $row['day'],
             'code'       => $row['subject_code'],
@@ -3319,9 +3363,51 @@ class ChairpersonController extends BaseController
             'start'      => substr($row['start_time'], 0, 5),
             'end'        => substr($row['end_time'], 0, 5),
             'time_label' => $row['time_label'],
-            'section'    => $row['section'],
-            'year_level' => $row['year_level'],
-            'program'    => $row['program'],
+            'section'    => $section,
+            'year_level' => $yearLevel,
+            'program'    => $program,
+        ];
+    }
+
+    /** @var array<int, array{0: ?string, 1: ?string, 2: ?string}> offering_id => [section, year_level, program] */
+    private array $offeringSectionLabelCache = [];
+
+    /**
+     * The real section(s) currently attached to an offering, for display —
+     * never the viewer's own context. Multiple attached sections (a genuine
+     * merge) are joined ("A & B"); a year_level/program that disagrees
+     * across attached sections is shown as "Mixed" rather than picking one
+     * arbitrarily; zero attached sections (a schedule left behind by an
+     * unmerge — see CourseOfferingModel::unmergeSection()) is reported as
+     * such, not silently hidden behind someone else's label.
+     *
+     * @return array{0: ?string, 1: ?string, 2: ?string} [section, year_level, program]
+     */
+    private function offeringSectionLabel(int $offeringId): array
+    {
+        if (isset($this->offeringSectionLabelCache[$offeringId])) {
+            return $this->offeringSectionLabelCache[$offeringId];
+        }
+
+        $sections = db_connect()->table('offering_sections os')
+            ->select('s.section, s.year_level, s.program')
+            ->join('sections s', 's.section_id = os.section_id')
+            ->where('os.offering_id', $offeringId)
+            ->get()
+            ->getResultArray();
+
+        if ($sections === []) {
+            return $this->offeringSectionLabelCache[$offeringId] = [null, 'Unattached', null];
+        }
+
+        $sectionNames = array_values(array_unique(array_column($sections, 'section')));
+        $yearLevels   = array_values(array_unique(array_column($sections, 'year_level')));
+        $programs     = array_values(array_unique(array_column($sections, 'program')));
+
+        return $this->offeringSectionLabelCache[$offeringId] = [
+            implode(' & ', $sectionNames),
+            count($yearLevels) === 1 ? $yearLevels[0] : 'Mixed',
+            count($programs) === 1 ? $programs[0] : 'Mixed',
         ];
     }
 

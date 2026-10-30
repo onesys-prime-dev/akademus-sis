@@ -629,7 +629,7 @@ function ghostEl(b) {
     // print the literal word "null" where a section name would normally go.
     const whereLabel = b.section
         ? b.section + (b.year_level ? ' · ' + shortYear(b.year_level) : '')
-        : 'Merged class';
+        : (b.year_level === 'Unattached' ? 'Unattached offering' : 'Merged class');
 
     const el = mk('div', 'block is-other');
     el.title = `${b.code} · ${whereLabel} · ${b.room}${b.prof ? ' · ' + b.prof : ''} · ${b.time_label}`;
@@ -2476,9 +2476,16 @@ function announce(message) {
         }
 
         function overviewSectionLabel(b) {
-            const section = b.section || CONTEXT.section;
-            const yearLevel = b.year_level || CONTEXT.year_level;
-            return `${section} · ${shortYear(yearLevel)}`;
+            // The server now always resolves an offering-linked row's REAL
+            // attached section(s) (see ChairpersonController::rowToBlock()),
+            // including the honest "Unattached" when an offering has none
+            // left (schedule kept after an unmerge) — falling back to the
+            // viewer's OWN selected section here used to make every such
+            // row look like it belonged to whoever happened to be looking,
+            // which is exactly what made an unrelated, unattached class
+            // look like a real conflict with this section.
+            if (!b.section) return b.year_level === 'Unattached' ? 'Unattached offering' : (b.year_level || 'Other');
+            return `${b.section} · ${shortYear(b.year_level)}`;
         }
 
         function overviewClassRow(b) {
@@ -2498,7 +2505,7 @@ function announce(message) {
             details.appendChild(document.createTextNode(' — ' + b.title));
             const meta = document.createElement('div');
             meta.className = 'meta';
-            const program = b.program || CONTEXT.program;
+            const program = b.program || 'Multiple/unattached programs';
             meta.textContent = (b.prof ? b.prof + ' · ' : '') + program;
             details.appendChild(meta);
 
