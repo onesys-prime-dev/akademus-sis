@@ -623,11 +623,19 @@ function positionBlock(el, item) {
 }
 
 function ghostEl(b) {
+    // Offering-linked rows (a merged/shared class) have no section/year_level
+    // of their own — program/year_level/section is NULL on those rows by
+    // design (see PlottedScheduleModel's own docblock), so this must never
+    // print the literal word "null" where a section name would normally go.
+    const whereLabel = b.section
+        ? b.section + (b.year_level ? ' · ' + shortYear(b.year_level) : '')
+        : 'Merged class';
+
     const el = mk('div', 'block is-other');
-    el.title = `${b.code} · ${b.section}${b.year_level ? ' · ' + b.year_level : ''} · ${b.room}${b.prof ? ' · ' + b.prof : ''} · ${b.time_label}`;
+    el.title = `${b.code} · ${whereLabel} · ${b.room}${b.prof ? ' · ' + b.prof : ''} · ${b.time_label}`;
     el.setAttribute('aria-hidden', 'true');
     el.append(
-        mk('div', 'b-section', b.section + (b.year_level ? ' · ' + shortYear(b.year_level) : '')),
+        mk('div', 'b-section', whereLabel),
         mk('div', 'b-code', b.code),
         mk('div', 'b-line', b.room)
     );
@@ -3375,13 +3383,21 @@ function renderSubjectView() {
         const section = mk('section', 'ins-section');
         section.appendChild(mk('h4', 'ins-heading', `Plotted meetings (${stats.count})`));
         const list = mk('ul', 'meeting-list');
+        const isOwned = OWNED_CODES.has(subject.code);
         stats.meetings.slice().sort((a, b) => a.day - b.day || a.start.localeCompare(b.start)).forEach(b => {
-            const li = mk('li');
+            const li = mk('li', 'meeting-row');
             const btn = mk('button', 'meeting');
             btn.type = 'button';
             btn.append(mk('strong', '', `${dayShort(b.day)} ${blockRange(b)}`), mk('span', '', b.room));
             btn.addEventListener('click', () => selectBlock(blockKey(b)));
             li.appendChild(btn);
+            if (isOwned) {
+                const del = mk('button', 'meeting-row__remove', '×');
+                del.type = 'button';
+                del.setAttribute('aria-label', `Remove ${subject.code} ${dayShort(b.day)} ${blockRange(b)}`);
+                del.addEventListener('click', e => { e.stopPropagation(); removeBlock(blockKey(b)); });
+                li.appendChild(del);
+            }
             list.appendChild(li);
         });
         section.appendChild(list);

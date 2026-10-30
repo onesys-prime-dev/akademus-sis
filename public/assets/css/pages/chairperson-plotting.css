@@ -803,6 +803,21 @@ body.is-plot-dragging .block.is-other { opacity: .7; }
 .meeting strong { font-weight: 600; font-variant-numeric: tabular-nums; }
 .meeting span { color: var(--color-text-secondary); }
 
+.meeting-row { display: flex; align-items: stretch; gap: 6px; }
+.meeting-row .meeting { flex: 1; }
+.meeting-row__remove {
+    flex: 0 0 auto;
+    width: 32px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+.meeting-row__remove:hover { background: var(--color-danger-soft); border-color: var(--color-danger-border); color: var(--color-danger); }
+
 .conflict-message { margin: 0; font-size: 13px; line-height: 1.55; color: var(--color-text-primary); }
 .conflict-cards { display: flex; flex-direction: column; gap: var(--space-2); }
 .conflict-card { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 12px; color: var(--color-text-secondary); }
