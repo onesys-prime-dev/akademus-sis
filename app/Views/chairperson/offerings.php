@@ -38,10 +38,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     .mc-count--success { background: var(--color-success-soft); color: var(--color-success); }
     .mc-count--warn { background: var(--color-warning-soft); color: var(--color-warning); }
 
-    .mc-plot-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 20px 24px; }
-    .mc-select { flex: 1; min-width: 260px; height: 40px; padding: 0 14px; border: 1px solid var(--color-border-control); border-radius: var(--radius-md); font-size: 13px; font-family: inherit; background: var(--color-surface); color: var(--color-text-primary); }
-    .mc-select:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
-
     .mc-row { padding: 20px 24px; border-bottom: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; transition: background-color var(--transition-fast); }
     .mc-row:last-child { border-bottom: none; }
     .mc-row:hover { background: var(--color-surface-secondary); }
@@ -94,7 +90,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     @media (max-width: 640px) {
         .mc-row { flex-direction: column; align-items: stretch; }
         .mc-row__actions { justify-content: space-between; }
-        .mc-plot-row { flex-direction: column; align-items: stretch; }
     }
 </style>
 <?= $this->endSection() ?>
@@ -127,7 +122,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     <h2>Needs Plotting</h2>
                     <span class="mc-count <?= count($needsPlotting) ? 'mc-count--warn' : '' ?>"><?= count($needsPlotting) ?> Waiting</span>
                 </div>
-                <p>Classes from any department that require one of your subjects, with no offering yet — live demand, computed from current sectioning and enrollment. Pick one to create its offering and start plotting it with your own faculty.</p>
+                <p>Classes from any department that require one of your subjects, with no offering yet — live demand, computed from current sectioning and enrollment. Plot it straight on that section's schedule — same as any other subject.</p>
             </div>
         </div>
 
@@ -137,17 +132,35 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <p>Nothing is waiting — every class that needs one of your subjects already has an offering.</p>
             </div>
         <?php else: ?>
-            <div class="mc-plot-row">
-                <select id="needsPlottingSelect" class="mc-select">
-                    <?php foreach ($needsPlotting as $i => $np): ?>
-                        <option value="<?= $i ?>"><?= esc($np['subject_code']) ?> — <?= esc($np['section_label']) ?> (<?= esc($np['expected_count']) ?> student<?= $np['expected_count'] === 1 ? '' : 's' ?>)<?= $np['already_scheduled'] ? ' - Already on the schedule' : '' ?></option>
-                    <?php endforeach ?>
-                </select>
-                <button type="button" class="btn btn-primary" onclick="plotDemand()">
-                    <span class="material-symbols-outlined" style="font-size:18px;">add_task</span>
-                    Create &amp; Plot
-                </button>
-            </div>
+            <?php foreach ($needsPlotting as $np): ?>
+                <?php
+                    $plotUrl = ($ayLabel !== null && $semester !== null && $np['program'] !== null && $np['year_level'] !== null && $np['section'] !== null)
+                        ? site_url('chairperson/dashboard') . '?' . http_build_query([
+                            'ay_label'   => $ayLabel,
+                            'semester'   => $semester,
+                            'program'    => $np['program'],
+                            'year_level' => $np['year_level'],
+                            'section'    => $np['section'],
+                        ])
+                        : null;
+                ?>
+                <article class="mc-row">
+                    <div class="mc-row__main">
+                        <span class="mc-code"><span class="material-symbols-outlined" aria-hidden="true">subject</span><?= esc($np['subject_code']) ?></span>
+                        <div class="mc-meta">
+                            <?= esc($np['section_label']) ?> &middot; <?= esc($np['expected_count']) ?> student<?= $np['expected_count'] === 1 ? '' : 's' ?>
+                            <?php if ($np['already_scheduled']): ?> &middot; Already on the schedule<?php endif ?>
+                        </div>
+                    </div>
+                    <div class="mc-row__actions">
+                        <?php if ($plotUrl !== null): ?>
+                            <a class="btn btn-primary" href="<?= esc($plotUrl, 'attr') ?>">
+                                Plot it<span class="material-symbols-outlined" style="font-size:18px;" aria-hidden="true">arrow_forward</span>
+                            </a>
+                        <?php endif ?>
+                    </div>
+                </article>
+            <?php endforeach ?>
         <?php endif ?>
     </div>
 
@@ -384,27 +397,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     function reloadWithMessage(message) {
         sessionStorage.setItem('offeringsFeedback', message);
         location.reload();
-    }
-
-    const NEEDS_PLOTTING = <?= json_encode(array_values($needsPlotting)) ?>;
-
-    async function plotDemand() {
-        const select = document.getElementById('needsPlottingSelect');
-        const item = NEEDS_PLOTTING[parseInt(select.value, 10)];
-        if (!item) return;
-
-        const result = await postJSON('<?= site_url('chairperson/offerings/plot-demand') ?>', {
-            academic_year: item.academic_year,
-            subject_code: item.subject_code,
-            section_id: item.section_id,
-        });
-
-        if (!result.ok) {
-            showFeedback(result.error || 'Could not create the offering.', true);
-            return;
-        }
-
-        reloadWithMessage(`${item.subject_code} offering created for ${item.section_label} — plot its schedule below.`);
     }
 
     async function mergeCandidate(i, academicYear, subjectCode) {

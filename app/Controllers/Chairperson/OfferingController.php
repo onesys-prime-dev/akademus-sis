@@ -31,6 +31,12 @@ class OfferingController extends BaseController
         $subDeptIds    = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
         $needsPlotting = $this->needsPlottingList();
 
+        // Raw label/semester for the "Plot it" deep link into Schedule
+        // Plotting (?ay_label=...&semester=...) — same values
+        // SharedSubjectDashboardController already resolves the same way for
+        // its own "Plot it" link.
+        $activeYearRow = (new AcademicYearModel())->activeRow();
+
         if ($subDeptIds === []) {
             return view('chairperson/offerings', [
                 'pageTitle'     => 'Merged Classes',
@@ -40,6 +46,8 @@ class OfferingController extends BaseController
                 'offerings'     => [],
                 'rooms'         => [],
                 'needsPlotting' => $needsPlotting,
+                'ayLabel'       => $activeYearRow['label'] ?? null,
+                'semester'      => $activeYearRow['semester'] ?? null,
             ]);
         }
 
@@ -164,6 +172,8 @@ class OfferingController extends BaseController
             'offerings'     => $offerings,
             'rooms'         => $rooms,
             'needsPlotting' => $needsPlotting,
+            'ayLabel'       => $activeYearRow['label'] ?? null,
+            'semester'      => $activeYearRow['semester'] ?? null,
         ]);
     }
 
@@ -176,7 +186,7 @@ class OfferingController extends BaseController
      * shows up here the moment its curriculum requires my subject, with no
      * placement request needed first.
      *
-     * @return list<array{subject_id: int, subject_code: string, subject_name: string, section_id: int, section_label: string, expected_count: int, already_scheduled: bool}>
+     * @return list<array{subject_id: int, subject_code: string, subject_name: string, section_id: int, section_label: string, expected_count: int, already_scheduled: bool, program: ?string, year_level: ?string, section: ?string}>
      */
     private function needsPlottingList(): array
     {
@@ -259,6 +269,16 @@ class OfferingController extends BaseController
                     'section_label'     => $bySection['section_label'],
                     'expected_count'    => (int) $bySection['expected_count'],
                     'already_scheduled' => $alreadyScheduled,
+                    // The view's "Plot it" deep link into Schedule Plotting
+                    // (same pattern as the Shared Subject Dashboard's own —
+                    // see SharedSubjectDashboardService's plot_context) needs
+                    // these to land directly on this section's grid, ready to
+                    // drag the block on — no separate "create the offering
+                    // first" step; plotting it there is itself what makes it
+                    // real, same as any other subject on that grid.
+                    'program'           => $section['program'] ?? null,
+                    'year_level'        => $section['year_level'] ?? null,
+                    'section'           => $section['section'] ?? null,
                 ];
             }
         }
