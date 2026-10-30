@@ -293,6 +293,40 @@ class OfferingPlacementRequestModel extends Model
     }
 
     /**
+     * Auto-closes any pending/approved `additional_offering` or
+     * `conflict_report` request for this (subject, section) the moment the
+     * owning scheduler actually schedules the subject there directly (e.g.
+     * drags a block onto the Schedule Plotting grid) — the plotted class
+     * itself IS the fulfillment, so there is no reason to also make them
+     * separately click "Mark Fulfilled" on a request that's already been
+     * acted on. `placement` requests are untouched: those represent an
+     * explicit capacity/roster grant onto a SPECIFIC existing offering that
+     * only fulfillPlacement() can make correctly — a block merely existing
+     * on the grid doesn't tell us which offering (if any) to attach.
+     */
+    public function autoFulfillForDirectPlot(int $subjectId, int $sectionId, int $reviewerId): void
+    {
+        $rows = $this->where('subject_id', $subjectId)
+            ->where('section_id', $sectionId)
+            ->whereIn('request_type', [self::TYPE_ADDITIONAL_OFFERING, self::TYPE_CONFLICT_REPORT])
+            ->whereIn('status', [self::STATUS_PENDING, self::STATUS_APPROVED])
+            ->findAll();
+
+        foreach ($rows as $request) {
+            $id = (int) $request['id'];
+
+            $this->update($id, [
+                'status'       => self::STATUS_FULFILLED,
+                'reviewed_by'  => $reviewerId,
+                'reviewed_at'  => date('Y-m-d H:i:s'),
+                'review_notes' => 'Auto-fulfilled: subject plotted directly on the schedule.',
+            ]);
+
+            $this->audit('placement_request.fulfilled', $id, $reviewerId, $request, $this->find($id), 'Auto-fulfilled when the subject was plotted directly.');
+        }
+    }
+
+    /**
      * Fulfills a `placement` request: attaches the requester's section to
      * $targetOfferingId (or the offering already on the request) via
      * CourseOfferingModel::attachSection(), in one transaction with the

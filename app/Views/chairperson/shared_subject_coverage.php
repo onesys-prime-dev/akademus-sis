@@ -227,7 +227,7 @@ foreach ($coverage['subjects'] as $s) {
                 <div class="ssc-section-label">Candidate Offerings</div>
 
                 <?php if (empty($s['offerings'])): ?>
-                    <div class="empty-state"><p>No offering exists for this subject yet this term.</p></div>
+                    <div class="empty-state"><p>No offering exists for this subject yet this term. The owning department already sees this as unassigned demand on their own dashboard — no request needed.</p></div>
                 <?php endif ?>
 
                 <?php foreach ($s['offerings'] as $o): ?>
@@ -279,15 +279,6 @@ foreach ($coverage['subjects'] as $s) {
                     </div>
                 <?php endforeach ?>
 
-                <?php foreach ($s['sections'] as $sec): ?>
-                    <?php if ($sec['unassigned_count'] === 0) continue; ?>
-                    <?php if ($sec['has_pending_additional']): ?>
-                        <button class="ssc-btn" disabled>Additional Offering Requested — <?= esc($sec['label']) ?></button>
-                    <?php else: ?>
-                        <button class="ssc-btn" onclick="submitRequest(<?= $s['subject_id'] ?>, <?= $sec['section_id'] ?>, 'additional_offering', null)">Request Additional Offering — <?= esc($sec['label']) ?></button>
-                    <?php endif ?>
-                <?php endforeach ?>
-
                 <details style="margin-top:14px;">
                     <summary>&#9888; Data notes</summary>
                     <ul class="ssd-note" style="margin:0 0 0 16px;">
@@ -314,7 +305,7 @@ foreach ($coverage['subjects'] as $s) {
 
     async function submitRequest(subjectId, sectionId, requestType, targetOfferingId) {
         let notes = null;
-        if (requestType === 'conflict_report' || requestType === 'additional_offering') {
+        if (requestType === 'conflict_report') {
             notes = prompt('Add a short note for the owning scheduler (optional):') || null;
         }
 

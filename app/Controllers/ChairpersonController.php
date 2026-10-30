@@ -18,6 +18,7 @@ use App\Models\FacultyDepartmentModel;
 use App\Models\FacultyOverrideModel;
 use App\Models\FacultySubjectPreferenceModel;
 use App\Models\NotificationModel;
+use App\Models\OfferingPlacementRequestModel;
 use App\Models\PlottedScheduleModel;
 use App\Models\RoomModel;
 use App\Libraries\ScheduleSuggester;
@@ -2140,12 +2141,32 @@ class ChairpersonController extends BaseController
         // rows, which get replaced wholesale on every save). Year-scoped, so
         // plotting 2nd Semester for a section already plotted in 1st
         // Semester resolves to the SAME row instead of creating a new one.
-        (new SectionModel())->firstOrCreateForContext(
+        $plottedSection = (new SectionModel())->firstOrCreateForContext(
             $context['section_year'],
             $context['program'],
             $context['year_level'],
             $context['section']
         );
+
+        // A subject plotted directly here may be exactly what a pending
+        // "additional offering" / "conflict report" request (Shared Subject
+        // Requests) was asking for — see
+        // OfferingPlacementRequestModel::autoFulfillForDirectPlot() for why
+        // that request shouldn't just sit there once this has happened.
+        $plottedCodesThisSave = array_unique(array_column($blocks, 'code'));
+
+        if ($plottedSection !== null && $plottedCodesThisSave !== []) {
+            $requestModel = new OfferingPlacementRequestModel();
+            $sectionId    = (int) $plottedSection['section_id'];
+
+            foreach ($plottedCodesThisSave as $code) {
+                $subjectId = $subjectsByCode[$code]['subject_id'] ?? null;
+
+                if ($subjectId !== null) {
+                    $requestModel->autoFulfillForDirectPlot((int) $subjectId, $sectionId, (int) auth()->id());
+                }
+            }
+        }
 
         $assignments = new FacultyAssignmentModel();
         $newlyAssigned = [];
