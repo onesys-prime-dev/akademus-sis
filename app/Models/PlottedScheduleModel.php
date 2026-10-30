@@ -119,41 +119,42 @@ class PlottedScheduleModel extends Model
     /**
      * Blocks plotted for every OTHER context in the same academic year.
      *
-     * Pass $deptPrograms to restrict results to that list of program display
-     * names (used when displaying ghost blocks, so another department's
-     * plots never leak into a chairperson's view). Leave it null for
-     * school-wide room/faculty conflict checks, where every department's
-     * rows must still be considered — in that case, offering-linked rows
-     * school-wide are also included, closing the gap where a legacy save
-     * could otherwise double-book a room/faculty member already committed
-     * to a shared offering elsewhere. (With $deptPrograms set, offering rows
-     * are left out of this "ghost block" display path — they don't resolve
-     * to a single program the way legacy rows do, and getting that half
-     * right isn't required for conflict safety; conflict safety is the
-     * $deptPrograms === null path.)
+     * Pass $deptPrograms to restrict the LEGACY ("other sections") rows to
+     * that list of program display names (used when displaying ghost
+     * blocks, so another department's plots never leak into a
+     * chairperson's view). Leave it null for school-wide room/faculty
+     * conflict checks, where every department's legacy rows must still be
+     * considered.
+     *
+     * Offering-linked rows (a merged/shared class) are ALWAYS included,
+     * regardless of $deptPrograms — they're real room/faculty commitments
+     * no matter which department's programs are in scope for the legacy
+     * view, and the Room Overview / room picker (which call this with
+     * $deptPrograms set) need them too: leaving them out there previously
+     * meant a room could show as "free" while it was actually booked by a
+     * merged/offering class, only to be rejected once the chairperson
+     * actually tried to plot into it — the save-time conflict check
+     * (the $deptPrograms === null path) always included them, so this was
+     * a display bug, not a safety one, but a confusing one.
      */
     public function forOtherContexts(string $academicYear, string $program, string $yearLevel, string $section, ?array $deptPrograms = null): array
     {
-        if ($deptPrograms === []) {
-            return [];
-        }
+        $legacyOthers = [];
 
-        $query = $this->where('academic_year', $academicYear);
+        if ($deptPrograms !== []) {
+            $query = $this->where('academic_year', $academicYear);
 
-        if ($deptPrograms !== null) {
-            $query = $query->whereIn('program', $deptPrograms);
-        }
+            if ($deptPrograms !== null) {
+                $query = $query->whereIn('program', $deptPrograms);
+            }
 
-        $legacyOthers = $query
-            ->groupStart()
-                ->where('program !=', $program)
-                ->orWhere('year_level !=', $yearLevel)
-                ->orWhere('section !=', $section)
-            ->groupEnd()
-            ->findAll();
-
-        if ($deptPrograms !== null) {
-            return $legacyOthers;
+            $legacyOthers = $query
+                ->groupStart()
+                    ->where('program !=', $program)
+                    ->orWhere('year_level !=', $yearLevel)
+                    ->orWhere('section !=', $section)
+                ->groupEnd()
+                ->findAll();
         }
 
         $offeringRows = $this->where('academic_year', $academicYear)->where('offering_id IS NOT NULL')->findAll();
