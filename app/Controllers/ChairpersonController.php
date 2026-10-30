@@ -3200,6 +3200,37 @@ class ChairpersonController extends BaseController
             }
         }
 
+        // $context['section'] above was resolved from filters()['section']
+        // (sectionOptions()), which reads 'year_level' straight off the raw
+        // query string — exactly the value the smart jump above may have
+        // just overridden. When no year_level was requested at all,
+        // sectionOptions() can't scope to one and falls back to every
+        // section across every year level of this program, so its default
+        // can be a DIFFERENT year level's section (e.g. "A" from 1st Year)
+        // leaking into this request's actual (possibly smart-jumped) 2nd
+        // Year view. Re-validate directly against the section genuinely
+        // scoped to the final resolved (academic_year, program,
+        // year_level) — the same precise, unambiguous query sync() itself
+        // uses to accept a save — so the page's embedded context never
+        // disagrees with what a save will actually accept.
+        $preciseSections = array_values(array_unique(array_filter(array_map(
+            'trim',
+            array_column(
+                db_connect()->table('sections')
+                    ->select('section')
+                    ->where('program', $context['program'])
+                    ->where('year_level', $context['year_level'])
+                    ->where('academic_year', $context['section_year'])
+                    ->get()
+                    ->getResultArray(),
+                'section'
+            )
+        ), static fn ($n) => $n !== '')));
+
+        if ($preciseSections !== [] && ! in_array($context['section'], $preciseSections, true)) {
+            $context['section'] = $preciseSections[0];
+        }
+
         return $context;
     }
 
