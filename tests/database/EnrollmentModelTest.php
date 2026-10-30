@@ -22,6 +22,12 @@ final class EnrollmentModelTest extends CIUnitTestCase
         parent::setUp();
 
         $this->seedUsers(1, 2, 10, 11, 20, 30, 40);
+
+        // enrollOne() now derives "which term's meetings/conflicts" from
+        // AcademicYearModel::activeFormatted() rather than the section's
+        // own academic_year — needs a real active row or every call fails
+        // with "No academic year is currently marked active."
+        db_connect()->table('academic_years')->insert(['label' => '2026-2027', 'semester' => '1st', 'is_active' => 1]);
     }
 
     private function makeSection(array $overrides = []): array
@@ -29,7 +35,7 @@ final class EnrollmentModelTest extends CIUnitTestCase
         $sections = new SectionModel();
 
         $sections->insert(array_merge([
-            'academic_year' => 'AY2026-2027',
+            'academic_year' => 'AY 2026 - 2027 · 1st Semester',
             'program'       => 'BS Information Technology',
             'year_level'    => '1st Year',
             'section'       => 'A',

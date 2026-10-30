@@ -23,6 +23,11 @@ final class EnrollmentOverrideTest extends CIUnitTestCase
     protected $namespace = ['CodeIgniter\Shield', 'App'];
 
     private const AY      = 'AY 2026 - 2027 · 1st Semester';
+    // Sections are year-scoped (no semester of their own) — classOptions()
+    // and enrollOne()'s own section lock both match sec.academic_year
+    // against this year-only form, while plotted_schedules/enrollments
+    // keep the full term string above.
+    private const SECTION_AY = 'AY 2026 - 2027';
     private const PROGRAM = 'BS Test Program';
 
     /** @var array<string, int> */
@@ -33,6 +38,12 @@ final class EnrollmentOverrideTest extends CIUnitTestCase
         parent::setUp();
 
         $this->seedUsers(800, 801);
+
+        // enrollOne() now derives "which term" from
+        // AcademicYearModel::activeFormatted() instead of the section's own
+        // academic_year — needs a real active row or it fails before
+        // reaching any of the behavior under test here.
+        db_connect()->table('academic_years')->insert(['label' => '2026-2027', 'semester' => '1st', 'is_active' => 1]);
 
         foreach (['OV-A', 'OV-B', 'OV-C'] as $code) {
             db_connect()->table('subjects')->insert([
@@ -67,7 +78,7 @@ final class EnrollmentOverrideTest extends CIUnitTestCase
     {
         $sections = new SectionModel();
         $sections->insert([
-            'academic_year' => self::AY,
+            'academic_year' => self::SECTION_AY,
             'program'       => self::PROGRAM,
             'year_level'    => '1st Year',
             'section'       => 'A',
@@ -80,7 +91,7 @@ final class EnrollmentOverrideTest extends CIUnitTestCase
     private function plot(array $section, string $code, string $start, string $end): void
     {
         db_connect()->table('plotted_schedules')->insert([
-            'academic_year' => $section['academic_year'],
+            'academic_year' => self::AY,
             'program'       => $section['program'],
             'year_level'    => $section['year_level'],
             'section'       => $section['section'],

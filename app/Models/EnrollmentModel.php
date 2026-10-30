@@ -72,6 +72,16 @@ class EnrollmentModel extends Model
         // stamped onto the new enrollments.academic_year column below.
         $termAcademicYear = (new AcademicYearModel())->activeFormatted();
 
+        // isRegistrationOpen() above deliberately fails OPEN when no term
+        // is resolved at all ("don't block the caller over a calendar-
+        // configuration gap") — but every meetings/conflict/tuition lookup
+        // below needs a real term string, so that same gap has to fail
+        // CLOSED here instead of reaching those calls with null and
+        // crashing with a TypeError.
+        if ($termAcademicYear === null) {
+            return ['ok' => false, 'error' => 'No academic year is currently marked active. Contact your administrator.'];
+        }
+
         if (! $holdOverride) {
             $student = (new StudentModel())->where('user_id', $userId)->first();
 

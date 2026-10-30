@@ -19,20 +19,19 @@
 # 2026-10-28 (the first two also confirmed via a direct diff against the
 # exact pre-branch commit, so they predate all of today's work):
 
-# EnrollmentModel::meetingsFor() TypeError ($termAcademicYear null) — a
-# single root cause with a wide, not-yet-fully-mapped blast radius. Known to
-# hit at least:
-CourseOfferingModelTest::testMergedClassEnforcesCombinedCapacityAcrossBothSections
-CourseOfferingModelTest::testUnmergingASectionRevertsItToItsOwnCapacity
-EnrollmentModelTest::testPerSubjectEnrollmentSucceeds
-EnrollmentModelTest::testEnrollmentIsRejectedOnceSectionIsAtCapacity
-EnrollmentModelTest::testSameStudentEnrollingAnotherSubjectInAFullSectionIsNotBlocked
-EnrollmentModelTest::testTimeConflictAcrossDifferentSectionsIsRejected
-EnrollmentModelTest::testDoubleEnrollmentInTheSameSubjectIsRejected
-EnrollmentModelTest::testBlockEnrollmentProducesOneRowPerPlottedSubject
+# EnrollmentModel::meetingsFor() TypeError ($termAcademicYear null) — fixed
+# 2026-10-30: enrollOne() now fails cleanly ("No academic year is currently
+# marked active") instead of crashing when no academic_years row is active,
+# and the affected tests' fixtures now seed one + use the correct
+# year-scoped/term-scoped academic_year strings (sections are year-only,
+# plotted_schedules/course_offerings stay term-scoped). Confirmed green in
+# isolation: CourseOfferingModelTest, EnrollmentModelTest, EnrollmentOverrideTest,
+# EnrollmentDropTest.
 
-# Unrelated — a SchedulingConflictService argument-type mismatch and a
-# demand-counting assertion, confirmed in OfferingComponentSchedulingTest.php
-# (a file this plan's merge/scheduling work never touches):
-OfferingComponentSchedulingTest::testIrregularStudentConflictIsDetectedViaTheirActualEnrollmentSection
+# OfferingComponentSchedulingTest::testIrregularStudentConflictIsDetectedViaTheirActualEnrollmentSection
+# fixed 2026-10-30 — the test was missing studentConflicts()'s required
+# $termAcademicYear argument (an outdated call signature), not a real
+# service bug. Confirmed green in isolation.
+
+# Still open — a demand-counting assertion, unrelated to the above:
 OfferingComponentSchedulingTest::testParentDemandIsNotMultipliedByComponentCount

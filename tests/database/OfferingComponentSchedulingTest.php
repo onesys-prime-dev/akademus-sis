@@ -252,7 +252,7 @@ final class OfferingComponentSchedulingTest extends CIUnitTestCase
         db_connect()->table('offering_components')->where('id', $labComponentId)->update(['roster_mode' => 'explicit']);
         (new OfferingComponentModel())->assignStudent($labComponentId, $uid);
 
-        $result = (new SchedulingConflictService())->studentConflicts([$uid], [$this->block(0, '10:00', '11:30', 'Room 301')]);
+        $result = (new SchedulingConflictService())->studentConflicts([$uid], self::TERM, [$this->block(0, '10:00', '11:30', 'Room 301')]);
 
         $this->assertFalse($result['ok'], 'The conflict must be detected via the enrollment\'s actual section_id, not users.section_id.');
     }

@@ -22,11 +22,20 @@ final class CourseOfferingModelTest extends CIUnitTestCase
     protected $refresh   = true;
     protected $namespace = ['CodeIgniter\Shield', 'App'];
 
+    // Sections are year-scoped (no semester of their own); plotted_schedules/
+    // course_offerings/enrollments keep the full term string, matched
+    // against EnrollmentModel::enrollOne()'s own AcademicYearModel::
+    // activeFormatted() lookup — needs a real active row or every call
+    // fails before reaching any of the merge/capacity behavior under test.
+    private const AY         = 'AY 2026 - 2027 · 1st Semester';
+    private const SECTION_AY = 'AY 2026 - 2027';
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->seedUsers(100, 101, 102, 200, 201, 202);
+        db_connect()->table('academic_years')->insert(['label' => '2026-2027', 'semester' => '1st', 'is_active' => 1]);
     }
 
     private function makeSection(string $name, ?int $capacity = null): array
@@ -34,7 +43,7 @@ final class CourseOfferingModelTest extends CIUnitTestCase
         $sections = new SectionModel();
 
         $sections->insert([
-            'academic_year' => 'AY2026-2027',
+            'academic_year' => self::SECTION_AY,
             'program'       => 'BS Information Technology',
             'year_level'    => '1st Year',
             'section'       => $name,
@@ -61,7 +70,7 @@ final class CourseOfferingModelTest extends CIUnitTestCase
     private function plotSubject(array $section, string $subjectCode): void
     {
         db_connect()->table('plotted_schedules')->insert([
-            'academic_year' => $section['academic_year'],
+            'academic_year' => self::AY,
             'program'       => $section['program'],
             'year_level'    => $section['year_level'],
             'section'       => $section['section'],
@@ -97,7 +106,7 @@ final class CourseOfferingModelTest extends CIUnitTestCase
 
         // Merge with a combined capacity of 2 — already exactly met by the
         // two students enrolled above (backfilled onto the new offering).
-        $merge = $offerings->createMerge('AY2026-2027', 'GE-ELEC1', [
+        $merge = $offerings->createMerge(self::AY, 'GE-ELEC1', [
             $sectionA['section_id'],
             $sectionB['section_id'],
         ], 2);
@@ -135,7 +144,7 @@ final class CourseOfferingModelTest extends CIUnitTestCase
         $enrollments = new EnrollmentModel();
         $offerings   = new CourseOfferingModel();
 
-        $merge = $offerings->createMerge('AY2026-2027', 'GE-ELEC1', [
+        $merge = $offerings->createMerge(self::AY, 'GE-ELEC1', [
             $sectionA['section_id'],
             $sectionB['section_id'],
         ], null); // unlimited merged capacity
@@ -173,12 +182,12 @@ final class CourseOfferingModelTest extends CIUnitTestCase
 
         $offerings = new CourseOfferingModel();
 
-        $first = $offerings->createMerge('AY2026-2027', 'GE-ELEC1', [$sectionA['section_id'], $sectionB['section_id']], null);
+        $first = $offerings->createMerge(self::AY, 'GE-ELEC1', [$sectionA['section_id'], $sectionB['section_id']], null);
         $this->assertTrue($first['ok']);
 
         // Section A is already in an offering for GE-ELEC1 — merging it into
         // a second, different offering for the same subject must be refused.
-        $second = $offerings->createMerge('AY2026-2027', 'GE-ELEC1', [$sectionA['section_id'], $sectionC['section_id']], null);
+        $second = $offerings->createMerge(self::AY, 'GE-ELEC1', [$sectionA['section_id'], $sectionC['section_id']], null);
         $this->assertFalse($second['ok']);
         $this->assertStringContainsString('already merged', $second['error']);
     }

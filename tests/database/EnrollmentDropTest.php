@@ -26,6 +26,12 @@ final class EnrollmentDropTest extends CIUnitTestCase
         parent::setUp();
 
         $this->seedUsers(700, 701, 702);
+
+        // enrollOne() now derives "which term" from
+        // AcademicYearModel::activeFormatted() instead of the section's own
+        // academic_year — needs a real active row or it fails before
+        // reaching any of the add/drop behavior under test here.
+        db_connect()->table('academic_years')->insert(['label' => '2026-2027', 'semester' => '1st', 'is_active' => 1]);
     }
 
     /** Long realistic AY strings would break the next refresh's rollback — see TermCurriculumTest. */
