@@ -279,7 +279,21 @@ class EnrollmentModel extends Model
         $missing = $this->unmetPrerequisites($userId, $subjectCode);
 
         if ($missing !== []) {
-            return ['ok' => false, 'error' => "Prerequisite not met for {$subjectCode}: " . implode(', ', $missing) . ' must be passed first.'];
+            // A staff-granted EnlistmentOverride (Student Progress ->
+            // "clear an irregular/catch-up student") is exactly what this
+            // gate exists to defer to — the wizard already shows this
+            // subject as selectable once an override exists (see
+            // StudentEnlistment::wizard()'s dueSubjects filter); without
+            // this check, addItem() would still silently reject it,
+            // contradicting what the UI just told the student they could
+            // do.
+            $student = (new StudentModel())->where('user_id', $userId)->first();
+            $overridden = $student !== null
+                && (new EnlistmentOverrideModel())->hasOverride((int) $student['student_id'], $subjectCode, $termAcademicYear);
+
+            if (! $overridden) {
+                return ['ok' => false, 'error' => "Prerequisite not met for {$subjectCode}: " . implode(', ', $missing) . ' must be passed first.'];
+            }
         }
 
         $outsideCurriculum = $this->outsideCurriculum($userId, $subjectCode);
