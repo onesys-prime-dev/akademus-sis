@@ -5,6 +5,7 @@ namespace App\Libraries;
 use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
 use App\Models\OfferingComponentModel;
+use App\Models\SectionModel;
 
 /**
  * Unifies Steps 1-5 into one operational view for the scheduler who OWNS a
@@ -216,6 +217,19 @@ class SharedSubjectDashboardService
                 ];
             }
 
+            // No offering exists yet for this subject, but there IS unmet
+            // demand somewhere — same "needs plotting" situation
+            // OfferingController::needsPlottingList() covers on the Merged
+            // Classes page, surfaced here too so this card can "Plot it"
+            // directly (same pattern as an existing offering's own
+            // 'plot_context' above) instead of sending the chairperson
+            // through a separate "Create offering" step first.
+            $noOfferingPlotContext = null;
+
+            if ($offerings === [] && ($demand['unassigned_count'] ?? 0) > 0) {
+                $noOfferingPlotContext = $this->firstSectionNeedingPlot($subjectId, $academicYear);
+            }
+
             $pendingByType = $requestTypeCounts[$subjectId] ?? [];
             $pendingTotal  = array_sum($pendingByType);
             $approvedNotFulfilled = $demand['placement_requests']['approved_not_fulfilled'] ?? 0;
@@ -271,11 +285,44 @@ class SharedSubjectDashboardService
                     'approved_not_fulfilled' => $approvedNotFulfilled,
                 ],
                 'offerings'  => $offerings,
+                'no_offering_plot_context' => $noOfferingPlotContext,
                 'attention'  => array_values(array_unique($attention)),
                 'is_active'  => $isActive,
             ];
         }
 
         return ['term' => $academicYear, 'subjects' => $subjectEntries, 'inactive_count' => $inactiveCount];
+    }
+
+    /**
+     * The first section with unmet demand for this subject this term — a
+     * concrete program/year_level/section to land "Plot it" on when no
+     * offering exists yet. Null when the subject has demand but it can't be
+     * tied to any one section (e.g. section itself was since removed).
+     *
+     * Only called for subjects with zero offerings (rare on an active
+     * dashboard), so this stays a small, bounded number of extra queries
+     * rather than one per subject in the batch.
+     *
+     * @return ?array{program: string, year_level: string, section: string}
+     */
+    private function firstSectionNeedingPlot(int $subjectId, string $academicYear): ?array
+    {
+        $bySection = (new SubjectDemandService())->summary($subjectId, $academicYear)['by_section'];
+        $sectionModel = new SectionModel();
+
+        foreach ($bySection as $row) {
+            if ($row['expected_count'] <= 0 || $row['section_id'] === null) {
+                continue;
+            }
+
+            $section = $sectionModel->find((int) $row['section_id']);
+
+            if ($section !== null) {
+                return ['program' => $section['program'], 'year_level' => $section['year_level'], 'section' => $section['section']];
+            }
+        }
+
+        return null;
     }
 }

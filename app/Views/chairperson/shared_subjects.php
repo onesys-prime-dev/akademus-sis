@@ -144,13 +144,33 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <?php endif ?>
 
                 <?php if (empty($s['offerings'])): ?>
+                    <?php
+                        $noOfferingCtx = $s['no_offering_plot_context'] ?? null;
+                        $directPlotUrl = ($noOfferingCtx !== null && $ayLabel !== null && $semester !== null)
+                            ? site_url('chairperson/dashboard') . '?' . http_build_query([
+                                'ay_label'   => $ayLabel,
+                                'semester'   => $semester,
+                                'program'    => $noOfferingCtx['program'],
+                                'year_level' => $noOfferingCtx['year_level'],
+                                'section'    => $noOfferingCtx['section'],
+                            ])
+                            : null;
+                    ?>
                     <div class="empty-state">
                         <p>No offering exists for this subject yet this term.</p>
-                        <div class="ssd-empty-cta">
-                            <a class="ac-btn ac-btn-sm ac-btn-secondary ssd-plot-btn" href="<?= site_url('chairperson/offerings') ?>">
-                                Create offering<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
-                            </a>
-                        </div>
+                        <?php if ($directPlotUrl !== null): ?>
+                            <div class="ssd-empty-cta">
+                                <a class="ac-btn ac-btn-sm ac-btn-secondary ssd-plot-btn" href="<?= esc($directPlotUrl, 'attr') ?>">
+                                    Plot it<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                                </a>
+                            </div>
+                        <?php else: ?>
+                            <div class="ssd-empty-cta">
+                                <a class="ac-btn ac-btn-sm ac-btn-secondary ssd-plot-btn" href="<?= site_url('chairperson/offerings') ?>">
+                                    Create offering<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                                </a>
+                            </div>
+                        <?php endif ?>
                     </div>
                 <?php else: ?>
                     <?php foreach ($s['offerings'] as $o): ?>
