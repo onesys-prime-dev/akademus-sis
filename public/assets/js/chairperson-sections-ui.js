@@ -121,7 +121,7 @@
     });
 
     function syncProgramOptions() {
-        if (!dept) return;
+        if (!dept || !program) return;
         const programs = dept.value === 'all'
             ? [...new Set(cards.map(c => c.dataset.program))]
             : [...(programsByDept.get(dept.value) || [])];
@@ -136,7 +136,7 @@
         cards.forEach(card => {
             card.hidden = (term.value !== 'all' && card.dataset.term !== term.value)
                 || (dept && dept.value !== 'all' && card.dataset.department !== dept.value)
-                || (program.value !== 'all' && card.dataset.program !== program.value)
+                || (program && program.value !== 'all' && card.dataset.program !== program.value)
                 || !content.get(card).includes(query);
         });
         const count = cards.filter(card => !card.hidden).length;
@@ -146,9 +146,9 @@
     search.addEventListener('input', filter);
     term.addEventListener('change', filter);
     dept?.addEventListener('change', () => { syncProgramOptions(); filter(); });
-    program.addEventListener('change', filter);
+    program?.addEventListener('change', filter);
     document.getElementById('scClearFilters').addEventListener('click', () => {
-        search.value = ''; term.value = 'all'; if (dept) dept.value = 'all'; syncProgramOptions(); program.value = 'all'; filter(); search.focus();
+        search.value = ''; term.value = 'all'; if (dept) dept.value = 'all'; syncProgramOptions(); if (program) program.value = 'all'; filter(); search.focus();
     });
     tools.hidden = false;
     document.getElementById('scResults').hidden = false;
