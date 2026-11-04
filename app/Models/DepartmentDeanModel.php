@@ -15,13 +15,13 @@ class DepartmentDeanModel extends Model
     protected $primaryKey = 'id';
 
     protected $allowedFields = [
-        'dept_id',
+        'college_id',
         'user_id',
         'created_at',
     ];
 
     /**
-     * dept_id values a user has been explicitly delegated dean authority
+     * college_id values a user has been explicitly delegated dean authority
      * for, beyond their own primary college.
      *
      * @return list<int>
@@ -30,7 +30,7 @@ class DepartmentDeanModel extends Model
     {
         return array_map('intval', array_column(
             $this->where('user_id', $userId)->findAll(),
-            'dept_id'
+            'college_id'
         ));
     }
 }

@@ -423,21 +423,21 @@ class CourseOfferingModel extends Model
     }
 
     /**
-     * The sub_dept_id of the academic unit that owns this offering's
+     * The dept_id of the academic unit that owns this offering's
      * subject, derived (never duplicated) via subject_id -> subjects ->
-     * sub_department_id. Null when the offering has no linked subject_id
+     * department_id. Null when the offering has no linked subject_id
      * (legacy/unmatched rows) or the subject itself has no owning unit set.
      */
     public function owningSubDeptId(int $offeringId): ?int
     {
         $row = $this->db->table('course_offerings co')
-            ->select('s.sub_department_id')
+            ->select('s.department_id')
             ->join('subjects s', 's.subject_id = co.subject_id')
             ->where('co.offering_id', $offeringId)
             ->get()
             ->getRowArray();
 
-        return $row !== null && $row['sub_department_id'] !== null ? (int) $row['sub_department_id'] : null;
+        return $row !== null && $row['department_id'] !== null ? (int) $row['department_id'] : null;
     }
 
     /**

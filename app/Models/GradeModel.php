@@ -231,7 +231,7 @@ class GradeModel extends Model
             return;
         }
 
-        $subDeptId = $this->db->table('programs')->select('sub_department_id')->where('program_id', $section['program_id'])->get()->getRowArray()['sub_department_id'] ?? null;
+        $subDeptId = $this->db->table('programs')->select('department_id')->where('program_id', $section['program_id'])->get()->getRowArray()['department_id'] ?? null;
 
         if ($subDeptId === null) {
             return;
@@ -245,9 +245,9 @@ class GradeModel extends Model
             ->get()
             ->getResultArray();
 
-        $delegated = $this->db->table('sub_department_schedulers')
+        $delegated = $this->db->table('department_schedulers')
             ->select('user_id')
-            ->where('sub_dept_id', $subDeptId)
+            ->where('department_id', $subDeptId)
             ->get()
             ->getResultArray();
 
@@ -514,22 +514,22 @@ class GradeModel extends Model
 
         $collegeIds = array_unique(array_column(
             $this->db->table('sections s')
-                ->select('p.sub_department_id')
+                ->select('p.department_id')
                 ->join('programs p', 'p.program_id = s.program_id')
                 ->whereIn('s.section_id', $sectionIds)
                 ->where('s.program_id IS NOT NULL')
                 ->get()
                 ->getResultArray(),
-            'sub_department_id'
+            'department_id'
         ));
 
         if ($collegeIds === []) {
             return;
         }
 
-        $subDeptToCollege = $this->db->table('sub_departments')
-            ->select('sub_dept_id, college_id')
-            ->whereIn('sub_dept_id', $collegeIds)
+        $subDeptToCollege = $this->db->table('departments')
+            ->select('dept_id, college_id')
+            ->whereIn('dept_id', $collegeIds)
             ->get()
             ->getResultArray();
 
@@ -546,7 +546,7 @@ class GradeModel extends Model
 
             $delegated = $this->db->table('department_deans')
                 ->select('user_id')
-                ->where('dept_id', $row['college_id'])
+                ->where('college_id', $row['college_id'])
                 ->get()
                 ->getResultArray();
 

@@ -25,7 +25,7 @@ class OfferingPlacementRequestModel extends Model
 
     protected $allowedFields = [
         'subject_id',
-        'requesting_sub_dept_id',
+        'requesting_department_id',
         'requested_by',
         'section_id',
         'request_type',
@@ -120,7 +120,7 @@ class OfferingPlacementRequestModel extends Model
 
         $this->insert([
             'subject_id'              => $subjectId,
-            'requesting_sub_dept_id'  => $subDeptId,
+            'requesting_department_id' => $subDeptId,
             'requested_by'            => $requestedBy,
             'section_id'              => $sectionId,
             'request_type'            => $requestType,

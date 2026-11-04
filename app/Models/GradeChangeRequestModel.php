@@ -387,13 +387,13 @@ class GradeChangeRequestModel extends Model
             return;
         }
 
-        $collegeId = $this->db->table('programs')->select('sub_department_id')->where('program_id', $section['program_id'])->get()->getRowArray()['sub_department_id'] ?? null;
+        $collegeId = $this->db->table('programs')->select('department_id')->where('program_id', $section['program_id'])->get()->getRowArray()['department_id'] ?? null;
 
         if ($collegeId === null) {
             return;
         }
 
-        $collegeId = $this->db->table('sub_departments')->select('college_id')->where('sub_dept_id', $collegeId)->get()->getRowArray()['college_id'] ?? null;
+        $collegeId = $this->db->table('departments')->select('college_id')->where('dept_id', $collegeId)->get()->getRowArray()['college_id'] ?? null;
 
         if ($collegeId === null) {
             return;
@@ -409,7 +409,7 @@ class GradeChangeRequestModel extends Model
 
         $delegated = $this->db->table('department_deans')
             ->select('user_id')
-            ->where('dept_id', $collegeId)
+            ->where('college_id', $collegeId)
             ->get()
             ->getResultArray();
 
@@ -437,7 +437,7 @@ class GradeChangeRequestModel extends Model
             return;
         }
 
-        $subDeptId = $this->db->table('programs')->select('sub_department_id')->where('program_id', $section['program_id'])->get()->getRowArray()['sub_department_id'] ?? null;
+        $subDeptId = $this->db->table('programs')->select('department_id')->where('program_id', $section['program_id'])->get()->getRowArray()['department_id'] ?? null;
 
         if ($subDeptId === null) {
             return;
@@ -451,9 +451,9 @@ class GradeChangeRequestModel extends Model
             ->get()
             ->getResultArray();
 
-        $delegated = $this->db->table('sub_department_schedulers')
+        $delegated = $this->db->table('department_schedulers')
             ->select('user_id')
-            ->where('sub_dept_id', $subDeptId)
+            ->where('department_id', $subDeptId)
             ->get()
             ->getResultArray();
 

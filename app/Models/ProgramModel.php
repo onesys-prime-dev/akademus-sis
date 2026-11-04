@@ -10,7 +10,7 @@ class ProgramModel extends Model
     protected $primaryKey = 'program_id';
 
     protected $allowedFields = [
-        'sub_department_id',
+        'department_id',
         'program_code',
         'program_name',
         'description',

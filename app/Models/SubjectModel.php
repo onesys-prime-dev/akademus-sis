@@ -11,7 +11,7 @@ class SubjectModel extends Model
     protected $primaryKey = 'subject_id';
 
     protected $allowedFields = [
-        'sub_department_id',
+        'department_id',
         'program_id',
         'subject_code',
         'subject_name',

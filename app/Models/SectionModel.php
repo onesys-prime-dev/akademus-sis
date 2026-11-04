@@ -28,7 +28,7 @@ class SectionModel extends Model
      * Every section whose program belongs to this sub-department, newest
      * academic year first.
      *
-     * Prefers the real FK (sections.program_id -> programs.sub_department_id)
+     * Prefers the real FK (sections.program_id -> programs.department_id)
      * — a single indexed query instead of fetching every section and calling
      * CollegeModel::programDept() per row (that was a genuine N+1: one
      * query per section just to resolve its department). Sections not yet
@@ -40,13 +40,13 @@ class SectionModel extends Model
      */
     public function forSubDepartment(string $subDeptCode): array
     {
-        $subDept = db_connect()->table('sub_departments')->where('code', $subDeptCode)->get()->getRowArray();
+        $subDept = db_connect()->table('departments')->where('code', $subDeptCode)->get()->getRowArray();
 
         if ($subDept === null) {
             return [];
         }
 
-        $subDeptId = (int) $subDept['sub_dept_id'];
+        $subDeptId = (int) $subDept['dept_id'];
         $programIds = (new CollegeModel())->programIdsOfSubDept($subDeptId);
 
         $resolved = $programIds === [] ? [] : $this->whereIn('program_id', $programIds)->findAll();

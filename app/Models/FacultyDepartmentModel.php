@@ -24,7 +24,7 @@ class FacultyDepartmentModel extends Model
 
     protected $allowedFields = [
         'user_id',
-        'sub_dept_id',
+        'department_id',
         'is_primary',
         'status',
     ];
@@ -40,8 +40,8 @@ class FacultyDepartmentModel extends Model
     public function departmentsForFaculty(int $userId): array
     {
         $rows = $this->db->table('faculty_departments fd')
-            ->select('fd.id, fd.sub_dept_id, fd.is_primary, fd.status, sd.code, sd.name')
-            ->join('sub_departments sd', 'sd.sub_dept_id = fd.sub_dept_id')
+            ->select('fd.id, fd.department_id as sub_dept_id, fd.is_primary, fd.status, sd.code, sd.name')
+            ->join('departments sd', 'sd.dept_id = fd.department_id')
             ->where('fd.user_id', $userId)
             ->where('fd.status', 'active')
             ->orderBy('fd.is_primary', 'DESC')
@@ -81,7 +81,7 @@ class FacultyDepartmentModel extends Model
     public function isAffiliatedWith(int $userId, int $subDeptId): bool
     {
         return $this->where('user_id', $userId)
-            ->where('sub_dept_id', $subDeptId)
+            ->where('department_id', $subDeptId)
             ->where('status', 'active')
             ->countAllResults() > 0;
     }
@@ -97,7 +97,7 @@ class FacultyDepartmentModel extends Model
     public function userIdsForDepartment(int $subDeptId): array
     {
         return array_map('intval', array_column(
-            $this->where('sub_dept_id', $subDeptId)->where('status', 'active')->findAll(),
+            $this->where('department_id', $subDeptId)->where('status', 'active')->findAll(),
             'user_id'
         ));
     }
@@ -117,8 +117,8 @@ class FacultyDepartmentModel extends Model
         }
 
         $rows = $this->db->table('faculty_departments fd')
-            ->select('fd.id, fd.user_id, fd.sub_dept_id, fd.is_primary, sd.code, sd.name')
-            ->join('sub_departments sd', 'sd.sub_dept_id = fd.sub_dept_id')
+            ->select('fd.id, fd.user_id, fd.department_id as sub_dept_id, fd.is_primary, sd.code, sd.name')
+            ->join('departments sd', 'sd.dept_id = fd.department_id')
             ->whereIn('fd.user_id', $userIds)
             ->where('fd.status', 'active')
             ->orderBy('fd.is_primary', 'DESC')
@@ -168,7 +168,7 @@ class FacultyDepartmentModel extends Model
         $db->transStart();
         $this->lockUserForUpdate($userId);
 
-        $existing = $this->where('user_id', $userId)->where('sub_dept_id', $subDeptId)->first();
+        $existing = $this->where('user_id', $userId)->where('department_id', $subDeptId)->first();
         $hasAnyPrimary = $this->where('user_id', $userId)->where('is_primary', 1)->where('status', 'active')->countAllResults() > 0;
 
         if ($existing !== null && $existing['status'] === 'active') {
@@ -193,7 +193,7 @@ class FacultyDepartmentModel extends Model
             $this->update($existing['id'], ['status' => 'active', 'is_primary' => $makePrimary ? 1 : 0]);
             $id = (int) $existing['id'];
         } else {
-            $this->insert(['user_id' => $userId, 'sub_dept_id' => $subDeptId, 'is_primary' => $makePrimary ? 1 : 0, 'status' => 'active']);
+            $this->insert(['user_id' => $userId, 'department_id' => $subDeptId, 'is_primary' => $makePrimary ? 1 : 0, 'status' => 'active']);
             $id = $this->getInsertID();
         }
 
@@ -212,7 +212,7 @@ class FacultyDepartmentModel extends Model
             'faculty_department',
             $id,
             null,
-            ['user_id' => $userId, 'sub_dept_id' => $subDeptId, 'is_primary' => $makePrimary],
+            ['user_id' => $userId, 'department_id' => $subDeptId, 'is_primary' => $makePrimary],
             null,
             $actorId,
             $actorRole
@@ -232,7 +232,7 @@ class FacultyDepartmentModel extends Model
      */
     public function removeAffiliation(int $userId, int $subDeptId, ?int $actorId, ?string $actorRole = null): array
     {
-        $row = $this->where('user_id', $userId)->where('sub_dept_id', $subDeptId)->where('status', 'active')->first();
+        $row = $this->where('user_id', $userId)->where('department_id', $subDeptId)->where('status', 'active')->first();
 
         if ($row === null) {
             return ['ok' => false, 'error' => 'That affiliation does not exist.'];
@@ -248,7 +248,7 @@ class FacultyDepartmentModel extends Model
             'faculty_department.removed',
             'faculty_department',
             $row['id'],
-            ['user_id' => $userId, 'sub_dept_id' => $subDeptId, 'is_primary' => (bool) $row['is_primary']],
+            ['user_id' => $userId, 'department_id' => $subDeptId, 'is_primary' => (bool) $row['is_primary']],
             null,
             null,
             $actorId,
@@ -280,7 +280,7 @@ class FacultyDepartmentModel extends Model
 
         $currentPrimary = $this->where('user_id', $userId)->where('is_primary', 1)->where('status', 'active')->first();
 
-        if ($currentPrimary !== null && (int) $currentPrimary['sub_dept_id'] === $subDeptId) {
+        if ($currentPrimary !== null && (int) $currentPrimary['department_id'] === $subDeptId) {
             $db->transComplete();
 
             return ['ok' => false, 'error' => 'That is already the primary department.'];
@@ -290,13 +290,13 @@ class FacultyDepartmentModel extends Model
             $this->update($currentPrimary['id'], ['is_primary' => 0]);
         }
 
-        $target = $this->where('user_id', $userId)->where('sub_dept_id', $subDeptId)->first();
+        $target = $this->where('user_id', $userId)->where('department_id', $subDeptId)->first();
 
         if ($target !== null) {
             $this->update($target['id'], ['is_primary' => 1, 'status' => 'active']);
             $targetId = (int) $target['id'];
         } else {
-            $this->insert(['user_id' => $userId, 'sub_dept_id' => $subDeptId, 'is_primary' => 1, 'status' => 'active']);
+            $this->insert(['user_id' => $userId, 'department_id' => $subDeptId, 'is_primary' => 1, 'status' => 'active']);
             $targetId = $this->getInsertID();
         }
 
@@ -312,8 +312,8 @@ class FacultyDepartmentModel extends Model
             'faculty_department.primary_changed',
             'faculty_department',
             $targetId,
-            $currentPrimary !== null ? ['sub_dept_id' => (int) $currentPrimary['sub_dept_id']] : null,
-            ['user_id' => $userId, 'sub_dept_id' => $subDeptId],
+            $currentPrimary !== null ? ['department_id' => (int) $currentPrimary['department_id']] : null,
+            ['user_id' => $userId, 'department_id' => $subDeptId],
             $reason,
             $actorId,
             $actorRole
