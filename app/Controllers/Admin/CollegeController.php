@@ -32,7 +32,7 @@ class CollegeController extends BaseController
         }
         unset($dept);
 
-        return view('admin/departments/index', [
+        return view('admin/colleges/index', [
             'pageTitle'   => 'Colleges',
             'activeAdmin' => 'departments',
             'departments' => $departments,
@@ -63,7 +63,7 @@ class CollegeController extends BaseController
         }
         unset($dept);
 
-        return view('admin/departments/show', [
+        return view('admin/colleges/show', [
             'pageTitle'      => $college['name'],
             'activeAdmin'    => 'departments',
             'college'        => $college,

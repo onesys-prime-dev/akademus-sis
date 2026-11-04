@@ -63,7 +63,7 @@
                             <select class="ac-owner-select" data-subject-id="<?= (int) $subject['subject_id'] ?>" aria-label="Owner for <?= esc($subject['subject_code'], 'attr') ?>">
                                 <option value="">— Unassigned —</option>
                                 <?php foreach ($subDepartments as $deptId => $deptName): ?>
-                                    <option value="<?= (int) $deptId ?>" <?= (int) ($subject['sub_department_id'] ?? 0) === (int) $deptId ? 'selected' : '' ?>><?= esc($deptName) ?></option>
+                                    <option value="<?= (int) $deptId ?>" <?= (int) ($subject['department_id'] ?? 0) === (int) $deptId ? 'selected' : '' ?>><?= esc($deptName) ?></option>
                                 <?php endforeach ?>
                             </select>
                         </td>

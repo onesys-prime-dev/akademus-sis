@@ -44,7 +44,7 @@ class DepartmentController extends BaseController
 
         $allDepartments = $this->departmentModel->orderBy('name')->findAll();
 
-        return view('admin/sub_departments/show', [
+        return view('admin/departments/show', [
             'pageTitle'      => $department['name'],
             'activeAdmin'    => 'departments',
             'college'        => $college,

@@ -24,12 +24,12 @@
             <?php $deaned = (bool) $dept['dean']; ?>
             <div class="ac-tile" style="position:relative;">
                 <button type="button"
-                        onclick="openDeleteCollegeModal(<?= $dept['dept_id'] ?>, <?= esc(json_encode($dept['code'] . ' · ' . $dept['name']), 'attr') ?>, <?= (int) $dept['dept_count'] ?>)"
+                        onclick="openDeleteCollegeModal(<?= $dept['college_id'] ?>, <?= esc(json_encode($dept['code'] . ' · ' . $dept['name']), 'attr') ?>, <?= (int) $dept['dept_count'] ?>)"
                         title="Delete college"
                         style="position:absolute; top:10px; right:10px; z-index:2; padding:5px; border:1px solid #f1d5d5; border-radius:6px; background:#fff; color:var(--color-danger); cursor:pointer; display:inline-flex;">
                     <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
                 </button>
-                <a href="<?= site_url('admin/departments/' . $dept['dept_id']) ?>" style="text-decoration:none; color:inherit; display:flex; flex-direction:column; justify-content:space-between; height:100%;">
+                <a href="<?= site_url('admin/colleges/' . $dept['college_id']) ?>" style="text-decoration:none; color:inherit; display:flex; flex-direction:column; justify-content:space-between; height:100%;">
                     <div class="ac-tile__icon" style="<?= $deaned ? '' : 'background:rgba(217,119,6,.15); color:var(--color-warning);' ?>">
                         <span class="material-symbols-outlined icon-fill">domain</span>
                     </div>
@@ -61,7 +61,7 @@
             </button>
         </div>
 
-        <form method="post" action="<?= site_url('admin/departments/store') ?>">
+        <form method="post" action="<?= site_url('admin/colleges/store') ?>">
             <?= csrf_field() ?>
             <div class="ac-modal__body">
                 <div class="ac-field">
@@ -120,7 +120,7 @@
 <?php endif ?>
 <script>
 function openDeleteCollegeModal(id, label, deptCount) {
-    document.getElementById('deleteCollegeForm').action = '<?= site_url('admin/departments') ?>/' + id + '/delete';
+    document.getElementById('deleteCollegeForm').action = '<?= site_url('admin/colleges') ?>/' + id + '/delete';
     document.getElementById('deleteCollegeMessage').textContent = 'Are you sure you want to delete "' + label + '"? This permanently removes the college record.';
 
     const blocked = deptCount > 0;

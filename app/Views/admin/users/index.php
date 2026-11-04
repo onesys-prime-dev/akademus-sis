@@ -230,7 +230,7 @@
                         <label>College</label>
                         <select name="department_id" id="acCollegeSelect" class="ac-input" onchange="acCascadeSections(''); acCascadeChairDept();">
                             <?php foreach ($departments as $d): ?>
-                                <option value="<?= esc($d['dept_id']) ?>"><?= esc($d['code']) ?> — <?= esc($d['name']) ?></option>
+                                <option value="<?= esc($d['college_id']) ?>"><?= esc($d['code']) ?> — <?= esc($d['name']) ?></option>
                             <?php endforeach ?>
                         </select>
                     </div>
@@ -376,7 +376,7 @@
                         <label>College</label>
                         <select name="department_id" id="acEditDeptSelect" class="ac-input" onchange="acCascadeSections('Edit')">
                             <?php foreach ($departments as $d): ?>
-                                <option value="<?= esc($d['dept_id']) ?>"><?= esc($d['code']) ?> — <?= esc($d['name']) ?></option>
+                                <option value="<?= esc($d['college_id']) ?>"><?= esc($d['code']) ?> — <?= esc($d['name']) ?></option>
                             <?php endforeach ?>
                         </select>
                     </div>
@@ -552,14 +552,14 @@
 <?= $this->section('scripts') ?>
 <script>
     var AC_USERS_BASE = '<?= site_url('admin/users') ?>';
-    var AC_SUBDEPT_BASE = '<?= site_url('admin/sub-departments') ?>';
+    var AC_SUBDEPT_BASE = '<?= site_url('admin/departments') ?>';
 
     // College -> Department -> Section cascade data. A section carries a
     // program display-name string, not an FK, so this list is pre-resolved
     // server-side (UserController::index) to each section's sub_dept_id /
     // college_id via a join through `programs`.
     var AC_SUBDEPTS = <?= json_encode(array_map(static fn (array $sd) => [
-        'id'        => (int) $sd['sub_dept_id'],
+        'id'        => (int) $sd['dept_id'],
         'label'     => $sd['code'] . ' — ' . $sd['name'],
         'college_id' => (int) $sd['college_id'],
     ], $subDepartments)) ?>;

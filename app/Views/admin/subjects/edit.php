@@ -43,7 +43,7 @@
             <select id="sub_department_id" name="sub_department_id" class="ac-input">
                 <option value="">— Unassigned —</option>
                 <?php foreach ($subDepartments as $deptId => $deptName): ?>
-                    <option value="<?= (int) $deptId ?>" <?= old('sub_department_id', $subject['sub_department_id']) == $deptId ? 'selected' : '' ?>><?= esc($deptName) ?></option>
+                    <option value="<?= (int) $deptId ?>" <?= old('sub_department_id', $subject['department_id']) == $deptId ? 'selected' : '' ?>><?= esc($deptName) ?></option>
                 <?php endforeach ?>
             </select>
             <p style="font-size:11.5px; color:var(--color-text-secondary); margin-top:4px;">The department whose chairperson manages this subject's catalog entry and scheduling.</p>

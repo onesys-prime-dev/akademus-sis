@@ -43,7 +43,7 @@
             <select id="sub_department_id" name="sub_department_id" class="ac-input" required>
                 <option value="">Choose a department…</option>
                 <?php foreach ($departments as $d): ?>
-                    <option value="<?= (int) $d['sub_dept_id'] ?>" <?= old('sub_department_id') == $d['sub_dept_id'] ? 'selected' : '' ?>><?= esc($d['name']) ?></option>
+                    <option value="<?= (int) $d['dept_id'] ?>" <?= old('sub_department_id') == $d['dept_id'] ? 'selected' : '' ?>><?= esc($d['name']) ?></option>
                 <?php endforeach ?>
             </select>
             <?php if (empty($departments)): ?>
