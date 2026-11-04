@@ -31,8 +31,8 @@ final class FacultyDepartmentModelTest extends CIUnitTestCase
     {
         $collegeId = ++self::$seq;
         $subDeptId = ++self::$seq;
-        db_connect()->table('departments')->insert(['dept_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => $name]);
+        db_connect()->table('colleges')->insert(['college_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
+        db_connect()->table('departments')->insert(['dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => $name]);
 
         return $subDeptId;
     }
@@ -240,8 +240,8 @@ final class FacultyDepartmentModelTest extends CIUnitTestCase
         (new FacultyDepartmentModel())->addAffiliation($theo, $it, true, 1, 'admin');
         (new FacultyDepartmentModel())->addAffiliation($theo, $cs, false, 1, 'admin');
 
-        db_connect()->table('subjects')->insert(['subject_code' => 'IT201', 'subject_name' => 'IT201', 'units' => 3, 'sub_department_id' => $it]);
-        db_connect()->table('subjects')->insert(['subject_code' => 'CS301', 'subject_name' => 'CS301', 'units' => 3, 'sub_department_id' => $cs]);
+        db_connect()->table('subjects')->insert(['subject_code' => 'IT201', 'subject_name' => 'IT201', 'units' => 3, 'department_id' => $it]);
+        db_connect()->table('subjects')->insert(['subject_code' => 'CS301', 'subject_name' => 'CS301', 'units' => 3, 'department_id' => $cs]);
 
         $term = 'AY 1 · 1 Semester';
 

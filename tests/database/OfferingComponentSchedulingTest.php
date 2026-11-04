@@ -41,8 +41,8 @@ final class OfferingComponentSchedulingTest extends CIUnitTestCase
     {
         $collegeId = $this->deptSeq++;
         $subDeptId = $this->deptSeq++;
-        db_connect()->table('departments')->insert(['dept_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
+        db_connect()->table('colleges')->insert(['college_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
+        db_connect()->table('departments')->insert(['dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
 
         return $subDeptId;
     }
@@ -58,7 +58,7 @@ final class OfferingComponentSchedulingTest extends CIUnitTestCase
 
     private function seedSubject(string $code, ?int $subDeptId): int
     {
-        db_connect()->table('subjects')->insert(['subject_code' => $code, 'subject_name' => $code . ' Title', 'sub_department_id' => $subDeptId, 'units' => 3]);
+        db_connect()->table('subjects')->insert(['subject_code' => $code, 'subject_name' => $code . ' Title', 'department_id' => $subDeptId, 'units' => 3]);
 
         return (int) db_connect()->insertID();
     }

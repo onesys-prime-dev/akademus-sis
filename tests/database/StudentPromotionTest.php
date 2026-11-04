@@ -52,7 +52,7 @@ final class StudentPromotionTest extends CIUnitTestCase
         $program = (new ProgramModel())->where('program_code', 'BSN')->first();
         $this->assertNotNull($program);
         $this->assertSame('Bachelor of Science in Nursing', $program['program_name']);
-        $this->assertNull($program['sub_department_id'], 'a new program has no college until an admin assigns one');
+        $this->assertNull($program['department_id'], 'a new program has no college until an admin assigns one');
         $this->assertSame((int) $program['program_id'], (int) $result['student']['program_id']);
     }
 

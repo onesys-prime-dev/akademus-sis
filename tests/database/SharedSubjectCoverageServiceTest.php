@@ -35,8 +35,8 @@ final class SharedSubjectCoverageServiceTest extends CIUnitTestCase
     {
         $collegeId = $this->deptSeq++;
         $subDeptId = $this->deptSeq++;
-        db_connect()->table('departments')->insert(['dept_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
+        db_connect()->table('colleges')->insert(['college_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
+        db_connect()->table('departments')->insert(['dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
 
         return $subDeptId;
     }
@@ -52,7 +52,7 @@ final class SharedSubjectCoverageServiceTest extends CIUnitTestCase
 
     private function seedSubject(string $code, ?int $subDeptId): int
     {
-        db_connect()->table('subjects')->insert(['subject_code' => $code, 'subject_name' => $code . ' Title', 'sub_department_id' => $subDeptId]);
+        db_connect()->table('subjects')->insert(['subject_code' => $code, 'subject_name' => $code . ' Title', 'department_id' => $subDeptId]);
 
         return (int) db_connect()->insertID();
     }
@@ -61,7 +61,7 @@ final class SharedSubjectCoverageServiceTest extends CIUnitTestCase
     private function seedProgram(string $name, int $subDeptId): int
     {
         $id = $this->programSeq++;
-        db_connect()->table('programs')->insert(['program_id' => $id, 'sub_department_id' => $subDeptId, 'program_code' => 'P' . $id, 'program_name' => $name, 'is_active' => 1]);
+        db_connect()->table('programs')->insert(['program_id' => $id, 'department_id' => $subDeptId, 'program_code' => 'P' . $id, 'program_name' => $name, 'is_active' => 1]);
 
         return $id;
     }
@@ -196,7 +196,7 @@ final class SharedSubjectCoverageServiceTest extends CIUnitTestCase
         $this->seedStudent($itProgram, $curriculum, $section);
 
         // IT chair is delegated Religious Education's scheduling authority.
-        db_connect()->table('sub_department_schedulers')->insert(['sub_dept_id' => $redSubDept, 'user_id' => $itChair, 'created_at' => date('Y-m-d H:i:s')]);
+        db_connect()->table('department_schedulers')->insert(['department_id' => $redSubDept, 'user_id' => $itChair, 'created_at' => date('Y-m-d H:i:s')]);
 
         $result = (new SharedSubjectCoverageService())->build($itChair, self::TERM);
 

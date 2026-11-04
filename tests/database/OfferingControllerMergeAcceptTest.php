@@ -38,8 +38,8 @@ final class OfferingControllerMergeAcceptTest extends CIUnitTestCase
         if ($subDeptId === null) {
             $collegeId = $this->deptSeq++;
             $subDeptId = $this->deptSeq++;
-            db_connect()->table('departments')->insert(['dept_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
-            db_connect()->table('sub_departments')->insert(['sub_dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
+            db_connect()->table('colleges')->insert(['college_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
+            db_connect()->table('departments')->insert(['dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
         }
 
         $userId = $this->nextUserId++;
@@ -54,15 +54,15 @@ final class OfferingControllerMergeAcceptTest extends CIUnitTestCase
     {
         $collegeId = $this->deptSeq++;
         $subDeptId = $this->deptSeq++;
-        db_connect()->table('departments')->insert(['dept_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
+        db_connect()->table('colleges')->insert(['college_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
+        db_connect()->table('departments')->insert(['dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
 
         return $subDeptId;
     }
 
     private function seedSubject(string $code, ?int $subDeptId): int
     {
-        db_connect()->table('subjects')->insert(['subject_code' => $code, 'subject_name' => $code . ' Title', 'sub_department_id' => $subDeptId]);
+        db_connect()->table('subjects')->insert(['subject_code' => $code, 'subject_name' => $code . ' Title', 'department_id' => $subDeptId]);
 
         return (int) db_connect()->insertID();
     }
@@ -71,7 +71,7 @@ final class OfferingControllerMergeAcceptTest extends CIUnitTestCase
     {
         $id = $this->programSeq++;
         db_connect()->table('programs')->insert([
-            'program_id' => 2000 + $id, 'sub_department_id' => $subDeptId, 'program_code' => 'P' . (2000 + $id), 'program_name' => $name, 'is_active' => 1,
+            'program_id' => 2000 + $id, 'department_id' => $subDeptId, 'program_code' => 'P' . (2000 + $id), 'program_name' => $name, 'is_active' => 1,
         ]);
     }
 
@@ -493,7 +493,7 @@ final class OfferingControllerMergeAcceptTest extends CIUnitTestCase
         $subDept = $this->newSubDept();
         $chair = $this->seedChairperson($subDept);
         $this->seedProgramForSubDept('BSIT', $subDept);
-        $programId = (int) db_connect()->table('programs')->where('sub_department_id', $subDept)->get()->getRowArray()['program_id'];
+        $programId = (int) db_connect()->table('programs')->where('department_id', $subDept)->get()->getRowArray()['program_id'];
         $subjectId = $this->seedSubject('ITE101', $subDept);
 
         // Active term: needsPlottingList() resolves it live via

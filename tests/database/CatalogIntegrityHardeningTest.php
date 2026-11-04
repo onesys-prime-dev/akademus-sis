@@ -45,7 +45,7 @@ final class CatalogIntegrityHardeningTest extends CIUnitTestCase
             'subject_name'      => $code . ' Title',
             'units'             => 3,
             'is_active'         => 1,
-            'sub_department_id' => $subDeptId,
+            'department_id'     => $subDeptId,
         ]);
 
         return (int) $db->insertID();
@@ -193,8 +193,8 @@ final class CatalogIntegrityHardeningTest extends CIUnitTestCase
         static $seq = 90000;
         $collegeId = ++$seq;
         $subDeptId = ++$seq;
-        db_connect()->table('departments')->insert(['dept_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
+        db_connect()->table('colleges')->insert(['college_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
+        db_connect()->table('departments')->insert(['dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
 
         return $subDeptId;
     }

@@ -5,7 +5,6 @@ use App\Models\AuditLogModel;
 use App\Models\DepartmentModel;
 use App\Models\FacultyDepartmentModel;
 use App\Models\ProgramModel;
-use App\Models\SubDepartmentModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
@@ -38,7 +37,7 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
     private function newCollege(string $name): int
     {
         $id = ++self::$seq;
-        db_connect()->table('departments')->insert(['dept_id' => $id, 'code' => 'COL' . $id, 'name' => $name]);
+        db_connect()->table('colleges')->insert(['college_id' => $id, 'code' => 'COL' . $id, 'name' => $name]);
 
         return $id;
     }
@@ -46,14 +45,14 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
     private function newDept(int $collegeId, string $name): int
     {
         $id = ++self::$seq;
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $id, 'college_id' => $collegeId, 'code' => 'SD' . $id, 'name' => $name]);
+        db_connect()->table('departments')->insert(['dept_id' => $id, 'college_id' => $collegeId, 'code' => 'SD' . $id, 'name' => $name]);
 
         return $id;
     }
 
     private function newProgram(int $subDeptId, string $code): int
     {
-        db_connect()->table('programs')->insert(['sub_department_id' => $subDeptId, 'program_code' => $code, 'program_name' => $code . ' Title', 'is_active' => 1]);
+        db_connect()->table('programs')->insert(['department_id' => $subDeptId, 'program_code' => $code, 'program_name' => $code . ' Title', 'is_active' => 1]);
 
         return (int) db_connect()->insertID();
     }
@@ -96,7 +95,7 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
         ]);
 
         $response->assertRedirect();
-        $this->seeInDatabase('sub_departments', ['sub_dept_id' => $dept, 'college_id' => $collegeB]);
+        $this->seeInDatabase('departments', ['dept_id' => $dept, 'college_id' => $collegeB]);
         // The faculty member's college pointer must follow their department,
         // not silently point at the OLD college after the move.
         $this->seeInDatabase('users', ['id' => $faculty, 'department_id' => $collegeB]);
@@ -113,7 +112,7 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
         $this->postAs("/admin/sub-departments/{$dept}/transfer", ['college_id' => $collegeB, 'reason' => '']);
 
         // Rejected — still under the original college.
-        $this->seeInDatabase('sub_departments', ['sub_dept_id' => $dept, 'college_id' => $collegeA]);
+        $this->seeInDatabase('departments', ['dept_id' => $dept, 'college_id' => $collegeA]);
     }
 
     public function testDepartmentTransferIsAudited(): void
@@ -141,7 +140,7 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
         $collegeB = $this->newCollege('College B');
         $dept     = $this->newDept($collegeA, 'Department of Testing');
         $this->newProgram($dept, 'TP101');
-        db_connect()->table('subjects')->insert(['subject_code' => 'TSUB1', 'subject_name' => 'Test Subject', 'units' => 3, 'sub_department_id' => $dept]);
+        db_connect()->table('subjects')->insert(['subject_code' => 'TSUB1', 'subject_name' => 'Test Subject', 'units' => 3, 'department_id' => $dept]);
         $facultyUserId = ++self::$seq;
         $this->seedUsers($facultyUserId);
         $affResult = (new FacultyDepartmentModel())->addAffiliation($facultyUserId, $dept, true, 1, 'admin');
@@ -158,7 +157,7 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
         $this->assertSame(1, $body['affected']['subjects']);
         $this->assertSame(1, $body['affected']['faculty']);
         // A preview must never write anything.
-        $this->seeInDatabase('sub_departments', ['sub_dept_id' => $dept, 'college_id' => $collegeA]);
+        $this->seeInDatabase('departments', ['dept_id' => $dept, 'college_id' => $collegeA]);
     }
 
     // --- Program transfer ----------------------------------------------------
@@ -174,7 +173,7 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
         $response = $this->postAs("/admin/programs/{$program}/transfer", ['sub_department_id' => $deptB, 'reason' => 'Program realignment']);
 
         $response->assertRedirect();
-        $this->seeInDatabase('programs', ['program_id' => $program, 'sub_department_id' => $deptB]);
+        $this->seeInDatabase('programs', ['program_id' => $program, 'department_id' => $deptB]);
 
         $log = (new AuditLogModel())->where('action', 'program.transferred')->where('entity_id', (string) $program)->first();
         $this->assertNotNull($log);
@@ -191,7 +190,7 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
         $this->actingAsAdmin();
         $this->postAs("/admin/programs/{$program}/transfer", ['sub_department_id' => $deptB, 'reason' => '']);
 
-        $this->seeInDatabase('programs', ['program_id' => $program, 'sub_department_id' => $deptA]);
+        $this->seeInDatabase('programs', ['program_id' => $program, 'department_id' => $deptA]);
     }
 
     /**
@@ -228,7 +227,7 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
         $this->actingAsAdmin();
         $this->postAs("/admin/programs/{$program}/transfer", ['sub_department_id' => $deptB, 'reason' => 'Preservation check']);
 
-        $this->assertSame($deptB, (int) (new ProgramModel())->find($program)['sub_department_id']);
+        $this->assertSame($deptB, (int) (new ProgramModel())->find($program)['department_id']);
         // Everything else: completely untouched.
         $this->seeInDatabase('curriculum', ['curriculum_id' => $curriculumId, 'program_id' => $program]);
         $this->seeInDatabase('students', ['user_id' => $student, 'program_id' => $program, 'curriculum_id' => $curriculumId]);
@@ -245,12 +244,12 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
         $deptB   = $this->newDept($college, 'Department B');
         $program = $this->newProgram($deptA, 'PT303');
         // A subject still owned by deptA, independent of the program move.
-        db_connect()->table('subjects')->insert(['subject_code' => 'PT303SUB', 'subject_name' => 'Subject', 'units' => 3, 'sub_department_id' => $deptA]);
+        db_connect()->table('subjects')->insert(['subject_code' => 'PT303SUB', 'subject_name' => 'Subject', 'units' => 3, 'department_id' => $deptA]);
 
         $this->actingAsAdmin();
         $this->postAs("/admin/programs/{$program}/transfer", ['sub_department_id' => $deptB, 'reason' => 'Ownership check']);
 
-        $this->seeInDatabase('subjects', ['subject_code' => 'PT303SUB', 'sub_department_id' => $deptA]);
+        $this->seeInDatabase('subjects', ['subject_code' => 'PT303SUB', 'department_id' => $deptA]);
     }
 
     // --- Scheduling authorization re-evaluates live --------------------------
@@ -292,8 +291,8 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
 
         // A "Dean sees all departments under their college" check, exactly
         // as Admin\DepartmentController::show() computes it.
-        $departmentsUnderB = db_connect()->table('sub_departments')->where('college_id', $collegeB)->countAllResults();
-        $departmentsUnderA = db_connect()->table('sub_departments')->where('college_id', $collegeA)->countAllResults();
+        $departmentsUnderB = db_connect()->table('departments')->where('college_id', $collegeB)->countAllResults();
+        $departmentsUnderA = db_connect()->table('departments')->where('college_id', $collegeA)->countAllResults();
 
         $this->assertSame(1, $departmentsUnderB, 'Dean of College B must now see the transferred department.');
         $this->assertSame(0, $departmentsUnderA, 'Dean of College A must no longer see it.');
@@ -327,7 +326,7 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
 
     private function seedSubject(string $code, int $subDeptId): int
     {
-        db_connect()->table('subjects')->insert(['subject_code' => $code, 'subject_name' => $code . ' Title', 'units' => 3, 'sub_department_id' => $subDeptId]);
+        db_connect()->table('subjects')->insert(['subject_code' => $code, 'subject_name' => $code . ' Title', 'units' => 3, 'department_id' => $subDeptId]);
 
         return (int) db_connect()->insertID();
     }

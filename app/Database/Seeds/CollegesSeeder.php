@@ -4,7 +4,7 @@ namespace App\Database\Seeds;
 
 use CodeIgniter\Database\Seeder;
 
-class DepartmentsSeeder extends Seeder
+class CollegesSeeder extends Seeder
 {
     public function run()
     {
@@ -12,15 +12,15 @@ class DepartmentsSeeder extends Seeder
 
         // Departments
         foreach ([['code' => 'IT', 'name' => 'IT Department'], ['code' => 'CS', 'name' => 'CS Department']] as $dept) {
-            if ($db->table('departments')->where('code', $dept['code'])->countAllResults() === 0) {
+            if ($db->table('colleges')->where('code', $dept['code'])->countAllResults() === 0) {
                 $dept['created_at'] = date('Y-m-d H:i:s');
                 $dept['updated_at'] = date('Y-m-d H:i:s');
-                $db->table('departments')->insert($dept);
+                $db->table('colleges')->insert($dept);
                 echo "Created {$dept['code']} department\n";
             }
         }
 
-        $deptIds = array_column($db->table('departments')->get()->getResultArray(), 'dept_id', 'code');
+        $deptIds = array_column($db->table('colleges')->get()->getResultArray(), 'college_id', 'code');
 
         // Existing test users belong to IT.
         $db->table('users')->whereIn('username', ['chairperson1', 'faculty1', 'faculty2', 'faculty3'])

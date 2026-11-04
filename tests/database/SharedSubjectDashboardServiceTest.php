@@ -37,8 +37,8 @@ final class SharedSubjectDashboardServiceTest extends CIUnitTestCase
     {
         $collegeId = $this->deptSeq++;
         $subDeptId = $this->deptSeq++;
-        db_connect()->table('departments')->insert(['dept_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
+        db_connect()->table('colleges')->insert(['college_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
+        db_connect()->table('departments')->insert(['dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
 
         return $subDeptId;
     }
@@ -54,7 +54,7 @@ final class SharedSubjectDashboardServiceTest extends CIUnitTestCase
 
     private function seedSubject(string $code, ?int $subDeptId): int
     {
-        db_connect()->table('subjects')->insert(['subject_code' => $code, 'subject_name' => $code . ' Title', 'sub_department_id' => $subDeptId]);
+        db_connect()->table('subjects')->insert(['subject_code' => $code, 'subject_name' => $code . ' Title', 'department_id' => $subDeptId]);
 
         return (int) db_connect()->insertID();
     }
@@ -158,7 +158,7 @@ final class SharedSubjectDashboardServiceTest extends CIUnitTestCase
         $this->makeOffering('RED104', [$a, $b]);
 
         $delegate = $this->seedChairperson($this->newSubDept());
-        db_connect()->table('sub_department_schedulers')->insert(['sub_dept_id' => $owningSubDept, 'user_id' => $delegate, 'created_at' => date('Y-m-d H:i:s')]);
+        db_connect()->table('department_schedulers')->insert(['department_id' => $owningSubDept, 'user_id' => $delegate, 'created_at' => date('Y-m-d H:i:s')]);
 
         $result = (new SharedSubjectDashboardService())->build($delegate, self::TERM);
 
@@ -258,7 +258,7 @@ final class SharedSubjectDashboardServiceTest extends CIUnitTestCase
         $program = $this->seedProgram('MUS');
         $requesterSubDept = $this->newSubDept();
         $requester = $this->seedChairperson($requesterSubDept);
-        db_connect()->table('programs')->where('program_id', $program)->update(['sub_department_id' => $requesterSubDept]);
+        db_connect()->table('programs')->where('program_id', $program)->update(['department_id' => $requesterSubDept]);
         $section = $this->seedSection('MUS', 'A');
 
         return [$chair, $subjectId, $section, $requester];
@@ -521,7 +521,7 @@ final class SharedSubjectDashboardServiceTest extends CIUnitTestCase
         $requesterSubDept = $this->newSubDept();
         $requester = $this->seedChairperson($requesterSubDept);
         $program = $this->seedProgram('MUS');
-        db_connect()->table('programs')->where('program_id', $program)->update(['sub_department_id' => $requesterSubDept]);
+        db_connect()->table('programs')->where('program_id', $program)->update(['department_id' => $requesterSubDept]);
         $section = $this->seedSection('MUS', 'A');
 
         (new OfferingPlacementRequestModel())->create(['subject_id' => $subjectId, 'section_id' => $section, 'requested_by' => $requester, 'request_type' => 'placement']);

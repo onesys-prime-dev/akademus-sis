@@ -21,31 +21,31 @@ final class SchedulingAuthorizationTest extends CIUnitTestCase
 
     private function seedDept(int $deptId, string $code, string $name): void
     {
-        db_connect()->table('departments')->insert([
-            'dept_id' => $deptId,
-            'code'    => $code,
-            'name'    => $name,
+        db_connect()->table('colleges')->insert([
+            'college_id' => $deptId,
+            'code'       => $code,
+            'name'       => $name,
         ]);
     }
 
     private function seedSubDept(int $subDeptId, int $collegeId, string $code, string $name): void
     {
-        db_connect()->table('sub_departments')->insert([
-            'sub_dept_id' => $subDeptId,
-            'college_id'  => $collegeId,
-            'code'        => $code,
-            'name'        => $name,
+        db_connect()->table('departments')->insert([
+            'dept_id'    => $subDeptId,
+            'college_id' => $collegeId,
+            'code'       => $code,
+            'name'       => $name,
         ]);
     }
 
     private function seedProgram(int $programId, int $subDeptId, string $code, string $name): void
     {
         db_connect()->table('programs')->insert([
-            'program_id'        => $programId,
-            'sub_department_id' => $subDeptId,
-            'program_code'      => $code,
-            'program_name'      => $name,
-            'is_active'         => 1,
+            'program_id'    => $programId,
+            'department_id' => $subDeptId,
+            'program_code'  => $code,
+            'program_name'  => $name,
+            'is_active'     => 1,
         ]);
     }
 
@@ -110,10 +110,10 @@ final class SchedulingAuthorizationTest extends CIUnitTestCase
         $this->seedUser(103, 2);
 
         // Delegate sub-dept 1 to user 102 only.
-        db_connect()->table('sub_department_schedulers')->insert([
-            'sub_dept_id' => 1,
-            'user_id'     => 102,
-            'created_at'  => date('Y-m-d H:i:s'),
+        db_connect()->table('department_schedulers')->insert([
+            'department_id' => 1,
+            'user_id'       => 102,
+            'created_at'    => date('Y-m-d H:i:s'),
         ]);
 
         $auth = new SchedulingAuthorization();
@@ -135,10 +135,10 @@ final class SchedulingAuthorizationTest extends CIUnitTestCase
         $this->seedUser(104, 1); // belongs to IT (sub-dept 1)
 
         // Explicitly delegate Music (sub-dept 2) scheduling authority to user 104.
-        db_connect()->table('sub_department_schedulers')->insert([
-            'sub_dept_id' => 2,
-            'user_id'     => 104,
-            'created_at'  => date('Y-m-d H:i:s'),
+        db_connect()->table('department_schedulers')->insert([
+            'department_id' => 2,
+            'user_id'       => 104,
+            'created_at'    => date('Y-m-d H:i:s'),
         ]);
 
         $auth = new SchedulingAuthorization();

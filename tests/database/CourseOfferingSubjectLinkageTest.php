@@ -32,7 +32,7 @@ final class CourseOfferingSubjectLinkageTest extends CIUnitTestCase
         $subjects->insert([
             'subject_code'      => $subjectCode,
             'subject_name'      => $subjectCode . ' Title',
-            'sub_department_id' => $subDeptId,
+            'department_id'     => $subDeptId,
         ]);
 
         return (int) db_connect()->insertID();
@@ -176,8 +176,8 @@ final class CourseOfferingSubjectLinkageTest extends CIUnitTestCase
     // 6. Ownership can be derived: offering -> subject -> sub_department.
     public function testOwningSubDeptIdIsDerivedThroughSubject(): void
     {
-        db_connect()->table('departments')->insert(['dept_id' => 1, 'code' => 'COL-A', 'name' => 'College A']);
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => 1, 'college_id' => 1, 'code' => 'RELED', 'name' => 'Religious Education']);
+        db_connect()->table('colleges')->insert(['college_id' => 1, 'code' => 'COL-A', 'name' => 'College A']);
+        db_connect()->table('departments')->insert(['dept_id' => 1, 'college_id' => 1, 'code' => 'RELED', 'name' => 'Religious Education']);
 
         $this->seedSubject('RED104', 1);
         $sectionA = $this->seedSection('BSIT', 'A');

@@ -39,7 +39,7 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
     private function newCollege(string $name): int
     {
         $id = ++self::$seq;
-        db_connect()->table('departments')->insert(['dept_id' => $id, 'code' => 'COL' . $id, 'name' => $name]);
+        db_connect()->table('colleges')->insert(['college_id' => $id, 'code' => 'COL' . $id, 'name' => $name]);
 
         return $id;
     }
@@ -47,14 +47,14 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
     private function newDept(int $collegeId, string $name, ?string $code = null): int
     {
         $id = ++self::$seq;
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $id, 'college_id' => $collegeId, 'code' => $code ?? 'SD' . $id, 'name' => $name]);
+        db_connect()->table('departments')->insert(['dept_id' => $id, 'college_id' => $collegeId, 'code' => $code ?? 'SD' . $id, 'name' => $name]);
 
         return $id;
     }
 
     private function newProgram(int $subDeptId, string $code, ?string $name = null, bool $active = true): int
     {
-        db_connect()->table('programs')->insert(['sub_department_id' => $subDeptId, 'program_code' => $code, 'program_name' => $name ?? $code . ' Title', 'is_active' => $active ? 1 : 0]);
+        db_connect()->table('programs')->insert(['department_id' => $subDeptId, 'program_code' => $code, 'program_name' => $name ?? $code . ' Title', 'is_active' => $active ? 1 : 0]);
 
         return (int) db_connect()->insertID();
     }
@@ -185,7 +185,7 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
         $this->assertNull((new SchedulingAuthorization())->ownSection($chairB, $section));
 
         // Transfer the program (same mechanism as Admin\ProgramController::transfer()).
-        db_connect()->table('programs')->where('program_id', $program)->update(['sub_department_id' => $deptB]);
+        db_connect()->table('programs')->where('program_id', $program)->update(['department_id' => $deptB]);
 
         $this->assertNull((new SchedulingAuthorization())->ownSection($chairA, $section), 'Old department must lose access automatically.');
         $this->assertNotNull((new SchedulingAuthorization())->ownSection($chairB, $section), 'New department must gain access automatically — no section rewrite.');
@@ -312,7 +312,7 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
     public function testHealthCheckerDetectsOrphanProgram(): void
     {
         $this->newProgram($this->newDept($this->newCollege('C'), 'D'), 'ORPHANCHK'); // has a dept, control case
-        db_connect()->table('programs')->insert(['program_code' => 'ORPHAN1', 'program_name' => 'Orphan Program', 'is_active' => 1, 'sub_department_id' => null]);
+        db_connect()->table('programs')->insert(['program_code' => 'ORPHAN1', 'program_name' => 'Orphan Program', 'is_active' => 1, 'department_id' => null]);
 
         $findings = (new AcademicHealthService())->check();
         $messages = array_column($findings, 'message');
@@ -342,8 +342,8 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
         db_connect()->table('auth_groups_users')->insert(['user_id' => $faculty, 'group' => 'faculty', 'created_at' => date('Y-m-d H:i:s')]);
         // Bypass the model's own invariant deliberately, to prove the
         // health checker catches a direct-data-edit violation.
-        db_connect()->table('faculty_departments')->insert(['user_id' => $faculty, 'sub_dept_id' => $deptA, 'is_primary' => 1, 'status' => 'active']);
-        db_connect()->table('faculty_departments')->insert(['user_id' => $faculty, 'sub_dept_id' => $deptB, 'is_primary' => 1, 'status' => 'active']);
+        db_connect()->table('faculty_departments')->insert(['user_id' => $faculty, 'department_id' => $deptA, 'is_primary' => 1, 'status' => 'active']);
+        db_connect()->table('faculty_departments')->insert(['user_id' => $faculty, 'department_id' => $deptB, 'is_primary' => 1, 'status' => 'active']);
 
         $findings = (new AcademicHealthService())->check();
         $critical = array_filter($findings, static fn ($f) => $f['severity'] === 'critical' && $f['entity_type'] === 'user' && $f['entity_id'] === $faculty);
@@ -367,8 +367,8 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
         // Bypass the controller-level validation (which already blocks
         // this at creation time) to prove the health checker independently
         // catches it too, e.g. if a row was ever inserted directly.
-        db_connect()->table('sub_departments')->insert(['college_id' => $college, 'code' => 'DUPDEPT', 'name' => 'First Dept']);
-        db_connect()->table('sub_departments')->insert(['college_id' => $college, 'code' => 'DUPDEPT', 'name' => 'Second Dept']);
+        db_connect()->table('departments')->insert(['college_id' => $college, 'code' => 'DUPDEPT', 'name' => 'First Dept']);
+        db_connect()->table('departments')->insert(['college_id' => $college, 'code' => 'DUPDEPT', 'name' => 'Second Dept']);
 
         $findings = (new AcademicHealthService())->check();
         $messages = array_column($findings, 'message');
@@ -405,7 +405,7 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
         $this->actingAsAdmin();
         $this->postAs("/admin/departments/{$college}/sub-departments", ['dept_code' => 'DUP', 'dept_name' => 'Another Dept']);
 
-        $this->assertSame(1, db_connect()->table('sub_departments')->where('college_id', $college)->where('code', 'DUP')->countAllResults());
+        $this->assertSame(1, db_connect()->table('departments')->where('college_id', $college)->where('code', 'DUP')->countAllResults());
     }
 
     public function testSameDepartmentCodeInDifferentCollegeIsAllowed(): void
@@ -417,7 +417,7 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
         $this->actingAsAdmin();
         $this->postAs("/admin/departments/{$collegeB}/sub-departments", ['dept_code' => 'SAME', 'dept_name' => 'Dept B']);
 
-        $this->assertSame(1, db_connect()->table('sub_departments')->where('college_id', $collegeB)->where('code', 'SAME')->countAllResults(), 'The same code in a DIFFERENT college must be allowed.');
+        $this->assertSame(1, db_connect()->table('departments')->where('college_id', $collegeB)->where('code', 'SAME')->countAllResults(), 'The same code in a DIFFERENT college must be allowed.');
     }
 
     public function testDuplicateProgramCodeRejected(): void
@@ -445,7 +445,7 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
         $this->actingAsAdmin();
         $this->postAs("/admin/sub-departments/{$dept}/delete", []);
 
-        $this->seeInDatabase('sub_departments', ['sub_dept_id' => $dept]);
+        $this->seeInDatabase('departments', ['dept_id' => $dept]);
     }
 
     public function testDepartmentHardDeleteSucceedsWhenEmpty(): void
@@ -456,7 +456,7 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
         $this->actingAsAdmin();
         $this->postAs("/admin/sub-departments/{$dept}/delete", []);
 
-        $this->dontSeeInDatabase('sub_departments', ['sub_dept_id' => $dept]);
+        $this->dontSeeInDatabase('departments', ['dept_id' => $dept]);
         $this->assertNotNull((new AuditLogModel())->where('action', 'department.deleted')->where('entity_id', (string) $dept)->first());
     }
 
@@ -511,7 +511,7 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
 
         $this->postAs("/admin/programs/{$program}/transfer", ['sub_department_id' => $deptB, 'reason' => 'unauthorized attempt']);
 
-        $this->seeInDatabase('programs', ['program_id' => $program, 'sub_department_id' => $deptA]);
+        $this->seeInDatabase('programs', ['program_id' => $program, 'department_id' => $deptA]);
     }
 
     public function testTransferAuthorizationUnchangedByThisBatch(): void

@@ -34,8 +34,8 @@ final class OfferingScheduleTest extends CIUnitTestCase
         if ($subDeptId === null) {
             $collegeId = $this->deptSeq++;
             $subDeptId = $this->deptSeq++;
-            db_connect()->table('departments')->insert(['dept_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
-            db_connect()->table('sub_departments')->insert(['sub_dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
+            db_connect()->table('colleges')->insert(['college_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
+            db_connect()->table('departments')->insert(['dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
         }
 
         $userId = $this->nextUserId++;
@@ -49,15 +49,15 @@ final class OfferingScheduleTest extends CIUnitTestCase
     {
         $collegeId = $this->deptSeq++;
         $subDeptId = $this->deptSeq++;
-        db_connect()->table('departments')->insert(['dept_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
+        db_connect()->table('colleges')->insert(['college_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
+        db_connect()->table('departments')->insert(['dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
 
         return $subDeptId;
     }
 
     private function seedSubject(string $code, ?int $subDeptId): int
     {
-        db_connect()->table('subjects')->insert(['subject_code' => $code, 'subject_name' => $code . ' Title', 'sub_department_id' => $subDeptId]);
+        db_connect()->table('subjects')->insert(['subject_code' => $code, 'subject_name' => $code . ' Title', 'department_id' => $subDeptId]);
 
         return (int) db_connect()->insertID();
     }
@@ -68,7 +68,7 @@ final class OfferingScheduleTest extends CIUnitTestCase
     {
         $id = $this->programSeq++;
         db_connect()->table('programs')->insert([
-            'program_id' => 2000 + $id, 'sub_department_id' => $subDeptId, 'program_code' => 'P' . (2000 + $id), 'program_name' => $name, 'is_active' => 1,
+            'program_id' => 2000 + $id, 'department_id' => $subDeptId, 'program_code' => 'P' . (2000 + $id), 'program_name' => $name, 'is_active' => 1,
         ]);
     }
 
@@ -205,7 +205,7 @@ final class OfferingScheduleTest extends CIUnitTestCase
         $offeringId = $this->makeOffering('RED104', [$a, $b]);
 
         $delegate = $this->seedChairperson($this->newSubDept());
-        db_connect()->table('sub_department_schedulers')->insert(['sub_dept_id' => $subDept, 'user_id' => $delegate, 'created_at' => date('Y-m-d H:i:s')]);
+        db_connect()->table('department_schedulers')->insert(['department_id' => $subDept, 'user_id' => $delegate, 'created_at' => date('Y-m-d H:i:s')]);
 
         $result = (new PlottedScheduleModel())->syncOfferingSchedule($offeringId, $delegate, [$this->block(0, '10:00', '11:30', 'Room 301')]);
 

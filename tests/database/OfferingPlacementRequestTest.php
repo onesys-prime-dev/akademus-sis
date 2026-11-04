@@ -33,7 +33,7 @@ final class OfferingPlacementRequestTest extends CIUnitTestCase
     private function seedCollege(): int
     {
         $id = $this->nextDeptId++;
-        db_connect()->table('departments')->insert(['dept_id' => $id, 'code' => 'COL' . $id, 'name' => 'College ' . $id]);
+        db_connect()->table('colleges')->insert(['college_id' => $id, 'code' => 'COL' . $id, 'name' => 'College ' . $id]);
 
         return $id;
     }
@@ -41,7 +41,7 @@ final class OfferingPlacementRequestTest extends CIUnitTestCase
     private function seedSubDept(int $collegeId, string $code): int
     {
         $id = $this->nextSubDeptId++;
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $id, 'college_id' => $collegeId, 'code' => $code, 'name' => $code . ' Unit']);
+        db_connect()->table('departments')->insert(['dept_id' => $id, 'college_id' => $collegeId, 'code' => $code, 'name' => $code . ' Unit']);
 
         return $id;
     }
@@ -51,7 +51,7 @@ final class OfferingPlacementRequestTest extends CIUnitTestCase
         $id = $this->nextProgramId++;
         db_connect()->table('programs')->insert([
             'program_id'        => $id,
-            'sub_department_id' => $subDeptId,
+            'department_id'     => $subDeptId,
             'program_code'      => 'PRG' . $id,
             'program_name'      => $name,
             'is_active'         => 1,
@@ -63,7 +63,7 @@ final class OfferingPlacementRequestTest extends CIUnitTestCase
         db_connect()->table('subjects')->insert([
             'subject_code'      => $subjectCode,
             'subject_name'      => $subjectCode . ' Title',
-            'sub_department_id' => $subDeptId,
+            'department_id'     => $subDeptId,
         ]);
 
         return (int) db_connect()->insertID();
@@ -99,7 +99,7 @@ final class OfferingPlacementRequestTest extends CIUnitTestCase
 
     private function delegate(int $subDeptId, int $userId): void
     {
-        db_connect()->table('sub_department_schedulers')->insert(['sub_dept_id' => $subDeptId, 'user_id' => $userId, 'created_at' => date('Y-m-d H:i:s')]);
+        db_connect()->table('department_schedulers')->insert(['department_id' => $subDeptId, 'user_id' => $userId, 'created_at' => date('Y-m-d H:i:s')]);
     }
 
     private function enrollStudent(int $studentId, int $sectionId, string $subjectCode): void
@@ -144,7 +144,7 @@ final class OfferingPlacementRequestTest extends CIUnitTestCase
         ]);
 
         $this->assertTrue($result['ok'], $result['error'] ?? '');
-        $this->seeInDatabase('offering_placement_requests', ['id' => $result['id'], 'requesting_sub_dept_id' => $it, 'status' => 'pending']);
+        $this->seeInDatabase('offering_placement_requests', ['id' => $result['id'], 'requesting_department_id' => $it, 'status' => 'pending']);
     }
 
     public function testUnauthorizedChairpersonSubmitsForAnotherUnitsSection(): void
@@ -188,7 +188,7 @@ final class OfferingPlacementRequestTest extends CIUnitTestCase
         ]);
 
         $this->assertTrue($result['ok'], $result['error'] ?? '');
-        $this->seeInDatabase('offering_placement_requests', ['id' => $result['id'], 'requesting_sub_dept_id' => $it]);
+        $this->seeInDatabase('offering_placement_requests', ['id' => $result['id'], 'requesting_department_id' => $it]);
     }
 
     public function testRequestForNonexistentSubjectRejected(): void

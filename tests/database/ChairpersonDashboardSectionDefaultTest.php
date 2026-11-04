@@ -44,8 +44,8 @@ final class ChairpersonDashboardSectionDefaultTest extends CIUnitTestCase
     public function testFreshLoadOfABorrowedProgramDoesNotLeakAnotherYearLevelsSection(): void
     {
         $db = db_connect();
-        $db->table('departments')->insert(['dept_id' => 1, 'code' => 'COL1', 'name' => 'College 1']);
-        $db->table('sub_departments')->insert(['sub_dept_id' => 2, 'college_id' => 1, 'code' => 'SD1', 'name' => 'Owning Unit']);
+        $db->table('colleges')->insert(['college_id' => 1, 'code' => 'COL1', 'name' => 'College 1']);
+        $db->table('departments')->insert(['dept_id' => 2, 'college_id' => 1, 'code' => 'SD1', 'name' => 'Owning Unit']);
 
         $chairId = 70401;
         $this->seedUsers($chairId);
@@ -55,10 +55,10 @@ final class ChairpersonDashboardSectionDefaultTest extends CIUnitTestCase
         // Owning unit needs no program of its own for this scenario — only
         // that it owns a subject the borrowing program's 2nd Year curriculum
         // requires.
-        $db->table('programs')->insert(['program_id' => 4101, 'sub_department_id' => 2, 'program_code' => 'P4101', 'program_name' => 'Owning Program', 'is_active' => 1]);
-        $db->table('programs')->insert(['program_id' => 4102, 'sub_department_id' => 99, 'program_code' => 'P4102', 'program_name' => 'Borrowing Program', 'is_active' => 1]);
+        $db->table('programs')->insert(['program_id' => 4101, 'department_id' => 2, 'program_code' => 'P4101', 'program_name' => 'Owning Program', 'is_active' => 1]);
+        $db->table('programs')->insert(['program_id' => 4102, 'department_id' => 99, 'program_code' => 'P4102', 'program_name' => 'Borrowing Program', 'is_active' => 1]);
 
-        $db->table('subjects')->insert(['subject_code' => 'GEC101', 'subject_name' => 'GEC101 Title', 'sub_department_id' => 2]);
+        $db->table('subjects')->insert(['subject_code' => 'GEC101', 'subject_name' => 'GEC101 Title', 'department_id' => 2]);
         $subjectId = (int) $db->insertID();
 
         $term = AcademicYearModel::format('1', '1st');

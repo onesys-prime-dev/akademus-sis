@@ -64,9 +64,9 @@ final class SubjectDemandServiceTest extends CIUnitTestCase
         $collegeId = $deptSeq++;
         $subDeptId = $deptSeq++;
 
-        db_connect()->table('departments')->insert(['dept_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
-        db_connect()->table('programs')->where('program_id', $programId)->update(['sub_department_id' => $subDeptId]);
+        db_connect()->table('colleges')->insert(['college_id' => $collegeId, 'code' => 'COL' . $collegeId, 'name' => 'College ' . $collegeId]);
+        db_connect()->table('departments')->insert(['dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD' . $subDeptId, 'name' => 'Unit ' . $subDeptId]);
+        db_connect()->table('programs')->where('program_id', $programId)->update(['department_id' => $subDeptId]);
 
         $userId = $this->nextUserId++;
         $this->seedUsers($userId);

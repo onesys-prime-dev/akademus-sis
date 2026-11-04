@@ -39,8 +39,8 @@ final class ChairpersonSyncMergedSubjectTest extends CIUnitTestCase
     {
         $collegeId = 1;
         $subDeptId = 2;
-        db_connect()->table('departments')->insert(['dept_id' => $collegeId, 'code' => 'COL1', 'name' => 'College 1']);
-        db_connect()->table('sub_departments')->insert(['sub_dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD1', 'name' => 'Unit 1']);
+        db_connect()->table('colleges')->insert(['college_id' => $collegeId, 'code' => 'COL1', 'name' => 'College 1']);
+        db_connect()->table('departments')->insert(['dept_id' => $subDeptId, 'college_id' => $collegeId, 'code' => 'SD1', 'name' => 'Unit 1']);
 
         $chairId = 70001;
         $this->seedUsers($chairId);
@@ -48,10 +48,10 @@ final class ChairpersonSyncMergedSubjectTest extends CIUnitTestCase
         db_connect()->table('auth_groups_users')->insert(['user_id' => $chairId, 'group' => 'chairperson', 'created_at' => date('Y-m-d H:i:s')]);
 
         db_connect()->table('programs')->insert([
-            'program_id' => 3001, 'sub_department_id' => $subDeptId, 'program_code' => 'P3001', 'program_name' => 'BSIT', 'is_active' => 1,
+            'program_id' => 3001, 'department_id' => $subDeptId, 'program_code' => 'P3001', 'program_name' => 'BSIT', 'is_active' => 1,
         ]);
 
-        db_connect()->table('subjects')->insert(['subject_code' => 'ITE101', 'subject_name' => 'ITE101 Title', 'sub_department_id' => $subDeptId]);
+        db_connect()->table('subjects')->insert(['subject_code' => 'ITE101', 'subject_name' => 'ITE101 Title', 'department_id' => $subDeptId]);
         $subjectId = (int) db_connect()->insertID();
 
         $term = AcademicYearModel::format('1', '1st');

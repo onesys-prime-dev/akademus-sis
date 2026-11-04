@@ -37,9 +37,9 @@ final class ChairpersonSyncAutoFulfillsRequestTest extends CIUnitTestCase
     {
         $db = db_connect();
 
-        $db->table('departments')->insert(['dept_id' => 1, 'code' => 'COL1', 'name' => 'College 1']);
-        $db->table('sub_departments')->insert(['sub_dept_id' => 2, 'college_id' => 1, 'code' => 'SD1', 'name' => 'Owning Unit']);
-        $db->table('sub_departments')->insert(['sub_dept_id' => 3, 'college_id' => 1, 'code' => 'SD2', 'name' => 'Borrowing Unit']);
+        $db->table('colleges')->insert(['college_id' => 1, 'code' => 'COL1', 'name' => 'College 1']);
+        $db->table('departments')->insert(['dept_id' => 2, 'college_id' => 1, 'code' => 'SD1', 'name' => 'Owning Unit']);
+        $db->table('departments')->insert(['dept_id' => 3, 'college_id' => 1, 'code' => 'SD2', 'name' => 'Borrowing Unit']);
 
         $chairId = 70101;
         $this->seedUsers($chairId);
@@ -54,16 +54,16 @@ final class ChairpersonSyncAutoFulfillsRequestTest extends CIUnitTestCase
         // Owning unit's own program (so the chairperson has a "home"
         // program too, same as any real chairperson).
         $db->table('programs')->insert([
-            'program_id' => 4001, 'sub_department_id' => 2, 'program_code' => 'P4001', 'program_name' => 'Owning Program', 'is_active' => 1,
+            'program_id' => 4001, 'department_id' => 2, 'program_code' => 'P4001', 'program_name' => 'Owning Program', 'is_active' => 1,
         ]);
         // Borrowing unit's program — needs the owning unit's subject in its
         // curriculum, which is what makes it show up as a "borrowing
         // program" on the owning chairperson's own Schedule Plotting grid.
         $db->table('programs')->insert([
-            'program_id' => 4002, 'sub_department_id' => 3, 'program_code' => 'P4002', 'program_name' => 'Borrowing Program', 'is_active' => 1,
+            'program_id' => 4002, 'department_id' => 3, 'program_code' => 'P4002', 'program_name' => 'Borrowing Program', 'is_active' => 1,
         ]);
 
-        $db->table('subjects')->insert(['subject_code' => 'GEC101', 'subject_name' => 'GEC101 Title', 'sub_department_id' => 2]);
+        $db->table('subjects')->insert(['subject_code' => 'GEC101', 'subject_name' => 'GEC101 Title', 'department_id' => 2]);
         $subjectId = (int) $db->insertID();
 
         $term = AcademicYearModel::format('1', '1st');

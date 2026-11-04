@@ -37,18 +37,18 @@ final class ChairpersonSyncRejectsMergedOfferingOverlapTest extends CIUnitTestCa
     public function testPlottingALegacySubjectOnTopOfTheSectionsOwnMergedOfferingMeetingIsRejected(): void
     {
         $db = db_connect();
-        $db->table('departments')->insert(['dept_id' => 1, 'code' => 'COL1', 'name' => 'College 1']);
-        $db->table('sub_departments')->insert(['sub_dept_id' => 2, 'college_id' => 1, 'code' => 'SD1', 'name' => 'Unit 1']);
+        $db->table('colleges')->insert(['college_id' => 1, 'code' => 'COL1', 'name' => 'College 1']);
+        $db->table('departments')->insert(['dept_id' => 2, 'college_id' => 1, 'code' => 'SD1', 'name' => 'Unit 1']);
 
         $chairId = 70501;
         $this->seedUsers($chairId);
         $db->table('users')->where('id', $chairId)->update(['sub_department_id' => 2]);
         $db->table('auth_groups_users')->insert(['user_id' => $chairId, 'group' => 'chairperson', 'created_at' => date('Y-m-d H:i:s')]);
 
-        $db->table('programs')->insert(['program_id' => 5201, 'sub_department_id' => 2, 'program_code' => 'P5201', 'program_name' => 'Owning Program', 'is_active' => 1]);
+        $db->table('programs')->insert(['program_id' => 5201, 'department_id' => 2, 'program_code' => 'P5201', 'program_name' => 'Owning Program', 'is_active' => 1]);
 
-        $db->table('subjects')->insert(['subject_code' => 'ITE101', 'subject_name' => 'ITE101 Title', 'sub_department_id' => 2]);
-        $db->table('subjects')->insert(['subject_code' => 'RED103', 'subject_name' => 'RED103 Title', 'sub_department_id' => 2]);
+        $db->table('subjects')->insert(['subject_code' => 'ITE101', 'subject_name' => 'ITE101 Title', 'department_id' => 2]);
+        $db->table('subjects')->insert(['subject_code' => 'RED103', 'subject_name' => 'RED103 Title', 'department_id' => 2]);
 
         $term = AcademicYearModel::format('1', '1st');
         $db->table('academic_years')->insert(['label' => '1', 'semester' => '1st', 'is_active' => 1]);
