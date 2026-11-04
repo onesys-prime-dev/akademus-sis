@@ -4,28 +4,28 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Models\AcademicYearModel;
+use App\Models\CollegeModel;
 use App\Models\CurriculumModel;
 use App\Models\DepartmentModel;
 use App\Models\EnrollmentModel;
 use App\Models\NotificationModel;
 use App\Models\SectionModel;
 use App\Models\StudentModel;
-use App\Models\SubDepartmentModel;
 use App\Services\TuitionAssessmentService;
 use CodeIgniter\Shield\Entities\User;
 
 class UserController extends BaseController
 {
-    protected DepartmentModel $departmentModel;
+    protected CollegeModel $collegeModel;
 
     private const ROLES = ['admin', 'registrar', 'dean', 'chairperson', 'faculty', 'student'];
 
-    /** Chairpersons are assigned via a specific Department (see Admin\SubDepartmentController::storeChair). */
+    /** Chairpersons are assigned via a specific Department (see Admin\DepartmentController::storeChair). */
     private const CREATABLE_ROLES = ['admin', 'registrar', 'dean', 'faculty', 'student'];
 
     public function __construct()
     {
-        $this->departmentModel = new DepartmentModel();
+        $this->collegeModel = new CollegeModel();
     }
 
     public function index()
@@ -37,7 +37,7 @@ class UserController extends BaseController
             ->select('u.id, u.username, u.photo_mime, i.secret as email, u.active, u.department_id, u.section_id, u.employment_status, g.group, d.code as dept_code, d.name as dept_name,
                       s.student_number, s.date_of_birth, s.gender, s.home_address, s.city, s.emergency_contact_name, s.emergency_contact_number')
             ->join('auth_groups_users g', 'g.user_id = u.id')
-            ->join('departments d', 'd.dept_id = u.department_id', 'left')
+            ->join('colleges d', 'd.college_id = u.department_id', 'left')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
             ->join('students s', 's.user_id = u.id', 'left')
             ->where('u.deleted_at', null)
@@ -66,14 +66,14 @@ class UserController extends BaseController
         $page       = max(1, min($page, $totalPages));
         $users      = array_slice($allUsers, ($page - 1) * $perPage, $perPage);
 
-        $subDepartments = (new SubDepartmentModel())->where('is_active', 1)->orderBy('name')->findAll();
-        $codeToSubDeptId = array_column($subDepartments, 'sub_dept_id', 'code');
+        $subDepartments = (new DepartmentModel())->where('is_active', 1)->orderBy('name')->findAll();
+        $codeToSubDeptId = array_column($subDepartments, 'dept_id', 'code');
 
         // Sections carry a program DISPLAY NAME (string), not a sub-department
         // FK, and some programs are stored under a legacy display alias that
         // doesn't equal programs.program_name (see
-        // DepartmentModel::LEGACY_PROGRAM_NAMES) — resolve via
-        // DepartmentModel::programDept() rather than a raw SQL join, which
+        // CollegeModel::LEGACY_PROGRAM_NAMES) — resolve via
+        // CollegeModel::programDept() rather than a raw SQL join, which
         // would silently drop those sections.
         //
         // Scoped to the currently active academic year/semester only — this
@@ -110,7 +110,7 @@ class UserController extends BaseController
 
         $sections = array_map(
             static function (array $s) use ($codeToSubDeptId) {
-                $code            = DepartmentModel::programDept($s['program']);
+                $code            = CollegeModel::programDept($s['program']);
                 $s['sub_dept_id'] = $codeToSubDeptId[$code] ?? null;
 
                 return $s;
@@ -125,7 +125,7 @@ class UserController extends BaseController
             'roleFilter'     => $roleFilter,
             'search'         => $search,
             'roles'          => self::ROLES,
-            'departments'    => $this->departmentModel->findAll(),
+            'departments'    => $this->collegeModel->findAll(),
             'subDepartments' => $subDepartments,
             'sections'       => $sections,
             'page'           => $page,
@@ -225,7 +225,7 @@ class UserController extends BaseController
             $section = $sectionId !== null ? (new SectionModel())->find($sectionId) : null;
 
             $programId = $section !== null
-                ? ($section['program_id'] !== null ? (int) $section['program_id'] : DepartmentModel::programIdOfName($section['program']))
+                ? ($section['program_id'] !== null ? (int) $section['program_id'] : CollegeModel::programIdOfName($section['program']))
                 : null;
 
             $curriculumId = $programId !== null
@@ -399,7 +399,7 @@ class UserController extends BaseController
     /**
      * Edit an existing account's profile fields. Role can only move between
      * CREATABLE_ROLES — chairpersons stay locked to their department's own
-     * assignment flow (Admin\SubDepartmentController::storeChair).
+     * assignment flow (Admin\DepartmentController::storeChair).
      */
     public function update($id)
     {

@@ -268,7 +268,7 @@ class StudentProgressController extends BaseController
 
         $rows = db_connect()->table('programs')
             ->select('program_id, program_code, program_name')
-            ->whereIn('sub_department_id', $subDeptIds)
+            ->whereIn('department_id', $subDeptIds)
             ->where('is_active', 1)
             ->orderBy('program_name')
             ->get()

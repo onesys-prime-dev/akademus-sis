@@ -243,7 +243,7 @@ class CurriculumBuilderController extends BaseController
 
         $rows = db_connect()->table('programs')
             ->select('program_id, program_code, program_name')
-            ->whereIn('sub_department_id', $subDeptIds)
+            ->whereIn('department_id', $subDeptIds)
             ->where('is_active', 1)
             ->orderBy('program_name')
             ->get()
@@ -283,7 +283,7 @@ class CurriculumBuilderController extends BaseController
     private function termSubjectsFor(int $curriculumId, int $yearLevel, string $semester): array
     {
         return db_connect()->table('curriculum_subjects cs')
-            ->select('cs.curriculum_subject_id, cs.is_required, cs.is_laboratory AS assignment_is_laboratory, s.subject_id, s.subject_code, s.subject_name, s.units, s.is_laboratory AS default_is_laboratory, s.sub_department_id')
+            ->select('cs.curriculum_subject_id, cs.is_required, cs.is_laboratory AS assignment_is_laboratory, s.subject_id, s.subject_code, s.subject_name, s.units, s.is_laboratory AS default_is_laboratory, s.department_id AS sub_department_id')
             ->join('subjects s', 's.subject_id = cs.subject_id')
             ->where('cs.curriculum_id', $curriculumId)
             ->where('cs.year_level', $yearLevel)

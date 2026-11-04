@@ -4,7 +4,7 @@ namespace App\Controllers\Chairperson;
 
 use App\Controllers\BaseController;
 use App\Libraries\SchedulingAuthorization;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\GradeChangeRequestModel;
 use App\Models\GradeModel;
 
@@ -35,9 +35,9 @@ class GradeApprovalController extends BaseController
             ]);
         }
 
-        $deptModel = new DepartmentModel();
+        $deptModel = new CollegeModel();
         $deptNames = array_column(
-            db_connect()->table('sub_departments')->whereIn('sub_dept_id', $subDeptIds)->orderBy('name')->get()->getResultArray(),
+            db_connect()->table('departments')->whereIn('dept_id', $subDeptIds)->orderBy('name')->get()->getResultArray(),
             'name'
         );
         $programs = [];
@@ -134,7 +134,7 @@ class GradeApprovalController extends BaseController
     {
         $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
         $programs   = [];
-        $deptModel  = new DepartmentModel();
+        $deptModel  = new CollegeModel();
 
         foreach ($subDeptIds as $id) {
             $programs = array_merge($programs, $deptModel->programsOfSubDept($id));
@@ -250,7 +250,7 @@ class GradeApprovalController extends BaseController
             return null;
         }
 
-        $deptModel = new DepartmentModel();
+        $deptModel = new CollegeModel();
         $programs  = [];
 
         foreach ($subDeptIds as $id) {

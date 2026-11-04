@@ -29,7 +29,7 @@ class GradeApprovalController extends BaseController
         }
 
         $collegeNames = array_column(
-            db_connect()->table('departments')->whereIn('dept_id', $collegeIds)->orderBy('name')->get()->getResultArray(),
+            db_connect()->table('colleges')->whereIn('college_id', $collegeIds)->orderBy('name')->get()->getResultArray(),
             'name'
         );
 

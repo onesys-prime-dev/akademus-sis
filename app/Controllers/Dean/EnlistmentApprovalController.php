@@ -5,7 +5,7 @@ namespace App\Controllers\Dean;
 use App\Controllers\BaseController;
 use App\Libraries\DeanPortal;
 use App\Libraries\SchedulingAuthorization;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\StudentEnlistmentModel;
 use App\Models\StudentModel;
 
@@ -69,7 +69,7 @@ class EnlistmentApprovalController extends BaseController
             return false;
         }
 
-        $programName = DepartmentModel::programNameById((int) $student['program_id']);
+        $programName = CollegeModel::programNameById((int) $student['program_id']);
 
         return in_array($programName, $this->authorizedPrograms(), true);
     }

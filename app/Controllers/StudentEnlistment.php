@@ -4,7 +4,7 @@ namespace App\Controllers;
 
 use App\Libraries\StudentProgressService;
 use App\Models\AcademicYearModel;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\EnlistmentOverrideModel;
 use App\Models\EnrollmentModel;
 use App\Models\GeneratedDocumentModel;
@@ -75,7 +75,7 @@ class StudentEnlistment extends BaseController
         $items      = $model->itemsFor((int) $enlistment['id']);
         $unitsUsed  = array_sum(array_column($items, 'units'));
 
-        $programName = $student['program_id'] !== null ? DepartmentModel::programNameById((int) $student['program_id']) : null;
+        $programName = $student['program_id'] !== null ? CollegeModel::programNameById((int) $student['program_id']) : null;
         $dueSubjects = [];
 
         // Maps academic_years.semester ('1st'/'2nd'/'Summer') to the code

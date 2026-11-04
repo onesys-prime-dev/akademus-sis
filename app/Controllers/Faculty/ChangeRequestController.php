@@ -3,7 +3,7 @@
 namespace App\Controllers\Faculty;
 
 use App\Controllers\BaseController;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\FacultyChangeRequestModel;
 use App\Models\NotificationModel;
@@ -61,7 +61,7 @@ class ChangeRequestController extends BaseController
      */
     private function notifyChairpersons(int $facultyId, string $subjectCode): void
     {
-        $subDept = (new DepartmentModel())->subDeptOfUser($facultyId);
+        $subDept = (new CollegeModel())->subDeptOfUser($facultyId);
 
         if ($subDept === null) {
             return;
@@ -71,7 +71,7 @@ class ChangeRequestController extends BaseController
             ->select('u.id')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'chairperson')
-            ->where('u.sub_department_id', $subDept['sub_dept_id'])
+            ->where('u.sub_department_id', $subDept['dept_id'])
             ->where('u.deleted_at', null)
             ->get()
             ->getResultArray();

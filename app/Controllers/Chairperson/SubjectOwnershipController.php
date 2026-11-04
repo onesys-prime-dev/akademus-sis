@@ -13,7 +13,7 @@ use App\Models\SubjectModel;
  *
  * Which subjects a department owns — a separate concern from the
  * Curriculum Builder (which subjects a PROGRAM requires, in which term).
- * Ownership lives on subjects.sub_department_id; a subject is NOT tied to
+ * Ownership lives on subjects.department_id; a subject is NOT tied to
  * one specific program here (subjects.program_id stays null unless the
  * chairperson explicitly ties it to one) — a department-owned subject is
  * discoverable and reusable by every program across every department via
@@ -40,7 +40,7 @@ class SubjectOwnershipController extends BaseController
         $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds($userId);
 
         $subjects = $subDeptIds === [] ? [] : (new SubjectModel())
-            ->whereIn('sub_department_id', $subDeptIds)
+            ->whereIn('department_id', $subDeptIds)
             ->orderBy('is_active', 'DESC')
             ->orderBy('subject_code')
             ->findAll();
@@ -48,8 +48,8 @@ class SubjectOwnershipController extends BaseController
         $deptNames = [];
 
         if ($subDeptIds !== []) {
-            foreach (db_connect()->table('sub_departments')->whereIn('sub_dept_id', $subDeptIds)->get()->getResultArray() as $row) {
-                $deptNames[(int) $row['sub_dept_id']] = $row['name'];
+            foreach (db_connect()->table('departments')->whereIn('dept_id', $subDeptIds)->get()->getResultArray() as $row) {
+                $deptNames[(int) $row['dept_id']] = $row['name'];
             }
         }
 
@@ -57,12 +57,12 @@ class SubjectOwnershipController extends BaseController
 
         if ($subDeptIds !== []) {
             foreach (db_connect()->table('programs')
-                ->select('program_id, program_code, program_name, sub_department_id')
-                ->whereIn('sub_department_id', $subDeptIds)
+                ->select('program_id, program_code, program_name, department_id')
+                ->whereIn('department_id', $subDeptIds)
                 ->where('is_active', 1)
                 ->orderBy('program_name')
                 ->get()->getResultArray() as $row) {
-                $courses[(int) $row['sub_department_id']][] = [
+                $courses[(int) $row['department_id']][] = [
                     'id'   => (int) $row['program_id'],
                     'code' => $row['program_code'],
                     'name' => $row['program_name'],
@@ -209,7 +209,7 @@ class SubjectOwnershipController extends BaseController
         $subjects = new SubjectModel();
         $existing = $subjects->find((int) $id);
 
-        if ($existing === null || ! in_array((int) $existing['sub_department_id'], $subDeptIds, true)) {
+        if ($existing === null || ! in_array((int) $existing['department_id'], $subDeptIds, true)) {
             return $this->fail('Subject not found, or not owned by your department.');
         }
 
@@ -286,7 +286,7 @@ class SubjectOwnershipController extends BaseController
         $subjects = new SubjectModel();
         $existing = $subjects->find((int) $id);
 
-        if ($existing === null || ! in_array((int) $existing['sub_department_id'], $subDeptIds, true)) {
+        if ($existing === null || ! in_array((int) $existing['department_id'], $subDeptIds, true)) {
             return $this->fail('Subject not found, or not owned by your department.');
         }
 
@@ -321,7 +321,7 @@ class SubjectOwnershipController extends BaseController
             'duration'   => (float) $row['contact_hours'],
             'is_lab'     => (bool) $row['is_laboratory'],
             'active'     => (bool) $row['is_active'],
-            'department' => (int) $row['sub_department_id'],
+            'department' => (int) $row['department_id'],
             'pairId'     => $row['pair_subject_id'] !== null ? (int) $row['pair_subject_id'] : null,
         ];
     }
@@ -382,7 +382,7 @@ class SubjectOwnershipController extends BaseController
         $existing = $subjects->where('subject_code', $code)->first();
 
         $row = [
-            'sub_department_id' => $subDeptId,
+            'department_id'     => $subDeptId,
             'program_id'        => null,
             'subject_code'      => $code,
             'subject_name'      => $title,
@@ -466,7 +466,7 @@ class SubjectOwnershipController extends BaseController
             throw new \RuntimeException("Could not auto-create the {$typeLabel} section as {$code} — that code is already used by another active subject. Rename or deactivate it first.");
         }
 
-        return $this->upsertRow($subjects, $code, (int) $editedSubject['sub_department_id'], $title, $isLab, $units);
+        return $this->upsertRow($subjects, $code, (int) $editedSubject['department_id'], $title, $isLab, $units);
     }
 
     private function fail(string $message)

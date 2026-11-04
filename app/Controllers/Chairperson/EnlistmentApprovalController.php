@@ -4,7 +4,7 @@ namespace App\Controllers\Chairperson;
 
 use App\Controllers\BaseController;
 use App\Libraries\SchedulingAuthorization;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\GradeModel;
 use App\Models\StudentEnlistmentModel;
 
@@ -12,7 +12,7 @@ use App\Models\StudentEnlistmentModel;
  * Chairperson's step in the enlistment chain: submitted -> chair_recommended
  * (or returned to draft). Mirrors Chairperson\GradeApprovalController's
  * change-request queue exactly — same program-scoping via
- * SchedulingAuthorization::authorizedSubDeptIds() + DepartmentModel::
+ * SchedulingAuthorization::authorizedSubDeptIds() + CollegeModel::
  * programsOfSubDept().
  */
 class EnlistmentApprovalController extends BaseController
@@ -100,7 +100,7 @@ class EnlistmentApprovalController extends BaseController
             return false;
         }
 
-        $programName = DepartmentModel::programNameById((int) $student['program_id']);
+        $programName = CollegeModel::programNameById((int) $student['program_id']);
 
         return in_array($programName, $this->authorizedPrograms(), true);
     }
@@ -109,7 +109,7 @@ class EnlistmentApprovalController extends BaseController
     {
         $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
         $programs   = [];
-        $deptModel  = new DepartmentModel();
+        $deptModel  = new CollegeModel();
 
         foreach ($subDeptIds as $id) {
             $programs = array_merge($programs, $deptModel->programsOfSubDept($id));

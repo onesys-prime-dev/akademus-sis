@@ -5,7 +5,7 @@ namespace App\Controllers\Dean;
 use App\Controllers\BaseController;
 use App\Libraries\DeanPortal;
 use App\Libraries\SchedulingAuthorization;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\GradeModel;
 use CodeIgniter\Shield\Entities\User;
 
@@ -22,7 +22,7 @@ class DeanController extends BaseController
         $collegeNames = $collegeIds === []
             ? []
             : array_column(
-                db_connect()->table('departments')->whereIn('dept_id', $collegeIds)->orderBy('name')->get()->getResultArray(),
+                db_connect()->table('colleges')->whereIn('college_id', $collegeIds)->orderBy('name')->get()->getResultArray(),
                 'name'
             );
 
@@ -159,15 +159,15 @@ class DeanController extends BaseController
         }
 
         $subDeptIds = array_column(
-            db_connect()->table('sub_departments')->select('sub_dept_id')->whereIn('college_id', $collegeIds)->get()->getResultArray(),
-            'sub_dept_id'
+            db_connect()->table('departments')->select('dept_id')->whereIn('college_id', $collegeIds)->get()->getResultArray(),
+            'dept_id'
         );
 
         if ($subDeptIds === []) {
             return [];
         }
 
-        $deptModel = new DepartmentModel();
+        $deptModel = new CollegeModel();
         $programs  = [];
 
         foreach ($subDeptIds as $subDeptId) {

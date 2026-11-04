@@ -4,7 +4,7 @@ namespace App\Controllers\Faculty;
 
 use App\Controllers\BaseController;
 use App\Models\AcademicYearModel;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\PlottedScheduleModel;
 
 /**
@@ -20,7 +20,7 @@ class ScheduleController extends BaseController
     {
         $account    = auth()->user();
         $username   = $account->username ?? '';
-        $dept       = (new DepartmentModel())->codeOfUser((int) auth()->id());
+        $dept       = (new CollegeModel())->codeOfUser((int) auth()->id());
         $activeYear = (new AcademicYearModel())->activeFormatted();
 
         // program_code (e.g. "BSIT") is joined in via sections/programs so a

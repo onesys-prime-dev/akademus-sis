@@ -3,14 +3,14 @@
 namespace App\Controllers\Faculty;
 
 use App\Controllers\BaseController;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 
 class ProfileController extends BaseController
 {
     public function edit()
     {
         $account   = auth()->user();
-        $dept      = (new DepartmentModel())->codeOfUser((int) auth()->id());
+        $dept      = (new CollegeModel())->codeOfUser((int) auth()->id());
         $photoMime = db_connect()->table('users')->select('photo_mime')->where('id', (int) auth()->id())->get()->getRowArray()['photo_mime'] ?? null;
 
         return view('faculty/profile/edit', [

@@ -4,7 +4,7 @@ namespace App\Controllers\Faculty;
 
 use App\Controllers\BaseController;
 use App\Models\AcademicYearModel;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\FacultyAvailabilityModel;
 use App\Models\FacultySubjectPreferenceModel;
 use App\Models\SubjectModel;
@@ -54,12 +54,12 @@ class AvailabilityController extends BaseController
                 $availabilityByDay[(int) $row['day_of_week']] = $row;
             }
 
-            $subDept   = (new DepartmentModel())->subDeptOfUser($userId);
-            $subDeptId = $subDept['sub_dept_id'] ?? null;
+            $subDept   = (new CollegeModel())->subDeptOfUser($userId);
+            $subDeptId = $subDept['dept_id'] ?? null;
 
             if ($subDeptId !== null) {
                 $subjects = (new SubjectModel())
-                    ->where('sub_department_id', $subDeptId)
+                    ->where('department_id', $subDeptId)
                     ->where('is_active', 1)
                     ->orderBy('subject_code')
                     ->findAll();
@@ -70,7 +70,7 @@ class AvailabilityController extends BaseController
             }
         }
 
-        $dept = (new DepartmentModel())->codeOfUser($userId);
+        $dept = (new CollegeModel())->codeOfUser($userId);
         $upcomingTerm = (new AcademicYearModel())->upcomingTerm();
 
         return view('faculty/availability/edit', [
@@ -187,12 +187,12 @@ class AvailabilityController extends BaseController
 
         $backUrl = '/faculty/availability?ay_id=' . (int) $term['ay_id'];
 
-        $subDept   = (new DepartmentModel())->subDeptOfUser($userId);
-        $subDeptId = $subDept['sub_dept_id'] ?? null;
+        $subDept   = (new CollegeModel())->subDeptOfUser($userId);
+        $subDeptId = $subDept['dept_id'] ?? null;
         $validSubjectIds = $subDeptId === null ? [] : array_map(
             'intval',
             array_column(
-                (new SubjectModel())->where('sub_department_id', $subDeptId)->where('is_active', 1)->findAll(),
+                (new SubjectModel())->where('department_id', $subDeptId)->where('is_active', 1)->findAll(),
                 'subject_id'
             )
         );

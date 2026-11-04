@@ -6,7 +6,7 @@ use App\Controllers\BaseController;
 use App\Libraries\SchedulingAuthorization;
 use App\Models\AcademicYearModel;
 use App\Models\CurriculumModel;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\EnrollmentModel;
 use App\Models\SectionModel;
 
@@ -156,7 +156,7 @@ class EnlistmentWindowController extends BaseController
         }
 
         $academicYear = AcademicYearModel::format($ay['label'], $ay['semester']);
-        $programName  = DepartmentModel::programNameById($programId);
+        $programName  = CollegeModel::programNameById($programId);
 
         if ($programName === null) {
             return redirect()->back()->with('errors', ['Unknown program.']);
@@ -253,7 +253,7 @@ class EnlistmentWindowController extends BaseController
         }
 
         $academicYear = AcademicYearModel::format($ay['label'], $ay['semester']);
-        $programName  = DepartmentModel::programNameById($programId);
+        $programName  = CollegeModel::programNameById($programId);
 
         $offeredCodes = array_column(
             db_connect()->table('plotted_schedules')
@@ -372,7 +372,7 @@ class EnlistmentWindowController extends BaseController
 
         $rows = db_connect()->table('programs')
             ->select('program_id, program_code, program_name')
-            ->whereIn('sub_department_id', $subDeptIds)
+            ->whereIn('department_id', $subDeptIds)
             ->where('is_active', 1)
             ->orderBy('program_name')
             ->get()

@@ -103,7 +103,7 @@ class CurriculumSubjectController extends BaseController
         $termSubjects = db_connect()->table('curriculum_subjects cs')
             ->select('cs.curriculum_subject_id, cs.is_required, cs.is_laboratory AS assignment_is_laboratory, s.subject_id, s.subject_code, s.subject_name, s.units, s.is_laboratory AS default_is_laboratory, sd.name AS owner_dept_name')
             ->join('subjects s', 's.subject_id = cs.subject_id')
-            ->join('sub_departments sd', 'sd.sub_dept_id = s.sub_department_id', 'left')
+            ->join('departments sd', 'sd.dept_id = s.department_id', 'left')
             ->where('cs.curriculum_id', $curriculum['curriculum_id'])
             ->where('cs.year_level', $yearLevel)
             ->where('cs.semester', (int) $semester)
@@ -135,7 +135,7 @@ class CurriculumSubjectController extends BaseController
 
         $rows = db_connect()->table('subjects s')
             ->select('s.subject_id, s.subject_code, s.subject_name, s.units, s.is_laboratory, sd.name AS owner_dept_name')
-            ->join('sub_departments sd', 'sd.sub_dept_id = s.sub_department_id', 'left')
+            ->join('departments sd', 'sd.dept_id = s.department_id', 'left')
             ->where('s.is_active', 1)
             ->groupStart()
                 ->like('s.subject_code', $query)

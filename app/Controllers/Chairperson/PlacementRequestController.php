@@ -6,7 +6,7 @@ use App\Controllers\BaseController;
 use App\Libraries\SchedulingAuthorization;
 use App\Models\NotificationModel;
 use App\Models\OfferingPlacementRequestModel;
-use App\Models\SubDepartmentSchedulerModel;
+use App\Models\DepartmentSchedulerModel;
 
 /**
  * The shared-subject request/placement workflow (see the SIS shared-subject
@@ -45,8 +45,8 @@ class PlacementRequestController extends BaseController
             ->select('opr.*, s.subject_code, s.subject_name, sec.program AS section_program, sec.year_level AS section_year_level, sec.section AS section_label, sd.name AS requesting_dept_name')
             ->join('subjects s', 's.subject_id = opr.subject_id', 'left')
             ->join('sections sec', 'sec.section_id = opr.section_id', 'left')
-            ->join('sub_departments sd', 'sd.sub_dept_id = opr.requesting_sub_dept_id', 'left')
-            ->whereIn('s.sub_department_id', $manageableSubDeptIds)
+            ->join('departments sd', 'sd.dept_id = opr.requesting_department_id', 'left')
+            ->whereIn('s.department_id', $manageableSubDeptIds)
             ->where('opr.status', 'pending')
             ->orderBy('opr.created_at', 'ASC')
             ->get()
@@ -195,14 +195,14 @@ class PlacementRequestController extends BaseController
      */
     private function notifyOwningSchedulers(int $subjectId, string $message, string $type): void
     {
-        $subject   = db_connect()->table('subjects')->select('sub_department_id')->where('subject_id', $subjectId)->get()->getRowArray();
-        $subDeptId = $subject['sub_department_id'] ?? null;
+        $subject   = db_connect()->table('subjects')->select('department_id')->where('subject_id', $subjectId)->get()->getRowArray();
+        $subDeptId = $subject['department_id'] ?? null;
 
         if ($subDeptId === null) {
             return;
         }
 
-        $delegatedIds = array_column((new SubDepartmentSchedulerModel())->where('sub_dept_id', $subDeptId)->findAll(), 'user_id');
+        $delegatedIds = array_column((new DepartmentSchedulerModel())->where('department_id', $subDeptId)->findAll(), 'user_id');
 
         $chairpersonIds = array_column(
             db_connect()->table('users u')

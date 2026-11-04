@@ -4,7 +4,7 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Models\AcademicYearModel;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\ProgramModel;
 use App\Models\RoomModel;
 
@@ -14,12 +14,12 @@ class AdminController extends BaseController
     {
         $db = db_connect();
 
-        $departmentModel = new DepartmentModel();
-        $programModel    = new ProgramModel();
-        $roomModel       = new RoomModel();
-        $ayModel         = new AcademicYearModel();
+        $collegeModel = new CollegeModel();
+        $programModel = new ProgramModel();
+        $roomModel    = new RoomModel();
+        $ayModel      = new AcademicYearModel();
 
-        $departments = $departmentModel->findAll();
+        $departments = $collegeModel->findAll();
 
         $chairedDeptIds = $db->table('users u')
             ->select('u.department_id')
@@ -90,7 +90,7 @@ class AdminController extends BaseController
     {
         $items = [];
 
-        foreach ($db->table('departments')->orderBy('created_at', 'desc')->limit(5)->get()->getResultArray() as $row) {
+        foreach ($db->table('colleges')->orderBy('created_at', 'desc')->limit(5)->get()->getResultArray() as $row) {
             $items[] = [
                 'icon'    => 'account_balance',
                 'title'   => 'Department Created',
@@ -99,7 +99,7 @@ class AdminController extends BaseController
             ];
         }
 
-        foreach ($db->table('sub_departments')->orderBy('created_at', 'desc')->limit(5)->get()->getResultArray() as $row) {
+        foreach ($db->table('departments')->orderBy('created_at', 'desc')->limit(5)->get()->getResultArray() as $row) {
             $items[] = [
                 'icon'    => 'hub',
                 'title'   => 'Department Added',

@@ -22,7 +22,7 @@ class SubjectController extends BaseController
     {
         $subjects = db_connect()->table('subjects s')
             ->select('s.*, sd.name AS owner_dept_name')
-            ->join('sub_departments sd', 'sd.sub_dept_id = s.sub_department_id', 'left')
+            ->join('departments sd', 'sd.dept_id = s.department_id', 'left')
             ->orderBy('s.subject_code')
             ->get()
             ->getResultArray();
@@ -46,9 +46,9 @@ class SubjectController extends BaseController
     private function subDepartments(): array
     {
         return array_column(
-            db_connect()->table('sub_departments')->select('sub_dept_id, name')->orderBy('name')->get()->getResultArray(),
+            db_connect()->table('departments')->select('dept_id, name')->orderBy('name')->get()->getResultArray(),
             'name',
-            'sub_dept_id'
+            'dept_id'
         );
     }
 
@@ -83,7 +83,7 @@ class SubjectController extends BaseController
             'laboratory_units'  => $this->request->getPost('laboratory_units') ?: null,
             'meetings_per_week' => $this->request->getPost('meetings_per_week') ?: null,
             'description'       => $this->request->getPost('description'),
-            'sub_department_id' => $this->request->getPost('sub_department_id') ?: null,
+            'department_id'     => $this->request->getPost('sub_department_id') ?: null,
         ]);
 
         return redirect()
@@ -194,7 +194,7 @@ class SubjectController extends BaseController
             'laboratory_units'  => $this->request->getPost('laboratory_units') ?: null,
             'meetings_per_week' => $this->request->getPost('meetings_per_week') ?: null,
             'description'       => $this->request->getPost('description'),
-            'sub_department_id' => $this->request->getPost('sub_department_id') ?: null,
+            'department_id'     => $this->request->getPost('sub_department_id') ?: null,
         ]);
 
         return redirect()
@@ -205,7 +205,7 @@ class SubjectController extends BaseController
     /**
      * Quick owner reassignment straight from the list — same field the
      * Chairperson Subject Ownership page reads/writes
-     * (subjects.sub_department_id), so a change here is visible there
+     * (subjects.department_id), so a change here is visible there
      * immediately, and a subject a chairperson added shows up here the same
      * way (both sides read the one `subjects` table — nothing to sync).
      */
@@ -218,7 +218,7 @@ class SubjectController extends BaseController
         }
 
         $this->subjectModel->update($id, [
-            'sub_department_id' => $this->request->getPost('sub_department_id') ?: null,
+            'department_id' => $this->request->getPost('sub_department_id') ?: null,
         ]);
 
         if ($this->request->isAJAX()) {

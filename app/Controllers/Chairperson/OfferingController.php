@@ -51,7 +51,7 @@ class OfferingController extends BaseController
             ]);
         }
 
-        $deptRows  = db_connect()->table('sub_departments')->whereIn('sub_dept_id', $subDeptIds)->orderBy('name')->get()->getResultArray();
+        $deptRows  = db_connect()->table('departments')->whereIn('dept_id', $subDeptIds)->orderBy('name')->get()->getResultArray();
         $deptNames = array_column($deptRows, 'name');
 
         $sectionModel = new SectionModel();
@@ -155,8 +155,8 @@ class OfferingController extends BaseController
             $offering['owner_dept_name'] = null;
 
             if (! $offering['can_manage'] && $offering['subject_id'] !== null) {
-                $ownerSubDeptId = db_connect()->table('subjects')->select('sub_department_id')->where('subject_id', $offering['subject_id'])->get()->getRowArray()['sub_department_id'] ?? null;
-                $offering['owner_dept_name'] = $ownerSubDeptId === null ? null : (db_connect()->table('sub_departments')->select('name')->where('sub_dept_id', $ownerSubDeptId)->get()->getRowArray()['name'] ?? null);
+                $ownerSubDeptId = db_connect()->table('subjects')->select('department_id')->where('subject_id', $offering['subject_id'])->get()->getRowArray()['department_id'] ?? null;
+                $offering['owner_dept_name'] = $ownerSubDeptId === null ? null : (db_connect()->table('departments')->select('name')->where('dept_id', $ownerSubDeptId)->get()->getRowArray()['name'] ?? null);
             }
 
             $offerings[] = $offering;
@@ -204,7 +204,7 @@ class OfferingController extends BaseController
 
         $ownedSubjects = db_connect()->table('subjects')
             ->select('subject_id, subject_code, subject_name')
-            ->whereIn('sub_department_id', $subDeptIds)
+            ->whereIn('department_id', $subDeptIds)
             ->where('is_active', 1)
             ->orderBy('subject_code')
             ->get()

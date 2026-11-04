@@ -4,9 +4,9 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Models\AuditLogModel;
+use App\Models\CollegeModel;
 use App\Models\DepartmentModel;
 use App\Models\ProgramModel;
-use App\Models\SubDepartmentModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class ProgramController extends BaseController
@@ -31,7 +31,7 @@ class ProgramController extends BaseController
     {
         return view('admin/programs/create', [
             'activeAdmin'   => 'programs',
-            'departments'   => (new SubDepartmentModel())->orderBy('name')->findAll(),
+            'departments'   => (new DepartmentModel())->orderBy('name')->findAll(),
         ]);
     }
 
@@ -60,22 +60,22 @@ class ProgramController extends BaseController
 
         $subDeptId = (int) $this->request->getPost('sub_department_id');
 
-        if ((new SubDepartmentModel())->find($subDeptId) === null) {
+        if ((new DepartmentModel())->find($subDeptId) === null) {
             return redirect()->back()->withInput()->with('errors', ['sub_department_id' => 'Department not found.']);
         }
 
         $name = trim($this->request->getPost('program_name'));
-        $nameTaken = $this->programModel->where('sub_department_id', $subDeptId)->where('program_name', $name)->countAllResults() > 0;
+        $nameTaken = $this->programModel->where('department_id', $subDeptId)->where('program_name', $name)->countAllResults() > 0;
 
         if ($nameTaken) {
             return redirect()->back()->withInput()->with('errors', ['program_name' => "A Program named \"{$name}\" already exists in this Department."]);
         }
 
         $this->programModel->insert([
-            'program_code'      => strtoupper($this->request->getPost('program_code')),
-            'program_name'      => $name,
-            'description'       => $this->request->getPost('description'),
-            'sub_department_id' => $subDeptId,
+            'program_code'  => strtoupper($this->request->getPost('program_code')),
+            'program_name'  => $name,
+            'description'   => $this->request->getPost('description'),
+            'department_id' => $subDeptId,
         ]);
 
         return redirect()
@@ -149,7 +149,7 @@ class ProgramController extends BaseController
 
     /**
      * This program editor is reachable both from the standalone Programs
-     * list and from a department's detail page (Admin\SubDepartmentController
+     * list and from a department's detail page (Admin\DepartmentController
      * — the "Programs" panel on a department shows the same edit/toggle
      * actions). A `return` field (carried through edit()'s view and
      * toggleStatus()'s form) sends the admin back to whichever one they came
@@ -233,20 +233,20 @@ class ProgramController extends BaseController
         }
 
         $targetSubDeptId = (int) $this->request->getPost('sub_department_id');
-        $targetDept       = (new SubDepartmentModel())->find($targetSubDeptId);
+        $targetDept       = (new DepartmentModel())->find($targetSubDeptId);
 
         if (! $targetDept) {
             return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => 'Department not found.']);
         }
 
-        $currentDept = $program['sub_department_id'] !== null ? (new SubDepartmentModel())->find((int) $program['sub_department_id']) : null;
+        $currentDept = $program['department_id'] !== null ? (new DepartmentModel())->find((int) $program['department_id']) : null;
 
         return $this->response->setJSON([
             'ok'              => true,
             'from'            => $currentDept['name'] ?? '— (unassigned)',
             'to'              => $targetDept['name'],
-            'same_as_current' => $targetSubDeptId === (int) ($program['sub_department_id'] ?? 0),
-            'affected'        => (new DepartmentModel())->programTransferImpact((int) $id),
+            'same_as_current' => $targetSubDeptId === (int) ($program['department_id'] ?? 0),
+            'affected'        => (new CollegeModel())->programTransferImpact((int) $id),
         ]);
     }
 
@@ -268,7 +268,7 @@ class ProgramController extends BaseController
         }
 
         $targetSubDeptId = (int) $this->request->getPost('sub_department_id');
-        $targetDept       = (new SubDepartmentModel())->find($targetSubDeptId);
+        $targetDept       = (new DepartmentModel())->find($targetSubDeptId);
         $reason           = trim((string) $this->request->getPost('reason'));
 
         if (! $targetDept) {
@@ -279,13 +279,13 @@ class ProgramController extends BaseController
             return redirect()->back()->withInput()->with('errors', ['reason' => 'A reason is required for a transfer.']);
         }
 
-        $oldSubDeptId = $program['sub_department_id'] !== null ? (int) $program['sub_department_id'] : null;
+        $oldSubDeptId = $program['department_id'] !== null ? (int) $program['department_id'] : null;
 
         if ($targetSubDeptId === $oldSubDeptId) {
             return redirect()->to($this->returnUrl())->with('message', "{$program['program_name']} is already under {$targetDept['name']}.");
         }
 
-        $this->programModel->update($id, ['sub_department_id' => $targetSubDeptId]);
+        $this->programModel->update($id, ['department_id' => $targetSubDeptId]);
 
         (new AuditLogModel())->record(
             'program.transferred',

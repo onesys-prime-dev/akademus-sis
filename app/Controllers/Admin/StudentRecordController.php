@@ -6,7 +6,7 @@ use App\Controllers\BaseController;
 use App\Libraries\RegistrarPortal;
 use App\Models\AcademicYearModel;
 use App\Models\AuditLogModel;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\EnrollmentModel;
 use App\Models\GeneratedDocumentModel;
 use App\Models\GraduationClearanceModel;
@@ -92,7 +92,7 @@ class StudentRecordController extends BaseController
         // Classes the registrar can enroll this student into: what is
         // plotted this active term for the student's program.
         $activeYear   = (new AcademicYearModel())->activeFormatted();
-        $programName  = empty($student['program_id']) ? null : DepartmentModel::programNameById((int) $student['program_id']);
+        $programName  = empty($student['program_id']) ? null : CollegeModel::programNameById((int) $student['program_id']);
         $classOptions = ($activeYear === null || $programName === null)
             ? []
             : (new EnrollmentModel())->classOptions($programName, $activeYear);

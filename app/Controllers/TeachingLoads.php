@@ -5,7 +5,7 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use App\Libraries\ScheduleOverlap;
 use App\Models\AcademicYearModel;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\FacultyDepartmentModel;
 use App\Models\FacultyChangeRequestModel;
@@ -46,7 +46,7 @@ class TeachingLoads extends BaseController
         $userId = (int) auth()->id();
         $state  = $this->buildState($userId);
 
-        $dept = (new DepartmentModel())->codeOfUser($userId);
+        $dept = (new CollegeModel())->codeOfUser($userId);
 
         $data = [
             'user' => [
@@ -275,11 +275,11 @@ class TeachingLoads extends BaseController
     {
         $subject = (new SubjectModel())->where('subject_code', $subjectCode)->first();
 
-        if ($subject === null || $subject['sub_department_id'] === null) {
+        if ($subject === null || $subject['department_id'] === null) {
             return;
         }
 
-        $subDeptId = (int) $subject['sub_department_id'];
+        $subDeptId = (int) $subject['department_id'];
 
         $primary = db_connect()->table('users u')
             ->select('u.id')
@@ -289,9 +289,9 @@ class TeachingLoads extends BaseController
             ->get()
             ->getResultArray();
 
-        $delegated = db_connect()->table('sub_department_schedulers')
+        $delegated = db_connect()->table('department_schedulers')
             ->select('user_id')
-            ->where('sub_dept_id', $subDeptId)
+            ->where('department_id', $subDeptId)
             ->get()
             ->getResultArray();
 
@@ -342,7 +342,7 @@ class TeachingLoads extends BaseController
         // belonging to departments they have no affiliation with at all.
         $deptIds = (new FacultyDepartmentModel())->activeDepartmentIdsForFaculty($userId);
 
-        $subjectDeptByCode = array_column((new SubjectModel())->findAll(), 'sub_department_id', 'subject_code');
+        $subjectDeptByCode = array_column((new SubjectModel())->findAll(), 'department_id', 'subject_code');
 
         // No department affiliation at all: nothing to scope against —
         // show nothing rather than leaking every department's loads.

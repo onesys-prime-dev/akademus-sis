@@ -129,38 +129,79 @@ $routes->group('admin', ['filter' => 'group:admin'], function ($routes) use ($st
     $routes->post('curriculum-subjects/subject/(:num)/remove'        , 'Admin\CurriculumSubjectController::removeSubject/$1');
     $routes->post('curriculum-subjects/subject/(:num)/classification', 'Admin\CurriculumSubjectController::updateClassification/$1');
 
-    // departments (colleges, dean-headed)
-    $routes->get('departments'                        , 'Admin\DepartmentController::index');
-    $routes->post('departments/store'                 , 'Admin\DepartmentController::store');
-    $routes->get('departments/(:num)'                 , 'Admin\DepartmentController::show/$1');
-    $routes->post('departments/(:num)/update'         , 'Admin\DepartmentController::update/$1');
-    $routes->post('departments/(:num)/sub-departments', 'Admin\DepartmentController::storeSubDepartment/$1');
-    $routes->post('departments/store-dean/(:num)'     , 'Admin\DepartmentController::storeDean/$1');
-    $routes->post('departments/(:num)/dean/(:num)/remove', 'Admin\DepartmentController::removeDean/$1/$2');
-    $routes->post('departments/(:num)/delete'         , 'Admin\DepartmentController::delete/$1');
+    // colleges (dean-headed)
+    $routes->get('colleges'                        , 'Admin\CollegeController::index');
+    $routes->post('colleges/store'                 , 'Admin\CollegeController::store');
+    $routes->get('colleges/(:num)'                 , 'Admin\CollegeController::show/$1');
+    $routes->post('colleges/(:num)/update'         , 'Admin\CollegeController::update/$1');
+    $routes->post('colleges/(:num)/departments'    , 'Admin\CollegeController::storeSubDepartment/$1');
+    $routes->post('colleges/store-dean/(:num)'     , 'Admin\CollegeController::storeDean/$1');
+    $routes->post('colleges/(:num)/dean/(:num)/remove', 'Admin\CollegeController::removeDean/$1/$2');
+    $routes->post('colleges/(:num)/delete'         , 'Admin\CollegeController::delete/$1');
 
-    // sub-departments (departments, chairperson-headed, nested under a college)
-    $routes->get('sub-departments/(:num)'              , 'Admin\SubDepartmentController::show/$1');
-    $routes->post('sub-departments/(:num)/update'      , 'Admin\SubDepartmentController::update/$1');
-    $routes->post('sub-departments/(:num)/store-chair' , 'Admin\SubDepartmentController::storeChair/$1');
-    $routes->post('sub-departments/(:num)/chair/(:num)/remove', 'Admin\SubDepartmentController::removeChair/$1/$2');
-    $routes->post('sub-departments/(:num)/transfer/preview', 'Admin\SubDepartmentController::transferPreview/$1');
-    $routes->post('sub-departments/(:num)/transfer'    , 'Admin\SubDepartmentController::transfer/$1');
-    $routes->post('sub-departments/(:num)/programs'    , 'Admin\SubDepartmentController::addProgram/$1');
-    $routes->post('sub-departments/(:num)/toggle-status', 'Admin\SubDepartmentController::toggleStatus/$1');
-    $routes->post('sub-departments/(:num)/delete'      , 'Admin\SubDepartmentController::delete/$1');
+    // departments (chairperson-headed, nested under a college)
+    $routes->get('departments/(:num)'              , 'Admin\DepartmentController::show/$1');
+    $routes->post('departments/(:num)/update'      , 'Admin\DepartmentController::update/$1');
+    $routes->post('departments/(:num)/store-chair' , 'Admin\DepartmentController::storeChair/$1');
+    $routes->post('departments/(:num)/chair/(:num)/remove', 'Admin\DepartmentController::removeChair/$1/$2');
+    $routes->post('departments/(:num)/transfer/preview', 'Admin\DepartmentController::transferPreview/$1');
+    $routes->post('departments/(:num)/transfer'    , 'Admin\DepartmentController::transfer/$1');
+    $routes->post('departments/(:num)/programs'    , 'Admin\DepartmentController::addProgram/$1');
+    $routes->post('departments/(:num)/toggle-status', 'Admin\DepartmentController::toggleStatus/$1');
+    $routes->post('departments/(:num)/delete'      , 'Admin\DepartmentController::delete/$1');
 
     // faculty members (teaching staff) within a department
-    $routes->post('sub-departments/(:num)/faculty'                       , 'Admin\SubDepartmentController::addFaculty/$1');
-    $routes->post('sub-departments/(:num)/faculty/(:num)/update'         , 'Admin\SubDepartmentController::updateFaculty/$1/$2');
-    $routes->post('sub-departments/(:num)/faculty/(:num)/toggle-status'  , 'Admin\SubDepartmentController::toggleFacultyStatus/$1/$2');
-    $routes->post('sub-departments/(:num)/faculty/(:num)/delete'         , 'Admin\SubDepartmentController::deleteFaculty/$1/$2');
+    $routes->post('departments/(:num)/faculty'                       , 'Admin\DepartmentController::addFaculty/$1');
+    $routes->post('departments/(:num)/faculty/(:num)/update'         , 'Admin\DepartmentController::updateFaculty/$1/$2');
+    $routes->post('departments/(:num)/faculty/(:num)/toggle-status'  , 'Admin\DepartmentController::toggleFacultyStatus/$1/$2');
+    $routes->post('departments/(:num)/faculty/(:num)/delete'         , 'Admin\DepartmentController::deleteFaculty/$1/$2');
 
     // faculty <-> department affiliations (many-to-many; a faculty member may
     // be affiliated with departments beyond their primary/home one)
-    $routes->post('sub-departments/(:num)/faculty/(:num)/affiliations/add'         , 'Admin\SubDepartmentController::addAffiliation/$1/$2');
-    $routes->post('sub-departments/(:num)/faculty/(:num)/affiliations/remove'      , 'Admin\SubDepartmentController::removeAffiliation/$1/$2');
-    $routes->post('sub-departments/(:num)/faculty/(:num)/affiliations/set-primary' , 'Admin\SubDepartmentController::setPrimaryAffiliation/$1/$2');
+    $routes->post('departments/(:num)/faculty/(:num)/affiliations/add'         , 'Admin\DepartmentController::addAffiliation/$1/$2');
+    $routes->post('departments/(:num)/faculty/(:num)/affiliations/remove'      , 'Admin\DepartmentController::removeAffiliation/$1/$2');
+    $routes->post('departments/(:num)/faculty/(:num)/affiliations/set-primary' , 'Admin\DepartmentController::setPrimaryAffiliation/$1/$2');
+
+    // --- Aliases for old pre-rename URLs (bookmarked/scripted admin workflows) ---
+    //
+    // NOTE on 3 unaliasable old paths: old "departments/(:num)" (GET show),
+    // "departments/(:num)/update" (POST) and "departments/(:num)/delete"
+    // (POST) meant College::show/update/delete. Those exact same
+    // path+verb combinations are also the new canonical Department
+    // routes above (Department::show/update/delete), so they cannot both
+    // be registered — CI4 routing is first-match-wins on (path, verb).
+    // The new canonical "departments/(:num)" meaning wins deliberately
+    // (it's the going-forward namespace Task 6+ builds on); an old
+    // bookmark to e.g. GET /admin/departments/5 will now show/update/
+    // delete DEPARTMENT 5, not COLLEGE 5. Any old link to a College's
+    // show/update/delete action must be updated to /admin/colleges/{id}
+    // — every other old path (index/store/sub-departments/store-dean/
+    // dean-remove) has no such collision and is aliased below.
+    $routes->get('departments'                        , 'Admin\CollegeController::index');
+    $routes->post('departments/store'                 , 'Admin\CollegeController::store');
+    $routes->post('departments/(:num)/sub-departments', 'Admin\CollegeController::storeSubDepartment/$1');
+    $routes->post('departments/store-dean/(:num)'     , 'Admin\CollegeController::storeDean/$1');
+    $routes->post('departments/(:num)/dean/(:num)/remove', 'Admin\CollegeController::removeDean/$1/$2');
+
+    // old "sub-departments" meant today's "departments"
+    $routes->get('sub-departments/(:num)'              , 'Admin\DepartmentController::show/$1');
+    $routes->post('sub-departments/(:num)/update'      , 'Admin\DepartmentController::update/$1');
+    $routes->post('sub-departments/(:num)/store-chair' , 'Admin\DepartmentController::storeChair/$1');
+    $routes->post('sub-departments/(:num)/chair/(:num)/remove', 'Admin\DepartmentController::removeChair/$1/$2');
+    $routes->post('sub-departments/(:num)/transfer/preview', 'Admin\DepartmentController::transferPreview/$1');
+    $routes->post('sub-departments/(:num)/transfer'    , 'Admin\DepartmentController::transfer/$1');
+    $routes->post('sub-departments/(:num)/programs'    , 'Admin\DepartmentController::addProgram/$1');
+    $routes->post('sub-departments/(:num)/toggle-status', 'Admin\DepartmentController::toggleStatus/$1');
+    $routes->post('sub-departments/(:num)/delete'      , 'Admin\DepartmentController::delete/$1');
+
+    $routes->post('sub-departments/(:num)/faculty'                       , 'Admin\DepartmentController::addFaculty/$1');
+    $routes->post('sub-departments/(:num)/faculty/(:num)/update'         , 'Admin\DepartmentController::updateFaculty/$1/$2');
+    $routes->post('sub-departments/(:num)/faculty/(:num)/toggle-status'  , 'Admin\DepartmentController::toggleFacultyStatus/$1/$2');
+    $routes->post('sub-departments/(:num)/faculty/(:num)/delete'         , 'Admin\DepartmentController::deleteFaculty/$1/$2');
+
+    $routes->post('sub-departments/(:num)/faculty/(:num)/affiliations/add'         , 'Admin\DepartmentController::addAffiliation/$1/$2');
+    $routes->post('sub-departments/(:num)/faculty/(:num)/affiliations/remove'      , 'Admin\DepartmentController::removeAffiliation/$1/$2');
+    $routes->post('sub-departments/(:num)/faculty/(:num)/affiliations/set-primary' , 'Admin\DepartmentController::setPrimaryAffiliation/$1/$2');
 
     // rooms
     $routes->get('rooms'                    , 'Admin\RoomController::index');

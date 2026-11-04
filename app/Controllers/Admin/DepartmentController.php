@@ -3,13 +3,15 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Models\AuditLogModel;
+use App\Models\CollegeModel;
 use App\Models\DepartmentModel;
-use App\Models\SubDepartmentModel;
+use App\Models\FacultyDepartmentModel;
+use App\Models\ProgramModel;
 use CodeIgniter\Shield\Entities\User;
 
 /**
- * Colleges (dean-headed). Departments (chairperson-headed) nest under a
- * college — see Admin\SubDepartmentController.
+ * Departments (chairperson-headed), nested under a College (dean-headed).
  */
 class DepartmentController extends BaseController
 {
@@ -20,96 +22,164 @@ class DepartmentController extends BaseController
         $this->departmentModel = new DepartmentModel();
     }
 
-    public function index()
-    {
-        $departments = $this->departmentModel->findAll();
-        $db          = db_connect();
-
-        foreach ($departments as &$dept) {
-            $dept['dean']         = $this->deanOf($dept['dept_id']);
-            $dept['dept_count']   = $db->table('sub_departments')->where('college_id', $dept['dept_id'])->countAllResults();
-            $dept['faculty_count'] = $this->countInGroup($dept['dept_id'], 'faculty');
-        }
-        unset($dept);
-
-        return view('admin/departments/index', [
-            'pageTitle'   => 'Colleges',
-            'activeAdmin' => 'departments',
-            'departments' => $departments,
-        ]);
-    }
-
     public function show($id)
     {
-        $college = $this->departmentModel->find($id);
+        $department = $this->departmentModel->find($id);
 
-        if (! $college) {
+        if (! $department) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
-        $college['dean'] = $this->deanOf($id);
+        $college = (new CollegeModel())->find($department['college_id']);
+        $department['chair']  = $this->chairOf($id);
+        $department['chairs'] = $this->allChairsOf($id);
 
-        $subDepartments = (new SubDepartmentModel())
-            ->where('college_id', $id)
-            ->orderBy('name')
+        $programs = (new ProgramModel())
+            ->where('department_id', $id)
+            ->orderBy('program_name')
             ->findAll();
 
-        $db = db_connect();
+        $colleges = (new CollegeModel())->orderBy('name')->findAll();
+        $facultyMembers = $this->facultyMembersOf($id);
 
-        foreach ($subDepartments as &$dept) {
-            $dept['chair']         = $this->chairOf($dept['sub_dept_id']);
-            $dept['faculty_count'] = $this->countInGroupBySubDept($dept['sub_dept_id'], 'faculty');
-            $dept['program_count'] = $db->table('programs')->where('sub_department_id', $dept['sub_dept_id'])->countAllResults();
-        }
-        unset($dept);
+        $allDepartments = $this->departmentModel->orderBy('name')->findAll();
 
-        return view('admin/departments/show', [
-            'pageTitle'      => $college['name'],
+        return view('admin/sub_departments/show', [
+            'pageTitle'      => $department['name'],
             'activeAdmin'    => 'departments',
             'college'        => $college,
-            'subDepartments' => $subDepartments,
-            'facultyCount'   => $this->countInGroup($id, 'faculty'),
+            'department'     => $department,
+            'programs'       => $programs,
+            'colleges'       => $colleges,
+            'allDepartments' => $allDepartments,
+            'facultyMembers' => $facultyMembers,
+            // Affiliated count (primary + secondary), matching the list
+            // below it — previously this was a separate primary-only query,
+            // which would have silently disagreed with the roster once
+            // secondary affiliations existed.
+            'facultyCount'   => count($facultyMembers),
             'studentCount'   => $this->countInGroup($id, 'student'),
+            'staffCandidates' => $this->staffCandidates((int) $id),
         ]);
     }
 
-    public function store()
+    /**
+     * Staff accounts that can be granted a department-level role — active,
+     * non-deleted users in the `faculty` or `chairperson` group.
+     *
+     * Deliberately NOT "every account" any more: the Assign Chairperson and
+     * Add Faculty pickers used to list every student in the SIS, burying the
+     * handful of real candidates under hundreds of rows. Students, admins and
+     * registrars are never eligible for either role, so they're excluded at
+     * the source (not merely hidden in the browser).
+     *
+     * Each row also carries what a useful picker needs: the roles they
+     * already hold, which departments they chair, and whether that includes
+     * THIS department — so the current chair can be labeled instead of
+     * silently offered as a no-op.
+     *
+     * @return list<array{id:int, username:string, email:?string, roles:list<string>, chair_of:list<string>, is_current:bool, is_chairperson:bool, tone:int}>
+     */
+    private function staffCandidates(int $subDeptId): array
     {
-        $rules = [
-            'code' => 'required|max_length[10]|is_unique[departments.code]',
-            'name' => 'required|max_length[100]',
-        ];
+        $db = db_connect();
 
-        if (! $this->validate($rules)) {
-            return redirect()
-                ->back()
-                ->withInput()
-                ->with('errors', $this->validator->getErrors());
+        $rows = $db->table('users u')
+            ->select('u.id, u.username, i.secret AS email')
+            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->whereIn('g.group', ['faculty', 'chairperson'])
+            ->where('u.deleted_at', null)
+            ->where('u.active', 1)
+            ->distinct()
+            ->orderBy('u.username', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        if ($rows === []) {
+            return [];
         }
 
-        $this->departmentModel->insert([
-            'code' => strtoupper($this->request->getPost('code')),
-            'name' => $this->request->getPost('name'),
-        ]);
+        $ids = array_map(static fn (array $r): int => (int) $r['id'], $rows);
 
-        return redirect()
-            ->to('/admin/departments')
-            ->with('message', 'College created successfully.');
+        $rolesByUser = [];
+
+        foreach ($db->table('auth_groups_users')->select('user_id, `group`')->whereIn('user_id', $ids)->get()->getResultArray() as $g) {
+            $rolesByUser[(int) $g['user_id']][] = (string) $g['group'];
+        }
+
+        // Every department each candidate currently chairs: the primary one
+        // stored on users.sub_department_id, plus any delegated through
+        // department_schedulers (one person may chair more than one).
+        $chairsByUser = [];
+
+        $primary = $db->table('users u')
+            ->select('u.id, sd.dept_id, sd.name')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->join('departments sd', 'sd.dept_id = u.sub_department_id')
+            ->where('g.group', 'chairperson')
+            ->whereIn('u.id', $ids)
+            ->get()
+            ->getResultArray();
+
+        $delegated = $db->table('department_schedulers sds')
+            ->select('sds.user_id, sd.dept_id, sd.name')
+            ->join('departments sd', 'sd.dept_id = sds.department_id')
+            ->whereIn('sds.user_id', $ids)
+            ->get()
+            ->getResultArray();
+
+        foreach (array_merge($primary, $delegated) as $row) {
+            $userId = (int) ($row['id'] ?? $row['user_id']);
+            $chairsByUser[$userId][(int) $row['dept_id']] = (string) $row['name'];
+        }
+
+        $candidates = [];
+
+        foreach ($rows as $row) {
+            $userId     = (int) $row['id'];
+            $roles      = array_values(array_unique($rolesByUser[$userId] ?? []));
+            $chairs     = $chairsByUser[$userId] ?? [];
+            $isChair    = in_array('chairperson', $roles, true) || $chairs !== [];
+
+            $candidates[] = [
+                'id'             => $userId,
+                'username'       => (string) $row['username'],
+                'email'          => $row['email'] !== null ? (string) $row['email'] : null,
+                'roles'          => $roles,
+                'chair_of'       => array_values($chairs),
+                'is_current'     => array_key_exists($subDeptId, $chairs),
+                'is_chairperson' => $isChair,
+                // Deterministic avatar tone — restrained colour variety
+                // without a per-user preference to configure or maintain.
+                'tone'           => (crc32((string) $row['username']) % 6) + 1,
+            ];
+        }
+
+        // Chairpersons first (a reassignment is almost always to someone who
+        // already holds the role), then everyone alphabetically.
+        usort($candidates, static function (array $a, array $b): int {
+            if ($a['is_chairperson'] !== $b['is_chairperson']) {
+                return $a['is_chairperson'] ? -1 : 1;
+            }
+
+            return strcasecmp($a['username'], $b['username']);
+        });
+
+        return $candidates;
     }
 
     public function update($id)
     {
-        $college = $this->departmentModel->find($id);
+        $department = $this->departmentModel->find($id);
 
-        if (! $college) {
+        if (! $department) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
         $rules = [
-            'code'             => "required|max_length[10]|is_unique[departments.code,dept_id,{$id}]",
-            'name'             => 'required|max_length[100]',
-            'location'         => 'permit_empty|max_length[150]',
-            'established_year' => 'permit_empty|integer',
+            'code' => 'required|max_length[20]',
+            'name' => 'required|max_length[150]',
         ];
 
         if (! $this->validate($rules)) {
@@ -120,28 +190,39 @@ class DepartmentController extends BaseController
         }
 
         $this->departmentModel->update($id, [
-            'code'             => strtoupper($this->request->getPost('code')),
-            'name'             => $this->request->getPost('name'),
-            'location'         => $this->request->getPost('location') ?: null,
-            'established_year' => $this->request->getPost('established_year') ?: null,
+            'code' => strtoupper($this->request->getPost('code')),
+            'name' => $this->request->getPost('name'),
         ]);
 
         return redirect()
             ->to("/admin/departments/{$id}")
-            ->with('message', 'College details updated.');
+            ->with('message', 'Department details updated.');
     }
 
-    public function storeDean($id)
+    public function storeChair($id)
     {
-        $college = $this->departmentModel->find($id);
+        $department = $this->departmentModel->find($id);
 
-        if (! $college) {
+        if (! $department) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $mode           = (string) ($this->request->getPost('chair_mode') ?? '');
+        $existingUserId = (int) ($this->request->getPost('existing_user_id') ?? 0);
+
+        // A real "new" mode must win even if the form still carries a stale
+        // existing_user_id (switching modes after picking someone used to
+        // silently reassign that person instead of creating the account).
+        // The no-mode fallback remains for legacy callers that only post an
+        // id, e.g. the users page's retargeted create form.
+        if ($mode === 'existing' || ($mode === '' && $existingUserId > 0)) {
+            return $this->assignExistingChair($id, $department, $existingUserId);
         }
 
         $rules = [
             'username' => 'required|max_length[100]',
             'email'    => 'required|valid_email',
+            'password' => 'permit_empty|min_length[8]',
         ];
 
         if (! $this->validate($rules)) {
@@ -174,7 +255,10 @@ class DepartmentController extends BaseController
             $user = $existing;
             $user->username = $username;
         } else {
-            $tempPassword = bin2hex(random_bytes(6));
+            // Same optional-password pattern as UserController::store() —
+            // an admin may set one explicitly, or leave it blank to
+            // auto-generate.
+            $tempPassword = (string) $this->request->getPost('password') ?: bin2hex(random_bytes(6));
             $user = new User([
                 'username' => $username,
                 'email'    => $email,
@@ -185,20 +269,35 @@ class DepartmentController extends BaseController
         $users->save($user);
         $user = $users->findById($existing ? $existing->id : $users->getInsertID());
 
-        if (! $user->inGroup('dean')) {
-            $user->addGroup('dean');
+        if (! $user->inGroup('chairperson')) {
+            $user->addGroup('chairperson');
         }
 
-        // A college has exactly one primary dean at a time — clear whoever
-        // currently holds that slot (primary or delegated) before handing
-        // it to this account. Mirrors clearDepartmentChair().
-        $this->clearCollegeDean($id, $user->id);
+        // A department has exactly one chairperson at a time. Lock the
+        // department row for the duration of this transaction so a
+        // concurrent assignment to the same department can't interleave
+        // between clearing the old chair and setting the new one.
+        $db = db_connect();
+        $db->transStart();
+        $this->departmentModel->lockForUpdate($id);
 
-        db_connect()->table('users')
+        // Clear whoever currently holds that slot (primary or delegated)
+        // before handing it to this account. See clearDepartmentChair().
+        $this->clearDepartmentChair($id, $user->id);
+
+        // sub_department_id scopes them to this department; department_id keeps the
+        // parent college in sync, since scheduling (ChairpersonController/TeachingLoads)
+        // still scopes chairpersons/faculty by college via users.department_id.
+        $db->table('users')
             ->where('id', $user->id)
-            ->update(['department_id' => $id]);
+            ->update([
+                'sub_department_id' => $id,
+                'department_id'     => $department['college_id'],
+            ]);
 
-        $message = "{$username} assigned as dean of {$college['name']}.";
+        $db->transComplete();
+
+        $message = "{$username} assigned as chairperson of {$department['name']}.";
 
         if ($tempPassword) {
             $message .= " Temporary password: {$tempPassword} (share this with them — it won't be shown again).";
@@ -210,154 +309,107 @@ class DepartmentController extends BaseController
     }
 
     /**
-     * Removing a college only makes sense once nothing depends on it —
-     * otherwise its departments, programs, faculty, and schedules would be
-     * left pointing at a college_id that no longer exists. Blocked instead
-     * of cascading, same as the rest of the app's delete guards (subjects
-     * with plotted classes, etc.).
+     * Assigns an ALREADY-EXISTING user as this department's chairperson —
+     * never overwriting their primary sub_department_id if they're already
+     * the primary chairperson of a DIFFERENT department (a real scenario:
+     * one person chairing two related departments, e.g. a combined CS/IT
+     * chairmanship, or a faculty member teaching across both). In that
+     * case this grants DELEGATED access via department_schedulers (the
+     * mechanism SchedulingAuthorization::authorizedSubDeptIds() already
+     * reads) instead of silently stealing them away from their first
+     * department. Either way, THIS department still ends up with exactly
+     * one chairperson — see clearDepartmentChair().
+     *
+     * Only ACTIVE faculty/chairperson accounts are accepted, mirroring the
+     * picker's own filter — a crafted POST naming a student (or a disabled
+     * account) is rejected rather than silently granting the role.
      */
-    public function delete($id)
+    private function assignExistingChair(int $id, array $department, int $userId)
     {
-        $college = $this->departmentModel->find($id);
-
-        if (! $college) {
-            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        if ($userId <= 0) {
+            return redirect()->back()->withInput()->with('errors', ['Choose a staff member to assign as chairperson.']);
         }
 
-        $deptCount = db_connect()->table('sub_departments')->where('college_id', $id)->countAllResults();
+        $users = auth()->getProvider();
+        $user  = $users->findById($userId);
 
-        if ($deptCount > 0) {
-            return redirect()
-                ->to('/admin/departments')
-                ->with('errors', ["Cannot delete {$college['name']} — it still has {$deptCount} department" . ($deptCount === 1 ? '' : 's') . '. Remove those first.']);
+        if ($user === null) {
+            return redirect()->back()->withInput()->with('errors', ['Selected user not found.']);
         }
 
-        // Detach (not delete) the dean account — the college is gone, but
-        // the person's account and other roles, if any, are untouched.
-        $dean = $this->deanOf((int) $id);
-        if ($dean !== null) {
-            db_connect()->table('users')->where('id', $dean['id'])->update(['department_id' => null]);
+        // The picker only offers faculty/chairperson accounts — enforce the
+        // same rule here so a hand-crafted POST can never turn a student (or
+        // an inactive account) into a department chairperson.
+        if (! $user->active) {
+            return redirect()->back()->withInput()->with('errors', ['That account is inactive. Activate it first, or choose another staff member.']);
         }
 
-        $this->departmentModel->delete($id);
-
-        return redirect()
-            ->to('/admin/departments')
-            ->with('message', "{$college['name']} deleted.");
-    }
-
-    public function storeSubDepartment($id)
-    {
-        $college = $this->departmentModel->find($id);
-
-        if (! $college) {
-            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        if (! $user->inGroup('faculty') && ! $user->inGroup('chairperson')) {
+            return redirect()->back()->withInput()->with('errors', ['Only faculty and existing chairpersons can be assigned as chairperson. Pick a faculty member, or create a new account.']);
         }
 
-        $rules = [
-            'dept_code' => 'required|max_length[20]',
-            'dept_name' => 'required|max_length[150]',
-        ];
-
-        if (! $this->validate($rules)) {
-            return redirect()
-                ->back()
-                ->withInput()
-                ->with('errors', $this->validator->getErrors());
+        if (! $user->inGroup('chairperson')) {
+            $user->addGroup('chairperson');
         }
 
-        $code = strtoupper(trim($this->request->getPost('dept_code')));
-        $name = trim($this->request->getPost('dept_name'));
+        // Lock the department row for the duration of this transaction so a
+        // concurrent assignment to the same department can't interleave
+        // between clearing the old chair and setting the new one.
+        $db = db_connect();
+        $db->transStart();
+        $this->departmentModel->lockForUpdate($id);
 
-        // Scoped to this college, not global — is_unique[] alone can't
-        // express "unique within college_id", so this is a plain manual
-        // check (previously there was no uniqueness check on department
-        // code at all).
-        $codeTaken = (new SubDepartmentModel())->where('college_id', $id)->where('code', $code)->countAllResults() > 0;
+        $this->clearDepartmentChair($id, $userId);
 
-        if ($codeTaken) {
-            return redirect()->back()->withInput()->with('errors', ['dept_code' => "Department code \"{$code}\" is already used in this College."]);
+        $currentSubDept = $db->table('users')->select('sub_department_id')->where('id', $user->id)->get()->getRowArray()['sub_department_id'] ?? null;
+
+        if ($currentSubDept === null || (int) $currentSubDept === $id) {
+            $db->table('users')
+                ->where('id', $user->id)
+                ->update([
+                    'sub_department_id' => $id,
+                    'department_id'     => $department['college_id'],
+                ]);
+
+            $message = "{$user->username} assigned as chairperson of {$department['name']}.";
+        } else {
+            $alreadyDelegated = $db->table('department_schedulers')
+                ->where('department_id', $id)
+                ->where('user_id', $user->id)
+                ->countAllResults() > 0;
+
+            if (! $alreadyDelegated) {
+                $db->table('department_schedulers')->insert([
+                    'department_id' => $id,
+                    'user_id'       => $user->id,
+                    'created_at'    => date('Y-m-d H:i:s'),
+                ]);
+            }
+
+            $message = "{$user->username} is already chairperson of another department, so they weren't moved — they've been granted additional chairperson access to {$department['name']} as well. Both departments remain under their management.";
         }
 
-        $nameTaken = (new SubDepartmentModel())->where('college_id', $id)->where('name', $name)->countAllResults() > 0;
-
-        if ($nameTaken) {
-            return redirect()->back()->withInput()->with('errors', ['dept_name' => "A Department named \"{$name}\" already exists in this College."]);
-        }
-
-        (new SubDepartmentModel())->insert([
-            'college_id' => $id,
-            'code'       => $code,
-            'name'       => $name,
-        ]);
+        $db->transComplete();
 
         return redirect()
             ->to("/admin/departments/{$id}")
-            ->with('message', 'Department added.');
-    }
-
-    private function deanOf(int $collegeId): ?array
-    {
-        return db_connect()->table('users u')
-            ->select('u.id, u.username, i.secret as email')
-            ->join('auth_groups_users g', 'g.user_id = u.id')
-            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'")
-            ->where('g.group', 'dean')
-            ->where('u.department_id', $collegeId)
-            ->where('u.deleted_at', null)
-            ->get()
-            ->getRowArray();
+            ->with('message', $message);
     }
 
     /**
-     * Clears whoever currently holds this college's dean slot — the
-     * PRIMARY dean (users.department_id match, detached to null, account
-     * untouched) and any DELEGATED dean (department_deans row, deleted) —
-     * except $exceptUserId, so re-assigning the same person is a no-op
-     * rather than momentarily unseating them. Mirrors
-     * SubDepartmentController::clearDepartmentChair() exactly.
+     * Removes one chairperson's access to this department — the primary
+     * chair (users.sub_department_id match) is detached (set null, same as
+     * delete()'s department-deletion detach, never account-deleted since
+     * they may still chair/teach elsewhere); a delegated chair (a
+     * department_schedulers row, see assignExistingChair()) simply has
+     * that delegation row removed. Either way the user account itself is
+     * untouched — this only revokes their management of THIS department.
      */
-    private function clearCollegeDean(int $deptId, ?int $exceptUserId = null): void
+    public function removeChair($id, $userId)
     {
-        $db = db_connect();
+        $department = $this->departmentModel->find($id);
 
-        $primaryIds = $db->table('users u')
-            ->select('u.id')
-            ->join('auth_groups_users g', 'g.user_id = u.id')
-            ->where('g.group', 'dean')
-            ->where('u.department_id', $deptId)
-            ->get()
-            ->getResultArray();
-
-        foreach ($primaryIds as $row) {
-            if ($exceptUserId !== null && (int) $row['id'] === $exceptUserId) {
-                continue;
-            }
-
-            $db->table('users')->where('id', $row['id'])->update(['department_id' => null]);
-        }
-
-        $delegated = $db->table('department_deans')->where('dept_id', $deptId);
-
-        if ($exceptUserId !== null) {
-            $delegated->where('user_id !=', $exceptUserId);
-        }
-
-        $delegated->delete();
-    }
-
-    /**
-     * Removes one dean's access to this college — the primary dean
-     * (users.department_id match) is detached (set null, account
-     * untouched); a delegated dean (department_deans row) simply has that
-     * delegation row removed. Mirrors
-     * SubDepartmentController::removeChair() exactly.
-     */
-    public function removeDean($id, $userId)
-    {
-        $college = $this->departmentModel->find($id);
-
-        if (! $college) {
+        if (! $department) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
@@ -370,23 +422,543 @@ class DepartmentController extends BaseController
 
         $db = db_connect();
 
-        if ((int) $user->department_id === (int) $id) {
-            $db->table('users')->where('id', $user->id)->update(['department_id' => null]);
+        if ((int) $user->sub_department_id === (int) $id) {
+            $db->table('users')->where('id', $user->id)->update(['sub_department_id' => null]);
         } else {
-            $db->table('department_deans')
-                ->where('dept_id', $id)
-                ->where('user_id', $userId)
+            $db->table('department_schedulers')
+                ->where('department_id', $id)
+                ->where('user_id', $user->id)
                 ->delete();
         }
 
         return redirect()
             ->to("/admin/departments/{$id}")
-            ->with('message', "{$user->username} removed as dean of {$college['name']}.");
+            ->with('message', "{$user->username} removed as chairperson of {$department['name']}.");
     }
 
+    /**
+     * JSON: what Transfer Department would affect, for the confirmation
+     * modal's preview step — read-only, nothing is written here.
+     */
+    public function transferPreview($id)
+    {
+        $department = $this->departmentModel->find($id);
+
+        if (! $department) {
+            return $this->response->setStatusCode(404)->setJSON(['ok' => false, 'error' => 'Department not found.']);
+        }
+
+        $targetCollegeId = (int) $this->request->getPost('college_id');
+        $targetCollege   = (new CollegeModel())->find($targetCollegeId);
+
+        if (! $targetCollege) {
+            return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => 'College not found.']);
+        }
+
+        return $this->response->setJSON([
+            'ok'             => true,
+            'from'           => (new CollegeModel())->find((int) $department['college_id'])['name'] ?? '—',
+            'to'             => $targetCollege['name'],
+            'same_as_current' => $targetCollegeId === (int) $department['college_id'],
+            'affected'       => (new CollegeModel())->departmentTransferImpact((int) $id),
+        ]);
+    }
+
+    public function transfer($id)
+    {
+        $department = $this->departmentModel->find($id);
+
+        if (! $department) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $targetCollegeId = (int) $this->request->getPost('college_id');
+        $targetCollege    = (new CollegeModel())->find($targetCollegeId);
+        $reason           = trim((string) $this->request->getPost('reason'));
+
+        if (! $targetCollege) {
+            return redirect()->back()->with('errors', ['College not found.']);
+        }
+
+        if ($reason === '') {
+            return redirect()->back()->withInput()->with('errors', ['reason' => 'A reason is required for a transfer.']);
+        }
+
+        if ($targetCollegeId === (int) $department['college_id']) {
+            return redirect()
+                ->to("/admin/departments/{$id}")
+                ->with('message', "{$department['name']} is already under {$targetCollege['name']}.");
+        }
+
+        $oldCollegeId = (int) $department['college_id'];
+
+        $this->departmentModel->update($id, ['college_id' => $targetCollegeId]);
+
+        // Keep every chairperson/faculty already scoped to this department in sync
+        // with their new parent college for scheduling purposes.
+        db_connect()->table('users')
+            ->where('sub_department_id', $id)
+            ->update(['department_id' => $targetCollegeId]);
+
+        (new AuditLogModel())->record(
+            'department.transferred',
+            'sub_department',
+            $id,
+            ['college_id' => $oldCollegeId],
+            ['college_id' => $targetCollegeId],
+            $reason,
+            (int) auth()->id(),
+            'admin'
+        );
+
+        return redirect()
+            ->to("/admin/departments/{$id}")
+            ->with('message', "{$department['name']} transferred to {$targetCollege['name']}.");
+    }
+
+    public function addProgram($id)
+    {
+        $department = $this->departmentModel->find($id);
+
+        if (! $department) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $rules = [
+            'program_code' => 'required|max_length[20]|is_unique[programs.program_code]',
+            'program_name' => 'required|max_length[255]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', $this->validator->getErrors());
+        }
+
+        $name = trim($this->request->getPost('program_name'));
+
+        // program_code is already globally unique (is_unique rule above);
+        // program_name never was — scoped to this department, since a name
+        // collision across two unrelated departments isn't necessarily
+        // wrong, but one within the same department almost certainly is.
+        $nameTaken = (new ProgramModel())->where('department_id', $id)->where('program_name', $name)->countAllResults() > 0;
+
+        if ($nameTaken) {
+            return redirect()->back()->withInput()->with('errors', ['program_name' => "A Program named \"{$name}\" already exists in this Department."]);
+        }
+
+        (new ProgramModel())->insert([
+            'department_id' => $id,
+            'program_code'  => strtoupper($this->request->getPost('program_code')),
+            'program_name'  => $name,
+        ]);
+
+        return redirect()
+            ->to("/admin/departments/{$id}")
+            ->with('message', 'Program added.');
+    }
+
+    public function toggleStatus($id)
+    {
+        $department = $this->departmentModel->find($id);
+
+        if (! $department) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $this->departmentModel->update($id, ['is_active' => $department['is_active'] ? 0 : 1]);
+
+        return redirect()
+            ->to("/admin/departments/{$id}")
+            ->with('message', $department['is_active'] ? 'Department deactivated.' : 'Department activated.');
+    }
+
+    /**
+     * Hard delete, blocked whenever anything still depends on this
+     * department — previously this silently detached programs (NULLing
+     * department_id, immediately re-creating the exact "orphaned
+     * program" problem Academic Health now flags) and never checked
+     * subjects, faculty affiliations, chairpersons, or scheduler
+     * delegations at all; faculty_departments/department_schedulers
+     * rows would have been silently CASCADE-deleted by their own FKs.
+     * Deactivate (toggleStatus) is the supported way to retire a
+     * department that still has history attached.
+     */
+    public function delete($id)
+    {
+        $department = $this->departmentModel->find($id);
+
+        if (! $department) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $collegeId = $department['college_id'];
+        $db        = db_connect();
+
+        $blockers = [];
+
+        $programCount = $db->table('programs')->where('department_id', $id)->countAllResults();
+        if ($programCount > 0) {
+            $blockers[] = "{$programCount} program(s)";
+        }
+
+        $subjectCount = $db->table('subjects')->where('department_id', $id)->countAllResults();
+        if ($subjectCount > 0) {
+            $blockers[] = "{$subjectCount} owned subject(s)";
+        }
+
+        $facultyCount = $db->table('faculty_departments')->where('department_id', $id)->where('status', 'active')->countAllResults();
+        if ($facultyCount > 0) {
+            $blockers[] = "{$facultyCount} faculty affiliation(s)";
+        }
+
+        $chairCount = $db->table('users u')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'chairperson')
+            ->where('u.sub_department_id', $id)
+            ->countAllResults();
+        if ($chairCount > 0) {
+            $blockers[] = 'a chairperson';
+        }
+
+        $delegationCount = $db->table('department_schedulers')->where('department_id', $id)->countAllResults();
+        if ($delegationCount > 0) {
+            $blockers[] = "{$delegationCount} scheduler delegation(s)";
+        }
+
+        if ($blockers !== []) {
+            return redirect()
+                ->to("/admin/departments/{$id}")
+                ->with('errors', ["Cannot delete {$department['name']} — it still has " . implode(', ', $blockers) . '. Transfer or remove those first, or deactivate the department instead.']);
+        }
+
+        $this->departmentModel->delete($id);
+
+        (new AuditLogModel())->record(
+            'department.deleted',
+            'sub_department',
+            $id,
+            $department,
+            null,
+            null,
+            (int) auth()->id(),
+            'admin'
+        );
+
+        return redirect()
+            ->to("/admin/colleges/{$collegeId}")
+            ->with('message', "{$department['name']} deleted.");
+    }
+
+    /**
+     * Add a faculty member (teaching staff) to this department.
+     */
+    public function addFaculty($id)
+    {
+        $department = $this->departmentModel->find($id);
+
+        if (! $department) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $existingUserId = (int) ($this->request->getPost('existing_user_id') ?? 0);
+
+        if ($this->request->getPost('faculty_mode') === 'existing' || $existingUserId > 0) {
+            return $this->assignExistingFaculty($id, $department, $existingUserId);
+        }
+
+        $rules = [
+            'username'          => 'required|max_length[100]',
+            'email'             => 'required|valid_email',
+            'employment_status' => 'permit_empty|in_list[full_time,part_time]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', $this->validator->getErrors());
+        }
+
+        $username = $this->request->getPost('username');
+        $email    = $this->request->getPost('email');
+
+        $users = auth()->getProvider();
+
+        if ($users->findByCredentials(['email' => $email])) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', ['email' => 'An account with that email already exists.']);
+        }
+
+        if (db_connect()->table('users')->where('username', $username)->countAllResults() > 0) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', ['username' => 'An account with that name already exists.']);
+        }
+
+        $tempPassword = bin2hex(random_bytes(6));
+
+        $user = new User([
+            'username' => $username,
+            'email'    => $email,
+            'password' => $tempPassword,
+        ]);
+
+        $users->save($user);
+        $user = $users->findById($users->getInsertID());
+        $user->addGroup('faculty');
+
+        db_connect()->table('users')
+            ->where('id', $user->id)
+            ->update([
+                'sub_department_id' => $id,
+                'department_id'     => $department['college_id'],
+                'employment_status' => $this->request->getPost('employment_status') ?: null,
+            ]);
+
+        return redirect()
+            ->to("/admin/departments/{$id}")
+            ->with('message', "{$username} added to {$department['name']}. Temporary password: {$tempPassword} (share this with them — it won't be shown again).");
+    }
+
+    /**
+     * Adds an ALREADY-EXISTING user as faculty AFFILIATED with this
+     * department — no new account, no temp password, and (important) no
+     * longer silently MOVES them here if they already belong elsewhere.
+     * That used to be the behavior (a flat, single sub_department_id
+     * overwrite) and it's exactly what accidentally relocated real faculty
+     * out of their home department during testing. FacultyDepartmentModel::
+     * addAffiliation() makes this their first-ever primary only if they
+     * have none yet; otherwise it adds this department as a SECONDARY
+     * affiliation and leaves their existing primary untouched. Promoting
+     * someone to primary here is a separate, explicit action (see
+     * setPrimaryAffiliation()), never an implicit side effect of "add."
+     */
+    private function assignExistingFaculty(int $id, array $department, int $userId)
+    {
+        $users = auth()->getProvider();
+        $user  = $users->findById($userId);
+
+        if ($user === null) {
+            return redirect()->back()->with('errors', ['Selected user not found.']);
+        }
+
+        if (! $user->inGroup('faculty')) {
+            $user->addGroup('faculty');
+        }
+
+        $employmentStatus = $this->request->getPost('employment_status');
+
+        if ($employmentStatus !== null && $employmentStatus !== '' && ! in_array($employmentStatus, ['full_time', 'part_time'], true)) {
+            return redirect()->back()->with('errors', ['employment_status' => 'Invalid employment status.']);
+        }
+
+        $result = (new FacultyDepartmentModel())->addAffiliation($userId, $id, false, (int) auth()->id(), 'admin');
+
+        if (! $result['ok']) {
+            return redirect()->back()->with('errors', [$result['error']]);
+        }
+
+        if ($employmentStatus !== null && $employmentStatus !== '') {
+            db_connect()->table('users')->where('id', $user->id)->update(['employment_status' => $employmentStatus]);
+        }
+
+        return redirect()
+            ->to("/admin/departments/{$id}")
+            ->with('message', "{$user->username} added to {$department['name']} as faculty.");
+    }
+
+    /**
+     * Adds a secondary affiliation for a faculty member already visible on
+     * this (or any) department page — the "Manage Affiliations" action.
+     * $targetSubDeptId is the department to affiliate with, which may be
+     * unrelated to $id (the page the admin is currently viewing from).
+     */
+    public function addAffiliation($id, $userId)
+    {
+        $targetSubDeptId = (int) $this->request->getPost('target_sub_dept_id');
+
+        if ($targetSubDeptId <= 0) {
+            return redirect()->back()->with('errors', ['Choose a department.']);
+        }
+
+        $result = (new FacultyDepartmentModel())->addAffiliation((int) $userId, $targetSubDeptId, false, (int) auth()->id(), 'admin');
+
+        if (! $result['ok']) {
+            return redirect()->back()->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to("/admin/departments/{$id}")->with('message', 'Affiliation added.');
+    }
+
+    /**
+     * Removes a SECONDARY affiliation (the model itself refuses to remove a
+     * primary — see FacultyDepartmentModel::removeAffiliation()).
+     */
+    public function removeAffiliation($id, $userId)
+    {
+        $targetSubDeptId = (int) $this->request->getPost('target_sub_dept_id');
+
+        $result = (new FacultyDepartmentModel())->removeAffiliation((int) $userId, $targetSubDeptId, (int) auth()->id(), 'admin');
+
+        if (! $result['ok']) {
+            return redirect()->back()->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to("/admin/departments/{$id}")->with('message', 'Affiliation removed.');
+    }
+
+    /**
+     * Promotes an existing (primary or secondary) affiliation to primary —
+     * demotes whichever department currently holds that slot and syncs
+     * users.sub_department_id, transactionally, via
+     * FacultyDepartmentModel::setPrimaryDepartment().
+     */
+    public function setPrimaryAffiliation($id, $userId)
+    {
+        $targetSubDeptId = (int) $this->request->getPost('target_sub_dept_id');
+
+        if ($targetSubDeptId <= 0) {
+            return redirect()->back()->with('errors', ['Choose a department.']);
+        }
+
+        $result = (new FacultyDepartmentModel())->setPrimaryDepartment((int) $userId, $targetSubDeptId, (int) auth()->id(), 'admin', 'Changed via admin department page');
+
+        if (! $result['ok']) {
+            return redirect()->back()->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to("/admin/departments/{$id}")->with('message', 'Primary department updated.');
+    }
+
+    public function updateFaculty($id, $userId)
+    {
+        $department = $this->departmentModel->find($id);
+
+        if (! $department) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $users = auth()->getProvider();
+        $user  = $users->find($userId);
+
+        if (! $user || (int) $user->sub_department_id !== (int) $id) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $rules = [
+            'username'          => 'required|max_length[100]',
+            'email'             => 'required|valid_email',
+            'employment_status' => 'permit_empty|in_list[full_time,part_time]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', $this->validator->getErrors());
+        }
+
+        $user->username = $this->request->getPost('username');
+        $user->email    = $this->request->getPost('email');
+        $users->save($user);
+
+        db_connect()->table('users')
+            ->where('id', $user->id)
+            ->update(['employment_status' => $this->request->getPost('employment_status') ?: null]);
+
+        return redirect()
+            ->to("/admin/departments/{$id}")
+            ->with('message', 'Faculty member updated.');
+    }
+
+    public function toggleFacultyStatus($id, $userId)
+    {
+        $users = auth()->getProvider();
+        $user  = $users->find($userId);
+
+        if (! $user || (int) $user->sub_department_id !== (int) $id) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $user->active = $user->active ? 0 : 1;
+        $users->save($user);
+
+        return redirect()
+            ->to("/admin/departments/{$id}")
+            ->with('message', $user->active ? 'Faculty member activated.' : 'Faculty member deactivated.');
+    }
+
+    public function deleteFaculty($id, $userId)
+    {
+        $users = auth()->getProvider();
+        $user  = $users->find($userId);
+
+        if (! $user || (int) $user->sub_department_id !== (int) $id) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $username = $user->username;
+        $users->delete($userId);
+
+        return redirect()
+            ->to("/admin/departments/{$id}")
+            ->with('message', "{$username} removed.");
+    }
+
+    /**
+     * Enforces "one chairperson per department": clears whoever currently
+     * holds this department's chair slot — the primary chair
+     * (users.sub_department_id match, detached to null, account untouched)
+     * and any delegated chair (department_schedulers row, deleted) —
+     * except $exceptUserId, so re-assigning the same person is a no-op
+     * rather than momentarily unseating them. The person being newly
+     * assigned may still chair OTHER departments; only this department's
+     * single slot is cleared.
+     */
+    private function clearDepartmentChair(int $subDeptId, ?int $exceptUserId = null): void
+    {
+        $db = db_connect();
+
+        $primaryIds = $db->table('users u')
+            ->select('u.id')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->where('g.group', 'chairperson')
+            ->where('u.sub_department_id', $subDeptId)
+            ->get()
+            ->getResultArray();
+
+        foreach ($primaryIds as $row) {
+            if ($exceptUserId !== null && (int) $row['id'] === $exceptUserId) {
+                continue;
+            }
+
+            $db->table('users')->where('id', $row['id'])->update(['sub_department_id' => null]);
+        }
+
+        $delegated = $db->table('department_schedulers')->where('department_id', $subDeptId);
+
+        if ($exceptUserId !== null) {
+            $delegated->where('user_id !=', $exceptUserId);
+        }
+
+        $delegated->delete();
+    }
+
+    /**
+     * The PRIMARY chairperson (sub_department_id match), falling back to
+     * the first DELEGATED chairperson (department_schedulers) when no
+     * primary is set — e.g. someone whose primary department is CS but who
+     * also chairs IT. See allChairsOf() for the full list when there's
+     * more than one.
+     */
     private function chairOf(int $subDeptId): ?array
     {
-        return db_connect()->table('users u')
+        $primary = db_connect()->table('users u')
             ->select('u.id, u.username, i.secret as email')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'")
@@ -395,25 +967,125 @@ class DepartmentController extends BaseController
             ->where('u.deleted_at', null)
             ->get()
             ->getRowArray();
-    }
 
-    private function countInGroup(int $collegeId, string $group): int
-    {
+        if ($primary !== null) {
+            return $primary;
+        }
+
         return db_connect()->table('users u')
-            ->join('auth_groups_users g', 'g.user_id = u.id')
-            ->where('g.group', $group)
-            ->where('u.department_id', $collegeId)
+            ->select('u.id, u.username, i.secret as email')
+            ->join('department_schedulers sds', 'sds.user_id = u.id')
+            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->where('sds.department_id', $subDeptId)
             ->where('u.deleted_at', null)
-            ->countAllResults();
+            ->get()
+            ->getRowArray();
     }
 
-    private function countInGroupBySubDept(int $subDeptId, string $group): int
+    /**
+     * Every chairperson who manages this department — primary plus any
+     * delegated via department_schedulers — for display when more than
+     * one person is involved (a combined chairmanship across departments).
+     *
+     * @return list<array{id: int, username: string, email: ?string, is_primary: bool}>
+     */
+    private function allChairsOf(int $subDeptId): array
+    {
+        $primary = db_connect()->table('users u')
+            ->select('u.id, u.username, i.secret as email')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->where('g.group', 'chairperson')
+            ->where('u.sub_department_id', $subDeptId)
+            ->where('u.deleted_at', null)
+            ->get()
+            ->getResultArray();
+
+        $delegated = db_connect()->table('users u')
+            ->select('u.id, u.username, i.secret as email')
+            ->join('department_schedulers sds', 'sds.user_id = u.id')
+            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->where('sds.department_id', $subDeptId)
+            ->where('u.deleted_at', null)
+            ->get()
+            ->getResultArray();
+
+        $primaryIds = array_map(static fn (array $row) => (int) $row['id'], $primary);
+
+        $all = array_map(static fn (array $row) => $row + ['is_primary' => true], $primary);
+
+        foreach ($delegated as $row) {
+            if (! in_array((int) $row['id'], $primaryIds, true)) {
+                $all[] = $row + ['is_primary' => false];
+            }
+        }
+
+        return $all;
+    }
+
+    /**
+     * Every faculty member AFFILIATED with this department (primary or
+     * secondary) — previously this only matched u.sub_department_id
+     * (primary-only), so a faculty member teaching here as a secondary
+     * affiliation was invisible on the department they actually teach for.
+     * Each row carries is_primary_here (is THIS department their home) plus
+     * their full affiliation list, so the view can show e.g. "Theo Abella —
+     * Primary: IT, Affiliated here: CS" instead of implying a move.
+     *
+     * Batched: one query for the department roster, one for every row's
+     * full affiliation set — never one affiliation query per faculty row.
+     *
+     * Reads FacultyDepartmentModel::departmentsForFacultyBatch()'s output
+     * via its deliberate `sub_dept_id` SQL alias (Task 3's backward-compat
+     * choice, reaffirmed in Task 5 — see task-5-report.md's design-decision
+     * section) rather than a `department_id` key.
+     */
+    private function facultyMembersOf(int $subDeptId): array
+    {
+        $affiliations = new FacultyDepartmentModel();
+        $userIds      = $affiliations->userIdsForDepartment($subDeptId);
+
+        if ($userIds === []) {
+            return [];
+        }
+
+        $rows = db_connect()->table('users u')
+            ->select('u.id, u.username, u.active, u.employment_status, i.secret as email')
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
+            ->where('g.group', 'faculty')
+            ->whereIn('u.id', $userIds)
+            ->where('u.deleted_at', null)
+            ->orderBy('u.username')
+            ->get()
+            ->getResultArray();
+
+        $allAffiliationsByUser = $affiliations->departmentsForFacultyBatch(array_map(static fn (array $r) => (int) $r['id'], $rows));
+
+        foreach ($rows as &$row) {
+            $userId = (int) $row['id'];
+            $own    = $allAffiliationsByUser[$userId] ?? [];
+
+            $row['is_primary_here'] = false;
+            $row['affiliations']    = $own;
+
+            foreach ($own as $aff) {
+                if ($aff['sub_dept_id'] === $subDeptId && $aff['is_primary']) {
+                    $row['is_primary_here'] = true;
+                }
+            }
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    private function countInGroup(int $subDeptId, string $group): int
     {
         return db_connect()->table('users u')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', $group)
             ->where('u.sub_department_id', $subDeptId)
-            ->where('u.deleted_at', null)
             ->countAllResults();
     }
 }

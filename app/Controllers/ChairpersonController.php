@@ -10,7 +10,7 @@ use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
 use App\Libraries\TermCurriculum;
 use App\Libraries\SchedulingAuthorization;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\EnrollmentModel;
 use App\Models\FacultyAssignmentModel;
 use App\Models\FacultyAvailabilityModel;
@@ -48,7 +48,7 @@ class ChairpersonController extends BaseController
     /**
      * Every department this chairperson is authorized for — their own home
      * department PLUS any delegated to them. The single-department
-     * DepartmentModel::subDeptOfUser() undercounts a delegated chairperson
+     * CollegeModel::subDeptOfUser() undercounts a delegated chairperson
      * (see the Dashboard "my CS department doesn't show up" fix); this is
      * the one correct source of truth, already used by Subject Ownership /
      * Curriculum Builder, and now by every method below that used to read
@@ -62,7 +62,7 @@ class ChairpersonController extends BaseController
     /** Every active program across every department this chairperson is authorized for. */
     private function authorizedPrograms(): array
     {
-        $deptModel = new DepartmentModel();
+        $deptModel = new CollegeModel();
         $programs  = [];
 
         foreach ($this->authorizedSubDeptIds() as $id) {
@@ -72,7 +72,7 @@ class ChairpersonController extends BaseController
         return array_values(array_unique($programs));
     }
 
-    /** sub_dept_id => name for every department this chairperson is authorized for. */
+    /** dept_id => name for every department this chairperson is authorized for. */
     private function authorizedDeptNames(): array
     {
         $ids = $this->authorizedSubDeptIds();
@@ -83,8 +83,8 @@ class ChairpersonController extends BaseController
 
         $names = [];
 
-        foreach (db_connect()->table('sub_departments')->whereIn('sub_dept_id', $ids)->orderBy('name')->get()->getResultArray() as $row) {
-            $names[(int) $row['sub_dept_id']] = $row['name'];
+        foreach (db_connect()->table('departments')->whereIn('dept_id', $ids)->orderBy('name')->get()->getResultArray() as $row) {
+            $names[(int) $row['dept_id']] = $row['name'];
         }
 
         return $names;
@@ -102,7 +102,7 @@ class ChairpersonController extends BaseController
      */
     private function authorizedDeptPrograms(): array
     {
-        $deptModel = new DepartmentModel();
+        $deptModel = new CollegeModel();
         $out       = [];
 
         foreach ($this->authorizedDeptNames() as $subDeptId => $name) {
@@ -164,18 +164,18 @@ class ChairpersonController extends BaseController
      */
     private function catalog(?string $programName = null): array
     {
-        $subDept = (new DepartmentModel())->subDeptOfUser((int) auth()->id());
+        $subDept = (new CollegeModel())->subDeptOfUser((int) auth()->id());
 
         $query = (new SubjectModel())->where('is_active', 1);
 
         // No department, or browsing a course this chairperson doesn't
         // own, means no catalog to show — never fall back to everything.
         if ($subDept === null) {
-            $query = $query->where('sub_department_id', -1);
+            $query = $query->where('department_id', -1);
         } else {
-            $query = $query->where('sub_department_id', (int) $subDept['sub_dept_id']);
+            $query = $query->where('department_id', (int) $subDept['dept_id']);
 
-            $programId = $programName === null ? null : DepartmentModel::programIdOfName($programName);
+            $programId = $programName === null ? null : CollegeModel::programIdOfName($programName);
 
             $query = $programId === null
                 ? $query->where('program_id', -1)
@@ -455,7 +455,7 @@ class ChairpersonController extends BaseController
         $ownedSubjectCodes = $contextSubjects === [] ? [] : array_column(
             (new SubjectModel())
                 ->whereIn('subject_code', array_column($contextSubjects, 'code'))
-                ->whereIn('sub_department_id', (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id()))
+                ->whereIn('department_id', (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id()))
                 ->findAll(),
             'subject_code'
         );
@@ -563,7 +563,7 @@ class ChairpersonController extends BaseController
             return [];
         }
 
-        $programId = DepartmentModel::programIdOfName($program);
+        $programId = CollegeModel::programIdOfName($program);
         if ($programId === null) {
             return [];
         }
@@ -582,7 +582,7 @@ class ChairpersonController extends BaseController
             ->where('cs.semester', $semester)
             ->where('cs.is_active', 1)
             ->where('s.is_active', 1)
-            ->whereIn('s.sub_department_id', $subDeptIds)
+            ->whereIn('s.department_id', $subDeptIds)
             ->get()
             ->getResultArray();
 
@@ -730,7 +730,7 @@ class ChairpersonController extends BaseController
         $ownedSubjectCodes = $contextSubjects === [] ? [] : array_column(
             (new SubjectModel())
                 ->whereIn('subject_code', array_column($contextSubjects, 'code'))
-                ->whereIn('sub_department_id', (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id()))
+                ->whereIn('department_id', (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id()))
                 ->findAll(),
             'subject_code'
         );
@@ -932,7 +932,7 @@ class ChairpersonController extends BaseController
             ->select('sr.swap_id, r.username AS requester, t.username AS target,'
                 . ' fa1.program a1_prog, fa1.year_level a1_yl, fa1.section a1_sec, fa1.subject_code a1_code,'
                 . ' fa2.program a2_prog, fa2.year_level a2_yl, fa2.section a2_sec, fa2.subject_code a2_code,'
-                . ' su1.sub_department_id a1_subdept')
+                . ' su1.department_id a1_subdept')
             ->join('faculty_assignments fa1', 'fa1.assignment_id = sr.assignment_id')
             ->join('faculty_assignments fa2', 'fa2.assignment_id = sr.requested_assignment_id', 'left')
             ->join('subjects su1', 'su1.subject_code = fa1.subject_code', 'left')
@@ -1018,7 +1018,7 @@ class ChairpersonController extends BaseController
         $subDeptIds = $this->authorizedSubDeptIds();
         $subject    = (new SubjectModel())->where('subject_code', $offered['subject_code'])->first();
 
-        if ($subDeptIds !== [] && ! in_array((int) ($subject['sub_department_id'] ?? 0), $subDeptIds, true)) {
+        if ($subDeptIds !== [] && ! in_array((int) ($subject['department_id'] ?? 0), $subDeptIds, true)) {
             return $this->fail('This swap belongs to another department.');
         }
 
@@ -1108,7 +1108,7 @@ class ChairpersonController extends BaseController
      */
     private function changeRequestApprovals(): array
     {
-        $dept = (new DepartmentModel())->codeOfUser((int) auth()->id());
+        $dept = (new CollegeModel())->codeOfUser((int) auth()->id());
 
         $rows = db_connect()->table('faculty_change_requests cr')
             ->select('cr.request_id, cr.reason, cr.proposed_alternative, cr.status, cr.created_at,'
@@ -1123,7 +1123,7 @@ class ChairpersonController extends BaseController
         $items = [];
 
         foreach ($rows as $row) {
-            if ($dept !== null && DepartmentModel::programDept($row['program']) !== $dept) {
+            if ($dept !== null && CollegeModel::programDept($row['program']) !== $dept) {
                 continue;
             }
 
@@ -1182,9 +1182,9 @@ class ChairpersonController extends BaseController
             return $this->fail('The underlying assignment no longer exists.');
         }
 
-        $dept = (new DepartmentModel())->codeOfUser((int) auth()->id());
+        $dept = (new CollegeModel())->codeOfUser((int) auth()->id());
 
-        if ($dept !== null && DepartmentModel::programDept($assignment['program']) !== $dept) {
+        if ($dept !== null && CollegeModel::programDept($assignment['program']) !== $dept) {
             return $this->fail('This request belongs to another department.');
         }
 
@@ -1702,7 +1702,7 @@ class ChairpersonController extends BaseController
         $ownedSubjectCodes = $subjectsByCode === [] ? [] : array_column(
             (new SubjectModel())
                 ->whereIn('subject_code', array_keys($subjectsByCode))
-                ->whereIn('sub_department_id', (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id()))
+                ->whereIn('department_id', (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id()))
                 ->findAll(),
             'subject_code'
         );
@@ -1898,7 +1898,7 @@ class ChairpersonController extends BaseController
             // answers "is this specific faculty member eligible to teach it."
             $ownerDeptBySubject = array_column(
                 (new SubjectModel())->whereIn('subject_code', array_keys($facultyByCode))->findAll(),
-                'sub_department_id',
+                'department_id',
                 'subject_code'
             );
 
@@ -2472,7 +2472,7 @@ class ChairpersonController extends BaseController
         $sections = [];
 
         if ($subDeptIds !== []) {
-            $codes = array_column(db_connect()->table('sub_departments')->whereIn('sub_dept_id', $subDeptIds)->get()->getResultArray(), 'code');
+            $codes = array_column(db_connect()->table('departments')->whereIn('dept_id', $subDeptIds)->get()->getResultArray(), 'code');
             $sectionModel = new SectionModel();
 
             foreach ($codes as $code) {
@@ -2619,7 +2619,7 @@ class ChairpersonController extends BaseController
         $sections->insert([
             'academic_year' => $payload['academic_year'],
             'program'       => $payload['program'],
-            'program_id'    => DepartmentModel::programIdOfName($payload['program']),
+            'program_id'    => CollegeModel::programIdOfName($payload['program']),
             'year_level'    => $payload['year_level'],
             'section'       => $sectionName,
             'capacity'      => $capacity,
@@ -3053,7 +3053,7 @@ class ChairpersonController extends BaseController
                 ->distinct()
                 ->join('curriculum c', 'c.curriculum_id = cs.curriculum_id')
                 ->join('subjects s', 's.subject_id = cs.subject_id')
-                ->whereIn('s.sub_department_id', $subDeptIds)
+                ->whereIn('s.department_id', $subDeptIds)
                 ->where('cs.is_active', 1)
                 ->where('s.is_active', 1)
                 ->get()
@@ -3064,7 +3064,7 @@ class ChairpersonController extends BaseController
         $names = [];
 
         foreach ($programIds as $programId) {
-            $name = DepartmentModel::programNameById((int) $programId);
+            $name = CollegeModel::programNameById((int) $programId);
 
             if ($name !== null) {
                 $names[] = $name;
@@ -3322,7 +3322,7 @@ class ChairpersonController extends BaseController
             return null;
         }
 
-        $programId = DepartmentModel::programIdOfName($program);
+        $programId = CollegeModel::programIdOfName($program);
         if ($programId === null) {
             return null;
         }
@@ -3340,7 +3340,7 @@ class ChairpersonController extends BaseController
             ->where('cs.semester', $semester)
             ->where('cs.is_active', 1)
             ->where('s.is_active', 1)
-            ->whereIn('s.sub_department_id', $subDeptIds)
+            ->whereIn('s.department_id', $subDeptIds)
             ->orderBy('cs.year_level', 'ASC')
             ->get(1)
             ->getRow('year_level');
@@ -3469,7 +3469,7 @@ class ChairpersonController extends BaseController
     public function overview()
     {
         $account   = auth()->user();
-        $deptModel = new DepartmentModel();
+        $deptModel = new CollegeModel();
 
         // Scoped to every department this chairperson is authorized for —
         // their own home department PLUS any delegated to them (see
@@ -3483,8 +3483,8 @@ class ChairpersonController extends BaseController
         $programs  = [];
 
         if ($subDeptIds !== []) {
-            foreach (db_connect()->table('sub_departments')->whereIn('sub_dept_id', $subDeptIds)->orderBy('name')->get()->getResultArray() as $row) {
-                $deptNames[(int) $row['sub_dept_id']] = $row['name'];
+            foreach (db_connect()->table('departments')->whereIn('dept_id', $subDeptIds)->orderBy('name')->get()->getResultArray() as $row) {
+                $deptNames[(int) $row['dept_id']] = $row['name'];
             }
 
             foreach ($subDeptIds as $id) {
@@ -3534,7 +3534,7 @@ class ChairpersonController extends BaseController
                     $ownedCodes = array_column(
                         (new SubjectModel())
                             ->whereIn('subject_code', $contextSubjects)
-                            ->whereIn('sub_department_id', $subDeptIds)
+                            ->whereIn('department_id', $subDeptIds)
                             ->findAll(),
                         'subject_code'
                     );
@@ -3707,7 +3707,7 @@ class ChairpersonController extends BaseController
         $account    = auth()->user();
         $subDeptIds = $this->authorizedSubDeptIds();
         $deptCodes  = $subDeptIds === [] ? [] : array_column(
-            db_connect()->table('sub_departments')->whereIn('sub_dept_id', $subDeptIds)->orderBy('name')->get()->getResultArray(),
+            db_connect()->table('departments')->whereIn('dept_id', $subDeptIds)->orderBy('name')->get()->getResultArray(),
             'code'
         );
 
