@@ -2,7 +2,7 @@
 
 namespace App\Commands;
 
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 
@@ -12,7 +12,7 @@ use CodeIgniter\CLI\CLI;
  * default — pass --commit to actually write.
  *
  * Resolution, strongest match first, NEVER guessing on ambiguity:
- *  1. Legacy display-alias match (DepartmentModel::LEGACY_PROGRAM_NAMES,
+ *  1. Legacy display-alias match (CollegeModel::LEGACY_PROGRAM_NAMES,
  *     e.g. "BS in Computer Science" -> program_code BSCS) — program_code is
  *     globally unique (enforced at creation), so this always resolves to
  *     exactly one program when it matches at all.
@@ -90,7 +90,7 @@ class SectionsBackfillProgramId extends BaseCommand
      */
     private function resolve(string $programText): array
     {
-        $code = array_search($programText, DepartmentModel::legacyProgramNames(), true);
+        $code = array_search($programText, CollegeModel::legacyProgramNames(), true);
 
         $builder = db_connect()->table('programs');
 
