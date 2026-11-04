@@ -217,16 +217,24 @@ class SharedSubjectDashboardService
                 ];
             }
 
-            // No offering exists yet for this subject, but there IS unmet
-            // demand somewhere — same "needs plotting" situation
+            // No offering exists yet for this subject, but there IS demand
+            // somewhere — same "needs plotting" situation
             // OfferingController::needsPlottingList() covers on the Merged
             // Classes page, surfaced here too so this card can "Plot it"
             // directly (same pattern as an existing offering's own
             // 'plot_context' above) instead of sending the chairperson
             // through a separate "Create offering" step first.
+            //
+            // Gated on expected_count (any demand), not unassigned_count:
+            // a student can be "assigned" (enrolled) against a section while
+            // nothing has actually been plotted for them yet — assigned
+            // only reflects the enrollments table, not whether a class
+            // exists. Without this, a fully-"assigned" subject with no
+            // offering and no plotted schedule wrongly fell through to the
+            // generic "Create offering" message instead of this direct link.
             $noOfferingPlotContext = null;
 
-            if ($offerings === [] && ($demand['unassigned_count'] ?? 0) > 0) {
+            if ($offerings === [] && ($demand['expected_count'] ?? 0) > 0) {
                 $noOfferingPlotContext = $this->firstSectionNeedingPlot($subjectId, $academicYear);
             }
 
