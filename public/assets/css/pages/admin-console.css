@@ -491,6 +491,13 @@ html, .ac-page { height: 100%; }
 .ac-topbar__iconbtn:hover { background: var(--color-surface-sunken); color: var(--color-primary); }
 .ac-topbar__iconbtn:active { transform: scale(.92); }
 
+/* The icon glyph (20px) sits inside a bigger 36px tap target, so its visible
+   mark sits ~8px further from the edge than the avatar's padding-free 32px
+   circle on the opposite side. Shift the box left by that same 8px — keeps
+   the full tap target for accessibility, but lines up the visible icon with
+   the avatar's edge distance. */
+.ac-nav-toggle { margin-left: -8px; }
+
 .ac-topbar__dot {
     position: absolute;
     top: 1px;
