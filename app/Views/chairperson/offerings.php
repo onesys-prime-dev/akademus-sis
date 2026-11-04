@@ -165,6 +165,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                             'program'    => $np['program'],
                             'year_level' => $np['year_level'],
                             'section'    => $np['section'],
+                            'subject'    => $np['subject_code'],
                         ])
                         : null;
                 ?>

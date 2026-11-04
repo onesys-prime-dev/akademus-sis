@@ -4812,6 +4812,40 @@ if (blocks.length) {
 renderApprovals();
 renderChangeRequests();
 
+// Arriving here via a "Plot it" link (Shared Subject Dashboard, Merged
+// Classes) names the subject it was meant for — select it and scroll it
+// into view so the chairperson isn't left hunting for one card among many.
+jumpToRequestedSubject();
+
+function jumpToRequestedSubject() {
+    const code = new URLSearchParams(location.search).get('subject');
+    if (!code) return;
+
+    // One-shot: strip the param so a later refresh/share of this URL
+    // doesn't keep re-triggering the jump.
+    const url = new URL(location.href);
+    url.searchParams.delete('subject');
+    history.replaceState(null, '', url);
+
+    if (!SUBJECTS.some(s => s.code === code)) return;
+
+    selectSubject(code);
+
+    const existingBlock = blocks.find(b => b.code === code);
+    if (existingBlock) {
+        flashBlock(existingBlock);
+        return;
+    }
+
+    const queueEl = document.querySelector(`.q-item[data-code="${CSS.escape(code)}"]`);
+    if (queueEl) {
+        queueEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        queueEl.classList.remove('is-flash');
+        void queueEl.offsetWidth;
+        queueEl.classList.add('is-flash');
+    }
+}
+
 // Availability warnings on plotted classes need the faculty roster; load it
 // once up front so they are there when the chairperson looks.
 loadFaculty().then(() => renderBlocks({ skipSuggestions: true })).catch(() => {});

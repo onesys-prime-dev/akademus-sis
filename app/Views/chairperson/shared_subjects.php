@@ -153,6 +153,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                 'program'    => $noOfferingCtx['program'],
                                 'year_level' => $noOfferingCtx['year_level'],
                                 'section'    => $noOfferingCtx['section'],
+                                'subject'    => $s['subject_code'],
                             ])
                             : null;
                     ?>
@@ -183,6 +184,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                     'program'    => $ctx['program'],
                                     'year_level' => $ctx['year_level'],
                                     'section'    => $ctx['section'],
+                                    'subject'    => $s['subject_code'],
                                 ])
                                 : null;
                         ?>

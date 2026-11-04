@@ -369,6 +369,11 @@
 .q-item.is-complete .q-code,
 .q-item.is-complete .q-title { color: var(--color-text-secondary); }
 .q-item.is-dragging { opacity: .45; }
+.q-item.is-flash { animation: plFlashPrimary 1.6s var(--ease-standard) 1; }
+@keyframes plFlashPrimary {
+    0%, 100% { box-shadow: 0 0 0 0 transparent; }
+    20%, 60% { box-shadow: 0 0 0 3px var(--color-primary); }
+}
 .q-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .q-code { font-size: 13px; font-weight: 650; color: var(--color-text-primary); }
 .q-type { font-size: 11px; font-weight: 600; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .04em; }
