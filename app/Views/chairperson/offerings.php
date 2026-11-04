@@ -90,6 +90,30 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     @media (max-width: 640px) {
         .mc-row { flex-direction: column; align-items: stretch; }
         .mc-row__actions { justify-content: space-between; }
+
+        /* Desktop padding (20/24px) plus the shell's own content padding
+           left only ~310px of usable width on a phone, forcing every title,
+           badge and paragraph to wrap hard against its neighbors. Tightening
+           card chrome and dropping the page title back down (the "2026
+           refinement" bump to 26px was desktop-only, never undone here)
+           gives the same content real room to breathe instead of stacking
+           edge-to-edge. */
+        .ac-page-header__title { font-size: 20px; }
+        .ac-page-header__sub { font-size: 12.5px; line-height: 1.5; }
+
+        .mc-card__head { padding: 16px; gap: 12px; }
+        .mc-card__icon { width: 34px; height: 34px; }
+        .mc-card__icon .material-symbols-outlined { font-size: 18px; }
+        .mc-card__title-row { gap: 8px; }
+        .mc-card__title-row h2 { font-size: 14px; }
+        .mc-card__head p { font-size: 12px; margin-top: 4px; }
+
+        .mc-row { padding: 16px; gap: 14px; }
+        .mc-merged { padding: 16px; }
+        .mc-merged-card { padding: 14px 16px; }
+
+        .mc-row__actions .btn,
+        .mc-row__actions input[type="number"] { width: 100%; }
     }
 </style>
 <?= $this->endSection() ?>
