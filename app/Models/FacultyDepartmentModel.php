@@ -153,7 +153,7 @@ class FacultyDepartmentModel extends Model
      */
     public function addAffiliation(int $userId, int $subDeptId, bool $asPrimary, ?int $actorId, ?string $actorRole = null): array
     {
-        $department = (new SubDepartmentModel())->find($subDeptId);
+        $department = (new DepartmentModel())->find($subDeptId);
 
         if ($department === null) {
             return ['ok' => false, 'error' => 'Department not found.'];
@@ -268,7 +268,7 @@ class FacultyDepartmentModel extends Model
      */
     public function setPrimaryDepartment(int $userId, int $subDeptId, ?int $actorId, ?string $actorRole = null, ?string $reason = null): array
     {
-        $department = (new SubDepartmentModel())->find($subDeptId);
+        $department = (new DepartmentModel())->find($subDeptId);
 
         if ($department === null) {
             return ['ok' => false, 'error' => 'Department not found.'];
@@ -347,7 +347,7 @@ class FacultyDepartmentModel extends Model
         // primary's own college, mirroring how chairperson/faculty
         // assignment already sets both together elsewhere (e.g.
         // Admin\SubDepartmentController::addFaculty()).
-        $department = (new SubDepartmentModel())->find($subDeptId);
+        $department = (new DepartmentModel())->find($subDeptId);
 
         if ($department !== null) {
             $update['department_id'] = $department['college_id'];

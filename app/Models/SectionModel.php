@@ -30,7 +30,7 @@ class SectionModel extends Model
      *
      * Prefers the real FK (sections.program_id -> programs.sub_department_id)
      * — a single indexed query instead of fetching every section and calling
-     * DepartmentModel::programDept() per row (that was a genuine N+1: one
+     * CollegeModel::programDept() per row (that was a genuine N+1: one
      * query per section just to resolve its department). Sections not yet
      * backfilled (program_id IS NULL, pre-dating the FK hardening migration)
      * still fall back to the old text-matching path so nothing silently
@@ -47,7 +47,7 @@ class SectionModel extends Model
         }
 
         $subDeptId = (int) $subDept['sub_dept_id'];
-        $programIds = (new DepartmentModel())->programIdsOfSubDept($subDeptId);
+        $programIds = (new CollegeModel())->programIdsOfSubDept($subDeptId);
 
         $resolved = $programIds === [] ? [] : $this->whereIn('program_id', $programIds)->findAll();
 
@@ -58,7 +58,7 @@ class SectionModel extends Model
         $legacyCandidates = $this->where('program_id', null)->findAll();
         $legacyMatches = array_values(array_filter(
             $legacyCandidates,
-            static fn (array $s) => DepartmentModel::programDept($s['program']) === $subDeptCode
+            static fn (array $s) => CollegeModel::programDept($s['program']) === $subDeptCode
         ));
 
         $all = array_merge($resolved, $legacyMatches);
@@ -91,7 +91,7 @@ class SectionModel extends Model
      * first time a chairperson plots a schedule for it. program_id is
      * resolved and stored alongside the legacy text field automatically —
      * callers never need to resolve it themselves (see
-     * DepartmentModel::programIdOfName()).
+     * CollegeModel::programIdOfName()).
      */
     public function firstOrCreateForContext(string $academicYear, string $program, string $yearLevel, string $section): array
     {
@@ -104,7 +104,7 @@ class SectionModel extends Model
         $this->insert([
             'academic_year' => $academicYear,
             'program'       => $program,
-            'program_id'    => DepartmentModel::programIdOfName($program),
+            'program_id'    => CollegeModel::programIdOfName($program),
             'year_level'    => $yearLevel,
             'section'       => $section,
         ]);

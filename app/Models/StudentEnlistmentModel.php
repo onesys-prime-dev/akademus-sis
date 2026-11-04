@@ -561,7 +561,7 @@ class StudentEnlistmentModel extends Model
 
     /**
      * $programs holds the LEGACY_PROGRAM_NAMES-mapped short display names
-     * (DepartmentModel::programsOfSubDept()/programNameById()'s format,
+     * (CollegeModel::programsOfSubDept()/programNameById()'s format,
      * matching sections.program) — NOT programs.program_name, which is the
      * long institutional name and does not match. Filtering is done in PHP
      * after resolving each row's name via programNameById(), the one
@@ -585,7 +585,7 @@ class StudentEnlistmentModel extends Model
             ->getResultArray();
 
         return array_values(array_filter(array_map(static function (array $row) use ($programs): ?array {
-            $row['program_name'] = $row['program_id'] !== null ? DepartmentModel::programNameById((int) $row['program_id']) : null;
+            $row['program_name'] = $row['program_id'] !== null ? CollegeModel::programNameById((int) $row['program_id']) : null;
 
             if ($programs !== null && ! in_array($row['program_name'], $programs, true)) {
                 return null;
