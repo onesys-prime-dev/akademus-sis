@@ -2186,8 +2186,8 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     padding: 11px 24px;
     border: 0;
     border-bottom: 1px solid var(--color-border);
-    border-radius: 0;
-    box-shadow: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
 }
 .ac-topbar__actions { gap: 10px; }
 .ac-topbar__icons { gap: 2px; padding-left: 10px; }
