@@ -2,10 +2,10 @@
 
 namespace App\Libraries;
 
+use App\Models\CollegeModel;
 use App\Models\DepartmentDeanModel;
-use App\Models\DepartmentModel;
+use App\Models\DepartmentSchedulerModel;
 use App\Models\SectionModel;
-use App\Models\SubDepartmentSchedulerModel;
 
 /**
  * Centralizes the "does this user own this section?" check that used to be
@@ -28,13 +28,13 @@ class SchedulingAuthorization
     {
         $ids = [];
 
-        $subDept = (new DepartmentModel())->subDeptOfUser($userId);
+        $subDept = (new CollegeModel())->subDeptOfUser($userId);
 
         if ($subDept !== null) {
-            $ids[] = (int) $subDept['sub_dept_id'];
+            $ids[] = (int) $subDept['dept_id'];
         }
 
-        foreach ((new SubDepartmentSchedulerModel())->subDeptIdsForUser($userId) as $delegatedId) {
+        foreach ((new DepartmentSchedulerModel())->subDeptIdsForUser($userId) as $delegatedId) {
             if (! in_array($delegatedId, $ids, true)) {
                 $ids[] = $delegatedId;
             }
@@ -55,10 +55,10 @@ class SchedulingAuthorization
     {
         $ids = [];
 
-        $college = (new DepartmentModel())->collegeOfUser($userId);
+        $college = (new CollegeModel())->collegeOfUser($userId);
 
         if ($college !== null) {
-            $ids[] = (int) $college['dept_id'];
+            $ids[] = (int) $college['college_id'];
         }
 
         foreach ((new DepartmentDeanModel())->deptIdsForUser($userId) as $delegatedId) {
@@ -106,7 +106,7 @@ class SchedulingAuthorization
             return ['section' => null, 'sub_dept_id' => null];
         }
 
-        // Preferred path: section.program_id -> programs.sub_department_id,
+        // Preferred path: section.program_id -> programs.department_id,
         // a single direct lookup instead of looping every authorized
         // sub-department and re-deriving its program name list just to
         // string-compare. This is also what makes a Program rename or a
@@ -114,9 +114,9 @@ class SchedulingAuthorization
         // automatically — the FK is the identity, not the text.
         if ($section['program_id'] !== null) {
             $ownerSubDeptId = db_connect()->table('programs')
-                ->select('sub_department_id')
+                ->select('department_id')
                 ->where('program_id', $section['program_id'])
-                ->get()->getRowArray()['sub_department_id'] ?? null;
+                ->get()->getRowArray()['department_id'] ?? null;
 
             if ($ownerSubDeptId === null) {
                 return ['section' => null, 'sub_dept_id' => null];
@@ -131,7 +131,7 @@ class SchedulingAuthorization
 
         // Legacy fallback — only reached for a section never backfilled
         // with program_id (pre-dating the FK hardening migration).
-        $departmentModel = new DepartmentModel();
+        $departmentModel = new CollegeModel();
 
         foreach ($subDeptIds as $subDeptId) {
             $programs = $departmentModel->programsOfSubDept($subDeptId);
@@ -146,7 +146,7 @@ class SchedulingAuthorization
 
     /**
      * Whether this user is authorized to manage (review/decide requests for)
-     * the given subject — derived from subjects.sub_department_id, never
+     * the given subject — derived from subjects.department_id, never
      * from subject prefix, program, or the requesting section. Returns false
      * when the subject has no owning unit set (nothing to be authorized
      * against) or doesn't exist.
@@ -154,16 +154,16 @@ class SchedulingAuthorization
     public function canManageSubject(int $userId, int $subjectId): bool
     {
         $subject = db_connect()->table('subjects')
-            ->select('sub_department_id')
+            ->select('department_id')
             ->where('subject_id', $subjectId)
             ->get()
             ->getRowArray();
 
-        if ($subject === null || $subject['sub_department_id'] === null) {
+        if ($subject === null || $subject['department_id'] === null) {
             return false;
         }
 
-        return in_array((int) $subject['sub_department_id'], $this->authorizedSubDeptIds($userId), true);
+        return in_array((int) $subject['department_id'], $this->authorizedSubDeptIds($userId), true);
     }
 
     /**

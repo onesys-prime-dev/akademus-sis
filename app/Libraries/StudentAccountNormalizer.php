@@ -3,8 +3,8 @@
 namespace App\Libraries;
 
 use App\Models\AcademicYearModel;
+use App\Models\CollegeModel;
 use App\Models\CurriculumModel;
-use App\Models\DepartmentModel;
 use App\Models\EnrollmentModel;
 use App\Models\SectionModel;
 use App\Models\StudentModel;
@@ -69,7 +69,7 @@ class StudentAccountNormalizer
                 return ['status' => self::STATUS_AMBIGUOUS, 'reasons' => ['section_id points at a section that no longer exists.'], 'user' => $user];
             }
 
-            $programId = DepartmentModel::programIdOfName($section['program']);
+            $programId = CollegeModel::programIdOfName($section['program']);
 
             if ($programId === null) {
                 return ['status' => self::STATUS_AMBIGUOUS, 'reasons' => ["Section's program \"{$section['program']}\" doesn't resolve to a real programs row."], 'user' => $user];
@@ -133,7 +133,7 @@ class StudentAccountNormalizer
 
         if ($student === null) {
             $section = (new SectionModel())->find((int) $user['section_id']);
-            $programId = DepartmentModel::programIdOfName($section['program']);
+            $programId = CollegeModel::programIdOfName($section['program']);
             $curriculum = (new CurriculumModel())->liveFor($programId);
 
             $steps[] = "Create students row: program_id={$programId}, curriculum_id={$curriculum['curriculum_id']}.";

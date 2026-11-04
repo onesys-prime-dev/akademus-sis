@@ -58,7 +58,7 @@ class AcademicHealthService
 
     private function checkProgramsWithoutDepartment(array &$findings): void
     {
-        $rows = db_connect()->table('programs')->where('sub_department_id', null)->get()->getResultArray();
+        $rows = db_connect()->table('programs')->where('department_id', null)->get()->getResultArray();
 
         foreach ($rows as $r) {
             $this->add($findings, 'warning', 'hierarchy', 'program', (int) $r['program_id'],
@@ -71,9 +71,9 @@ class AcademicHealthService
     {
         $rows = db_connect()->table('programs p')
             ->select('p.program_id, p.program_code, p.program_name')
-            ->join('sub_departments sd', 'sd.sub_dept_id = p.sub_department_id', 'left')
-            ->where('p.sub_department_id IS NOT NULL')
-            ->where('sd.sub_dept_id IS NULL')
+            ->join('departments sd', 'sd.dept_id = p.department_id', 'left')
+            ->where('p.department_id IS NOT NULL')
+            ->where('sd.dept_id IS NULL')
             ->get()->getResultArray();
 
         foreach ($rows as $r) {
@@ -85,14 +85,14 @@ class AcademicHealthService
 
     private function checkDepartmentsWithoutCollege(array &$findings): void
     {
-        $rows = db_connect()->table('sub_departments sd')
-            ->select('sd.sub_dept_id, sd.name')
-            ->join('departments d', 'd.dept_id = sd.college_id', 'left')
-            ->where('d.dept_id IS NULL')
+        $rows = db_connect()->table('departments sd')
+            ->select('sd.dept_id, sd.name')
+            ->join('colleges d', 'd.college_id = sd.college_id', 'left')
+            ->where('d.college_id IS NULL')
             ->get()->getResultArray();
 
         foreach ($rows as $r) {
-            $this->add($findings, 'critical', 'hierarchy', 'sub_department', (int) $r['sub_dept_id'],
+            $this->add($findings, 'critical', 'hierarchy', 'sub_department', (int) $r['dept_id'],
                 "Department \"{$r['name']}\" points to a College that no longer exists.",
                 'This should be prevented by a foreign key — investigate how it happened and reassign to a valid College.');
         }
@@ -146,7 +146,7 @@ class AcademicHealthService
         $db = db_connect();
 
         $rows = $db->table('users u')
-            ->select('u.id, u.username, u.sub_department_id, fd.sub_dept_id AS primary_sub_dept_id')
+            ->select('u.id, u.username, u.sub_department_id, fd.department_id AS primary_sub_dept_id')
             ->join('auth_groups_users g', 'g.user_id = u.id AND g.group = \'faculty\'')
             ->join('faculty_departments fd', 'fd.user_id = u.id AND fd.is_primary = 1 AND fd.status = \'active\'', 'left')
             ->where('u.deleted_at', null)
@@ -173,14 +173,14 @@ class AcademicHealthService
     {
         $db = db_connect();
 
-        $rows = $db->table('sub_departments sd')
-            ->select('sd.sub_dept_id, sd.name, p.program_id, p.program_name')
-            ->join('programs p', 'p.sub_department_id = sd.sub_dept_id')
+        $rows = $db->table('departments sd')
+            ->select('sd.dept_id, sd.name, p.program_id, p.program_name')
+            ->join('programs p', 'p.department_id = sd.dept_id')
             ->get()->getResultArray();
 
         foreach ($rows as $r) {
             if (mb_strtolower(trim($r['name'])) === mb_strtolower(trim($r['program_name']))) {
-                $this->add($findings, 'warning', 'hierarchy', 'sub_department', (int) $r['sub_dept_id'],
+                $this->add($findings, 'warning', 'hierarchy', 'sub_department', (int) $r['dept_id'],
                     "Department \"{$r['name']}\" is named identically to its own Program \"{$r['program_name']}\" — this is the \"Program stored as a Department\" pattern flagged in the earlier audit.",
                     'Rename the Department to a real organizational name (e.g. "Department of X"), not a degree title.');
             }
@@ -189,8 +189,8 @@ class AcademicHealthService
 
     private function checkDuplicateDepartmentCodes(array &$findings): void
     {
-        $rows = db_connect()->table('sub_departments')
-            ->select('college_id, code, COUNT(*) AS n, GROUP_CONCAT(sub_dept_id) AS ids')
+        $rows = db_connect()->table('departments')
+            ->select('college_id, code, COUNT(*) AS n, GROUP_CONCAT(dept_id) AS ids')
             ->groupBy('college_id, code')
             ->having('n >', 1)
             ->get()->getResultArray();
@@ -255,7 +255,7 @@ class AcademicHealthService
 
         foreach ($sections as $s) {
             $matches = db_connect()->table('programs')->where('program_name', $s['program'])->countAllResults();
-            $isLegacyAlias = array_search($s['program'], \App\Models\DepartmentModel::legacyProgramNames(), true) !== false;
+            $isLegacyAlias = array_search($s['program'], \App\Models\CollegeModel::legacyProgramNames(), true) !== false;
 
             if ($matches === 0 && ! $isLegacyAlias) {
                 $this->add($findings, 'critical', 'section', 'section', (int) $s['section_id'],
@@ -270,7 +270,7 @@ class AcademicHealthService
         $sections = db_connect()->table('sections')->where('program_id', null)->get()->getResultArray();
 
         foreach ($sections as $s) {
-            $isLegacyAlias = array_search($s['program'], \App\Models\DepartmentModel::legacyProgramNames(), true) !== false;
+            $isLegacyAlias = array_search($s['program'], \App\Models\CollegeModel::legacyProgramNames(), true) !== false;
 
             if ($isLegacyAlias) {
                 continue;
@@ -305,7 +305,7 @@ class AcademicHealthService
                 continue;
             }
 
-            $exists = $db->table('sub_departments')->where('sub_dept_id', $c['sub_department_id'])->countAllResults() > 0;
+            $exists = $db->table('departments')->where('dept_id', $c['sub_department_id'])->countAllResults() > 0;
 
             if (! $exists) {
                 $this->add($findings, 'critical', 'chairperson', 'user', (int) $c['id'],
@@ -319,11 +319,11 @@ class AcademicHealthService
     {
         $db = db_connect();
 
-        $stale = $db->table('sub_department_schedulers sds')
-            ->select('sds.id, sds.user_id, sds.sub_dept_id')
-            ->join('sub_departments sd', 'sd.sub_dept_id = sds.sub_dept_id', 'left')
+        $stale = $db->table('department_schedulers sds')
+            ->select('sds.id, sds.user_id, sds.department_id')
+            ->join('departments sd', 'sd.dept_id = sds.department_id', 'left')
             ->join('users u', 'u.id = sds.user_id', 'left')
-            ->where('(sd.sub_dept_id IS NULL OR u.id IS NULL)', null, false)
+            ->where('(sd.dept_id IS NULL OR u.id IS NULL)', null, false)
             ->get()->getResultArray();
 
         foreach ($stale as $r) {
@@ -335,7 +335,7 @@ class AcademicHealthService
 
     private function checkOrphanedSubjectOwnership(array &$findings): void
     {
-        $count = db_connect()->table('subjects')->where('sub_department_id', null)->where('is_active', 1)->countAllResults();
+        $count = db_connect()->table('subjects')->where('department_id', null)->where('is_active', 1)->countAllResults();
 
         if ($count > 0) {
             $this->add($findings, 'informational', 'subjects', 'subjects', null,
@@ -348,7 +348,7 @@ class AcademicHealthService
     {
         $db = db_connect();
 
-        $depts = $db->table('sub_departments')->get()->getResultArray();
+        $depts = $db->table('departments')->get()->getResultArray();
         $chaired = array_map('intval', array_column(
             $db->table('users u')->select('u.sub_department_id')
                 ->join('auth_groups_users g', 'g.user_id = u.id')
@@ -357,10 +357,10 @@ class AcademicHealthService
                 ->get()->getResultArray(),
             'sub_department_id'
         ));
-        $delegated = array_map('intval', array_column($db->table('sub_department_schedulers')->select('sub_dept_id')->get()->getResultArray(), 'sub_dept_id'));
+        $delegated = array_map('intval', array_column($db->table('department_schedulers')->select('department_id')->get()->getResultArray(), 'department_id'));
 
         foreach ($depts as $d) {
-            $id = (int) $d['sub_dept_id'];
+            $id = (int) $d['dept_id'];
 
             if (! in_array($id, $chaired, true) && ! in_array($id, $delegated, true)) {
                 $this->add($findings, 'warning', 'chairperson', 'sub_department', $id,

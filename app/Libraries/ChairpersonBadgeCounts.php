@@ -3,7 +3,7 @@
 namespace App\Libraries;
 
 use App\Models\AcademicYearModel;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\GradeChangeRequestModel;
 use App\Models\GradeModel;
 use App\Models\StudentEnlistmentModel;
@@ -33,7 +33,7 @@ class ChairpersonBadgeCounts
             ];
         }
 
-        $deptModel = new DepartmentModel();
+        $deptModel = new CollegeModel();
         $programs  = [];
 
         foreach ($subDeptIds as $id) {
@@ -80,7 +80,7 @@ class ChairpersonBadgeCounts
 
         $ownedSubjects = db_connect()->table('subjects')
             ->select('subject_id, subject_code')
-            ->whereIn('sub_department_id', $subDeptIds)
+            ->whereIn('department_id', $subDeptIds)
             ->where('is_active', 1)
             ->get()
             ->getResultArray();
@@ -171,7 +171,7 @@ class ChairpersonBadgeCounts
             ->join('faculty_assignments fa1', 'fa1.assignment_id = sr.assignment_id')
             ->join('subjects su1', 'su1.subject_code = fa1.subject_code', 'left')
             ->where('sr.status', 'accepted')
-            ->whereIn('su1.sub_department_id', $subDeptIds)
+            ->whereIn('su1.department_id', $subDeptIds)
             ->countAllResults();
     }
 
@@ -180,7 +180,7 @@ class ChairpersonBadgeCounts
     {
         return db_connect()->table('offering_placement_requests opr')
             ->join('subjects s', 's.subject_id = opr.subject_id', 'left')
-            ->whereIn('s.sub_department_id', $subDeptIds)
+            ->whereIn('s.department_id', $subDeptIds)
             ->where('opr.status', 'pending')
             ->countAllResults();
     }

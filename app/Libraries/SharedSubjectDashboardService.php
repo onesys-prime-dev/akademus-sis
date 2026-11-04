@@ -36,7 +36,7 @@ class SharedSubjectDashboardService
         // 1: authorized subjects.
         $subjects = $db->table('subjects')
             ->select('subject_id, subject_code, subject_name')
-            ->whereIn('sub_department_id', $subDeptIds)
+            ->whereIn('department_id', $subDeptIds)
             ->where('is_active', 1)
             ->orderBy('subject_code')
             ->get()

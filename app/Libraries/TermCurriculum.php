@@ -2,8 +2,8 @@
 
 namespace App\Libraries;
 
+use App\Models\CollegeModel;
 use App\Models\CurriculumModel;
-use App\Models\DepartmentModel;
 
 /**
  * Resolves "what does this cohort take this term?" from the program's one
@@ -46,7 +46,7 @@ class TermCurriculum
     /** Display name (as stored on sections/plotted_schedules) => programs.program_id. */
     public static function programIdOf(string $program): ?int
     {
-        return DepartmentModel::programIdOfName($program);
+        return CollegeModel::programIdOfName($program);
     }
 
     /**

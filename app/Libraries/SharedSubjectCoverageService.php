@@ -3,8 +3,8 @@
 namespace App\Libraries;
 
 use App\Models\AcademicYearModel;
+use App\Models\CollegeModel;
 use App\Models\CourseOfferingModel;
-use App\Models\DepartmentModel;
 
 /**
  * Answers the inverse question from Step 6's SharedSubjectDashboardService:
@@ -39,7 +39,7 @@ class SharedSubjectCoverageService
         }
 
         $db = db_connect();
-        $deptModel = new DepartmentModel();
+        $deptModel = new CollegeModel();
 
         $myProgramNames = [];
         $myProgramIds   = [];
@@ -118,7 +118,7 @@ class SharedSubjectCoverageService
         // not filtered to one subject, since we don't know in advance which
         // ones are external.
         $reqRows = $db->table('curriculum_subjects cs')
-            ->select('cs.curriculum_id, cs.year_level, s.subject_id, s.subject_code, s.subject_name, s.sub_department_id')
+            ->select('cs.curriculum_id, cs.year_level, s.subject_id, s.subject_code, s.subject_name, s.department_id')
             ->join('subjects s', 's.subject_id = cs.subject_id')
             ->whereIn('cs.curriculum_id', $curriculumIds)
             ->where('cs.semester', $semester)
@@ -139,7 +139,7 @@ class SharedSubjectCoverageService
             $subjectMeta[$sid] ??= [
                 'subject_code' => $r['subject_code'],
                 'subject_name' => $r['subject_name'],
-                'owner_sub_dept_id' => $r['sub_department_id'] !== null ? (int) $r['sub_department_id'] : null,
+                'owner_sub_dept_id' => $r['department_id'] !== null ? (int) $r['department_id'] : null,
             ];
             $requiredPairsBySubject[$sid][$r['curriculum_id'] . ':' . $r['year_level']] = true;
         }
@@ -233,9 +233,9 @@ class SharedSubjectCoverageService
         // Owner unit display names.
         $ownerIds = array_values(array_unique(array_filter(array_map(static fn ($sid) => $subjectMeta[$sid]['owner_sub_dept_id'], $externalSubjectIds))));
         $ownerNames = $ownerIds === [] ? [] : array_column(
-            $db->table('sub_departments')->select('sub_dept_id, name')->whereIn('sub_dept_id', $ownerIds)->get()->getResultArray(),
+            $db->table('departments')->select('dept_id, name')->whereIn('dept_id', $ownerIds)->get()->getResultArray(),
             'name',
-            'sub_dept_id'
+            'dept_id'
         );
 
         // Candidate offerings for these external subjects, this term only.
