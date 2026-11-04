@@ -427,6 +427,7 @@
 .key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--color-border-control); }
 .key--lecture { background: var(--color-surface); border-left: 3px solid var(--color-primary); }
 .key--lab { background: var(--color-lab-soft); border-left: 3px solid var(--color-lab); }
+.key--foreign { background: var(--color-foreign-soft); border: 1px dashed var(--color-foreign); border-left: 3px solid var(--color-foreign); }
 .key--other { background: var(--color-surface-sunken); border-style: dashed; }
 
 .noprof-banner {
@@ -537,7 +538,16 @@
 .block[data-issue="warn"] { border-color: var(--color-warning); }
 .block[data-issue="error"] { border-color: var(--color-danger); border-left-color: var(--color-danger); background: var(--color-danger-soft); }
 .block.is-dragging { opacity: .4; }
-.block.is-readonly { cursor: default; }
+.block.is-readonly {
+    cursor: default;
+    border: 1px dashed var(--color-foreign);
+    border-left: 3px solid var(--color-foreign);
+    background: var(--color-foreign-soft);
+    box-shadow: 0 0 0 1px var(--color-foreign-border);
+}
+.block.is-readonly:hover { border-color: var(--color-foreign); border-left-color: var(--color-foreign); }
+.block.is-readonly[data-issue="warn"] { border-color: var(--color-warning); border-left-color: var(--color-foreign); }
+.block.is-readonly[data-issue="error"] { border-color: var(--color-danger); border-left-color: var(--color-danger); background: var(--color-danger-soft); box-shadow: none; }
 
 .b-head { display: flex; align-items: center; gap: 3px; min-width: 0; }
 .b-code { font-size: 12px; font-weight: 650; color: var(--color-text-primary); white-space: nowrap; }

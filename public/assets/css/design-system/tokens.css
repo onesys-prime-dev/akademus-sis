@@ -60,6 +60,12 @@
     --color-lab-soft:        #f0fdfa;
     --color-lab-border:      #99d6cf;
 
+    /* ---- Domain accent: classes owned by another department (scheduling).
+       Marks a block as read-only/foreign-owned at a glance. ---- */
+    --color-foreign:         #7c3aed;
+    --color-foreign-soft:    #f5f3ff;
+    --color-foreign-border:  #ddd6fe;
+
     /* ---- Radius ---- */
     --radius-sm:  6px;
     --radius-md:  8px;

@@ -217,6 +217,7 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
                 <ul class="legend" aria-label="Legend">
                     <li><i class="key key--lecture"></i>Lecture</li>
                     <li><i class="key key--lab"></i>Laboratory</li>
+                    <li><i class="key key--foreign"></i>Owned by another dept</li>
                     <li><i class="key key--other"></i>Other sections</li>
                 </ul>
             </div>
