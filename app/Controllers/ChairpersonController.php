@@ -91,6 +91,28 @@ class ChairpersonController extends BaseController
     }
 
     /**
+     * Department -> program list, for a Department-then-Program cascade.
+     * Today every department this chairperson is delegated across has
+     * exactly one program, but the schema (and programsOfSubDept()) already
+     * supports several — this stays correct once that stops being true,
+     * instead of a flat program list a chairperson managing several
+     * departments has to decode by name alone.
+     *
+     * @return list<array{name: string, programs: list<string>}>
+     */
+    private function authorizedDeptPrograms(): array
+    {
+        $deptModel = new DepartmentModel();
+        $out       = [];
+
+        foreach ($this->authorizedDeptNames() as $subDeptId => $name) {
+            $out[] = ['name' => $name, 'programs' => $deptModel->programsOfSubDept($subDeptId)];
+        }
+
+        return $out;
+    }
+
+    /**
      * "{Dept Name} - " prefix for the topbar role label, or just blank when
      * delegated across more than one department — a joined list wouldn't
      * fit, and "Chairperson" alone reads fine there.
@@ -2502,6 +2524,22 @@ class ChairpersonController extends BaseController
             ->get()
             ->getResultArray();
 
+        $deptPrograms = $this->authorizedDeptPrograms();
+
+        // program name -> department name, so the directory can filter/tag
+        // each section's card by department without a second query per row.
+        $deptByProgram = [];
+        foreach ($deptPrograms as $dp) {
+            foreach ($dp['programs'] as $program) {
+                $deptByProgram[$program] = $dp['name'];
+            }
+        }
+
+        foreach ($sections as &$sec) {
+            $sec['department'] = $deptByProgram[$sec['program']] ?? null;
+        }
+        unset($sec);
+
         return view('chairperson/sections', [
             'pageTitle' => 'Sections',
             'user'      => [
@@ -2510,6 +2548,7 @@ class ChairpersonController extends BaseController
             ],
             'deptName'        => $this->authorizedDeptNamesJoined(),
             'programs'        => $this->authorizedPrograms(),
+            'deptPrograms'    => $deptPrograms,
             'yearLevels'      => self::FILTERS['year_level'],
             'academicYears'   => $this->creatableSectionYears(),
             'activeAcademicYear' => (new AcademicYearModel())->activeFormatted(),
