@@ -57,10 +57,11 @@
     // single-department chair just gets the plain Program select as before.
     const newDept = document.getElementById('newDepartment');
     const newProgram = document.getElementById('newProgram');
+    let syncCreatePrograms = () => {};
     if (newDept) {
         const deptPrograms = JSON.parse(newDept.dataset.deptPrograms || '[]');
         const byDept = new Map(deptPrograms.map(d => [d.name, d.programs]));
-        const syncPrograms = () => {
+        syncCreatePrograms = () => {
             const options = byDept.get(newDept.value) || [];
             newProgram.replaceChildren(...options.map(p => {
                 const opt = document.createElement('option');
@@ -69,9 +70,21 @@
                 return opt;
             }));
         };
-        newDept.addEventListener('change', syncPrograms);
-        syncPrograms();
+        newDept.addEventListener('change', syncCreatePrograms);
+        syncCreatePrograms();
     }
+
+    // Single department control, in the page header — picking one there
+    // also scopes the (otherwise independent) Create a section form to it,
+    // so a chairperson managing several departments doesn't have to repeat
+    // the choice.
+    const headerDept = document.getElementById('scHeaderDept');
+    headerDept?.addEventListener('change', () => {
+        if (newDept && headerDept.value !== 'all' && [...newDept.options].some(o => o.value === headerDept.value)) {
+            newDept.value = headerDept.value;
+            syncCreatePrograms();
+        }
+    });
 
     const create = document.getElementById('scCreatePanel');
     const trigger = document.getElementById('scOpenCreate');
@@ -90,7 +103,7 @@
     const cards = [...document.querySelectorAll('[data-directory-section]')];
     const search = document.getElementById('scSearch');
     const term = document.getElementById('scTerm');
-    const dept = document.getElementById('scDept');
+    const dept = headerDept;
     const program = document.getElementById('scProgram');
     const normalize = value => value.toLocaleLowerCase().replace(/\s+/g, ' ').trim();
     // Student names are searchable; assign-menu options are excluded.

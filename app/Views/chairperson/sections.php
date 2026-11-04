@@ -23,7 +23,20 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         <h1>Sections</h1>
         <p class="sc-subtitle">Manage section capacity, student assignments, and rosters.</p>
     </div>
-    <?php if ($deptName !== null): ?><button type="button" class="btn btn-primary" id="scOpenCreate"><span class="material-symbols-outlined" aria-hidden="true">add</span>Create section</button><?php endif ?>
+    <div class="sc-heading__tools">
+        <?php if ($deptName !== null && count($deptPrograms) > 1): ?>
+            <div class="cs-field sc-heading-dept">
+                <label for="scHeaderDept">Department</label>
+                <select id="scHeaderDept">
+                    <option value="all">All departments</option>
+                    <?php foreach ($deptPrograms as $dp): ?>
+                        <option value="<?= esc($dp['name'], 'attr') ?>"><?= esc($dp['name']) ?></option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+        <?php endif ?>
+        <?php if ($deptName !== null): ?><button type="button" class="btn btn-primary" id="scOpenCreate"><span class="material-symbols-outlined" aria-hidden="true">add</span>Create section</button><?php endif ?>
+    </div>
 </div>
 
 <?php if ($deptName === null): ?>
@@ -124,7 +137,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         <details class="panel sc-rebalance" id="scRebalancePanel"><summary class="sc-tool-summary"><span class="material-symbols-outlined" aria-hidden="true">balance</span><span><strong>Rebalance sections</strong><small>Preview student allocation before applying changes.</small></span><span class="material-symbols-outlined sc-chevron" aria-hidden="true">expand_more</span></summary><div class="sc-rebalance-body"><p>Choose a cohort to preview its allocation. Protected sections remain unchanged.</p><div class="sc-rebalance-controls"><label class="sc-sr-only" for="scRebalanceGroup">Cohort to rebalance</label><select id="scRebalanceGroup"><?php foreach ($groups as $g): ?><option value="<?= esc(json_encode(['academic_year' => $g['academic_year'], 'program' => $g['program'], 'year_level' => $g['year_level']]), 'attr') ?>"><?= esc($g['program'] . ' / ' . $g['year_level'] . ' / ' . $g['academic_year']) ?></option><?php endforeach ?></select><button type="button" class="btn btn-secondary" onclick="previewRebalance(JSON.parse(document.getElementById('scRebalanceGroup').value))">Preview allocation</button></div>
             <div id="rebalancePanel" style="display:none; margin-top:12px; border-top:1px solid #e2e8f0; padding-top:12px;"></div>
         </div></details>
-        <div class="sc-directory-toolbar" id="scDirectoryTools" hidden><label class="sc-search"><span class="material-symbols-outlined" aria-hidden="true">search</span><span class="sc-sr-only">Search sections or students</span><input type="search" id="scSearch" placeholder="Search section or student"></label><div class="sc-filter"><label for="scTerm">Term</label><select id="scTerm"><option value="all">All terms</option><?php foreach (array_unique(array_column($sections, 'academic_year')) as $term): ?><option value="<?= esc($term, 'attr') ?>"><?= esc($term) ?></option><?php endforeach ?></select></div><?php if (count($deptPrograms) > 1): ?><div class="sc-filter"><label for="scDept">Department</label><select id="scDept"><option value="all">All departments</option><?php foreach ($deptPrograms as $dp): ?><option value="<?= esc($dp['name'], 'attr') ?>"><?= esc($dp['name']) ?></option><?php endforeach ?></select></div><?php endif ?><div class="sc-filter"><label for="scProgram">Program</label><select id="scProgram"><option value="all">All programs</option><?php foreach (array_unique(array_column($sections, 'program')) as $program): ?><option value="<?= esc($program, 'attr') ?>"><?= esc($program) ?></option><?php endforeach ?></select></div></div><p class="sc-directory-result" id="scResults" role="status" aria-live="polite" hidden></p><div class="sc-no-results" id="scNoResults" hidden><strong>No matching sections</strong><p>Try another search or adjust the program and term filters.</p><button type="button" class="btn btn-secondary" id="scClearFilters">Clear filters</button></div>
+        <div class="sc-directory-toolbar" id="scDirectoryTools" hidden><label class="sc-search"><span class="material-symbols-outlined" aria-hidden="true">search</span><span class="sc-sr-only">Search sections or students</span><input type="search" id="scSearch" placeholder="Search section or student"></label><div class="sc-filter"><label for="scTerm">Term</label><select id="scTerm"><option value="all">All terms</option><?php foreach (array_unique(array_column($sections, 'academic_year')) as $term): ?><option value="<?= esc($term, 'attr') ?>"><?= esc($term) ?></option><?php endforeach ?></select></div><div class="sc-filter"><label for="scProgram">Program</label><select id="scProgram"><option value="all">All programs</option><?php foreach (array_unique(array_column($sections, 'program')) as $program): ?><option value="<?= esc($program, 'attr') ?>"><?= esc($program) ?></option><?php endforeach ?></select></div></div><p class="sc-directory-result" id="scResults" role="status" aria-live="polite" hidden></p><div class="sc-no-results" id="scNoResults" hidden><strong>No matching sections</strong><p>Try another search or adjust the program and term filters.</p><button type="button" class="btn btn-secondary" id="scClearFilters">Clear filters</button></div>
         <?php foreach ($sections as $sec): ?>
             <?php
                 $roster = $rosterBySection[(int) $sec['section_id']] ?? [];
