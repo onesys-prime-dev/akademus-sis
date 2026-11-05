@@ -1,6 +1,7 @@
 <?php
 
 use App\Libraries\SchedulingConflictService;
+use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
 use App\Models\EnrollmentModel;
 use App\Models\FacultyAssignmentModel;
@@ -87,7 +88,10 @@ final class OfferingComponentSchedulingTest extends CIUnitTestCase
     private function seedSection(string $program, string $label, string $academicYear = self::TERM): int
     {
         $sections = new SectionModel();
-        $sections->insert(['academic_year' => $academicYear, 'program' => $program, 'year_level' => '2nd Year', 'section' => $label]);
+        // sections.academic_year is year-scoped only (no semester) since the
+        // MergeSectionsToSchoolYear migration — SubjectDemandService
+        // compares against AcademicYearModel::yearOnly($academicYear).
+        $sections->insert(['academic_year' => AcademicYearModel::yearOnly($academicYear), 'program' => $program, 'year_level' => '2nd Year', 'section' => $label]);
 
         return (int) $sections->getInsertID();
     }
@@ -114,6 +118,10 @@ final class OfferingComponentSchedulingTest extends CIUnitTestCase
                 'section_id'   => $sectionId,
                 'subject_code' => $subjectCode,
                 'status'       => 'enrolled',
+                // enrollments carries its own term-scoped academic_year
+                // (added by MergeSectionsToSchoolYear) — SubjectDemandService
+                // matches on this full term string directly.
+                'academic_year' => self::TERM,
             ]);
             $ids[] = $uid;
         }

@@ -137,6 +137,11 @@ final class StudentProgressServiceTest extends CIUnitTestCase
     {
         db_connect()->table('enrollments')->insert([
             'user_id' => $userId, 'section_id' => $sectionId, 'subject_code' => $subjectCode, 'status' => 'enrolled',
+            // enrollments carries its own term-scoped academic_year (added by
+            // MergeSectionsToSchoolYear) — StudentProgressService::
+            // currentEnrollmentsByUser() matches against
+            // AcademicYearModel::activeFormatted(), which equals $this->term here.
+            'academic_year' => $this->term,
         ]);
     }
 

@@ -2,6 +2,7 @@
 
 use App\Libraries\SubjectDemandService;
 use App\Libraries\TermCurriculum;
+use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
 use App\Models\OfferingPlacementRequestModel;
 use App\Models\SectionModel;
@@ -113,7 +114,12 @@ final class SubjectDemandServiceTest extends CIUnitTestCase
     {
         $sections = new SectionModel();
         $sections->insert([
-            'academic_year' => $academicYear,
+            // sections.academic_year is year-scoped only (no semester) since
+            // the MergeSectionsToSchoolYear migration — the production
+            // queries this service runs always compare against
+            // AcademicYearModel::yearOnly($academicYear), so the fixture
+            // must store that same year-only form, not the raw term string.
+            'academic_year' => AcademicYearModel::yearOnly($academicYear),
             'program'       => $program,
             'year_level'    => $yearLevel,
             'section'       => $label,
@@ -185,13 +191,18 @@ final class SubjectDemandServiceTest extends CIUnitTestCase
         ]);
     }
 
-    private function seedEnrollment(int $userId, int $sectionId, string $subjectCode, string $status = 'enrolled'): void
+    private function seedEnrollment(int $userId, int $sectionId, string $subjectCode, string $status = 'enrolled', string $academicYear = self::TERM): void
     {
         db_connect()->table('enrollments')->insert([
             'user_id'      => $userId,
             'section_id'   => $sectionId,
             'subject_code' => $subjectCode,
             'status'       => $status,
+            // enrollments carries its own term-scoped academic_year (added
+            // by MergeSectionsToSchoolYear, independent of
+            // sections.academic_year) — assignedUserIds()/summaryForSubjects()
+            // match on this full term string directly.
+            'academic_year' => $academicYear,
         ]);
     }
 

@@ -2,6 +2,7 @@
 
 use App\Libraries\SharedSubjectDashboardService;
 use App\Libraries\SubjectDemandService;
+use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
 use App\Models\OfferingPlacementRequestModel;
 use App\Models\PlottedScheduleModel;
@@ -88,7 +89,11 @@ final class SharedSubjectDashboardServiceTest extends CIUnitTestCase
     private function seedSection(string $program, string $label, string $academicYear = self::TERM): int
     {
         $sections = new SectionModel();
-        $sections->insert(['academic_year' => $academicYear, 'program' => $program, 'year_level' => '2nd Year', 'section' => $label]);
+        // sections.academic_year is year-scoped only (no semester) since the
+        // MergeSectionsToSchoolYear migration — production queries compare
+        // against AcademicYearModel::yearOnly($academicYear), so the
+        // fixture must store that same year-only form.
+        $sections->insert(['academic_year' => AcademicYearModel::yearOnly($academicYear), 'program' => $program, 'year_level' => '2nd Year', 'section' => $label]);
 
         return (int) $sections->getInsertID();
     }
@@ -106,10 +111,14 @@ final class SharedSubjectDashboardServiceTest extends CIUnitTestCase
         return $userId;
     }
 
-    private function seedEnrollment(int $userId, int $sectionId, string $subjectCode, string $status = 'enrolled', ?int $offeringId = null): void
+    private function seedEnrollment(int $userId, int $sectionId, string $subjectCode, string $status = 'enrolled', ?int $offeringId = null, string $academicYear = self::TERM): void
     {
         db_connect()->table('enrollments')->insert([
             'user_id' => $userId, 'section_id' => $sectionId, 'subject_code' => $subjectCode, 'status' => $status, 'offering_id' => $offeringId,
+            // enrollments carries its own term-scoped academic_year
+            // (added by MergeSectionsToSchoolYear) — SubjectDemandService
+            // matches on this full term string directly.
+            'academic_year' => $academicYear,
         ]);
     }
 

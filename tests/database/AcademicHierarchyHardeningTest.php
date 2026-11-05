@@ -3,6 +3,7 @@
 use App\Libraries\AcademicHealthService;
 use App\Libraries\SchedulingAuthorization;
 use App\Libraries\SharedSubjectCoverageService;
+use App\Models\AcademicYearModel;
 use App\Models\AuditLogModel;
 use App\Models\CollegeModel;
 use App\Models\SectionModel;
@@ -62,7 +63,11 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
     private function newSection(string $academicYear, string $program, ?int $programId, string $yearLevel = '1st Year', string $section = 'A'): int
     {
         db_connect()->table('sections')->insert([
-            'academic_year' => $academicYear, 'program' => $program, 'program_id' => $programId,
+            // sections.academic_year is year-scoped only (no semester) since
+            // the MergeSectionsToSchoolYear migration — production queries
+            // (e.g. SharedSubjectCoverageService::build()) compare against
+            // AcademicYearModel::yearOnly($academicYear).
+            'academic_year' => AcademicYearModel::yearOnly($academicYear), 'program' => $program, 'program_id' => $programId,
             'year_level' => $yearLevel, 'section' => $section,
         ]);
 

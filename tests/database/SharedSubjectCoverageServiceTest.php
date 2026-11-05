@@ -1,6 +1,7 @@
 <?php
 
 use App\Libraries\SharedSubjectCoverageService;
+use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
 use App\Models\OfferingPlacementRequestModel;
 use App\Models\SectionModel;
@@ -87,7 +88,11 @@ final class SharedSubjectCoverageServiceTest extends CIUnitTestCase
     private function seedSection(string $program, string $label, string $academicYear = self::TERM): int
     {
         $sections = new SectionModel();
-        $sections->insert(['academic_year' => $academicYear, 'program' => $program, 'year_level' => '2nd Year', 'section' => $label]);
+        // sections.academic_year is year-scoped only (no semester) since the
+        // MergeSectionsToSchoolYear migration — production queries compare
+        // against AcademicYearModel::yearOnly($academicYear), so the
+        // fixture must store that same year-only form.
+        $sections->insert(['academic_year' => AcademicYearModel::yearOnly($academicYear), 'program' => $program, 'year_level' => '2nd Year', 'section' => $label]);
 
         return (int) $sections->getInsertID();
     }
