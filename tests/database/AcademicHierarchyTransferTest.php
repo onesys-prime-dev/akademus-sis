@@ -2,7 +2,7 @@
 
 use App\Libraries\SchedulingAuthorization;
 use App\Models\AuditLogModel;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\FacultyDepartmentModel;
 use App\Models\ProgramModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
@@ -312,14 +312,14 @@ final class AcademicHierarchyTransferTest extends CIUnitTestCase
         db_connect()->table('users')->where('id', $chairA)->update(['sub_department_id' => $deptA]);
         db_connect()->table('users')->where('id', $chairB)->update(['sub_department_id' => $deptB]);
 
-        $dept = new DepartmentModel();
+        $dept = new CollegeModel();
         $this->assertContains('PT404 Title', $dept->programsOfSubDept($deptA));
         $this->assertNotContains('PT404 Title', $dept->programsOfSubDept($deptB));
 
         $this->actingAsAdmin();
         $this->postAs("/admin/programs/{$program}/transfer", ['sub_department_id' => $deptB, 'reason' => 'Chair scope check']);
 
-        $dept = new DepartmentModel();
+        $dept = new CollegeModel();
         $this->assertNotContains('PT404 Title', $dept->programsOfSubDept($deptA), 'Department A chair must lose scope over the moved program.');
         $this->assertContains('PT404 Title', $dept->programsOfSubDept($deptB), 'Department B chair must gain scope over the moved program.');
     }

@@ -4,7 +4,7 @@ use App\Libraries\AcademicHealthService;
 use App\Libraries\SchedulingAuthorization;
 use App\Libraries\SharedSubjectCoverageService;
 use App\Models\AuditLogModel;
-use App\Models\DepartmentModel;
+use App\Models\CollegeModel;
 use App\Models\SectionModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
 use CodeIgniter\Test\CIUnitTestCase;
@@ -471,7 +471,7 @@ final class AcademicHierarchyHardeningTest extends CIUnitTestCase
         db_connect()->table('auth_groups_users')->insert(['user_id' => $chair, 'group' => 'chairperson', 'created_at' => date('Y-m-d H:i:s')]);
         db_connect()->table('users')->where('id', $chair)->update(['sub_department_id' => $dept]);
 
-        $names = (new DepartmentModel())->programsOfSubDept($dept);
+        $names = (new CollegeModel())->programsOfSubDept($dept);
         $this->assertNotContains('Inactive Program', $names, 'An inactive program must not appear in the creatable-program list.');
     }
 
