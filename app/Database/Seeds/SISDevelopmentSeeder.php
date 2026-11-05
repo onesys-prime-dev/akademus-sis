@@ -42,7 +42,7 @@ use CodeIgniter\Database\Seeder;
 class SISDevelopmentSeeder extends Seeder
 {
     private const PROGRAM_CODE  = 'BSIT';
-    private const PROGRAM_LABEL = 'BS in Information Technology'; // sections/plotted_schedules store this display name, not the code — see DepartmentModel::LEGACY_PROGRAM_NAMES
+    private const PROGRAM_LABEL = 'BS in Information Technology'; // sections/plotted_schedules store this display name, not the code — see CollegeModel::legacyProgramNames()
 
     public function run()
     {

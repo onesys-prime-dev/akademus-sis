@@ -93,7 +93,7 @@ class AdminController extends BaseController
         foreach ($db->table('colleges')->orderBy('created_at', 'desc')->limit(5)->get()->getResultArray() as $row) {
             $items[] = [
                 'icon'    => 'account_balance',
-                'title'   => 'Department Created',
+                'title'   => 'College Created',
                 'detail'  => "{$row['code']} — {$row['name']}",
                 'time'    => $row['created_at'],
             ];

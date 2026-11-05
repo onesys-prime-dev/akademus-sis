@@ -203,7 +203,7 @@ $navGroups = $navGroups ?? [
         ]],
     ],
     'Academics' => [
-        'departments'          => ['label' => 'Colleges',        'icon' => 'hub',            'url' => 'admin/departments', 'help' => [
+        'departments'          => ['label' => 'Colleges',        'icon' => 'hub',            'url' => 'admin/colleges', 'help' => [
             'title' => 'Colleges',
             'text'  => "The institution's colleges and their departments (sub-departments) — the structure chairpersons, deans, and subject ownership are all organized under.",
         ]],

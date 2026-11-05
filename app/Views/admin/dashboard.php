@@ -20,7 +20,7 @@
                 <?= esc($stats['unassigned']) ?> college<?= $stats['unassigned'] > 1 ? 's are' : ' is' ?> currently lacking a designated chairperson.
             </p>
             <div class="ac-alert-card__actions">
-                <a href="<?= site_url('admin/departments') ?>" class="ac-btn-outline">Review Assignments</a>
+                <a href="<?= site_url('admin/colleges') ?>" class="ac-btn-outline">Review Assignments</a>
                 <button type="button" onclick="document.getElementById('deptAlert').remove()" class="ac-btn-outline ac-btn-outline--ghost">Dismiss</button>
             </div>
         </div>
@@ -111,7 +111,7 @@
                     : 'All colleges have a chairperson assigned.' ?>
             </p>
             <?php if ($setupPercent < 100): ?>
-                <a href="<?= site_url('admin/departments') ?>" class="ac-btn-outline" style="display:block; text-align:center;">Continue Setup</a>
+                <a href="<?= site_url('admin/colleges') ?>" class="ac-btn-outline" style="display:block; text-align:center;">Continue Setup</a>
             <?php endif ?>
         </div>
 
