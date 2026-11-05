@@ -28,8 +28,8 @@ use CodeIgniter\Database\Seeder;
  *     transactional, conflict/capacity-checked path StudentEnrollment uses.
  *
  * Deliberately scoped to BSIT / the IT sub-department only: as of this
- * writing, BSIT is the only program with `programs.sub_department_id` set
- * (see DepartmentModel::subDeptOfUser / programsOfSubDept) — BSCS and BSHM
+ * writing, BSIT is the only program with `programs.department_id` set
+ * (see CollegeModel::subDeptOfUser / programsOfSubDept) — BSCS and BSHM
  * exist but aren't linked to any sub-department yet. That is a real
  * admin-configuration gap (see the "Curriculum" module in the SIS
  * development roadmap), not something this seeder should silently paper
@@ -295,13 +295,13 @@ class SISDevelopmentSeeder extends Seeder
         // Same IT sub-department this whole seeder is scoped to (see class
         // docblock) — resolved by code rather than hardcoding an id, so
         // this still works if the dev DB's ids differ.
-        $subDept = $db->table('sub_departments')->where('code', 'IT')->get()->getRowArray();
+        $subDept = $db->table('departments')->where('code', 'IT')->get()->getRowArray();
 
         $faculty = $subDept === null ? null : $db->table('users u')
             ->select('u.id')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'faculty')
-            ->where('u.sub_department_id', $subDept['sub_dept_id'])
+            ->where('u.sub_department_id', $subDept['dept_id'])
             ->orderBy('u.id', 'ASC')
             ->get()
             ->getRowArray();
@@ -310,7 +310,7 @@ class SISDevelopmentSeeder extends Seeder
             ->select('u.id')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'chairperson')
-            ->where('u.sub_department_id', $subDept['sub_dept_id'])
+            ->where('u.sub_department_id', $subDept['dept_id'])
             ->orderBy('u.id', 'ASC')
             ->get()
             ->getRowArray();

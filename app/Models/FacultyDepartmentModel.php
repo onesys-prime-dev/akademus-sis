@@ -346,7 +346,7 @@ class FacultyDepartmentModel extends Model
         // Keep the college-level department_id consistent with the new
         // primary's own college, mirroring how chairperson/faculty
         // assignment already sets both together elsewhere (e.g.
-        // Admin\SubDepartmentController::addFaculty()).
+        // Admin\DepartmentController::addFaculty()).
         $department = (new DepartmentModel())->find($subDeptId);
 
         if ($department !== null) {

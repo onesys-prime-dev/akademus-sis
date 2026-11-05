@@ -166,7 +166,7 @@ class CollegeModel extends Model
 
     /**
      * What a Department transfer (to a different College) would touch —
-     * used by Admin\SubDepartmentController::transferPreview() so the admin
+     * used by Admin\DepartmentController::transferPreview() so the admin
      * sees real counts before confirming. Nothing here is written; this is
      * read-only. Programs/faculty/subjects/chairpersons+delegates all key
      * off sub_dept_id directly, so a college change never touches them —

@@ -84,10 +84,10 @@ class ScheduleDataMapper
     private function buildCourses(string $academicYear): array
     {
         $rows = $this->db->table('course_offerings co')
-            ->select('co.offering_id, co.subject_code, co.capacity, su.subject_name, su.sub_department_id,
+            ->select('co.offering_id, co.subject_code, co.capacity, su.subject_name, su.department_id,
                       su.is_laboratory, su.meetings_per_week, sd.name AS department_name')
             ->join('subjects su', 'su.subject_id = co.subject_id', 'left')
-            ->join('sub_departments sd', 'sd.sub_dept_id = su.sub_department_id', 'left')
+            ->join('departments sd', 'sd.dept_id = su.department_id', 'left')
             ->where('co.academic_year', $academicYear)
             ->get()
             ->getResultArray();

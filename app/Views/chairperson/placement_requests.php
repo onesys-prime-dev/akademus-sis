@@ -174,7 +174,7 @@ $sectionLabel = static function (array $r): string {
                             <div class="pr-section"><?= esc($sectionLabel($r)) ?></div>
                         </td>
                         <td data-label="Type"><span class="pr-type"><?= esc($typeLabels[$r['request_type']] ?? $r['request_type']) ?></span></td>
-                        <td data-label="Requesting Unit"><?= esc($r['requesting_dept_name'] ?? ('Unit #' . $r['requesting_sub_dept_id'])) ?></td>
+                        <td data-label="Requesting Unit"><?= esc($r['requesting_dept_name'] ?? ('Unit #' . $r['requesting_department_id'])) ?></td>
                         <td data-label="Submitted"><?= esc(date('M j, Y g:i A', strtotime($r['created_at']))) ?></td>
                         <td data-label="" class="pr-actions">
                             <button type="button" class="pr-btn pr-btn--approve" data-id="<?= (int) $r['id'] ?>">Approve</button>

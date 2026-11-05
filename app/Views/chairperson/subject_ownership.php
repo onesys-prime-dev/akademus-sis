@@ -11,7 +11,7 @@ $catalog = array_map(static fn ($s) => [
     'id' => (int) $s['subject_id'], 'code' => $s['subject_code'], 'title' => $s['subject_name'],
     'units' => (float) $s['units'], 'duration' => (float) $s['contact_hours'],
     'is_lab' => (bool) $s['is_laboratory'], 'active' => (bool) $s['is_active'],
-    'department' => (int) $s['sub_department_id'],
+    'department' => (int) $s['department_id'],
     'pairId' => $s['pair_subject_id'] !== null ? (int) $s['pair_subject_id'] : null,
 ], $subjects);
 ?>
