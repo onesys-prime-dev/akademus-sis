@@ -420,13 +420,20 @@ final class ScheduleSuggesterTest extends CIUnitTestCase
         ]);
     }
 
-    /** Two of three rooms busy Mon-Sat 8:00-10:30, as if the school piled into the morning. */
+    /**
+     * Two of three rooms busy Mon-Sat 8:00-10:30, as if the school piled
+     * into the morning — but one of the two is the lab, which a non-lab
+     * subject's room pool never draws from anyway, so the lecture room
+     * left free (Room 102) must be the OTHER non-lab room, not it, or
+     * there is no free eligible room for a non-lab subject to take at
+     * 8:00 regardless of the spread setting.
+     */
     private function busyMornings(): array
     {
         $others = [];
 
         foreach (range(0, 5) as $d) {
-            foreach (['Room 101', 'Room 102'] as $room) {
+            foreach (['Room 101', 'Lab A'] as $room) {
                 $others[] = ['day' => $d, 'code' => 'X', 'start' => '08:00', 'end' => '10:30', 'room' => $room, 'prof' => null];
             }
         }
