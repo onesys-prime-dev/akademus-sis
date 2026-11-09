@@ -32,6 +32,12 @@ final class TermCurriculumTest extends CIUnitTestCase
     {
         parent::setUp();
 
+        // EnrollmentModel::enrollOne() (used by the enrolment tests below)
+        // derives the active term from AcademicYearModel::activeFormatted()
+        // — without a real active row it fails before reaching curriculum
+        // enforcement at all.
+        db_connect()->table('academic_years')->insert(['label' => '2026-2027', 'semester' => '1st', 'is_active' => 1]);
+
         db_connect()->table('programs')->insert([
             'program_code' => 'BSTP',
             'program_name' => self::PROGRAM_NAME,

@@ -35,7 +35,22 @@ final class CatalogIntegrityHardeningTest extends CIUnitTestCase
     // string) — WidenAcademicYearColumns' down() narrows this column back
     // to VARCHAR(20) on every DatabaseTestTrait regress cycle; this is the
     // same short-term convention used throughout the Step 4+ test suite.
-    private const TERM = '1 · 1st Semester';
+    // Still has to match AcademicYearModel::format()'s "AY " prefix exactly,
+    // or enrollOne()'s meetingsFor() lookup (keyed on the active term's
+    // formatted string) never finds the plotted_schedules row below.
+    private const TERM = 'AY 1 · 1st Semester';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // enrollOne() derives "which term's meetings/conflicts" from
+        // AcademicYearModel::activeFormatted() — without a real active row
+        // every call fails with "No academic year is currently marked
+        // active" before it ever reaches the catalog-integrity checks this
+        // test class exists to cover.
+        db_connect()->table('academic_years')->insert(['label' => '1', 'semester' => '1st', 'is_active' => 1]);
+    }
 
     private function seedSubject(string $code, ?int $subDeptId = null): int
     {
@@ -161,9 +176,13 @@ final class CatalogIntegrityHardeningTest extends CIUnitTestCase
 
         // A pre-existing row inserted directly (bypassing enrollOne()'s new
         // validation entirely), simulating data that existed before this
-        // hardening — e.g. a subject later deactivated/renamed.
+        // hardening — e.g. a subject later deactivated/renamed. academic_year
+        // is set because drop() below needs a real string to pass to
+        // recomputeTuition(); a genuinely ancient row would still carry
+        // whatever term it was enrolled under, never NULL.
         db_connect()->table('enrollments')->insert([
             'user_id' => 903, 'section_id' => $section['section_id'], 'subject_code' => 'ORPHANCODE', 'status' => 'enrolled', 'method' => 'manual',
+            'academic_year' => self::TERM,
         ]);
         $enrollmentId = (int) db_connect()->insertID();
 

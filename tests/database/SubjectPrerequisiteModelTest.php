@@ -25,6 +25,12 @@ final class SubjectPrerequisiteModelTest extends CIUnitTestCase
     {
         parent::setUp();
 
+        // enrollOne() (used by testEnrollmentIsBlockedUntilThePrerequisiteIsPassed)
+        // derives the active term from AcademicYearModel::activeFormatted() —
+        // without a real active row it fails before ever reaching the
+        // prerequisite check.
+        db_connect()->table('academic_years')->insert(['label' => '2026-2027', 'semester' => '1st', 'is_active' => 1]);
+
         foreach (['A', 'B', 'C', 'D'] as $code) {
             db_connect()->table('subjects')->insert([
                 'subject_code'  => 'PR-' . $code,

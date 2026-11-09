@@ -2,6 +2,7 @@
 
 use App\Libraries\SubjectDemandService;
 use App\Libraries\SubjectRequirementService;
+use App\Models\AcademicYearModel;
 use App\Models\AuditLogModel;
 use App\Models\EnrollmentModel;
 use App\Models\SectionModel;
@@ -26,7 +27,10 @@ final class SubjectRequirementServiceTest extends CIUnitTestCase
     protected $refresh   = true;
     protected $namespace = ['CodeIgniter\Shield', 'App'];
 
-    private const TERM = '1 · 1st Semester';
+    // Must match AcademicYearModel::format()'s "AY " prefix exactly, or
+    // meetingsFor()/SubjectDemandService's own join on the active term's
+    // formatted string never finds the plotted_schedules rows seeded below.
+    private const TERM = 'AY 1 · 1st Semester';
 
     private int $nextUserId = 90000;
     private ?int $gradingScaleId = null;
@@ -36,6 +40,12 @@ final class SubjectRequirementServiceTest extends CIUnitTestCase
         parent::setUp();
 
         $this->seedUsers(1); // the actor id used by createOrReactivate() calls throughout
+
+        // enrollOne() (used by the enrollment-flow tests below) derives the
+        // active term from AcademicYearModel::activeFormatted() — without a
+        // real active row it fails before reaching substitution/prerequisite
+        // logic at all.
+        db_connect()->table('academic_years')->insert(['label' => '1', 'semester' => '1st', 'is_active' => 1]);
     }
 
     private function seedSubject(string $code, string $name = ''): int
@@ -47,8 +57,13 @@ final class SubjectRequirementServiceTest extends CIUnitTestCase
 
     private function seedSection(string $program, string $label): int
     {
+        // sections.academic_year is year-only (AcademicYearModel::yearOnly()
+        // of the full term) since MergeSectionsToSchoolYear — storing the
+        // full term string here made SubjectDemandService's own
+        // `sec.academic_year = yearOnly($academicYear)` join never match,
+        // so expectedStudents() silently returned [] for every call.
         $sections = new SectionModel();
-        $sections->insert(['academic_year' => self::TERM, 'program' => $program, 'year_level' => '2nd Year', 'section' => $label]);
+        $sections->insert(['academic_year' => AcademicYearModel::yearOnly(self::TERM), 'program' => $program, 'year_level' => '2nd Year', 'section' => $label]);
 
         return (int) $sections->getInsertID();
     }
