@@ -24,6 +24,8 @@ use App\Models\PlottedScheduleModel;
 use App\Models\RoomModel;
 use App\Libraries\ScheduleSuggester;
 use App\Libraries\SectionBalancer;
+use App\Libraries\SectionsExporter;
+use App\Libraries\SectionsImportParser;
 use App\Models\AuditLogModel;
 use App\Models\CapacityPolicyModel;
 use App\Models\SectionModel;
@@ -2626,6 +2628,98 @@ class ChairpersonController extends BaseController
             'enrollmentsBySection' => $enrollmentsBySection,
             'students'        => $students,
         ]);
+    }
+
+    /**
+     * This chairperson's authorized sections (and their rosters) for ONE
+     * term, in the plain-array shape SectionsExporter::build() expects.
+     * Mirrors sections()'s own query, filtered to $academicYear and joined
+     * to `students` for student_number (sections()'s own roster query only
+     * needs username, not the richer identity an export file needs).
+     *
+     * @return array{sections: list<array{program: string, year_level: string, section: string, capacity: ?int, status: string}>, roster: list<array{program: string, year_level: string, section: string, student_number: string, student_name: string}>}
+     */
+    private function sectionsForExport(string $academicYear): array
+    {
+        $subDeptIds = $this->authorizedSubDeptIds();
+
+        if ($subDeptIds === []) {
+            return ['sections' => [], 'roster' => []];
+        }
+
+        $codes = array_column(db_connect()->table('departments')->whereIn('dept_id', $subDeptIds)->get()->getResultArray(), 'code');
+        $sectionModel = new SectionModel();
+
+        $sections = [];
+
+        foreach ($codes as $code) {
+            $sections = array_merge($sections, $sectionModel->forSubDepartment($code));
+        }
+
+        $sections = array_values(array_filter(
+            array_column($sections, null, 'section_id'),
+            static fn (array $s): bool => $s['academic_year'] === $academicYear
+        ));
+
+        $sectionIds = array_column($sections, 'section_id');
+
+        $rosterRows = $sectionIds === [] ? [] : db_connect()->table('users u')
+            ->select("u.section_id, s.student_number, CONCAT(u.first_name, ' ', u.last_name) AS student_name")
+            ->join('auth_groups_users g', 'g.user_id = u.id')
+            ->join('students s', 's.user_id = u.id')
+            ->where('g.group', 'student')
+            ->where('u.deleted_at', null)
+            ->whereIn('u.section_id', $sectionIds)
+            ->orderBy('u.username')
+            ->get()
+            ->getResultArray();
+
+        $sectionById = array_column($sections, null, 'section_id');
+
+        $roster = array_map(static function (array $row) use ($sectionById): array {
+            $sec = $sectionById[(int) $row['section_id']];
+
+            return [
+                'program'        => $sec['program'],
+                'year_level'     => $sec['year_level'],
+                'section'        => $sec['section'],
+                'student_number' => $row['student_number'],
+                'student_name'   => trim((string) $row['student_name']),
+            ];
+        }, $rosterRows);
+
+        $exportSections = array_map(static fn (array $s): array => [
+            'program'    => $s['program'],
+            'year_level' => $s['year_level'],
+            'section'    => $s['section'],
+            'capacity'   => $s['capacity'] !== null ? (int) $s['capacity'] : null,
+            'status'     => $s['status'],
+        ], $sections);
+
+        return ['sections' => $exportSections, 'roster' => $roster];
+    }
+
+    /**
+     * GET chairperson/sections/export?academic_year=<term> — downloads a
+     * two-sheet .xlsx workbook of this chairperson's authorized sections +
+     * rosters for that term. No new authorization surface: a chairperson
+     * with no department/no authorized sections just gets a header-only
+     * workbook, same as the page's own empty state.
+     */
+    public function exportSections()
+    {
+        $academicYear = (string) $this->request->getGet('academic_year');
+        $data         = $this->sectionsForExport($academicYear);
+        $bytes        = SectionsExporter::toXlsxString(SectionsExporter::build($data['sections'], $data['roster']));
+
+        $filename = 'Sections_'
+            . preg_replace('/[^A-Za-z0-9_-]/', '_', (string) $this->authorizedDeptNamesJoined())
+            . '_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $academicYear) . '.xlsx';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', "attachment; filename=\"{$filename}\"")
+            ->setBody($bytes);
     }
 
     /**
