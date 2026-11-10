@@ -191,51 +191,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
     <div class="panel mc-card">
         <div class="mc-card__head">
-            <span class="mc-card__icon"><span class="material-symbols-outlined" aria-hidden="true">call_merge</span></span>
-            <div>
-                <div class="mc-card__title-row">
-                    <h2>Mergeable Subjects</h2>
-                    <span class="mc-count"><?= count($candidates) ?> Available</span>
-                </div>
-                <p>A subject plotted for two or more of your sections in the same term. Merging combines their rosters into one class with one shared capacity — neither section's other subjects are affected.</p>
-            </div>
-        </div>
-
-        <?php if (empty($candidates)): ?>
-            <div class="empty-state">
-                <div class="material-symbols-outlined">merge_type</div>
-                <p>No subject is currently plotted for two or more of your sections in the same term.</p>
-            </div>
-        <?php else: ?>
-            <?php foreach ($candidates as $i => $c): ?>
-                <article class="mc-row">
-                    <div class="mc-row__main">
-                        <span class="mc-code"><span class="material-symbols-outlined" aria-hidden="true">subject</span><?= esc($c['subject_code']) ?></span>
-                        <div class="mc-meta"><?= esc($c['academic_year']) ?></div>
-                        <div class="mc-sections">
-                            <?php foreach ($c['sections'] as $s): ?>
-                                <label class="mc-sec-check">
-                                    <input type="checkbox" name="cand-<?= $i ?>" value="<?= esc($s['section_id']) ?>">
-                                    <span><?= esc($s['program']) ?> &middot; <?= esc($s['year_level']) ?> &middot; Section <?= esc($s['section']) ?></span>
-                                    <span class="mc-cap-pill"><?= $s['capacity'] !== null ? 'Cap ' . esc($s['capacity']) : 'Unlimited' ?></span>
-                                </label>
-                            <?php endforeach ?>
-                        </div>
-                    </div>
-                    <div class="mc-row__actions">
-                        <input type="number" min="1" placeholder="Cap (optional)" id="cap-<?= $i ?>">
-                        <button type="button" class="btn btn-primary" onclick="mergeCandidate(<?= $i ?>, '<?= esc($c['academic_year'], 'js') ?>', '<?= esc($c['subject_code'], 'js') ?>')">
-                            <span class="material-symbols-outlined" style="font-size:18px;">merge_type</span>
-                            Merge Selected
-                        </button>
-                    </div>
-                </article>
-            <?php endforeach ?>
-        <?php endif ?>
-    </div>
-
-    <div class="panel mc-card">
-        <div class="mc-card__head">
             <span class="mc-card__icon"><span class="material-symbols-outlined" aria-hidden="true">dynamic_feed</span></span>
             <div>
                 <div class="mc-card__title-row">
@@ -422,40 +377,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     function reloadWithMessage(message) {
         sessionStorage.setItem('offeringsFeedback', message);
         location.reload();
-    }
-
-    async function mergeCandidate(i, academicYear, subjectCode) {
-        const checked = Array.from(document.querySelectorAll(`input[name="cand-${i}"]:checked`)).map(el => parseInt(el.value, 10));
-
-        if (checked.length < 2) {
-            showFeedback('Select at least two sections to merge.', true);
-            return;
-        }
-
-        const capEl = document.getElementById('cap-' + i);
-
-        const result = await postJSON('<?= site_url('chairperson/offerings/create') ?>', {
-            academic_year: academicYear,
-            subject_code: subjectCode,
-            section_ids: checked,
-            capacity: capEl.value,
-        });
-
-        if (!result.ok) {
-            showFeedback(result.error || 'Could not create the merge.', true);
-            return;
-        }
-
-        let msg = `${subjectCode} merged across ${checked.length} sections (roster ${result.roster_count}).`;
-        if (result.over_capacity) {
-            msg += ' Warning: the combined roster already exceeds the capacity you set.';
-        }
-        if (result.schedule_carry_skipped_reason === 'conflicting_existing_schedules') {
-            msg += ' Selected sections had different existing times - pick one below.';
-        } else if (result.schedule_carried) {
-            msg += ' Its existing schedule was carried over automatically.';
-        }
-        reloadWithMessage(msg);
     }
 
     async function unmergeSection(offeringId, sectionId, label) {
