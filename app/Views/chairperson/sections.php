@@ -35,7 +35,19 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 </select>
             </div>
         <?php endif ?>
-        <?php if ($deptName !== null): ?><button type="button" class="btn btn-primary" id="scOpenCreate"><span class="material-symbols-outlined" aria-hidden="true">add</span>Create section</button><?php endif ?>
+        <?php if ($deptName !== null): ?>
+            <?php
+                // sections.academic_year is stored year-only (no semester) —
+                // $activeAcademicYear includes the semester suffix and would
+                // never match a row, so default to $academicYears[0], which
+                // creatableSectionYears() orders active-year-first.
+                $exportDefaultYear = $academicYears[0] ?? '';
+            ?>
+            <a class="btn btn-secondary" id="scExportBtn" href="<?= site_url('chairperson/sections/export') ?>?academic_year=<?= rawurlencode($exportDefaultYear) ?>">
+                <span class="material-symbols-outlined" aria-hidden="true">download</span>Export
+            </a>
+            <button type="button" class="btn btn-primary" id="scOpenCreate"><span class="material-symbols-outlined" aria-hidden="true">add</span>Create section</button>
+        <?php endif ?>
     </div>
 </div>
 
@@ -110,6 +122,33 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 Create Section
             </button>
         </div>
+    </details>
+
+    <details class="panel cs-card" id="scImportPanel">
+        <summary class="sc-tool-summary"><span class="material-symbols-outlined" aria-hidden="true">upload_file</span><span><strong>Import sections</strong><small>Bulk-create sections and rosters from a workbook.</small></span><span class="material-symbols-outlined sc-chevron" aria-hidden="true">expand_more</span></summary>
+        <div class="cs-form-grid">
+            <div class="cs-field">
+                <label for="importAcademicYear">Target Academic Year</label>
+                <select id="importAcademicYear">
+                    <?php foreach ($academicYears as $ay): ?>
+                        <option value="<?= esc($ay) ?>"><?= esc($ay) ?></option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+            <div class="cs-field">
+                <label for="importFile">Workbook (.xlsx)</label>
+                <input type="file" id="importFile" accept=".xlsx">
+            </div>
+        </div>
+
+        <div class="cs-form-footer">
+            <span class="hint">Sections that already exist in the target term are skipped, not overwritten.</span>
+            <button type="button" class="btn btn-primary" id="scImportSubmit" onclick="importSections()">
+                <span class="material-symbols-outlined" style="font-size:18px;">upload</span>
+                Import
+            </button>
+        </div>
+        <div id="scImportReport" style="display:none; margin-top:12px; border-top:1px solid #e2e8f0; padding-top:12px;"></div>
     </details>
 
     <?php if ($sections === []): ?>
@@ -316,6 +355,60 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         }
 
         reloadWithMessage(`Section "${payload.section}" created.`);
+    }
+
+    async function importSections() {
+        const fileInput = document.getElementById('importFile');
+        const file = fileInput.files[0];
+        const academicYear = document.getElementById('importAcademicYear').value;
+
+        if (!file) {
+            showFeedback('Choose a workbook file first.', true);
+            return;
+        }
+
+        const body = new FormData();
+        body.append('file', file);
+        body.append('academic_year', academicYear);
+        body.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+
+        let result;
+        try {
+            const res = await fetch('<?= site_url('chairperson/sections/import') ?>', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body,
+            });
+            result = await res.json().catch(() => null);
+        } catch (error) {
+            result = null;
+        }
+
+        if (!result) {
+            showFeedback('Connection failed. Please try again.', true);
+            return;
+        }
+
+        if (!result.ok) {
+            showFeedback(result.error || 'Could not import that file.', true);
+            return;
+        }
+
+        const r = result.report;
+        const summary = `Import complete: ${r.sections.created} section(s) created, ${r.sections.skipped} skipped, `
+            + `${r.roster.assigned} student(s) assigned`
+            + (r.sections.errors.length || r.roster.errors.length ? `, ${r.sections.errors.length + r.roster.errors.length} row error(s) — see below.` : '.');
+
+        const reportEl = document.getElementById('scImportReport');
+        const errorLines = [...r.sections.errors.map(e => `Sections row ${e.row}: ${e.reason}`), ...r.roster.errors.map(e => `Roster row ${e.row}: ${e.reason}`)];
+        reportEl.style.display = errorLines.length ? 'block' : 'none';
+        reportEl.innerHTML = errorLines.length ? '<strong>Row errors:</strong><ul>' + errorLines.map(l => `<li>${l.replace(/</g, '&lt;')}</li>`).join('') + '</ul>' : '';
+
+        if (errorLines.length) {
+            showFeedback(summary, false);
+        } else {
+            reloadWithMessage(summary);
+        }
     }
 
     async function assignStudent(sectionId) {
