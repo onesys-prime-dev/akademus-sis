@@ -541,6 +541,7 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('sections/capacity', 'ChairpersonController::setSectionCapacity');
     $routes->get('sections', 'ChairpersonController::sections');
     $routes->get('sections/export', 'ChairpersonController::exportSections');
+    $routes->post('sections/import', 'ChairpersonController::importSections');
     $routes->post('sections/create', 'ChairpersonController::createSection');
     $routes->post('sections/ensure', 'ChairpersonController::ensureSection');
     $routes->post('sections/delete', 'ChairpersonController::deleteSection');

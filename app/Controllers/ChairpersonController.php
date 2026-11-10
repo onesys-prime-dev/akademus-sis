@@ -2795,6 +2795,177 @@ class ChairpersonController extends BaseController
     }
 
     /**
+     * POST chairperson/sections/import — multipart upload of a Sections/
+     * Roster .xlsx workbook plus the target academic_year. Parses the file
+     * with SectionsImportParser then hands the rows to
+     * processSectionsImport() for the actual create/skip/assign work.
+     */
+    public function importSections()
+    {
+        $rules = [
+            'file'          => 'uploaded[file]|max_size[file,5120]|ext_in[file,xlsx]',
+            'academic_year' => 'required',
+        ];
+
+        if (! $this->validate($rules)) {
+            return $this->fail(implode(' ', $this->validator->getErrors()));
+        }
+
+        $targetTerm = (string) $this->request->getPost('academic_year');
+
+        if (! in_array($targetTerm, $this->creatableSectionYears(), true)) {
+            return $this->fail('Invalid academic year.');
+        }
+
+        $file = $this->request->getFile('file');
+
+        if ($file === null || ! $file->isValid()) {
+            return $this->fail('Upload failed. Please try again.');
+        }
+
+        $parsed = SectionsImportParser::parse($file->getTempName());
+
+        if (! $parsed['ok']) {
+            return $this->fail($parsed['error']);
+        }
+
+        $report = $this->processSectionsImport($parsed['sections'], $parsed['roster'], $targetTerm);
+
+        return $this->response->setJSON(['ok' => true, 'report' => $report]);
+    }
+
+    /**
+     * The actual bulk create/skip/assign work for an import, given already-
+     * parsed row arrays (see SectionsImportParser::parse()) and the target
+     * term chosen on the import form. Validates each Sections row exactly
+     * like createSection() does, and assigns each Roster row's student via
+     * the same SectionBalancer::assignStudent() the page's own "Add a
+     * student" control calls — no second validation path.
+     *
+     * @param list<array{row: int, program: ?string, year_level: ?string, section: ?string, capacity: ?string}> $sectionRows
+     * @param list<array{row: int, program: ?string, year_level: ?string, section: ?string, student_number: ?string}> $rosterRows
+     *
+     * @return array{sections: array{created: int, skipped: int, errors: list<array{row: int, reason: string}>}, roster: array{assigned: int, over_capacity: int, errors: list<array{row: int, reason: string}>}}
+     */
+    private function processSectionsImport(array $sectionRows, array $rosterRows, string $targetTerm): array
+    {
+        $db = db_connect();
+        $db->transStart();
+
+        $sectionModel = new SectionModel();
+        $authorizedPrograms = $this->authorizedPrograms();
+
+        $created = 0;
+        $skipped = 0;
+        $sectionErrors = [];
+
+        foreach ($sectionRows as $row) {
+            $program    = (string) ($row['program'] ?? '');
+            $yearLevel  = (string) ($row['year_level'] ?? '');
+            $sectionName = trim((string) ($row['section'] ?? ''));
+
+            $error = null;
+
+            if (! in_array($program, $authorizedPrograms, true)) {
+                $error = 'Invalid program.';
+            } elseif (! in_array($yearLevel, self::FILTERS['year_level'], true)) {
+                $error = 'Invalid year level.';
+            } elseif (! preg_match('/^[A-Za-z0-9][A-Za-z0-9 _-]{0,19}$/', $sectionName)) {
+                $error = 'Section name must be 1-20 letters/numbers (e.g. 1A, BIT2).';
+            }
+
+            $capacity = null;
+
+            if ($error === null && $row['capacity'] !== null && $row['capacity'] !== '') {
+                $capacity = (int) $row['capacity'];
+
+                if ($capacity < 1 || (string) $capacity !== trim((string) $row['capacity'])) {
+                    $error = 'Capacity must be a positive number, or left blank for unlimited.';
+                }
+            }
+
+            if ($error !== null) {
+                $sectionErrors[] = ['row' => $row['row'], 'reason' => $error];
+                continue;
+            }
+
+            if ($sectionModel->forContext($targetTerm, $program, $yearLevel, $sectionName) !== null) {
+                $skipped++;
+                continue;
+            }
+
+            $sectionModel->insert([
+                'academic_year' => $targetTerm,
+                'program'       => $program,
+                'program_id'    => CollegeModel::programIdOfName($program),
+                'year_level'    => $yearLevel,
+                'section'       => $sectionName,
+                'capacity'      => $capacity,
+                'origin'        => 'manual',
+            ]);
+
+            $this->audit('sections.create', 'section', $sectionModel->getInsertID(), null, $sectionModel->find($sectionModel->getInsertID()));
+            $created++;
+        }
+
+        $assigned = 0;
+        $overCapacity = 0;
+        $rosterErrors = [];
+
+        foreach ($rosterRows as $row) {
+            $program     = (string) ($row['program'] ?? '');
+            $yearLevel   = (string) ($row['year_level'] ?? '');
+            $sectionName = trim((string) ($row['section'] ?? ''));
+            $studentNumber = trim((string) ($row['student_number'] ?? ''));
+
+            $section = $sectionModel->forContext($targetTerm, $program, $yearLevel, $sectionName);
+
+            if ($section === null) {
+                $rosterErrors[] = ['row' => $row['row'], 'reason' => 'Section not found in the target term.'];
+                continue;
+            }
+
+            $student = $db->table('students s')
+                ->select('s.user_id')
+                ->join('users u', 'u.id = s.user_id')
+                ->where('s.student_number', $studentNumber)
+                ->where('u.deleted_at', null)
+                ->get()
+                ->getRowArray();
+
+            if ($student === null) {
+                $rosterErrors[] = ['row' => $row['row'], 'reason' => 'Student not found.'];
+                continue;
+            }
+
+            $result = (new SectionBalancer())->assignStudent(
+                (int) $student['user_id'],
+                (int) $section['section_id'],
+                (int) auth()->id(),
+                'chairperson'
+            );
+
+            if (! $result['ok']) {
+                $rosterErrors[] = ['row' => $row['row'], 'reason' => $result['error']];
+                continue;
+            }
+
+            $assigned++;
+
+            if ($result['over_capacity'] ?? false) {
+                $overCapacity++;
+            }
+        }
+
+        $db->transComplete();
+
+        return [
+            'sections' => ['created' => $created, 'skipped' => $skipped, 'errors' => $sectionErrors],
+            'roster'   => ['assigned' => $assigned, 'over_capacity' => $overCapacity, 'errors' => $rosterErrors],
+        ];
+    }
+
+    /**
      * Bootstraps the first section for a program/year level/term that has
      * none yet — e.g. from the Dashboard's "Sections to Plot" panel, where a
      * program/year level has real curriculum demand but nothing to plot

@@ -1,0 +1,149 @@
+<?php
+
+use App\Controllers\ChairpersonController;
+use App\Models\AcademicYearModel;
+use App\Models\SectionModel;
+use CodeIgniter\Shield\Test\AuthenticationTesting;
+use CodeIgniter\Test\CIUnitTestCase;
+use CodeIgniter\Test\DatabaseTestTrait;
+use Tests\Support\Traits\SeedsUsers;
+
+/**
+ * Exercises ChairpersonController::processSectionsImport() directly
+ * (via reflection, since it is private) rather than through HTTP: this
+ * project's FeatureTestTrait has no multipart file-upload helper, so the
+ * full accept path can't be simulated through $this->post(). See
+ * ChairpersonImportSectionsRouteTest for the HTTP-level reject-path
+ * coverage that doesn't need a real upload.
+ *
+ * @internal
+ */
+final class ChairpersonImportSectionsTest extends CIUnitTestCase
+{
+    use DatabaseTestTrait;
+    use AuthenticationTesting;
+    use SeedsUsers;
+
+    protected $refresh   = true;
+    protected $namespace = ['CodeIgniter\Shield', 'CodeIgniter\Settings', 'App'];
+
+    private int $chairId = 70601;
+
+    private string $term;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $db = db_connect();
+        $db->table('colleges')->insert(['college_id' => 1, 'code' => 'COL1', 'name' => 'College 1']);
+        $db->table('departments')->insert(['dept_id' => 2, 'college_id' => 1, 'code' => 'SD1', 'name' => 'Owning Unit']);
+        $db->table('programs')->insert(['program_id' => 6101, 'department_id' => 2, 'program_code' => 'P6101', 'program_name' => 'BSIT', 'is_active' => 1]);
+
+        $this->seedUsers($this->chairId);
+        $db->table('users')->where('id', $this->chairId)->update(['sub_department_id' => 2]);
+        $db->table('auth_groups_users')->insert(['user_id' => $this->chairId, 'group' => 'chairperson', 'created_at' => date('Y-m-d H:i:s')]);
+        $this->actingAs(auth()->getProvider()->findById($this->chairId));
+
+        $this->term = AcademicYearModel::format('1');
+        $db->table('academic_years')->insert(['label' => '1', 'semester' => '1st', 'is_active' => 1]);
+    }
+
+    private function callProcessSectionsImport(array $sectionRows, array $rosterRows, string $targetTerm): array
+    {
+        $controller = new ChairpersonController();
+        $method     = new ReflectionMethod($controller, 'processSectionsImport');
+        $method->setAccessible(true);
+
+        return $method->invoke($controller, $sectionRows, $rosterRows, $targetTerm);
+    }
+
+    public function testProcessCreatesNewSectionsAndSkipsExisting(): void
+    {
+        (new SectionModel())->insert(['academic_year' => $this->term, 'program' => 'BSIT', 'program_id' => 6101, 'year_level' => '1st Year', 'section' => '1A']);
+
+        $report = $this->callProcessSectionsImport(
+            sectionRows: [
+                ['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'capacity' => '40'],
+                ['row' => 3, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1B', 'capacity' => null],
+            ],
+            rosterRows: [],
+            targetTerm: $this->term
+        );
+
+        $this->assertSame(1, $report['sections']['created']);
+        $this->assertSame(1, $report['sections']['skipped']);
+        $this->assertSame([], $report['sections']['errors']);
+    }
+
+    public function testProcessReportsInvalidCapacityAsARowError(): void
+    {
+        $report = $this->callProcessSectionsImport(
+            sectionRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'capacity' => '-5']],
+            rosterRows: [],
+            targetTerm: $this->term
+        );
+
+        $this->assertSame(0, $report['sections']['created']);
+        $this->assertCount(1, $report['sections']['errors']);
+        $this->assertSame(2, $report['sections']['errors'][0]['row']);
+    }
+
+    public function testProcessReportsDuplicateRowsWithinTheSameFileAsSkipped(): void
+    {
+        $row = ['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'capacity' => null];
+        $dup = ['row' => 3, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'capacity' => null];
+
+        $report = $this->callProcessSectionsImport([$row, $dup], [], $this->term);
+
+        $this->assertSame(1, $report['sections']['created']);
+        $this->assertSame(1, $report['sections']['skipped']);
+    }
+
+    public function testProcessReportsRosterRowForMissingSectionAsAnError(): void
+    {
+        $report = $this->callProcessSectionsImport(
+            sectionRows: [],
+            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1Z', 'student_number' => 'STU-0001']],
+            targetTerm: $this->term
+        );
+
+        $this->assertSame(0, $report['roster']['assigned']);
+        $this->assertCount(1, $report['roster']['errors']);
+        $this->assertStringContainsString('not found', $report['roster']['errors'][0]['reason']);
+    }
+
+    public function testProcessReportsRosterRowForUnknownStudentNumberAsAnError(): void
+    {
+        (new SectionModel())->insert(['academic_year' => $this->term, 'program' => 'BSIT', 'program_id' => 6101, 'year_level' => '1st Year', 'section' => '1A']);
+
+        $report = $this->callProcessSectionsImport(
+            sectionRows: [],
+            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'NOPE']],
+            targetTerm: $this->term
+        );
+
+        $this->assertSame(0, $report['roster']['assigned']);
+        $this->assertCount(1, $report['roster']['errors']);
+        $this->assertSame('Student not found.', $report['roster']['errors'][0]['reason']);
+    }
+
+    public function testProcessAssignsAStudentByStudentNumber(): void
+    {
+        (new SectionModel())->insert(['academic_year' => $this->term, 'program' => 'BSIT', 'program_id' => 6101, 'year_level' => '1st Year', 'section' => '1A']);
+
+        $studentId = 70602;
+        $this->seedUsers($studentId);
+        db_connect()->table('auth_groups_users')->insert(['user_id' => $studentId, 'group' => 'student', 'created_at' => date('Y-m-d H:i:s')]);
+        db_connect()->table('students')->insert(['user_id' => $studentId, 'applicant_id' => 'APP-70602', 'student_number' => 'STU-0002']);
+
+        $report = $this->callProcessSectionsImport(
+            sectionRows: [],
+            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-0002']],
+            targetTerm: $this->term
+        );
+
+        $this->assertSame(1, $report['roster']['assigned']);
+        $this->assertSame([], $report['roster']['errors']);
+    }
+}
