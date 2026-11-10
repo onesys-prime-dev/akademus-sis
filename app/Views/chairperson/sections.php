@@ -40,9 +40,21 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 // sections.academic_year is stored year-only (no semester) —
                 // $activeAcademicYear includes the semester suffix and would
                 // never match a row, so default to $academicYears[0], which
-                // creatableSectionYears() orders active-year-first.
-                $exportDefaultYear = $academicYears[0] ?? '';
+                // creatableSectionYears() orders active-year-first. The
+                // picker also offers every other term that already has
+                // sections, so a past term can be exported too, not just
+                // active/upcoming.
+                $exportYearOptions = array_values(array_unique(array_merge($academicYears, array_column($sections, 'academic_year'))));
+                $exportDefaultYear = $academicYears[0] ?? ($exportYearOptions[0] ?? '');
             ?>
+            <div class="cs-field sc-heading-dept">
+                <label for="scExportYear" class="sc-sr-only">Term to export</label>
+                <select id="scExportYear">
+                    <?php foreach ($exportYearOptions as $ey): ?>
+                        <option value="<?= esc($ey, 'attr') ?>" <?= $ey === $exportDefaultYear ? 'selected' : '' ?>><?= esc($ey) ?></option>
+                    <?php endforeach ?>
+                </select>
+            </div>
             <a class="btn btn-secondary" id="scExportBtn" href="<?= site_url('chairperson/sections/export') ?>?academic_year=<?= rawurlencode($exportDefaultYear) ?>">
                 <span class="material-symbols-outlined" aria-hidden="true">download</span>Export
             </a>
@@ -356,6 +368,20 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
         reloadWithMessage(`Section "${payload.section}" created.`);
     }
+
+    (function () {
+        const picker = document.getElementById('scExportYear');
+        const btn    = document.getElementById('scExportBtn');
+
+        if (!picker || !btn) {
+            return;
+        }
+
+        const exportBase = '<?= site_url('chairperson/sections/export') ?>';
+        picker.addEventListener('change', () => {
+            btn.href = exportBase + '?academic_year=' + encodeURIComponent(picker.value);
+        });
+    })();
 
     async function importSections() {
         const fileInput = document.getElementById('importFile');

@@ -2811,6 +2811,10 @@ class ChairpersonController extends BaseController
             return $this->fail(implode(' ', $this->validator->getErrors()));
         }
 
+        if ($this->authorizedSubDeptIds() === []) {
+            return $this->fail('You are not assigned to a department.');
+        }
+
         $targetTerm = (string) $this->request->getPost('academic_year');
 
         if (! in_array($targetTerm, $this->creatableSectionYears(), true)) {
@@ -2831,6 +2835,10 @@ class ChairpersonController extends BaseController
 
         $report = $this->processSectionsImport($parsed['sections'], $parsed['roster'], $targetTerm);
 
+        if (! $report['ok']) {
+            return $this->fail('Import failed and nothing was saved. Please try again.');
+        }
+
         return $this->response->setJSON(['ok' => true, 'report' => $report]);
     }
 
@@ -2845,7 +2853,7 @@ class ChairpersonController extends BaseController
      * @param list<array{row: int, program: ?string, year_level: ?string, section: ?string, capacity: ?string}> $sectionRows
      * @param list<array{row: int, program: ?string, year_level: ?string, section: ?string, student_number: ?string}> $rosterRows
      *
-     * @return array{sections: array{created: int, skipped: int, errors: list<array{row: int, reason: string}>}, roster: array{assigned: int, over_capacity: int, errors: list<array{row: int, reason: string}>}}
+     * @return array{ok: bool, sections: array{created: int, skipped: int, errors: list<array{row: int, reason: string}>}, roster: array{assigned: int, over_capacity: int, errors: list<array{row: int, reason: string}>}}
      */
     private function processSectionsImport(array $sectionRows, array $rosterRows, string $targetTerm): array
     {
@@ -2918,9 +2926,14 @@ class ChairpersonController extends BaseController
             $sectionName = trim((string) ($row['section'] ?? ''));
             $studentNumber = trim((string) ($row['student_number'] ?? ''));
 
+            if (! in_array($program, $authorizedPrograms, true)) {
+                $rosterErrors[] = ['row' => $row['row'], 'reason' => 'Section does not belong to your department.'];
+                continue;
+            }
+
             $section = $sectionModel->forContext($targetTerm, $program, $yearLevel, $sectionName);
 
-            if ($section === null) {
+            if ($section === null || $this->ownSection((int) $section['section_id']) === null) {
                 $rosterErrors[] = ['row' => $row['row'], 'reason' => 'Section not found in the target term.'];
                 continue;
             }
@@ -2959,7 +2972,18 @@ class ChairpersonController extends BaseController
 
         $db->transComplete();
 
+        if ($db->transStatus() === false) {
+            $db->resetTransStatus();
+
+            return [
+                'ok'       => false,
+                'sections' => ['created' => 0, 'skipped' => 0, 'errors' => []],
+                'roster'   => ['assigned' => 0, 'over_capacity' => 0, 'errors' => []],
+            ];
+        }
+
         return [
+            'ok'       => true,
             'sections' => ['created' => $created, 'skipped' => $skipped, 'errors' => $sectionErrors],
             'roster'   => ['assigned' => $assigned, 'over_capacity' => $overCapacity, 'errors' => $rosterErrors],
         ];

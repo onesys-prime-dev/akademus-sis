@@ -57,6 +57,17 @@ final class SectionsImportParserTest extends CIUnitTestCase
         $this->assertFalse($result['ok']);
     }
 
+    public function testParseRejectsAnEmptyFile(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'empty') . '.xlsx';
+        $this->tempFiles[] = $path;
+        file_put_contents($path, '');
+
+        $result = SectionsImportParser::parse($path);
+
+        $this->assertFalse($result['ok']);
+    }
+
     public function testParseKeepsBlankCapacityAsNullNotEmptyString(): void
     {
         $path = $this->fixtureWorkbook(sections: [['BSIT', '1st Year', '1A', '']], roster: []);
