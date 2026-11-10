@@ -5,6 +5,7 @@ namespace App\Libraries;
 use App\Models\AcademicYearModel;
 use App\Models\CourseOfferingModel;
 use App\Models\OfferingComponentModel;
+use App\Models\PlottedScheduleModel;
 use App\Models\SectionModel;
 
 /**
@@ -300,6 +301,102 @@ class SharedSubjectDashboardService
         }
 
         return ['term' => $academicYear, 'subjects' => $subjectEntries, 'inactive_count' => $inactiveCount];
+    }
+
+    /**
+     * Every (subject, section) pair with real unmet demand but no offering
+     * yet — the chairperson's full worklist, one row per section rather than
+     * just the first (see firstSectionNeedingPlot(), used above for the
+     * single-subject "Plot it" deep link). Formerly
+     * Chairperson\OfferingController::needsPlottingList() (Merged Classes'
+     * own "Needs Plotting" card) — moved here since it's a demand/offering
+     * concern, not a merge concern.
+     *
+     * @return list<array{subject_id: int, subject_code: string, subject_name: string, section_id: int, section_label: string, expected_count: int, already_scheduled: bool, program: ?string, year_level: ?string, section: ?string}>
+     */
+    public function needsPlottingList(int $userId, string $academicYear): array
+    {
+        $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds($userId);
+
+        if ($subDeptIds === []) {
+            return [];
+        }
+
+        $ownedSubjects = db_connect()->table('subjects')
+            ->select('subject_id, subject_code, subject_name')
+            ->whereIn('department_id', $subDeptIds)
+            ->where('is_active', 1)
+            ->orderBy('subject_code')
+            ->get()
+            ->getResultArray();
+
+        if ($ownedSubjects === []) {
+            return [];
+        }
+
+        $demandService = new SubjectDemandService();
+        $offeringModel = new CourseOfferingModel();
+        $sectionModel  = new SectionModel();
+        $plottedModel  = new PlottedScheduleModel();
+        $needsPlotting = [];
+
+        foreach ($ownedSubjects as $subject) {
+            $summary = $demandService->summary((int) $subject['subject_id'], $academicYear);
+
+            // Every expected student already has a real seat somewhere
+            // (direct enrollment, a merged class, etc.) — "no course_offerings
+            // row exists yet" is just missing Step-6 bookkeeping at that
+            // point, not an unmet need. Without this gate a fully-served
+            // subject falsely sits in "needs plotting" forever, since
+            // nothing ever prompts anyone to create that offering row.
+            if (($summary['unassigned_count'] ?? 0) <= 0) {
+                continue;
+            }
+
+            foreach ($summary['by_section'] as $bySection) {
+                if ($bySection['expected_count'] <= 0 || $bySection['section_id'] === null) {
+                    continue;
+                }
+
+                // Already has an offering for this subject — either already
+                // scheduled or waiting in the "existing offerings" list
+                // above, not "needs plotting" from scratch.
+                if ($offeringModel->offeringForSection((int) $bySection['section_id'], $subject['subject_code']) !== null) {
+                    continue;
+                }
+
+                // No offering yet, but the section may already have a real
+                // class time plotted directly on the chairperson's own
+                // Schedule Plotting grid (a legacy row, offering_id IS
+                // NULL) — "Create & Plot" for this row only links
+                // bookkeeping to what's already there, it doesn't start a
+                // new class from scratch.
+                $section = $sectionModel->find((int) $bySection['section_id']);
+                $alreadyScheduled = $section !== null && $plottedModel->legacyRowsFor(
+                    $academicYear,
+                    $section['program'],
+                    $section['year_level'],
+                    $section['section'],
+                    $subject['subject_code']
+                ) !== [];
+
+                $needsPlotting[] = [
+                    'academic_year'     => $academicYear,
+                    'subject_id'        => (int) $subject['subject_id'],
+                    'subject_code'      => $subject['subject_code'],
+                    'subject_name'      => $subject['subject_name'],
+                    'section_id'        => (int) $bySection['section_id'],
+                    'section_label'     => $bySection['section_label'],
+                    'expected_count'    => (int) $bySection['expected_count'],
+                    'already_scheduled' => $alreadyScheduled,
+                    'program'           => $section['program'] ?? null,
+                    'year_level'        => $section['year_level'] ?? null,
+                    'section'           => $section['section'] ?? null,
+                ];
+            }
+        }
+
+        return $needsPlotting;
     }
 
     /**

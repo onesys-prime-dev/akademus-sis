@@ -39,7 +39,7 @@ return [
         ]],
         'shared-subjects'         => ['label' => 'Shared Subject Dashboard', 'icon' => 'dashboard',         'url' => 'chairperson/shared-subjects', 'badge' => $badges['shared-subjects'] ?? 0, 'help' => [
             'title' => 'Shared Subject Dashboard',
-            'text'  => "For every subject your department owns: how many students need it this term (demand), whether it's actually scheduled yet (offerings), and any pending cross-department requests for it.\n\nUse this to spot subjects with unassigned demand before students get stuck without a class to enroll in.",
+            'text'  => "For every subject your department owns: how many students need it this term (demand), whether it's actually scheduled yet (offerings), and any pending cross-department requests for it.\n\n\"Needs Plotting\" at the top lists classes with demand but no offering yet — plot them straight onto a section's schedule, same as any other subject.\n\nUse this to spot subjects with unassigned demand before students get stuck without a class to enroll in.",
         ]],
         'shared-subject-coverage' => ['label' => 'Shared Subject Coverage', 'icon' => 'rule',               'url' => 'chairperson/shared-subject-coverage', 'help' => [
             'title' => 'Shared Subject Coverage',
@@ -49,9 +49,9 @@ return [
             'title' => 'Shared Subject Requests',
             'text'  => "Two lists: requests you've sent to other departments for subjects they own, and requests sent to you for subjects your department owns. A request never gives the requesting department write access to your offering — you decide, and fulfilling a placement is a deliberate action here, never automatic.",
         ]],
-        'offerings'               => ['label' => 'Merged Classes',          'icon' => 'merge_type',         'url' => 'chairperson/offerings', 'help' => [
-            'title' => 'Merged Classes',
-            'text'  => "Combine two or more of your own sections that need the same subject into one shared class — one roster, one capacity, one schedule — instead of running several tiny separate sections.\n\n\"Needs Plotting\" shows subjects with demand but no offering yet; \"Mergeable Subjects\" shows sections you can combine; \"Merged Classes\" is where you manage the combined class's schedule.",
+        'offerings'               => ['label' => 'Class Components',        'icon' => 'dynamic_feed',       'url' => 'chairperson/offerings', 'help' => [
+            'title' => 'Class Components',
+            'text'  => "Lecture/lab (or other) sub-splits of a class, each with its own schedule and roster.\n\nMerging two or more of your own sections into one shared class, editing a merged class's schedule, and leaving a merge are all done directly on Schedule Plotting now — drag a merged class's block there like any other, or accept the merge-suggestion banner when a subject is plotted for 2+ of your sections.",
         ]],
         'sections'                => ['label' => 'Sections',                'icon' => 'groups',             'url' => 'chairperson/sections', 'help' => [
             'title' => 'Sections',

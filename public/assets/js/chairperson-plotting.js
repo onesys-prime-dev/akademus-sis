@@ -657,7 +657,8 @@ function ownEl(b) {
     el.setAttribute('aria-pressed', String(ui.blockKey === key));
     el.setAttribute('aria-label', `${b.code}, ${isLab ? 'laboratory' : 'lecture'}, ${dayName(b.day)} ${blockRange(b)}, ${b.room}, ${b.prof || 'no faculty assigned'}`
         + (issues.length ? `, ${plural(issues.length, 'issue')}` : '')
-        + (isOwned ? '' : ', managed by another department'));
+        + (isOwned ? '' : ', managed by another department')
+        + (b.is_merged ? `, merged class shared with ${b.section}` : ''));
     el.draggable = isOwned;
     if (ui.blockKey === key) el.classList.add('is-selected');
     if (worst) el.dataset.issue = worst;
@@ -666,6 +667,7 @@ function ownEl(b) {
     const head = mk('div', 'b-head');
     head.appendChild(mk('span', 'b-code', b.code));
     if (isLab) head.appendChild(mk('span', 'b-type', 'Lab'));
+    if (b.is_merged) head.appendChild(mk('span', 'b-type b-type--merged', 'Merged'));
     // Shown even on a 30-min "tiny" block (where the fuller b-line rows are
     // hidden for space) so the plotted length is always visible at a glance.
     head.appendChild(mk('span', 'b-dur', fmtHoursShort(blockHours(b))));
@@ -694,6 +696,7 @@ function ownEl(b) {
         el.appendChild(resize);
     }
     el.title = `${b.code} · ${b.title}\n${dayName(b.day)} ${blockRange(b)} · ${b.room}${b.prof ? ' · ' + b.prof : ''}`
+        + (b.is_merged ? `\nMerged class · Sec. ${b.section} · Roster ${b.roster_count}` : '')
         + issues.map(i => `\n${i.title}`).join('');
 
     el.addEventListener('click', e => {

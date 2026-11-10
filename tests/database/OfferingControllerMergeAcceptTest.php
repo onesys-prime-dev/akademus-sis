@@ -538,10 +538,11 @@ final class OfferingControllerMergeAcceptTest extends CIUnitTestCase
         ]);
 
         $this->actingAsChair($chair);
-        $result = $this->withSession()->get('/chairperson/offerings');
+        // "Needs Plotting" now lives on the Shared Subject Dashboard
+        // (SharedSubjectDashboardService::needsPlottingList()), not the old
+        // Merged Classes page.
+        $result = $this->withSession()->get('/chairperson/shared-subjects');
 
-        // The Needs Plotting <select>'s option text for section A's row carries the
-        // new suffix (offerings.php:142-144 renders options server-side).
         $result->assertSee('Already on the schedule');
     }
 }

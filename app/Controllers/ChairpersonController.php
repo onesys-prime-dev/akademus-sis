@@ -1758,6 +1758,14 @@ class ChairpersonController extends BaseController
 
         $blocks = [];
 
+        // A merged (offering-linked) code's blocks are never written as
+        // legacy rows (see the guard below) — they're collected here instead
+        // and handed to PlottedScheduleModel::syncOfferingSchedule() further
+        // down, the same write path the old Merged Classes page's "Add
+        // Meeting" form used. This is what makes dragging/resizing a merged
+        // block in the grid actually persist instead of silently no-op'ing.
+        $mergedBlocksByCode = [];
+
         foreach ($payload['blocks'] as $block) {
             if (! is_array($block)) {
                 return $this->fail('Invalid block.');
@@ -1776,10 +1784,36 @@ class ChairpersonController extends BaseController
             // The subject must exist in the curriculum; its details are
             // canonicalized from the curriculum, not trusted from the client.
             if (in_array($block['code'], $mergedSubjectCodes, true)) {
-                // Already scheduled via the merged offering — see the guard
-                // above. Dropping here (not inserting as a legacy row) is
-                // the fix; the offering's own plotted_schedules row is what
-                // the grid actually renders this block from.
+                // Scheduled via the merged offering, not as a legacy row —
+                // validate its shape the same way a legacy block is, then
+                // collect it for syncOfferingSchedule() below instead of
+                // inserting it here.
+                if (! preg_match('/^\d{2}:\d{2}$/', $block['start']) || ! preg_match('/^\d{2}:\d{2}$/', $block['end'])
+                    || $block['start'] >= $block['end']) {
+                    return $this->fail('Invalid block time range.');
+                }
+
+                $mergedBlockMinutes = $this->toMinutes($block['end']) - $this->toMinutes($block['start']);
+
+                if ($mergedBlockMinutes < 30 || $mergedBlockMinutes % 30 !== 0) {
+                    return $this->fail("{$block['code']} must be plotted in 30-minute blocks.");
+                }
+
+                $mergedFacultyId = $block['faculty_id'] ?? null;
+
+                if ($mergedFacultyId !== null && ! is_int($mergedFacultyId)) {
+                    return $this->fail('Invalid faculty_id.');
+                }
+
+                $mergedBlocksByCode[$block['code']][] = [
+                    'day'        => $block['day'],
+                    'start'      => $block['start'],
+                    'end'        => $block['end'],
+                    'time_label' => $block['time_label'],
+                    'room'       => $block['room'],
+                    'faculty_id' => $mergedFacultyId,
+                ];
+
                 continue;
             }
 
@@ -2008,6 +2042,20 @@ class ChairpersonController extends BaseController
             }
         }
 
+        // The reverse direction: a merged block being edited IN this save
+        // must not land on top of a legacy block also submitted in this
+        // save (ownOfferingMeetings above only catches stale/unrelated
+        // merged meetings, not the new times being proposed here).
+        foreach ($mergedBlocksByCode as $mergedCode => $mergedBlocks) {
+            foreach ($mergedBlocks as $a) {
+                foreach ($blocks as $b) {
+                    if (ScheduleOverlap::clashes($a, $b)) {
+                        return $this->fail("Section conflict: {$mergedCode} overlaps {$b['code']}, which this section already attends at that time.");
+                    }
+                }
+            }
+        }
+
         // Two chairpersons saving different sections of the same academic
         // year concurrently could both read the "others" conflict set before
         // either writes, both pass the check, and both commit into the same
@@ -2101,6 +2149,27 @@ class ChairpersonController extends BaseController
                     if ($total > $capacity) {
                         return $this->fail("Room capacity: {$room} seats {$capacity}, but the sections merged into this class total {$total} students.");
                     }
+                }
+            }
+
+            // Persist each merged code's edited schedule now, still inside
+            // the advisory lock but as its own atomic unit via
+            // syncOfferingSchedule() (which runs its own transaction) rather
+            // than nested inside the legacy save's transaction below — the
+            // two are genuinely separate entities (plotted_schedules legacy
+            // rows vs. an offering's own schedule), same as when this was
+            // two separate page saves.
+            foreach ($mergedBlocksByCode as $mergedCode => $mergedBlocks) {
+                $mergedOffering = (new CourseOfferingModel())->offeringForSection((int) $sectionRow['section_id'], $mergedCode);
+
+                if ($mergedOffering === null) {
+                    return $this->fail("{$mergedCode} is no longer part of a merged class for this section — reload and try again.");
+                }
+
+                $mergeResult = (new PlottedScheduleModel())->syncOfferingSchedule((int) $mergedOffering['offering_id'], (int) auth()->id(), $mergedBlocks);
+
+                if (! $mergeResult['ok']) {
+                    return $this->fail($mergeResult['error']);
                 }
             }
 
@@ -3393,19 +3462,34 @@ class ChairpersonController extends BaseController
             : [$row['section'], $row['year_level'], $row['program']];
 
         return [
-            'day'        => (int) $row['day'],
-            'code'       => $row['subject_code'],
-            'title'      => $row['subject_title'],
-            'prof'       => $row['prof'],
-            'room'       => $row['room'],
-            'theme'      => $row['theme'],
-            'start'      => substr($row['start_time'], 0, 5),
-            'end'        => substr($row['end_time'], 0, 5),
-            'time_label' => $row['time_label'],
-            'section'    => $section,
-            'year_level' => $yearLevel,
-            'program'    => $program,
+            'day'          => (int) $row['day'],
+            'code'         => $row['subject_code'],
+            'title'        => $row['subject_title'],
+            'prof'         => $row['prof'],
+            'room'         => $row['room'],
+            'theme'        => $row['theme'],
+            'start'        => substr($row['start_time'], 0, 5),
+            'end'          => substr($row['end_time'], 0, 5),
+            'time_label'   => $row['time_label'],
+            'section'      => $section,
+            'year_level'   => $yearLevel,
+            'program'      => $program,
+            // Lets the grid show "who else is in this class" on the
+            // viewer's OWN block for a merged subject — previously that was
+            // only visible on the standalone Merged Classes page, nowhere
+            // in the grid itself.
+            'is_merged'    => $row['offering_id'] !== null,
+            'roster_count' => $row['offering_id'] !== null ? $this->offeringRosterCount((int) $row['offering_id']) : null,
         ];
+    }
+
+    /** @var array<int, int> offering_id => roster_count */
+    private array $offeringRosterCountCache = [];
+
+    private function offeringRosterCount(int $offeringId): int
+    {
+        return $this->offeringRosterCountCache[$offeringId]
+            ??= (new CourseOfferingModel())->rosterCount($offeringId);
     }
 
     /** @var array<int, array{0: ?string, 1: ?string, 2: ?string}> offering_id => [section, year_level, program] */

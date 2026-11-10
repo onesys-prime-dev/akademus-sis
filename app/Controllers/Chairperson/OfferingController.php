@@ -5,7 +5,6 @@ namespace App\Controllers\Chairperson;
 use App\Controllers\BaseController;
 use App\Libraries\ScheduleOverlap;
 use App\Libraries\SchedulingAuthorization;
-use App\Libraries\SubjectDemandService;
 use App\Models\AcademicYearModel;
 use App\Models\CapacityPolicyModel;
 use App\Models\CourseOfferingModel;
@@ -23,31 +22,30 @@ use App\Models\SectionModel;
  */
 class OfferingController extends BaseController
 {
+    /**
+     * Class Components: the lecture/lab-split sub-schedule and roster
+     * management for offerings that have components — the one piece of the
+     * old "Merged Classes" page with nowhere else to go once merge
+     * creation/editing/unmerging moved into the Schedule Plotting grid
+     * itself (dragging a merged block there now persists — see
+     * ChairpersonController::sync()) and "Needs Plotting" moved onto the
+     * Shared Subject Dashboard (SharedSubjectDashboardService::
+     * needsPlottingList()).
+     */
     public function index()
     {
         // Every department this chairperson is authorized for (home +
         // delegated). subDeptOfUser() alone would silently drop a delegated
-        // department's sections/merge-candidates from this whole page.
-        $subDeptIds    = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
-        $needsPlotting = $this->needsPlottingList();
-
-        // Raw label/semester for the "Plot it" deep link into Schedule
-        // Plotting (?ay_label=...&semester=...) — same values
-        // SharedSubjectDashboardController already resolves the same way for
-        // its own "Plot it" link.
-        $activeYearRow = (new AcademicYearModel())->activeRow();
+        // department's offerings from this page.
+        $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
 
         if ($subDeptIds === []) {
             return view('chairperson/offerings', [
-                'pageTitle'     => 'Merged Classes',
-                'user'          => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
-                'deptName'      => null,
-                'candidates'    => [],
-                'offerings'     => [],
-                'rooms'         => [],
-                'needsPlotting' => $needsPlotting,
-                'ayLabel'       => $activeYearRow['label'] ?? null,
-                'semester'      => $activeYearRow['semester'] ?? null,
+                'pageTitle' => 'Class Components',
+                'user'      => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
+                'deptName'  => null,
+                'offerings' => [],
+                'rooms'     => [],
             ]);
         }
 
@@ -64,62 +62,8 @@ class OfferingController extends BaseController
         $sections  = array_values(array_column($sections, null, 'section_id'));
         $offeringM = new CourseOfferingModel();
 
-        // Mergeable candidates: a subject_code plotted for 2+ of this
-        // department's sections in the same academic year, where none of
-        // those sections is already merged for that subject.
-        $bySubject = [];
-        foreach ($sections as $section) {
-            // Sections are year-scoped now, but what's actually plotted
-            // against one still varies by term — grouped by each plotted
-            // row's own (term-scoped) academic_year rather than the
-            // section's, which would never match plotted_schedules anymore.
-            $plottedRows = db_connect()->table('plotted_schedules')
-                ->select('subject_code, academic_year')
-                ->where('program', $section['program'])
-                ->where('year_level', $section['year_level'])
-                ->where('section', $section['section'])
-                ->distinct()
-                ->get()
-                ->getResultArray();
-
-            foreach ($plottedRows as $row) {
-                $bySubject[$row['academic_year']][$row['subject_code']][] = $section;
-            }
-        }
-
-        $candidates = [];
-
-        foreach ($bySubject as $academicYear => $subjects) {
-            foreach ($subjects as $code => $secList) {
-                if (count($secList) < 2) {
-                    continue;
-                }
-
-                // Merging is the subject OWNER's call (see
-                // authorizeSubjectCode()) — a department only ever sees
-                // merge candidates for subjects it actually owns, never for
-                // a borrowed subject it merely plots sections against.
-                if (! $this->authorizeSubjectCode($code)) {
-                    continue;
-                }
-
-                $unmerged = array_values(array_filter(
-                    $secList,
-                    static fn (array $s) => $offeringM->offeringForSection((int) $s['section_id'], $code) === null
-                ));
-
-                if (count($unmerged) >= 2) {
-                    $candidates[] = [
-                        'academic_year' => $academicYear,
-                        'subject_code'  => $code,
-                        'sections'      => $unmerged,
-                    ];
-                }
-            }
-        }
-
-        // Existing offerings for this department's sections, with roster
-        // counts and their attached section list.
+        // Offerings for this department's sections that actually have
+        // components — an offering with none has nothing to manage here.
         $sectionIds  = array_column($sections, 'section_id');
         $offeringIds = $sectionIds === [] ? [] : array_unique(array_column(
             db_connect()->table('offering_sections')->select('offering_id')->whereIn('section_id', $sectionIds)->get()->getResultArray(),
@@ -130,13 +74,15 @@ class OfferingController extends BaseController
         $componentModel = new OfferingComponentModel();
 
         foreach ($offeringIds as $offeringId) {
-            $offering                  = $offeringM->find((int) $offeringId);
-            $offering['section_ids']   = $offeringM->sectionIdsFor((int) $offeringId);
-            $offering['sections']      = array_values(array_filter($sections, static fn (array $s) => in_array((int) $s['section_id'], $offering['section_ids'], true)));
-            $offering['roster_count']  = $offeringM->rosterCount((int) $offeringId);
-            $offering['meetings']      = (new PlottedScheduleModel())->where('offering_id', (int) $offeringId)->where('offering_component_id IS NULL')->findAll();
-
             $components = $componentModel->activeForOffering((int) $offeringId);
+
+            if ($components === []) {
+                continue; // nothing to manage here
+            }
+
+            $offering                = $offeringM->find((int) $offeringId);
+            $offering['section_ids'] = $offeringM->sectionIdsFor((int) $offeringId);
+            $offering['sections']    = array_values(array_filter($sections, static fn (array $s) => in_array((int) $s['section_id'], $offering['section_ids'], true)));
 
             foreach ($components as &$c) {
                 $c['meetings'] = (new PlottedScheduleModel())->forComponent((int) $c['id']);
@@ -145,12 +91,12 @@ class OfferingController extends BaseController
             unset($c);
 
             $offering['components']   = $components;
-            $offering['completeness'] = $components !== [] ? $componentModel->completeness((int) $offeringId) : null;
+            $offering['completeness'] = $componentModel->completeness((int) $offeringId);
 
             // A borrowing department sees this offering (its own section is
             // attached) but may only manage it when it also owns the
             // subject — see authorizeOffering(). The view uses this to show
-            // the merge/schedule/roster controls as read-only otherwise.
+            // the component controls as read-only otherwise.
             $offering['can_manage']     = $this->authorizeOffering((int) $offeringId);
             $offering['owner_dept_name'] = null;
 
@@ -165,125 +111,12 @@ class OfferingController extends BaseController
         $rooms = (new RoomModel())->where('is_active', 1)->orderBy('name')->findAll();
 
         return view('chairperson/offerings', [
-            'pageTitle'     => 'Merged Classes',
-            'user'          => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => (count($deptNames) === 1 ? $deptNames[0] . ' - ' : '') . 'Chairperson'],
-            'deptName'      => count($deptNames) === 1 ? $deptNames[0] : implode(', ', $deptNames),
-            'candidates'    => $candidates,
-            'offerings'     => $offerings,
-            'rooms'         => $rooms,
-            'needsPlotting' => $needsPlotting,
-            'ayLabel'       => $activeYearRow['label'] ?? null,
-            'semester'      => $activeYearRow['semester'] ?? null,
+            'pageTitle' => 'Class Components',
+            'user'      => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => (count($deptNames) === 1 ? $deptNames[0] . ' - ' : '') . 'Chairperson'],
+            'deptName'  => count($deptNames) === 1 ? $deptNames[0] : implode(', ', $deptNames),
+            'offerings' => $offerings,
+            'rooms'     => $rooms,
         ]);
-    }
-
-    /**
-     * Every (subject, section) pair that needs ONE of my owned subjects
-     * plotted, but has no offering yet — computed live from current demand
-     * (SubjectDemandService, itself computed live from students/curriculum/
-     * enrollments, nothing cached) for the active academic year. This is
-     * the subject-owner's real worklist: a borrowing department's section
-     * shows up here the moment its curriculum requires my subject, with no
-     * placement request needed first.
-     *
-     * @return list<array{subject_id: int, subject_code: string, subject_name: string, section_id: int, section_label: string, expected_count: int, already_scheduled: bool, program: ?string, year_level: ?string, section: ?string}>
-     */
-    private function needsPlottingList(): array
-    {
-        $activeYear = (new AcademicYearModel())->activeFormatted();
-
-        if ($activeYear === null) {
-            return [];
-        }
-
-        $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
-
-        if ($subDeptIds === []) {
-            return [];
-        }
-
-        $ownedSubjects = db_connect()->table('subjects')
-            ->select('subject_id, subject_code, subject_name')
-            ->whereIn('department_id', $subDeptIds)
-            ->where('is_active', 1)
-            ->orderBy('subject_code')
-            ->get()
-            ->getResultArray();
-
-        if ($ownedSubjects === []) {
-            return [];
-        }
-
-        $demandService = new SubjectDemandService();
-        $offeringModel = new CourseOfferingModel();
-        $sectionModel  = new SectionModel();
-        $plottedModel  = new PlottedScheduleModel();
-        $needsPlotting = [];
-
-        foreach ($ownedSubjects as $subject) {
-            $summary = $demandService->summary((int) $subject['subject_id'], $activeYear);
-
-            // Every expected student already has a real seat somewhere
-            // (direct enrollment, a merged class, etc.) — "no course_offerings
-            // row exists yet" is just missing Step-6 bookkeeping at that
-            // point, not an unmet need. Without this gate a fully-served
-            // subject falsely sits in "needs plotting" forever, since
-            // nothing ever prompts anyone to create that offering row.
-            if (($summary['unassigned_count'] ?? 0) <= 0) {
-                continue;
-            }
-
-            foreach ($summary['by_section'] as $bySection) {
-                if ($bySection['expected_count'] <= 0 || $bySection['section_id'] === null) {
-                    continue;
-                }
-
-                // Already has an offering for this subject — either already
-                // scheduled or waiting in the "existing offerings" list
-                // below, not "needs plotting" from scratch.
-                if ($offeringModel->offeringForSection((int) $bySection['section_id'], $subject['subject_code']) !== null) {
-                    continue;
-                }
-
-                // No offering yet, but the section may already have a real
-                // class time plotted directly on the chairperson's own
-                // Schedule Plotting grid (a legacy row, offering_id IS
-                // NULL) — "Create & Plot" for this row only links
-                // bookkeeping to what's already there, it doesn't start a
-                // new class from scratch.
-                $section = $sectionModel->find((int) $bySection['section_id']);
-                $alreadyScheduled = $section !== null && $plottedModel->legacyRowsFor(
-                    $activeYear,
-                    $section['program'],
-                    $section['year_level'],
-                    $section['section'],
-                    $subject['subject_code']
-                ) !== [];
-
-                $needsPlotting[] = [
-                    'academic_year'     => $activeYear,
-                    'subject_id'        => (int) $subject['subject_id'],
-                    'subject_code'      => $subject['subject_code'],
-                    'subject_name'      => $subject['subject_name'],
-                    'section_id'        => (int) $bySection['section_id'],
-                    'section_label'     => $bySection['section_label'],
-                    'expected_count'    => (int) $bySection['expected_count'],
-                    'already_scheduled' => $alreadyScheduled,
-                    // The view's "Plot it" deep link into Schedule Plotting
-                    // (same pattern as the Shared Subject Dashboard's own —
-                    // see SharedSubjectDashboardService's plot_context) needs
-                    // these to land directly on this section's grid, ready to
-                    // drag the block on — no separate "create the offering
-                    // first" step; plotting it there is itself what makes it
-                    // real, same as any other subject on that grid.
-                    'program'           => $section['program'] ?? null,
-                    'year_level'        => $section['year_level'] ?? null,
-                    'section'           => $section['section'] ?? null,
-                ];
-            }
-        }
-
-        return $needsPlotting;
     }
 
     /**

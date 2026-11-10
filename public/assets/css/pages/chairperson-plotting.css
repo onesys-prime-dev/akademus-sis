@@ -557,6 +557,7 @@
 .b-head { display: flex; align-items: center; gap: 3px; min-width: 0; }
 .b-code { font-size: 12px; font-weight: 650; color: var(--color-text-primary); white-space: nowrap; }
 .b-type { font-size: 9px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--color-lab); }
+.b-type--merged { color: var(--color-primary); }
 .b-dur { margin-left: auto; flex: none; font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--color-text-tertiary); white-space: nowrap; }
 .b-flag {
     margin-left: auto;

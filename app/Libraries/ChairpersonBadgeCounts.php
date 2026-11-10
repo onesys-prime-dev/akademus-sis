@@ -56,8 +56,8 @@ class ChairpersonBadgeCounts
      * Mirrors ChairpersonController::overview()'s own $needsPlottingCount —
      * classes (any department's section) that need one of this
      * chairperson's owned subjects plotted, computed fresh from current
-     * demand (SubjectDemandService), never cached. See Shared Subject
-     * Dashboard / Merged Classes -> "Needs Plotting" to act on them.
+     * demand (SubjectDemandService), never cached. See the Shared Subject
+     * Dashboard's "Needs Plotting" card to act on them.
      *
      * "Plotted" is decided against plotted_schedules — the table the actual
      * Schedule Plotting grid writes to (ChairpersonController::index()/

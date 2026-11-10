@@ -39,6 +39,51 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     </form>
 </div>
 
+<?php if ($selectedTerm !== null && ! empty($needsPlotting)): ?>
+    <div class="panel ssd-card">
+        <div class="ssd-card__head">
+            <span class="ssd-card__icon"><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span></span>
+            <div class="ssd-card__title">
+                <strong>Needs Plotting</strong>
+                <span>Classes from any department that require one of your subjects, with no offering yet — plot it straight onto that section's schedule, same as any other subject.</span>
+            </div>
+        </div>
+        <div class="ssd-card__body">
+            <?php foreach ($needsPlotting as $np): ?>
+                <?php
+                    $npPlotUrl = ($ayLabel !== null && $semester !== null && $np['program'] !== null && $np['year_level'] !== null && $np['section'] !== null)
+                        ? site_url('chairperson/dashboard') . '?' . http_build_query([
+                            'ay_label'   => $ayLabel,
+                            'semester'   => $semester,
+                            'program'    => $np['program'],
+                            'year_level' => $np['year_level'],
+                            'section'    => $np['section'],
+                            'subject'    => $np['subject_code'],
+                        ])
+                        : null;
+                ?>
+                <div class="ssd-offering">
+                    <div class="ssd-offering__top">
+                        <span class="ssd-offering__title"><?= esc($np['subject_code']) ?> · <?= esc($np['section_label']) ?></span>
+                        <span class="mc-cap-pill"><?= esc($np['expected_count']) ?> student<?= $np['expected_count'] === 1 ? '' : 's' ?></span>
+                    </div>
+                    <div class="ssd-unscheduled">
+                        <span class="ssd-unscheduled__label">
+                            <span class="ssd-unscheduled__dot" aria-hidden="true"></span>
+                            <?= $np['already_scheduled'] ? 'Already on the schedule — just needs the offering link' : 'No offering yet' ?>
+                        </span>
+                        <?php if ($npPlotUrl !== null): ?>
+                            <a class="ac-btn ac-btn-sm ac-btn-secondary ssd-plot-btn" href="<?= esc($npPlotUrl, 'attr') ?>">
+                                Plot it<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                            </a>
+                        <?php endif ?>
+                    </div>
+                </div>
+            <?php endforeach ?>
+        </div>
+    </div>
+<?php endif ?>
+
 <?php if ($selectedTerm === null): ?>
     <div class="panel">
         <div class="empty-state">
@@ -165,12 +210,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                     Plot it<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
                                 </a>
                             </div>
-                        <?php else: ?>
-                            <div class="ssd-empty-cta">
-                                <a class="ac-btn ac-btn-sm ac-btn-secondary ssd-plot-btn" href="<?= site_url('chairperson/offerings') ?>">
-                                    Create offering<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
-                                </a>
-                            </div>
                         <?php endif ?>
                     </div>
                 <?php else: ?>
@@ -228,7 +267,9 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                                 <?php endif ?>
                             </div>
 
-                            <a class="ssd-offering__manage" href="<?= site_url('chairperson/offerings') ?>">Manage offering →</a>
+                            <?php if ($plotUrl !== null): ?>
+                                <a class="ssd-offering__manage" href="<?= esc($plotUrl, 'attr') ?>">Manage in Schedule Plotting →</a>
+                            <?php endif ?>
                         </div>
                     <?php endforeach ?>
                 <?php endif ?>

@@ -44,9 +44,13 @@ class SharedSubjectDashboardController extends BaseController
 
         $includeInactive = $this->request->getGet('show_inactive') === '1';
 
+        $service = new SharedSubjectDashboardService();
+
         $dashboard = $academicYear === null
             ? ['term' => null, 'subjects' => [], 'inactive_count' => 0]
-            : (new SharedSubjectDashboardService())->build((int) auth()->id(), $academicYear, $includeInactive);
+            : $service->build((int) auth()->id(), $academicYear, $includeInactive);
+
+        $needsPlotting = $academicYear === null ? [] : $service->needsPlottingList((int) auth()->id(), $academicYear);
 
         return view('chairperson/shared_subjects', [
             'pageTitle'       => 'Shared Subject Dashboard',
@@ -57,6 +61,7 @@ class SharedSubjectDashboardController extends BaseController
             'semester'        => $selectedYearRow['semester'] ?? null,
             'dashboard'       => $dashboard,
             'includeInactive' => $includeInactive,
+            'needsPlotting'   => $needsPlotting,
         ]);
     }
 }
