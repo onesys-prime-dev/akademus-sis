@@ -237,6 +237,26 @@ final class ChairpersonImportSectionsTest extends CIUnitTestCase
         $this->assertNotNull($user['section_id'], 'the newly created student must end up assigned to the section');
     }
 
+    public function testProcessAssignsAStudentToASectionCreatedInTheSameImport(): void
+    {
+        $studentId = 70604;
+        $this->seedUsers($studentId);
+        db_connect()->table('auth_groups_users')->insert(['user_id' => $studentId, 'group' => 'student', 'created_at' => date('Y-m-d H:i:s')]);
+        db_connect()->table('students')->insert(['user_id' => $studentId, 'applicant_id' => 'APP-70604', 'student_number' => 'STU-0004']);
+
+        $report = $this->callProcessSectionsImport(
+            sectionRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1C', 'capacity' => '30']],
+            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1C', 'student_number' => 'STU-0004']],
+            targetTerm: $this->term
+        );
+
+        $this->assertTrue($report['ok']);
+        $this->assertSame(1, $report['sections']['created']);
+        $this->assertSame(1, $report['roster']['assigned']);
+        $this->assertSame([], $report['roster']['errors']);
+        $this->assertNotNull((new SectionModel())->forContext($this->term, 'BSIT', '1st Year', '1C'));
+    }
+
     public function testProcessReportsAMissingNameOrEmailAsARowErrorWhenCreatingIsOptedIn(): void
     {
         (new SectionModel())->insert(['academic_year' => $this->term, 'program' => 'BSIT', 'program_id' => 6101, 'year_level' => '1st Year', 'section' => '1A']);
