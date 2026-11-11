@@ -206,7 +206,7 @@ final class ChairpersonImportSectionsTest extends CIUnitTestCase
 
         $report = $this->callProcessSectionsImport(
             sectionRows: [],
-            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-9999', 'student_name' => 'Mathew Umali', 'email' => 'mathew@example.com']],
+            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-9999', 'first_name' => 'Mathew', 'middle_name' => null, 'last_name' => 'Umali', 'email' => 'mathew@example.com']],
             targetTerm: $this->term,
             createMissingStudents: false
         );
@@ -222,7 +222,7 @@ final class ChairpersonImportSectionsTest extends CIUnitTestCase
 
         $report = $this->callProcessSectionsImport(
             sectionRows: [],
-            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-9999', 'student_name' => 'Mathew Umali', 'email' => 'mathew@example.com']],
+            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-9999', 'first_name' => 'Mathew', 'middle_name' => 'R', 'last_name' => 'Umali', 'email' => 'mathew@example.com']],
             targetTerm: $this->term,
             createMissingStudents: true
         );
@@ -233,6 +233,7 @@ final class ChairpersonImportSectionsTest extends CIUnitTestCase
 
         $user = db_connect()->table('users')->where('first_name', 'Mathew')->where('last_name', 'Umali')->get()->getRowArray();
         $this->assertNotNull($user);
+        $this->assertSame('R', $user['middle_name']);
         $this->assertNotNull($user['section_id'], 'the newly created student must end up assigned to the section');
     }
 
@@ -242,7 +243,7 @@ final class ChairpersonImportSectionsTest extends CIUnitTestCase
 
         $report = $this->callProcessSectionsImport(
             sectionRows: [],
-            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-9999', 'student_name' => 'Mathew Umali', 'email' => '']],
+            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-9999', 'first_name' => 'Mathew', 'middle_name' => null, 'last_name' => 'Umali', 'email' => '']],
             targetTerm: $this->term,
             createMissingStudents: true
         );

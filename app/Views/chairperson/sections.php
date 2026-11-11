@@ -158,7 +158,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                 <input type="checkbox" id="importCreateMissing">
                 Create missing students and email them their login
             </label>
-            <span class="hint">For roster rows whose Student Number isn't found: creates the account (needs Student Name and Email filled in on that row) and emails the student their temporary password.</span>
+            <span class="hint">For roster rows whose Student Number isn't found: creates the account (needs First Name, Last Name, and Email filled in on that row — Middle Name is optional) and emails the student their temporary password.</span>
         </div>
 
         <div class="cs-form-footer">

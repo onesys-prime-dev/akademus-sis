@@ -14,7 +14,7 @@ class SectionsExporter
 {
     /**
      * @param list<array{program: string, year_level: string, section: string, capacity: ?int, status: string}> $sections
-     * @param list<array{program: string, year_level: string, section: string, student_number: string, student_name: string, email: string}> $rosterRows
+     * @param list<array{program: string, year_level: string, section: string, student_number: string, first_name: string, middle_name: string, last_name: string, email: string}> $rosterRows
      */
     public static function build(array $sections, array $rosterRows): Spreadsheet
     {
@@ -32,10 +32,10 @@ class SectionsExporter
 
         $rosterSheet = $spreadsheet->createSheet();
         $rosterSheet->setTitle('Roster');
-        $rosterSheet->fromArray(['Program', 'Year Level', 'Section', 'Student Number', 'Student Name', 'Email'], null, 'A1');
+        $rosterSheet->fromArray(['Program', 'Year Level', 'Section', 'Student Number', 'First Name', 'Middle Name', 'Last Name', 'Email'], null, 'A1');
 
         $rosterData = array_map(
-            static fn (array $r): array => [$r['program'], $r['year_level'], $r['section'], $r['student_number'], $r['student_name'], $r['email']],
+            static fn (array $r): array => [$r['program'], $r['year_level'], $r['section'], $r['student_number'], $r['first_name'], $r['middle_name'], $r['last_name'], $r['email']],
             $rosterRows
         );
         $rosterSheet->fromArray($rosterData, null, 'A2');

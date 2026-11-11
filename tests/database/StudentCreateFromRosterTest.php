@@ -23,10 +23,11 @@ final class StudentCreateFromRosterTest extends CIUnitTestCase
     private function payload(array $overrides = []): array
     {
         return array_merge([
-            'first_name' => 'Mathew',
-            'last_name'  => 'Umali',
-            'email'      => 'mathew.umali@example.com',
-            'program_id' => null,
+            'first_name'  => 'Mathew',
+            'middle_name' => 'R',
+            'last_name'   => 'Umali',
+            'email'       => 'mathew.umali@example.com',
+            'program_id'  => null,
         ], $overrides);
     }
 
@@ -41,6 +42,7 @@ final class StudentCreateFromRosterTest extends CIUnitTestCase
         $db = db_connect();
         $user = $db->table('users')->where('id', $result['user_id'])->get()->getRowArray();
         $this->assertSame('Mathew', $user['first_name']);
+        $this->assertSame('R', $user['middle_name']);
         $this->assertSame('Umali', $user['last_name']);
         $this->assertSame(1, (int) $user['must_change_password']);
 

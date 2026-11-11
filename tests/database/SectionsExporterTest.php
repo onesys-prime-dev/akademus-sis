@@ -28,15 +28,15 @@ final class SectionsExporterTest extends CIUnitTestCase
     {
         $spreadsheet = SectionsExporter::build(
             [['program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'capacity' => 40, 'status' => 'open']],
-            [['program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-2026-00001', 'student_name' => 'Jane Dela Cruz', 'email' => 'jane@example.com']]
+            [['program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-2026-00001', 'first_name' => 'Jane', 'middle_name' => 'M', 'last_name' => 'Dela Cruz', 'email' => 'jane@example.com']]
         );
 
         $roster = $spreadsheet->getSheetByName('Roster');
-        $this->assertSame(['Program', 'Year Level', 'Section', 'Student Number', 'Student Name', 'Email'], $roster->rangeToArray('A1:F1')[0]);
-        $this->assertSame(['BSIT', '1st Year', '1A', 'STU-2026-00001', 'Jane Dela Cruz', 'jane@example.com'], $roster->rangeToArray('A2:F2')[0]);
+        $this->assertSame(['Program', 'Year Level', 'Section', 'Student Number', 'First Name', 'Middle Name', 'Last Name', 'Email'], $roster->rangeToArray('A1:H1')[0]);
+        $this->assertSame(['BSIT', '1st Year', '1A', 'STU-2026-00001', 'Jane', 'M', 'Dela Cruz', 'jane@example.com'], $roster->rangeToArray('A2:H2')[0]);
 
         $empty = SectionsExporter::build([], []);
-        $this->assertNull($empty->getSheetByName('Roster')->rangeToArray('A2:F2')[0][0]);
+        $this->assertNull($empty->getSheetByName('Roster')->rangeToArray('A2:H2')[0][0]);
     }
 
     public function testToXlsxStringProducesReadableWorkbookBytes(): void

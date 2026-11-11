@@ -207,7 +207,7 @@ class StudentModel extends Model
      * roster row whose student number has no match — see
      * ChairpersonController::processSectionsImport().
      *
-     * @param array{first_name: string, last_name: string, email: string, program_id: ?int} $data
+     * @param array{first_name: string, middle_name: ?string, last_name: string, email: string, program_id: ?int} $data
      *
      * @return array{ok: bool, error?: string, user_id?: int, student_number?: string, temp_password?: string}
      */
@@ -241,6 +241,7 @@ class StudentModel extends Model
 
         $db->table('users')->where('id', $userId)->update([
             'first_name'            => $data['first_name'],
+            'middle_name'           => $data['middle_name'] ?? null,
             'last_name'             => $data['last_name'],
             'must_change_password'  => 1,
         ]);
