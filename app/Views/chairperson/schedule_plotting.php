@@ -509,6 +509,7 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
             'stateUrl'           => site_url('chairperson/schedule/state'),
             'suggestUrl'         => site_url('chairperson/schedule/suggest'),
             'mergeSuggestionsUrl' => site_url('chairperson/offerings/merge-suggestions'),
+            'releaseUnattachedUrl' => site_url('chairperson/offerings/release-unattached'),
             'rulesUrl'           => site_url('chairperson/schedule/assistant-rules'),
             'facultyPanelUrl'    => site_url('chairperson/faculty-panel'),
             'facultyOverrideUrl' => site_url('chairperson/schedule/faculty-override'),

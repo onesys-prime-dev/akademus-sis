@@ -191,4 +191,85 @@ final class CourseOfferingModelTest extends CIUnitTestCase
         $this->assertFalse($second['ok']);
         $this->assertStringContainsString('already merged', $second['error']);
     }
+
+    /** @return array{offering_id: int} */
+    private function makeUnattachedOfferingWithSchedule(string $sectionName, string $subjectCode): array
+    {
+        $section = $this->makeSection($sectionName);
+        $this->seedSubject($subjectCode);
+        $this->plotSubject($section, $subjectCode);
+
+        $offerings = new CourseOfferingModel();
+        $merge     = $offerings->createMerge(self::AY, $subjectCode, [$section['section_id']], null, 1);
+        $this->assertTrue($merge['ok'], $merge['error'] ?? '');
+
+        // An offering-linked schedule — the state a real "merge carrying a
+        // schedule" or a synced offering component leaves behind, with no
+        // section/year_level/program of its own (see PlottedScheduleModel's
+        // docblock) — distinct from the section-plotted row plotSubject()
+        // already inserted above.
+        db_connect()->table('plotted_schedules')->insert([
+            'offering_id'   => $merge['offering_id'],
+            'academic_year' => self::AY,
+            'day'           => 1,
+            'start_time'    => '10:00:00',
+            'end_time'      => '11:30:00',
+            'time_label'    => '10:00-11:30',
+            'subject_code'  => $subjectCode,
+            'subject_title' => $subjectCode . ' Title',
+            'room'          => 'Room 202',
+            'theme'         => 'blue',
+            'status'        => 'published',
+        ]);
+
+        $unmerge = $offerings->unmergeSection($merge['offering_id'], (int) $section['section_id']);
+        $this->assertTrue($unmerge['ok']);
+
+        // Confirms unmergeSection() left it behind rather than deleting it —
+        // the precondition this whole test fixture exists to set up.
+        $this->seeInDatabase('course_offerings', ['offering_id' => $merge['offering_id']]);
+
+        return ['offering_id' => (int) $merge['offering_id']];
+    }
+
+    public function testDeleteIfUnattachedRemovesAnOrphanedOfferingAndItsSchedule(): void
+    {
+        $fixture    = $this->makeUnattachedOfferingWithSchedule('D', 'GE-ELEC2');
+        $offerings  = new CourseOfferingModel();
+
+        $result = $offerings->deleteIfUnattached($fixture['offering_id']);
+
+        $this->assertTrue($result['ok'], $result['error'] ?? '');
+        $this->dontSeeInDatabase('course_offerings', ['offering_id' => $fixture['offering_id']]);
+        $this->dontSeeInDatabase('plotted_schedules', ['offering_id' => $fixture['offering_id']]);
+    }
+
+    public function testDeleteIfUnattachedRefusesAnOfferingThatHasBeenReattachedSince(): void
+    {
+        $fixture   = $this->makeUnattachedOfferingWithSchedule('E', 'GE-ELEC3');
+        $offerings = new CourseOfferingModel();
+
+        // Something reattached a section to it between page load and click.
+        $another = $this->makeSection('F');
+        db_connect()->table('offering_sections')->insert([
+            'offering_id'  => $fixture['offering_id'],
+            'section_id'   => $another['section_id'],
+            'subject_code' => 'GE-ELEC3',
+            'created_at'   => date('Y-m-d H:i:s'),
+        ]);
+
+        $result = $offerings->deleteIfUnattached($fixture['offering_id']);
+
+        $this->assertFalse($result['ok']);
+        $this->seeInDatabase('course_offerings', ['offering_id' => $fixture['offering_id']]);
+        $this->seeInDatabase('plotted_schedules', ['offering_id' => $fixture['offering_id']]);
+    }
+
+    public function testDeleteIfUnattachedRejectsAnUnknownOffering(): void
+    {
+        $result = (new CourseOfferingModel())->deleteIfUnattached(999999);
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('Offering not found.', $result['error']);
+    }
 }

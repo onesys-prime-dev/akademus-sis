@@ -237,6 +237,36 @@ class OfferingController extends BaseController
     }
 
     /**
+     * Deletes an offering left behind by unmergeSection() when its last
+     * attached section was removed while it still had a plotted schedule
+     * (see that method's own docblock) — a stray room/time booking nothing
+     * is using any more. The plotting grid surfaces these as a ghost
+     * "Unattached offering" block; this is that block's one available
+     * action, since section ownership can't be checked (there is no
+     * section) — only subject ownership (authorizeOffering()) can.
+     */
+    public function releaseUnattached()
+    {
+        $payload = $this->request->getJSON(true);
+
+        if (! is_array($payload) || empty($payload['offering_id'])) {
+            return $this->fail('Missing offering.');
+        }
+
+        if (! $this->authorizeOffering((int) $payload['offering_id'])) {
+            return $this->fail('Only the subject\'s owning department can remove this.');
+        }
+
+        $result = (new CourseOfferingModel())->deleteIfUnattached((int) $payload['offering_id']);
+
+        if (! $result['ok']) {
+            return $this->fail($result['error'] ?? 'Could not remove this.');
+        }
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
      * Proactive merge candidates for one plotting section: for every
      * subject already running for ANOTHER section this academic year that
      * this section hasn't plotted yet, whether the room it's using still

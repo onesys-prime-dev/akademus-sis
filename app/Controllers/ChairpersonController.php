@@ -3824,6 +3824,12 @@ class ChairpersonController extends BaseController
             // in the grid itself.
             'is_merged'    => $row['offering_id'] !== null,
             'roster_count' => $row['offering_id'] !== null ? $this->offeringRosterCount((int) $row['offering_id']) : null,
+            // Only actually used by the client for the "Unattached offering"
+            // ghost block (its one available action is releasing it — see
+            // OfferingController::releaseUnattached()); harmless to include
+            // on every other block too, since it's already visible to this
+            // chairperson via is_merged/roster_count.
+            'offering_id'  => $row['offering_id'] !== null ? (int) $row['offering_id'] : null,
         ];
     }
 

@@ -610,4 +610,47 @@ class CourseOfferingModel extends Model
 
         return ['ok' => $db->transStatus() !== false];
     }
+
+    /**
+     * Deletes an offering unmergeSection() deliberately left behind: one
+     * with a plotted schedule but zero attached sections (see that
+     * method's docblock) — a stray room/time booking nothing is using any
+     * more. Re-checks every guard at call time rather than trusting the
+     * caller's own page load, since the state driving those guards can
+     * change between render and click (another chairperson attaching a
+     * section to it, for instance).
+     *
+     * @return array{ok: bool, error?: string}
+     */
+    public function deleteIfUnattached(int $offeringId): array
+    {
+        $db = $this->db;
+        $db->transStart();
+
+        $offering = $this->lockForUpdate($offeringId);
+
+        if ($offering === null) {
+            $db->transComplete();
+
+            return ['ok' => false, 'error' => 'Offering not found.'];
+        }
+
+        $hasSections   = $db->table('offering_sections')->where('offering_id', $offeringId)->countAllResults() > 0;
+        $hasComponents = $db->table('offering_components')->where('offering_id', $offeringId)->countAllResults() > 0;
+        $hasEnrollments = $db->table('enrollments')->where('offering_id', $offeringId)->countAllResults() > 0;
+
+        if ($hasSections || $hasComponents || $hasEnrollments) {
+            $db->transRollback();
+            $db->resetTransStatus();
+
+            return ['ok' => false, 'error' => 'This offering is no longer unattached — refresh and try again.'];
+        }
+
+        $db->table('plotted_schedules')->where('offering_id', $offeringId)->delete();
+        $this->delete($offeringId);
+
+        $db->transComplete();
+
+        return ['ok' => $db->transStatus() !== false];
+    }
 }

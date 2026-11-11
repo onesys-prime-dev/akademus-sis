@@ -627,19 +627,62 @@ function ghostEl(b) {
     // of their own — program/year_level/section is NULL on those rows by
     // design (see PlottedScheduleModel's own docblock), so this must never
     // print the literal word "null" where a section name would normally go.
+    const isUnattached = !b.section && b.year_level === 'Unattached';
     const whereLabel = b.section
         ? b.section + (b.year_level ? ' · ' + shortYear(b.year_level) : '')
-        : (b.year_level === 'Unattached' ? 'Unattached offering' : 'Merged class');
+        : (isUnattached ? 'Unattached offering' : 'Merged class');
 
     const el = mk('div', 'block is-other');
     el.title = `${b.code} · ${whereLabel} · ${b.room}${b.prof ? ' · ' + b.prof : ''} · ${b.time_label}`;
-    el.setAttribute('aria-hidden', 'true');
     el.append(
         mk('div', 'b-section', whereLabel),
         mk('div', 'b-code', b.code),
         mk('div', 'b-line', b.room)
     );
+
+    // Every other ghost block is someone else's real, still-owned class and
+    // must stay inert — but an unattached offering belongs to no section any
+    // more (see CourseOfferingModel::unmergeSection()'s docblock for how it
+    // gets left behind), so it's the one ghost block with something to do:
+    // release the room/time slot it's still holding.
+    if (isUnattached) {
+        const releaseBtn = mk('button', 'b-release', 'Release');
+        releaseBtn.type = 'button';
+        releaseBtn.title = 'Remove this leftover schedule — nothing is using it any more';
+        releaseBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            releaseUnattachedOffering(b.offering_id, el);
+        });
+        el.append(releaseBtn);
+    } else {
+        el.setAttribute('aria-hidden', 'true');
+    }
+
     return el;
+}
+
+async function releaseUnattachedOffering(offeringId, el) {
+    if (!offeringId) return;
+    if (!confirm('Remove this leftover schedule? This frees up the room/time slot.')) return;
+
+    try {
+        const response = await fetch(CONFIG.releaseUnattachedUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ offering_id: offeringId }),
+        });
+        const result = await response.json();
+
+        if (response.ok && result.ok) {
+            el.remove();
+            await reloadFromServer();
+            showToast('Leftover schedule removed.', 'success');
+        } else {
+            showToast(result.error || 'Could not remove this.', 'error');
+        }
+    } catch (err) {
+        showToast('Could not remove this.', 'error');
+    }
 }
 
 function ownEl(b) {

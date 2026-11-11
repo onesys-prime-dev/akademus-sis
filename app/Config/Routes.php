@@ -557,6 +557,7 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('offerings/create'        , 'Chairperson\OfferingController::create');
     $routes->post('offerings/plot-demand'   , 'Chairperson\OfferingController::plotDemand');
     $routes->post('offerings/unmerge'       , 'Chairperson\OfferingController::unmergeSection');
+    $routes->post('offerings/release-unattached', 'Chairperson\OfferingController::releaseUnattached');
     $routes->get('offerings/schedule'       , 'Chairperson\OfferingController::scheduleState');
     $routes->post('offerings/schedule/sync' , 'Chairperson\OfferingController::syncSchedule');
     $routes->get('offerings/merge-suggestions', 'Chairperson\OfferingController::mergeSuggestions');
