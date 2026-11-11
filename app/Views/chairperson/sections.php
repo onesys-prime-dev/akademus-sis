@@ -55,7 +55,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                     <?php endforeach ?>
                 </select>
             </div>
-            <a class="btn btn-secondary" id="scExportBtn" href="<?= site_url('chairperson/sections/export') ?>?academic_year=<?= rawurlencode($exportDefaultYear) ?>">
+            <a class="btn btn-secondary" id="scExportBtn" download href="<?= site_url('chairperson/sections/export') ?>?academic_year=<?= rawurlencode($exportDefaultYear) ?>">
                 <span class="material-symbols-outlined" aria-hidden="true">download</span>Export
             </a>
             <button type="button" class="btn btn-primary" id="scOpenCreate"><span class="material-symbols-outlined" aria-hidden="true">add</span>Create section</button>
