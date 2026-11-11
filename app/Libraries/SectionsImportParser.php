@@ -13,10 +13,10 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class SectionsImportParser
 {
     private const SECTIONS_HEADER = ['Program', 'Year Level', 'Section', 'Capacity'];
-    private const ROSTER_HEADER   = ['Program', 'Year Level', 'Section', 'Student Number'];
+    private const ROSTER_HEADER   = ['Program', 'Year Level', 'Section', 'Student Number', 'Student Name', 'Email'];
 
     /**
-     * @return array{ok: true, sections: list<array{row: int, program: ?string, year_level: ?string, section: ?string, capacity: ?string}>, roster: list<array{row: int, program: ?string, year_level: ?string, section: ?string, student_number: ?string}>}|array{ok: false, error: string}
+     * @return array{ok: true, sections: list<array{row: int, program: ?string, year_level: ?string, section: ?string, capacity: ?string}>, roster: list<array{row: int, program: ?string, year_level: ?string, section: ?string, student_number: ?string, student_name: ?string, email: ?string}>}|array{ok: false, error: string}
      */
     public static function parse(string $filePath): array
     {
@@ -40,7 +40,7 @@ class SectionsImportParser
         return [
             'ok'       => true,
             'sections' => self::dataRows($sectionsSheet, ['program', 'year_level', 'section', 'capacity']),
-            'roster'   => self::dataRows($rosterSheet, ['program', 'year_level', 'section', 'student_number']),
+            'roster'   => self::dataRows($rosterSheet, ['program', 'year_level', 'section', 'student_number', 'student_name', 'email']),
         ];
     }
 

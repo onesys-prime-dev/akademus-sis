@@ -200,6 +200,93 @@ class StudentModel extends Model
     }
 
     /**
+     * Creates a student account straight from a Sections-import roster row,
+     * with no applicant/admission record behind it (unlike
+     * promoteFromApplicant()). Only used when a chairperson opts in, per
+     * row, via the import's "create missing students" checkbox for a
+     * roster row whose student number has no match — see
+     * ChairpersonController::processSectionsImport().
+     *
+     * @param array{first_name: string, last_name: string, email: string, program_id: ?int} $data
+     *
+     * @return array{ok: bool, error?: string, user_id?: int, student_number?: string, temp_password?: string}
+     */
+    public function createFromRoster(array $data): array
+    {
+        $db = $this->db;
+        $db->transStart();
+
+        $users = auth()->getProvider();
+
+        // Same rule as promoteFromApplicant(): a real email collision is a
+        // data problem to surface, not paper over.
+        if ($users->findByCredentials(['email' => $data['email']]) !== null) {
+            $db->transRollback();
+            $db->resetTransStatus();
+
+            return ['ok' => false, 'error' => 'A user with this email already exists.'];
+        }
+
+        $users->save([
+            'username' => $this->usernameFor($data),
+            'active'   => 1,
+        ]);
+
+        $userId = $users->getInsertID();
+
+        // Random, human-typeable temp password — mirrors promoteFromApplicant().
+        // Emailed once by StudentWelcomeMailer, never persisted in plaintext;
+        // must_change_password forces it to be replaced on first login.
+        $tempPassword = bin2hex(random_bytes(6));
+
+        $db->table('users')->where('id', $userId)->update([
+            'first_name'            => $data['first_name'],
+            'last_name'             => $data['last_name'],
+            'must_change_password'  => 1,
+        ]);
+
+        $user = $users->findById($userId);
+
+        $user->createEmailIdentity([
+            'email'    => $data['email'],
+            'password' => $tempPassword,
+        ]);
+
+        $user->addGroup('student');
+
+        $studentNumber = $this->nextStudentNumber();
+        $curriculumId  = $data['program_id'] !== null
+            ? ((new CurriculumModel())->liveFor($data['program_id'])['curriculum_id'] ?? null)
+            : null;
+
+        $this->insert([
+            'user_id'        => $userId,
+            // Not a real Admissions applicant id, but the column is NOT NULL
+            // and unique — the generated student number is already unique
+            // and doubles as one.
+            'applicant_id'   => 'ROSTER-' . $studentNumber,
+            'student_number' => $studentNumber,
+            'program_id'     => $data['program_id'],
+            'curriculum_id'  => $curriculumId,
+            'admission_date' => date('Y-m-d H:i:s'),
+            'student_status' => 'active',
+        ]);
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return ['ok' => false, 'error' => 'Could not create the student record. Please retry.'];
+        }
+
+        return [
+            'ok'             => true,
+            'user_id'        => $userId,
+            'student_number' => $studentNumber,
+            'temp_password'  => $tempPassword,
+        ];
+    }
+
+    /**
      * Admissions programs are dynamic (admins add them at will), so the SIS
      * cannot ship a fixed list. An unknown code is created on the spot from
      * the name Admissions sends — with no college and no curriculum, which an

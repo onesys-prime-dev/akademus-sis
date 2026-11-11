@@ -153,6 +153,14 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             </div>
         </div>
 
+        <div class="cs-checkbox-field">
+            <label>
+                <input type="checkbox" id="importCreateMissing">
+                Create missing students and email them their login
+            </label>
+            <span class="hint">For roster rows whose Student Number isn't found: creates the account (needs Student Name and Email filled in on that row) and emails the student their temporary password.</span>
+        </div>
+
         <div class="cs-form-footer">
             <span class="hint">Sections that already exist in the target term are skipped, not overwritten.</span>
             <button type="button" class="btn btn-primary" id="scImportSubmit" onclick="importSections()">
@@ -396,6 +404,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         const body = new FormData();
         body.append('file', file);
         body.append('academic_year', academicYear);
+        body.append('create_missing_students', document.getElementById('importCreateMissing').checked ? '1' : '0');
         body.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
 
         let result;
@@ -423,6 +432,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         const r = result.report;
         const summary = `Import complete: ${r.sections.created} section(s) created, ${r.sections.skipped} skipped, `
             + `${r.roster.assigned} student(s) assigned`
+            + (r.roster.accounts_created ? `, ${r.roster.accounts_created} account(s) created` : '')
             + (r.sections.errors.length || r.roster.errors.length ? `, ${r.sections.errors.length + r.roster.errors.length} row error(s) — see below.` : '.');
 
         const reportEl = document.getElementById('scImportReport');

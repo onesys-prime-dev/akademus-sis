@@ -26,9 +26,11 @@ use App\Libraries\ScheduleSuggester;
 use App\Libraries\SectionBalancer;
 use App\Libraries\SectionsExporter;
 use App\Libraries\SectionsImportParser;
+use App\Libraries\StudentWelcomeMailer;
 use App\Models\AuditLogModel;
 use App\Models\CapacityPolicyModel;
 use App\Models\SectionModel;
+use App\Models\StudentModel;
 use App\Models\SubjectModel;
 use App\Models\SwapRequestModel;
 
@@ -2637,7 +2639,7 @@ class ChairpersonController extends BaseController
      * to `students` for student_number (sections()'s own roster query only
      * needs username, not the richer identity an export file needs).
      *
-     * @return array{sections: list<array{program: string, year_level: string, section: string, capacity: ?int, status: string}>, roster: list<array{program: string, year_level: string, section: string, student_number: string, student_name: string}>}
+     * @return array{sections: list<array{program: string, year_level: string, section: string, capacity: ?int, status: string}>, roster: list<array{program: string, year_level: string, section: string, student_number: string, student_name: string, email: string}>}
      */
     private function sectionsForExport(string $academicYear): array
     {
@@ -2664,9 +2666,10 @@ class ChairpersonController extends BaseController
         $sectionIds = array_column($sections, 'section_id');
 
         $rosterRows = $sectionIds === [] ? [] : db_connect()->table('users u')
-            ->select("u.section_id, s.student_number, CONCAT(u.first_name, ' ', u.last_name) AS student_name")
+            ->select("u.section_id, s.student_number, CONCAT(u.first_name, ' ', u.last_name) AS student_name, i.secret AS email")
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->join('students s', 's.user_id = u.id')
+            ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
             ->where('g.group', 'student')
             ->where('u.deleted_at', null)
             ->whereIn('u.section_id', $sectionIds)
@@ -2685,6 +2688,7 @@ class ChairpersonController extends BaseController
                 'section'        => $sec['section'],
                 'student_number' => $row['student_number'],
                 'student_name'   => trim((string) $row['student_name']),
+                'email'          => (string) ($row['email'] ?? ''),
             ];
         }, $rosterRows);
 
@@ -2833,7 +2837,8 @@ class ChairpersonController extends BaseController
             return $this->fail($parsed['error']);
         }
 
-        $report = $this->processSectionsImport($parsed['sections'], $parsed['roster'], $targetTerm);
+        $createMissingStudents = $this->request->getPost('create_missing_students') === '1';
+        $report = $this->processSectionsImport($parsed['sections'], $parsed['roster'], $targetTerm, $createMissingStudents);
 
         if (! $report['ok']) {
             return $this->fail('Import failed and nothing was saved. Please try again.');
@@ -2851,11 +2856,11 @@ class ChairpersonController extends BaseController
      * student" control calls — no second validation path.
      *
      * @param list<array{row: int, program: ?string, year_level: ?string, section: ?string, capacity: ?string}> $sectionRows
-     * @param list<array{row: int, program: ?string, year_level: ?string, section: ?string, student_number: ?string}> $rosterRows
+     * @param list<array{row: int, program: ?string, year_level: ?string, section: ?string, student_number: ?string, student_name: ?string, email: ?string}> $rosterRows
      *
-     * @return array{ok: bool, sections: array{created: int, skipped: int, errors: list<array{row: int, reason: string}>}, roster: array{assigned: int, over_capacity: int, errors: list<array{row: int, reason: string}>}}
+     * @return array{ok: bool, sections: array{created: int, skipped: int, errors: list<array{row: int, reason: string}>}, roster: array{assigned: int, over_capacity: int, accounts_created: int, errors: list<array{row: int, reason: string}>}}
      */
-    private function processSectionsImport(array $sectionRows, array $rosterRows, string $targetTerm): array
+    private function processSectionsImport(array $sectionRows, array $rosterRows, string $targetTerm, bool $createMissingStudents = false): array
     {
         $db = db_connect();
         $db->transStart();
@@ -2918,13 +2923,18 @@ class ChairpersonController extends BaseController
 
         $assigned = 0;
         $overCapacity = 0;
+        $accountsCreated = 0;
         $rosterErrors = [];
+        $studentModel = new StudentModel();
+        $welcomeEmails = [];
 
         foreach ($rosterRows as $row) {
             $program     = (string) ($row['program'] ?? '');
             $yearLevel   = (string) ($row['year_level'] ?? '');
             $sectionName = trim((string) ($row['section'] ?? ''));
             $studentNumber = trim((string) ($row['student_number'] ?? ''));
+            $studentName = trim((string) ($row['student_name'] ?? ''));
+            $email       = trim((string) ($row['email'] ?? ''));
 
             if (! in_array($program, $authorizedPrograms, true)) {
                 $rosterErrors[] = ['row' => $row['row'], 'reason' => 'Section does not belong to your department.'];
@@ -2945,6 +2955,36 @@ class ChairpersonController extends BaseController
                 ->where('u.deleted_at', null)
                 ->get()
                 ->getRowArray();
+
+            if ($student === null && $createMissingStudents) {
+                if ($studentName === '' || $email === '') {
+                    $rosterErrors[] = ['row' => $row['row'], 'reason' => 'Missing name/email to create a new student.'];
+                    continue;
+                }
+
+                [$firstName, $lastName] = self::splitStudentName($studentName);
+
+                $creation = $studentModel->createFromRoster([
+                    'first_name' => $firstName,
+                    'last_name'  => $lastName,
+                    'email'      => $email,
+                    'program_id' => $section['program_id'] !== null ? (int) $section['program_id'] : null,
+                ]);
+
+                if (! $creation['ok']) {
+                    $rosterErrors[] = ['row' => $row['row'], 'reason' => $creation['error']];
+                    continue;
+                }
+
+                $student = ['user_id' => $creation['user_id']];
+                $accountsCreated++;
+                $welcomeEmails[] = [
+                    'email'          => $email,
+                    'first_name'     => $firstName,
+                    'student_number' => $creation['student_number'],
+                    'temp_password'  => $creation['temp_password'],
+                ];
+            }
 
             if ($student === null) {
                 $rosterErrors[] = ['row' => $row['row'], 'reason' => 'Student not found.'];
@@ -2978,15 +3018,43 @@ class ChairpersonController extends BaseController
             return [
                 'ok'       => false,
                 'sections' => ['created' => 0, 'skipped' => 0, 'errors' => []],
-                'roster'   => ['assigned' => 0, 'over_capacity' => 0, 'errors' => []],
+                'roster'   => ['assigned' => 0, 'over_capacity' => 0, 'accounts_created' => 0, 'errors' => []],
             ];
+        }
+
+        // Sent only now, after the commit — a rollback (e.g. a later row's
+        // write failure) must not leave a student emailed credentials for
+        // an account that no longer exists.
+        foreach ($welcomeEmails as $welcome) {
+            (new StudentWelcomeMailer())->send($welcome['email'], $welcome['first_name'], $welcome['student_number'], $welcome['temp_password']);
         }
 
         return [
             'ok'       => true,
             'sections' => ['created' => $created, 'skipped' => $skipped, 'errors' => $sectionErrors],
-            'roster'   => ['assigned' => $assigned, 'over_capacity' => $overCapacity, 'errors' => $rosterErrors],
+            'roster'   => ['assigned' => $assigned, 'over_capacity' => $overCapacity, 'accounts_created' => $accountsCreated, 'errors' => $rosterErrors],
         ];
+    }
+
+    /**
+     * "Kyle Esta" -> ['Kyle', 'Esta']: everything but the last word is the
+     * first name, the last word is the last name. A heuristic, not a real
+     * name parser — good enough for a roster's "Student Name" column, which
+     * has no first/last split of its own.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private static function splitStudentName(string $name): array
+    {
+        $parts = preg_split('/\s+/', trim($name)) ?: [];
+
+        if (count($parts) < 2) {
+            return [$name, ''];
+        }
+
+        $last = array_pop($parts);
+
+        return [implode(' ', $parts), $last];
     }
 
     /**

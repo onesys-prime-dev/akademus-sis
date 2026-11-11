@@ -49,13 +49,13 @@ final class ChairpersonImportSectionsTest extends CIUnitTestCase
         $db->table('academic_years')->insert(['label' => '1', 'semester' => '1st', 'is_active' => 1]);
     }
 
-    private function callProcessSectionsImport(array $sectionRows, array $rosterRows, string $targetTerm): array
+    private function callProcessSectionsImport(array $sectionRows, array $rosterRows, string $targetTerm, bool $createMissingStudents = false): array
     {
         $controller = new ChairpersonController();
         $method     = new ReflectionMethod($controller, 'processSectionsImport');
         $method->setAccessible(true);
 
-        return $method->invoke($controller, $sectionRows, $rosterRows, $targetTerm);
+        return $method->invoke($controller, $sectionRows, $rosterRows, $targetTerm, $createMissingStudents);
     }
 
     public function testProcessCreatesNewSectionsAndSkipsExisting(): void
@@ -198,5 +198,57 @@ final class ChairpersonImportSectionsTest extends CIUnitTestCase
 
         $this->assertSame(1, $report['roster']['assigned']);
         $this->assertSame([], $report['roster']['errors']);
+    }
+
+    public function testProcessLeavesAnUnknownStudentNumberAsAnErrorWhenCreateMissingIsNotOptedIn(): void
+    {
+        (new SectionModel())->insert(['academic_year' => $this->term, 'program' => 'BSIT', 'program_id' => 6101, 'year_level' => '1st Year', 'section' => '1A']);
+
+        $report = $this->callProcessSectionsImport(
+            sectionRows: [],
+            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-9999', 'student_name' => 'Mathew Umali', 'email' => 'mathew@example.com']],
+            targetTerm: $this->term,
+            createMissingStudents: false
+        );
+
+        $this->assertSame(0, $report['roster']['assigned']);
+        $this->assertSame(0, $report['roster']['accounts_created']);
+        $this->assertSame('Student not found.', $report['roster']['errors'][0]['reason']);
+    }
+
+    public function testProcessCreatesAMissingStudentAndAssignsThemWhenOptedIn(): void
+    {
+        (new SectionModel())->insert(['academic_year' => $this->term, 'program' => 'BSIT', 'program_id' => 6101, 'year_level' => '1st Year', 'section' => '1A']);
+
+        $report = $this->callProcessSectionsImport(
+            sectionRows: [],
+            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-9999', 'student_name' => 'Mathew Umali', 'email' => 'mathew@example.com']],
+            targetTerm: $this->term,
+            createMissingStudents: true
+        );
+
+        $this->assertSame(1, $report['roster']['assigned']);
+        $this->assertSame(1, $report['roster']['accounts_created']);
+        $this->assertSame([], $report['roster']['errors']);
+
+        $user = db_connect()->table('users')->where('first_name', 'Mathew')->where('last_name', 'Umali')->get()->getRowArray();
+        $this->assertNotNull($user);
+        $this->assertNotNull($user['section_id'], 'the newly created student must end up assigned to the section');
+    }
+
+    public function testProcessReportsAMissingNameOrEmailAsARowErrorWhenCreatingIsOptedIn(): void
+    {
+        (new SectionModel())->insert(['academic_year' => $this->term, 'program' => 'BSIT', 'program_id' => 6101, 'year_level' => '1st Year', 'section' => '1A']);
+
+        $report = $this->callProcessSectionsImport(
+            sectionRows: [],
+            rosterRows: [['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-9999', 'student_name' => 'Mathew Umali', 'email' => '']],
+            targetTerm: $this->term,
+            createMissingStudents: true
+        );
+
+        $this->assertSame(0, $report['roster']['assigned']);
+        $this->assertSame(0, $report['roster']['accounts_created']);
+        $this->assertStringContainsString('Missing name/email', $report['roster']['errors'][0]['reason']);
     }
 }

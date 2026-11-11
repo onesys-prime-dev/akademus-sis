@@ -28,14 +28,22 @@ final class SectionsImportParserTest extends CIUnitTestCase
     {
         $path = $this->fixtureWorkbook(
             sections: [['BSIT', '1st Year', '1A', '40']],
-            roster: [['BSIT', '1st Year', '1A', 'STU-2026-00001']]
+            roster: [['BSIT', '1st Year', '1A', 'STU-2026-00001', 'Kyle Esta', 'kyle@example.com']]
         );
 
         $result = SectionsImportParser::parse($path);
 
         $this->assertTrue($result['ok']);
         $this->assertSame([['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'capacity' => '40']], $result['sections']);
-        $this->assertSame([['row' => 2, 'program' => 'BSIT', 'year_level' => '1st Year', 'section' => '1A', 'student_number' => 'STU-2026-00001']], $result['roster']);
+        $this->assertSame([[
+            'row'            => 2,
+            'program'        => 'BSIT',
+            'year_level'     => '1st Year',
+            'section'        => '1A',
+            'student_number' => 'STU-2026-00001',
+            'student_name'   => 'Kyle Esta',
+            'email'          => 'kyle@example.com',
+        ]], $result['roster']);
     }
 
     public function testParseRejectsAWrongHeaderShape(): void
@@ -90,7 +98,7 @@ final class SectionsImportParserTest extends CIUnitTestCase
 
         $rosterSheet = $spreadsheet->createSheet();
         $rosterSheet->setTitle('Roster');
-        $rosterSheet->fromArray(['Program', 'Year Level', 'Section', 'Student Number', 'Student Name'], null, 'A1');
+        $rosterSheet->fromArray(['Program', 'Year Level', 'Section', 'Student Number', 'Student Name', 'Email'], null, 'A1');
         $rosterSheet->fromArray($roster, null, 'A2');
 
         return $this->saveFixture($spreadsheet);
@@ -104,7 +112,7 @@ final class SectionsImportParserTest extends CIUnitTestCase
         $spreadsheet->getActiveSheet()->fromArray($header, null, 'A1');
         $rosterSheet = $spreadsheet->createSheet();
         $rosterSheet->setTitle('Roster');
-        $rosterSheet->fromArray(['Program', 'Year Level', 'Section', 'Student Number', 'Student Name'], null, 'A1');
+        $rosterSheet->fromArray(['Program', 'Year Level', 'Section', 'Student Number', 'Student Name', 'Email'], null, 'A1');
 
         return $this->saveFixture($spreadsheet);
     }

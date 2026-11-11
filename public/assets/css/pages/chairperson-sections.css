@@ -60,6 +60,11 @@
 .cs-form-footer { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:22px 30px; border-top:1px solid var(--sc-line); background:#fafbfd; }
 .cs-form-footer .hint { font-size:12px; color:#8192aa; }
 
+.cs-checkbox-field { padding:0 30px 22px; }
+.cs-checkbox-field label { display:flex; align-items:center; gap:9px; color:#385271; font-size:13px; font-weight:600; }
+.cs-checkbox-field input[type="checkbox"] { width:auto; min-height:0; }
+.cs-checkbox-field .hint { display:block; margin:6px 0 0 25px; }
+
 .cs-list-head { display:flex; align-items:center; gap:11px; margin:34px 0 20px; }
 .cs-list-head h2 { margin:0; font-size:18px; letter-spacing:-.3px; font-weight:650; }
 .sc-count { padding:4px 10px; font-size:11px; font-weight:650; color:var(--color-primary); background:var(--color-primary-soft); border:1px solid transparent; border-radius:var(--radius-pill); }
