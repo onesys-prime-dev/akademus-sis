@@ -76,6 +76,27 @@ final class ChairpersonImportSectionsTest extends CIUnitTestCase
         $this->assertSame([], $report['sections']['errors']);
     }
 
+    public function testProcessTrimsStrayWhitespaceOnProgramAndYearLevelBeforeMatching(): void
+    {
+        (new SectionModel())->insert(['academic_year' => $this->term, 'program' => 'BSIT', 'program_id' => 6101, 'year_level' => '1st Year', 'section' => '1A']);
+
+        $studentId = 70605;
+        $this->seedUsers($studentId);
+        db_connect()->table('auth_groups_users')->insert(['user_id' => $studentId, 'group' => 'student', 'created_at' => date('Y-m-d H:i:s')]);
+        db_connect()->table('students')->insert(['user_id' => $studentId, 'applicant_id' => 'APP-70605', 'student_number' => 'STU-0005']);
+
+        $report = $this->callProcessSectionsImport(
+            sectionRows: [['row' => 2, 'program' => ' BSIT ', 'year_level' => ' 1st Year', 'section' => '1B ', 'capacity' => null]],
+            rosterRows: [['row' => 2, 'program' => 'BSIT ', 'year_level' => '1st Year ', 'section' => ' 1A', 'student_number' => 'STU-0005']],
+            targetTerm: $this->term
+        );
+
+        $this->assertSame(1, $report['sections']['created']);
+        $this->assertSame([], $report['sections']['errors']);
+        $this->assertSame(1, $report['roster']['assigned']);
+        $this->assertSame([], $report['roster']['errors']);
+    }
+
     public function testProcessReportsInvalidCapacityAsARowError(): void
     {
         $report = $this->callProcessSectionsImport(

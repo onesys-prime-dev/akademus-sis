@@ -2875,8 +2875,13 @@ class ChairpersonController extends BaseController
         $sectionErrors = [];
 
         foreach ($sectionRows as $row) {
-            $program    = (string) ($row['program'] ?? '');
-            $yearLevel  = (string) ($row['year_level'] ?? '');
+            // Trimmed, not case-normalized: a pasted-from-Excel trailing
+            // space is an incidental mistake worth absorbing, but "BSIT" vs
+            // "bsit" could genuinely be two different records — see the
+            // import panel's own warning about matching Program/Year
+            // Level/Section exactly against the Sections sheet.
+            $program    = trim((string) ($row['program'] ?? ''));
+            $yearLevel  = trim((string) ($row['year_level'] ?? ''));
             $sectionName = trim((string) ($row['section'] ?? ''));
 
             $error = null;
@@ -2931,8 +2936,8 @@ class ChairpersonController extends BaseController
         $welcomeEmails = [];
 
         foreach ($rosterRows as $row) {
-            $program     = (string) ($row['program'] ?? '');
-            $yearLevel   = (string) ($row['year_level'] ?? '');
+            $program     = trim((string) ($row['program'] ?? ''));
+            $yearLevel   = trim((string) ($row['year_level'] ?? ''));
             $sectionName = trim((string) ($row['section'] ?? ''));
             $studentNumber = trim((string) ($row['student_number'] ?? ''));
             $firstName   = trim((string) ($row['first_name'] ?? ''));

@@ -138,6 +138,10 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 
     <details class="panel cs-card" id="scImportPanel">
         <summary class="sc-tool-summary"><span class="material-symbols-outlined" aria-hidden="true">upload_file</span><span><strong>Import sections</strong><small>Bulk-create sections and rosters from a workbook.</small></span><span class="material-symbols-outlined sc-chevron" aria-hidden="true">expand_more</span></summary>
+        <div class="ac-notice" style="background:var(--color-warning-soft); border-color:#fde3b0; margin:20px 30px 0;">
+            <span class="material-symbols-outlined" style="font-size:14px; color:var(--color-warning); margin-top:1px;">warning</span>
+            <span class="ac-notice__text">On the Roster sheet, Program, Year Level, and Section must match the Sections sheet <strong>exactly</strong> — including casing (e.g. "BSIT", not "bsit") — or those rows will fail with "Section not found." Stray leading/trailing spaces are trimmed automatically, so those alone won't cause a mismatch.</span>
+        </div>
         <div class="cs-form-grid">
             <div class="cs-field">
                 <label for="importAcademicYear">Target Academic Year</label>
