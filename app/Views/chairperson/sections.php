@@ -153,7 +153,14 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
             </div>
             <div class="cs-field">
                 <label for="importFile">Workbook (.xlsx)</label>
-                <input type="file" id="importFile" accept=".xlsx">
+                <div class="cs-file-picker">
+                    <input type="file" id="importFile" accept=".xlsx" hidden>
+                    <label for="importFile" class="btn btn-secondary cs-file-picker__btn" tabindex="0" role="button">
+                        <span class="material-symbols-outlined" style="font-size:18px;">attach_file</span>
+                        Choose file
+                    </label>
+                    <span class="cs-file-picker__name" id="importFileName">No file chosen</span>
+                </div>
             </div>
         </div>
 
@@ -392,6 +399,26 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         const exportBase = '<?= site_url('chairperson/sections/export') ?>';
         picker.addEventListener('change', () => {
             btn.href = exportBase + '?academic_year=' + encodeURIComponent(picker.value);
+        });
+    })();
+
+    (function () {
+        const fileInput = document.getElementById('importFile');
+        const fileName   = document.getElementById('importFileName');
+        const fileBtn    = document.querySelector('.cs-file-picker__btn');
+
+        fileInput.addEventListener('change', () => {
+            fileName.textContent = fileInput.files[0] ? fileInput.files[0].name : 'No file chosen';
+        });
+
+        // The native input is visually hidden, and a <label> isn't in the
+        // keyboard tab order on its own — this keeps the styled button
+        // reachable and operable (Enter/Space) for keyboard users.
+        fileBtn.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                fileInput.click();
+            }
         });
     })();
 
