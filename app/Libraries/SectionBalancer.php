@@ -378,7 +378,12 @@ class SectionBalancer
         if ($live === []) {
             $blocked = 'No sections exist yet for this program and year level.';
         } elseif ($free === []) {
-            $blocked = 'Automatic rebalancing was blocked: ' . implode(' ', array_unique(array_filter(array_column($live, 'block_reason')))) ;
+            // Each section's own block_reason (SectionAllocationService::
+            // canAutomaticallyRebalance()) already reads as a complete
+            // sentence ("Automatic rebalancing was blocked because the
+            // section is active.") — prefixing another "was blocked:" here
+            // used to just repeat that phrase back-to-back.
+            $blocked = implode(' ', array_unique(array_filter(array_column($live, 'block_reason'))));
         }
 
         $currentSizes = array_column($free, 'count');
