@@ -20,6 +20,7 @@ $baseQuery = static function (array $overrides) use ($currentParams): string {
     return site_url('chairperson/student-progress') . ($params !== [] ? '?' . http_build_query($params) : '');
 };
 
+$avatarColors = ['#174ea6', '#0f766e', '#a65b08', '#15803d', '#4f5eb3'];
 ?>
 
 <?= $this->section('styles') ?>
@@ -87,9 +88,17 @@ $baseQuery = static function (array $overrides) use ($currentParams): string {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($students as $s): ?>
+                            <?php foreach ($students as $idx => $s): ?>
                                 <tr>
-                                    <td><strong><?= esc($s['last_name'] . ', ' . $s['first_name']) ?></strong><small><?= esc($s['student_number']) ?></small></td>
+                                    <td>
+                                        <div class="sp-student">
+                                            <div class="sp-avatar" style="background:<?= $avatarColors[$idx % count($avatarColors)] ?>;"><?= esc(mb_strtoupper(mb_substr($s['first_name'] !== '' ? $s['first_name'] : $s['last_name'], 0, 1))) ?></div>
+                                            <div class="sp-student-meta">
+                                                <strong><?= esc($s['last_name'] . ', ' . $s['first_name']) ?></strong>
+                                                <small><?= esc($s['student_number']) ?></small>
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td><?= esc($s['program_code'] ?? '—') ?></td>
                                     <td><?= $s['year_level'] !== null ? esc($s['year_level'] . ' · ' . $s['section']) : '—' ?></td>
                                     <td><?= esc($s['curriculum_code'] ?? '—') ?></td>
@@ -139,4 +148,10 @@ $baseQuery = static function (array $overrides) use ($currentParams): string {
     'revokeUrl' => site_url('chairperson/student-progress/revoke-override'),
 ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script src="<?= base_url('assets/js/student-progress.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/student-progress.js') ?>"></script>
+<script>
+    (function () {
+        var programSelect = document.getElementById('spProgram');
+        if (programSelect && window.enhanceSelect) window.enhanceSelect(programSelect);
+    })();
+</script>
 <?= $this->endSection() ?>
