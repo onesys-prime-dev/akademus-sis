@@ -202,10 +202,12 @@ const timeCol = $('timeCol');
 for (let row = 0; row < CONFIG.totalRows; row++) {
     const cell = mk('div', 'time slot');
     const mins = CONFIG.gridStartMin + row * 30;
-    if (mins % 60 === 0) {
-        cell.classList.add('is-hour');
-        cell.appendChild(mk('span', '', rowTo12h(row).replace(':00', '')));
-    }
+    const onHour = mins % 60 === 0;
+    if (onHour) cell.classList.add('is-hour');
+    // Every half-hour row gets its own label now, same as the student
+    // schedule's calendar (student-schedule.js) — on-the-hour rows drop the
+    // ":00" ("7 AM"), the :30 rows keep the full time ("7:30 AM").
+    cell.appendChild(mk('span', '', onHour ? rowTo12h(row).replace(':00', '') : rowTo12h(row)));
     timeCol.appendChild(cell);
 }
 
