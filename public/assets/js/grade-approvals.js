@@ -23,12 +23,14 @@
         indicator.style.transform = `translateX(${tab.offsetLeft}px)`;
     }
 
-    // Fades/slides each visible row or request card into place with a small
-    // stagger whenever a panel is (re)shown, so switching tabs reads as data
-    // loading in rather than the whole table just appearing at once.
+    // Fades/slides each visible row, request card, or empty-state block into
+    // place with a small stagger whenever a panel is (re)shown, so switching
+    // tabs reads as data loading in rather than content just appearing.
+    // Covers the "no results" state too — an empty queue should still settle
+    // into view instead of popping in instantly.
     function staggerRows(panel) {
         if (prefersReducedMotion) return;
-        const rows = [...panel.querySelectorAll('[data-search-row]:not([hidden])')];
+        const rows = [...panel.querySelectorAll('[data-search-row]:not([hidden]), .ga-empty:not([hidden])')];
         rows.forEach((row, i) => {
             row.style.setProperty('--ga-row-i', i);
             row.classList.remove('ga-row-enter');
