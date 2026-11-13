@@ -309,6 +309,14 @@
 [role=tabpanel].ga-panel-enter { opacity:0; transform:translateY(6px); }
 [role=tabpanel].ga-panel-leave { opacity:0; transform:translateY(-4px); }
 
+/* Row-level stagger — each class/correction row/article fades and slides in
+   with a small per-row delay whenever its panel becomes visible, instead of
+   the whole dataset just appearing at once. Same language as Subject
+   Ownership's row-enter animation. */
+@keyframes gaRowEnter { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+.ga-row-enter { animation:gaRowEnter .32s var(--ease-standard, cubic-bezier(.4,0,.2,1)) both; animation-delay:calc(var(--ga-row-i, 0) * 30ms); }
+@media (prefers-reduced-motion:reduce) { .ga-row-enter { animation:none; } }
+
 .ga-toolbar { padding:20px 24px 16px; }
 .ga-toolbar h2 { font-size:15px; font-weight:700; color:var(--color-text-primary); }
 .ga-toolbar p { font-size:12px; }

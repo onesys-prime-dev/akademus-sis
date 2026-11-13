@@ -23,6 +23,20 @@
         indicator.style.transform = `translateX(${tab.offsetLeft}px)`;
     }
 
+    // Fades/slides each visible row or request card into place with a small
+    // stagger whenever a panel is (re)shown, so switching tabs reads as data
+    // loading in rather than the whole table just appearing at once.
+    function staggerRows(panel) {
+        if (prefersReducedMotion) return;
+        const rows = [...panel.querySelectorAll('[data-search-row]:not([hidden])')];
+        rows.forEach((row, i) => {
+            row.style.setProperty('--ga-row-i', i);
+            row.classList.remove('ga-row-enter');
+            void row.offsetWidth;
+            row.classList.add('ga-row-enter');
+        });
+    }
+
     let currentPanel = null;
     let isFirstActivate = true;
     function activate(tab, updateUrl = true) {
@@ -45,6 +59,7 @@
         if (isFirstActivate) {
             isFirstActivate = false;
             nextPanel.hidden = false;
+            staggerRows(nextPanel);
             return;
         }
 
@@ -63,6 +78,7 @@
             void nextPanel.offsetWidth;
             nextPanel.classList.remove('ga-panel-enter');
             nextPanel.addEventListener('transitionend', () => nextPanel.classList.remove('ga-panel-enter'), { once: true });
+            staggerRows(nextPanel);
         };
 
         if (prevPanel) {
@@ -94,6 +110,7 @@
         const table = panel.querySelector('.ga-table-scroll'); if (table) table.hidden = !count;
         const noun = count === 1 ? (panel.dataset.nounSingular || 'item') : (panel.dataset.nounPlural || 'items');
         panel.querySelector('[data-result-count]').textContent = query ? `${count} of ${rows.length} ${noun} shown` : `${count} ${noun}${panel.dataset.countSuffix || ''}`;
+        staggerRows(panel);
     }
     root.querySelectorAll('[data-search]').forEach(input => input.addEventListener('input', () => filter($(input.dataset.search))));
     root.querySelectorAll('[data-search-control]').forEach(label => { label.hidden = false; });
