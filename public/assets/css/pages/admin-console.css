@@ -1532,6 +1532,10 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .ac-bento-card__icon--primary { background: var(--color-primary-soft); color: var(--color-primary); }
 .ac-bento-card__icon--tertiary { background: rgba(84, 92, 114, .2); color: #3d445a; }
 .ac-bento-card__icon--warning { background: rgba(217, 119, 6, .2); color: var(--color-warning); }
+/* Missing modifier — used on 3 dashboards (dean, finance x2) but fell back
+   to the base icon color instead of green, so a "success" stat read as
+   whatever neutral tone the base rule has. */
+.ac-bento-card__icon--success { background: var(--color-success-soft); color: var(--color-success); }
 
 .ac-pill {
     font-size: 11px;
