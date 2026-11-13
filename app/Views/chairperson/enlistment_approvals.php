@@ -62,15 +62,8 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                             <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
                             <button type="submit" class="ac-btn ac-btn-primary">Recommend</button>
                         </form>
-                        <button type="button" class="ac-btn-outline" onclick="eaToggleReturn(event, <?= (int) $r['id'] ?>, true)">Return</button>
+                        <button type="button" class="ac-btn-outline" onclick="eaOpenReturn(event, <?= (int) $r['id'] ?>, <?= esc(json_encode($r['username']), 'attr') ?>)">Return</button>
                     </div>
-                    <form method="post" action="<?= site_url('chairperson/enlistment-approvals/return') ?>" class="ea-actions__return" style="display:none; gap:6px;" data-confirm="Return this enlistment to the student? They'll see your reason.">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
-                        <input type="text" name="notes" class="ac-input" placeholder="Reason (required)" required minlength="3" style="min-width:140px;" onclick="event.stopPropagation()">
-                        <button type="submit" class="ac-btn ac-btn-primary">Confirm</button>
-                        <button type="button" class="ac-btn-outline" onclick="eaToggleReturn(event, <?= (int) $r['id'] ?>, false)">Cancel</button>
-                    </form>
                 </div>
             </div>
         <?php endforeach ?>
@@ -99,17 +92,50 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     </div>
 </div>
 
+<!-- Return modal: one shared dialog for every row's "Return" action, instead
+     of each row exposing its own inline reason field in the table — the
+     field now opens as a proper popup, matching eaDetailModal above. -->
+<div class="ac-modal" id="eaReturnModal">
+    <div class="ac-modal__panel" style="max-width:440px;">
+        <div class="ac-modal__header">
+            <div>
+                <div class="ac-modal__title">Return enlistment</div>
+                <div class="ac-modal__subtitle" id="eaReturnSubtitle"></div>
+            </div>
+            <button type="button" onclick="acCloseModal('eaReturnModal')" class="ac-modal__close">
+                <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+        </div>
+        <form method="post" action="<?= site_url('chairperson/enlistment-approvals/return') ?>" id="eaReturnForm">
+            <?= csrf_field() ?>
+            <input type="hidden" name="id" id="eaReturnId" value="">
+            <div class="ac-modal__body">
+                <div class="ac-field">
+                    <label for="eaReturnNotes">Reason</label>
+                    <textarea id="eaReturnNotes" name="notes" class="ac-input" rows="3" placeholder="Explain what needs to change…" required minlength="3"></textarea>
+                    <p class="hint">The student will see this note.</p>
+                </div>
+            </div>
+            <div class="ac-modal__actions">
+                <button type="button" class="ac-btn ac-btn-secondary" onclick="acCloseModal('eaReturnModal')">Cancel</button>
+                <button type="submit" class="ac-btn ac-btn-primary">Return to student</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
 <script>
-function eaToggleReturn(e, id, show) {
+function eaOpenReturn(e, id, name) {
     e.stopPropagation();
-    var wrap = document.getElementById('eaActions' + id);
-    wrap.querySelector('.ea-actions__default').style.display = show ? 'none' : 'flex';
-    var form = wrap.querySelector('.ea-actions__return');
-    form.style.display = show ? 'flex' : 'none';
-    if (show) form.querySelector('input[name="notes"]').focus();
+    document.getElementById('eaReturnId').value = id;
+    document.getElementById('eaReturnSubtitle').textContent = name;
+    var notes = document.getElementById('eaReturnNotes');
+    notes.value = '';
+    acOpenModal('eaReturnModal');
+    setTimeout(function () { notes.focus(); }, 50);
 }
 
 (function () {
