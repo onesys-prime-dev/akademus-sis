@@ -5,6 +5,7 @@ namespace App\Libraries;
 use App\Models\AuditLogModel;
 use App\Models\CapacityPolicyModel;
 use App\Models\CollegeModel;
+use App\Models\EnrollmentModel;
 use App\Models\SectionModel;
 
 /**
@@ -293,9 +294,28 @@ class SectionBalancer
 
         $db->transComplete();
 
-        return $db->transStatus() === false
-            ? ['ok' => false, 'error' => 'Could not assign the student. Please retry.']
-            : ['ok' => true, 'over_capacity' => $over];
+        if ($db->transStatus() === false) {
+            return ['ok' => false, 'error' => 'Could not assign the student. Please retry.'];
+        }
+
+        // Being placed in a section should actually enroll the student in
+        // whatever's plotted for it, not just leave section_id pointing
+        // somewhere with no enrollments to show for it — the same
+        // principle unassignStudent() already enforces in the other
+        // direction (it drops the student's enrollments for the section
+        // they're leaving). Mirrors the two other places a section
+        // assignment already triggers this (Admin\UserController::store()
+        // and the retroactive sync after saving a new plot in
+        // ChairpersonController::sync()). Best-effort: an enrollment
+        // hiccup here must never undo or mask the assignment that
+        // already committed.
+        try {
+            (new EnrollmentModel())->enrollBlock($userId, $sectionId);
+        } catch (\Throwable $e) {
+            log_message('error', 'Auto-enroll after section assignment failed: ' . $e->getMessage());
+        }
+
+        return ['ok' => true, 'over_capacity' => $over];
     }
 
     /** Effective policy for one section row. */
