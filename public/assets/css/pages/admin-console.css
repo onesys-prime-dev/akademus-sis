@@ -2246,4 +2246,30 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
     .uc-modal__panel { padding: 18px; }
     .ac-modal__actions, .uc-modal__actions, .ac-confirm__actions { flex-direction: column-reverse; flex-wrap: nowrap; }
     .ac-modal__actions .ac-btn, .uc-modal__actions .ac-btn, .ac-confirm__actions .ac-btn { width: 100%; white-space: normal; text-align: center; }
+
+    /* A plain multi-column .ac-table dropped straight into a modal has
+       nowhere to put 5-6 columns at 375px — it either overflows the panel
+       uncontained (no horizontal scroll affordance exists here, unlike
+       .ac-table-card elsewhere) or crushes every column to a sliver. Collapse
+       each row into a labeled stack instead, same language as .ac-dtable's
+       own mobile mode. Cells opt in with data-label="..."; a cell without one
+       (the "Total" summary row) just stays a plain block. */
+    .ac-modal__body table.ac-table,
+    .ac-modal__body table.ac-table tbody,
+    .ac-modal__body table.ac-table tr,
+    .ac-modal__body table.ac-table td { display: block; width: 100%; }
+    .ac-modal__body table.ac-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+    .ac-modal__body table.ac-table tbody { display: grid; gap: 10px; }
+    .ac-modal__body table.ac-table tr { padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+    .ac-modal__body table.ac-table td { padding: 5px 0 !important; border: 0 !important; white-space: normal !important; }
+    .ac-modal__body table.ac-table td[data-label]::before {
+        content: attr(data-label); display: block; margin-bottom: 2px;
+        font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em;
+        color: var(--color-text-tertiary);
+    }
+    .ac-modal__body table.ac-table tr:has(td[colspan]) {
+        display: flex; justify-content: space-between; align-items: center;
+        background: var(--color-surface-secondary); border-style: dashed;
+    }
+    .ac-modal__body table.ac-table tr:has(td[colspan]) td { width: auto; padding: 0 !important; text-align: left !important; }
 }
