@@ -161,6 +161,9 @@
 .tf-file-preview__action:hover { text-decoration: underline; }
 .tf-file-preview__action--danger { color: #b3261e; }
 
+/* The wrapper itself had no rule, so it sat flush against .tf-file-preview
+   above it with no breathing room once the upload starts. */
+.tf-upload-progress { margin-top: 12px; }
 .tf-upload-progress__row { display: flex; justify-content: space-between; font-size: 11px; color: #44536a; font-weight: 600; margin-bottom: 7px; }
 .tf-upload-progress__bar { height: 7px; border-radius: 4px; background: #e2e8f2; overflow: hidden; }
 .tf-upload-progress__fill { height: 100%; width: 0%; background: #2f6fd1; border-radius: 4px; transition: width .15s linear; }
