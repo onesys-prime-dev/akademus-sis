@@ -3230,9 +3230,36 @@ class ChairpersonController extends BaseController
             return $this->fail('That student is not in one of your sections.');
         }
 
-        db_connect()->table('users')->where('id', (int) $payload['user_id'])->update(['section_id' => null]);
+        $userId    = (int) $payload['user_id'];
+        $sectionId = (int) $current['section_id'];
 
-        $this->audit('sections.unassign', 'section', $current['section_id'], ['user_id' => (int) $payload['user_id'], 'section_id' => (int) $current['section_id']], ['section_id' => null]);
+        db_connect()->table('users')->where('id', $userId)->update(['section_id' => null]);
+
+        // Section assignment and subject enrollment are tracked separately
+        // (enrollments.section_id, not users.section_id) — without this, a
+        // student unassigned from their section kept every "enrolled" row
+        // pointing at that section, so their schedule/grading rosters still
+        // showed classes they were no longer actually placed in. Drop each
+        // one the normal way (recomputes tuition, writes a status-change
+        // log) rather than a raw status update; holdOverride is set because
+        // this is an administrative correction, not the student's own
+        // voluntary drop, so an unrelated financial hold shouldn't block it.
+        // An enrollment that already has a grade recorded is left alone —
+        // drop() refuses those by design, which is correct here too.
+        $enrollmentModel = new EnrollmentModel();
+        $enrollmentIds   = db_connect()->table('enrollments')
+            ->select('enrollment_id')
+            ->where('user_id', $userId)
+            ->where('section_id', $sectionId)
+            ->where('status', 'enrolled')
+            ->get()
+            ->getResultArray();
+
+        foreach ($enrollmentIds as $row) {
+            $enrollmentModel->drop((int) $row['enrollment_id'], 'Removed from section by chairperson', (int) auth()->id(), $userId, true);
+        }
+
+        $this->audit('sections.unassign', 'section', $sectionId, ['user_id' => $userId, 'section_id' => $sectionId], ['section_id' => null]);
 
         return $this->response->setJSON(['ok' => true]);
     }
