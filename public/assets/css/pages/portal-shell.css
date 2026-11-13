@@ -427,6 +427,26 @@ table.grade-table td {
 table.schedule-table tr:last-child td,
 table.grade-table tr:last-child td { border-bottom: none; }
 
+/* Were entirely unstyled — the grade/remarks cells rendered as bare native
+   text inputs with no border-radius, focus ring, or disabled treatment,
+   next to table cells that are otherwise fully styled. Matches .ac-input's
+   look, sized to sit inline in a table row. */
+.grade-input, .remarks-input {
+    width: 100%;
+    min-height: 36px;
+    padding: 7px 10px;
+    border: 1px solid var(--color-border-control);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 13px;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.grade-input:focus, .remarks-input:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+.grade-input:disabled, .remarks-input:disabled { background: var(--color-surface-sunken); color: var(--color-text-secondary); cursor: not-allowed; }
+.grade-input { max-width: 100px; text-align: center; font-weight: 650; }
+
 .pass-pill {
     display: inline-block;
     font-size: 11px;
