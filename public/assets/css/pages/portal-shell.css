@@ -171,7 +171,9 @@
 .avatar-crop-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, .65);
+    background: var(--color-backdrop);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -186,13 +188,28 @@
    needs this same explicit override, not just this one. */
 .avatar-crop-backdrop[hidden] { display: none; }
 
+/* Browsers restart a CSS animation whenever an element goes from
+   display:none back to visible — same language as acFadeIn in
+   components.css — so these replay every time avatar-crop.js clears
+   [hidden], with no JS changes needed. */
+@keyframes avatarCropBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes avatarCropModalIn { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: none; } }
+.avatar-crop-backdrop:not([hidden]) { animation: avatarCropBackdropIn var(--motion-normal) var(--ease-standard); }
+.avatar-crop-backdrop:not([hidden]) > .avatar-crop-modal,
+.avatar-crop-backdrop:not([hidden]) > .avatar-confirm-modal { animation: avatarCropModalIn var(--motion-normal) var(--ease-enter); }
+@media (prefers-reduced-motion: reduce) {
+    .avatar-crop-backdrop:not([hidden]),
+    .avatar-crop-backdrop:not([hidden]) > .avatar-crop-modal,
+    .avatar-crop-backdrop:not([hidden]) > .avatar-confirm-modal { animation: none; }
+}
+
 .avatar-crop-modal {
     background: var(--color-surface);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
     width: 100%;
     max-width: 360px;
-    padding: 20px;
+    padding: 22px;
 }
 
 .avatar-crop-head {
@@ -202,6 +219,30 @@
     margin-bottom: 16px;
 }
 .avatar-crop-head h3 { margin: 0; font-size: 16px; font-weight: 700; color: var(--color-text-primary); }
+
+/* Was entirely unstyled — no rule anywhere in the shared stylesheets
+   targets .icon-btn, so this rendered as a bare native <button>: square
+   corners, default border, system font "X". Matches .ac-modal__close's
+   look (the premium reference used by every other in-app modal) so the
+   close control reads as a deliberate part of the design, not a browser
+   default that slipped through. */
+.avatar-crop-head .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-sunken);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.avatar-crop-head .icon-btn .material-symbols-outlined { font-size: 18px; }
+.avatar-crop-head .icon-btn:hover { background: var(--color-border); color: var(--color-text-primary); }
+.avatar-crop-head .icon-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.avatar-crop-head .icon-btn:active { transform: scale(.93); }
 
 .avatar-crop-stage {
     width: 280px;
@@ -213,6 +254,7 @@
     background: var(--color-surface-sunken);
     cursor: grab;
     touch-action: none;
+    box-shadow: 0 0 0 1px var(--color-border), var(--shadow-sm);
 }
 .avatar-crop-stage:active { cursor: grabbing; }
 .avatar-crop-stage img { position: absolute; left: 0; top: 0; user-select: none; -webkit-user-drag: none; }
@@ -239,29 +281,67 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    margin: 18px 4px 0;
-    color: var(--color-text-secondary);
+    margin: 20px 4px 0;
+    color: var(--color-text-tertiary);
 }
-.avatar-crop-zoom input[type="range"] { flex: 1; }
 .avatar-crop-zoom .material-symbols-outlined { font-size: 18px; }
+
+/* The native range input's default track/thumb (a thin grey groove, a flat
+   platform-styled handle) is the other give-away that this modal wasn't
+   designed end-to-end. Rebuilt here as a slim primary-colored track with a
+   round white thumb and a soft focus ring, matching the app's own control
+   language instead of the OS's. Needs separate -webkit-/-moz- rule blocks —
+   range input pseudo-elements can't be targeted with a shared selector. */
+.avatar-crop-zoom input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--color-border);
+    outline: none;
+    cursor: pointer;
+}
+.avatar-crop-zoom input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-surface), var(--shadow-sm);
+    cursor: pointer;
+    transition: transform var(--motion-instant) var(--ease-standard);
+}
+.avatar-crop-zoom input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.1); }
+.avatar-crop-zoom input[type="range"]::-moz-range-track { height: 4px; border-radius: var(--radius-pill); background: var(--color-border); }
+.avatar-crop-zoom input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 50%;
+    background: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-surface), var(--shadow-sm);
+    cursor: pointer;
+}
+.avatar-crop-zoom input[type="range"]:focus-visible { box-shadow: var(--focus-ring); border-radius: var(--radius-pill); }
 
 .avatar-crop-actions {
     display: flex;
     justify-content: flex-end;
     flex-wrap: wrap;
     gap: 10px;
-    margin-top: 20px;
+    margin-top: 22px;
     padding-top: 16px;
     border-top: 1px solid var(--color-border);
 }
 
 .avatar-confirm-modal {
     background: var(--color-surface);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
     width: 100%;
     max-width: 340px;
-    padding: 20px;
+    padding: 22px;
 }
 .avatar-confirm-modal h3 { margin: 0 0 8px; font-size: 16px; font-weight: 700; color: var(--color-text-primary); }
 .avatar-confirm-modal p { margin: 0; font-size: 13px; color: var(--color-text-secondary); }
