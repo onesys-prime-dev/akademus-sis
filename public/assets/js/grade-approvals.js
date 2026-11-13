@@ -41,6 +41,14 @@
 
     let currentPanel = null;
     let isFirstActivate = true;
+    // Clicking tabs faster than the ~350ms crossfade takes stacks up multiple
+    // overlapping setTimeout chains — a later click's deferred finishLeave
+    // can then fire after an earlier click's swapIn already revealed a panel,
+    // re-hiding the panel the user actually landed on. transitionGen lets
+    // every in-flight swapIn/finishLeave recognize it's been superseded and
+    // no-op instead of touching panel visibility.
+    let transitionGen = 0;
+    let pendingTimers = [];
     function activate(tab, updateUrl = true) {
         tabs.forEach(button => {
             const active = button === tab;
@@ -55,12 +63,16 @@
         currentPanel = nextPanel;
 
         // The very first call just confirms the server-rendered hidden
-        // state (one panel already shown, the rest already [hidden]) — no
-        // real visual change happens, so animating it would be a flicker,
-        // not a transition.
+        // state — no real visual change happens, so animating it would be a
+        // flicker, not a transition. Only #gaLocked ships with [hidden] in
+        // the markup (the default "To review" tab needs to be visible with
+        // JS off, and #gaCorrections has no such no-JS-visible requirement),
+        // so explicitly hide every panel that isn't the target instead of
+        // trusting the server-rendered state — otherwise landing on any tab
+        // other than "To review" leaves #gaCorrections showing underneath it.
         if (isFirstActivate) {
             isFirstActivate = false;
-            nextPanel.hidden = false;
+            tabs.forEach(button => { const panel = $(button.dataset.tab); panel.hidden = panel !== nextPanel; });
             staggerRows(nextPanel);
             return;
         }
@@ -71,7 +83,19 @@
             return;
         }
 
+        pendingTimers.forEach(id => clearTimeout(id));
+        pendingTimers = [];
+        const gen = ++transitionGen;
+        const isStale = () => gen !== transitionGen;
+        // A superseded transition's finishLeave/swapIn is now a no-op, so it
+        // can leave ga-panel-leave/ga-panel-enter stuck on an element from an
+        // earlier click — clear both off the two panels this click actually
+        // touches before applying this click's own classes.
+        nextPanel.classList.remove('ga-panel-enter', 'ga-panel-leave');
+        if (prevPanel) prevPanel.classList.remove('ga-panel-enter', 'ga-panel-leave');
+
         const swapIn = () => {
+            if (isStale()) return;
             nextPanel.hidden = false;
             nextPanel.classList.add('ga-panel-enter');
             // Force layout so the browser registers the pre-transition state
@@ -85,10 +109,10 @@
 
         if (prevPanel) {
             prevPanel.classList.add('ga-panel-leave');
-            const finishLeave = () => { prevPanel.hidden = true; prevPanel.classList.remove('ga-panel-leave'); };
+            const finishLeave = () => { if (isStale()) return; prevPanel.hidden = true; prevPanel.classList.remove('ga-panel-leave'); };
             prevPanel.addEventListener('transitionend', finishLeave, { once: true });
-            setTimeout(finishLeave, 260); // fallback if transitionend never fires
-            setTimeout(swapIn, 90); // slight overlap reads as one motion, not two
+            pendingTimers.push(setTimeout(finishLeave, 260)); // fallback if transitionend never fires
+            pendingTimers.push(setTimeout(swapIn, 90)); // slight overlap reads as one motion, not two
         } else {
             swapIn();
         }

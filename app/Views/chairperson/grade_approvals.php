@@ -63,7 +63,7 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         <div class="ga-empty" data-no-results hidden><span class="material-symbols-outlined" aria-hidden="true">search_off</span><div><h3>No matching classes</h3><p>Try another subject, section, or academic term.</p></div></div>
         <footer class="ga-footer"><span data-result-count role="status" aria-live="polite"><?= count($recommendedClasses) ?> <?= count($recommendedClasses) === 1 ? 'class' : 'classes' ?> recommended</span><span>Contact the registrar for corrections once a class is locked.</span></footer>
     </section>
-    <section id="gaCorrections" aria-labelledby="gaCorrectionsTitle" data-noun-singular="request" data-noun-plural="requests" data-count-suffix=" pending">
+    <section id="gaCorrections" aria-labelledby="gaCorrectionsTitle" hidden data-noun-singular="request" data-noun-plural="requests" data-count-suffix=" pending">
         <header class="ga-toolbar"><div><h2 id="gaCorrectionsTitle">Correction requests</h2><p>Review proposed changes to grades that are already locked.</p></div><label class="ga-search" hidden data-search-control><span class="material-symbols-outlined" aria-hidden="true">search</span><span class="ga-sr-only">Search correction requests</span><input type="search" data-search="gaCorrections" placeholder="Search student, subject or term"></label></header>
         <div id="gaRequestList">
         <?php foreach ($changeRequests as $r): ?>
