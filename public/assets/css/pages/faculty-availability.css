@@ -19,6 +19,12 @@
 .faculty-availability .copy-feedback { flex-basis: 100%; margin: 0; font-size: 13px; color: var(--color-text-secondary); }
 .faculty-availability .copy-feedback.is-error { color: var(--color-danger); }
 .faculty-availability .availability-section { margin-top: 28px; padding: 24px; background: var(--color-surface); border-radius: 8px; }
+/* Was entirely unstyled — plain text with no padding, background, or
+   border, rendering as a loose line of text where every other state on
+   this page (term bar, availability section, copy feedback) gets a real
+   surface treatment. Shown when no academic term exists yet, so it's the
+   whole page's content on a cold install — worth a proper empty-state card. */
+.faculty-availability .notice { display: flex; align-items: center; gap: 10px; margin-top: 20px; padding: 16px 20px; background: var(--color-warning-soft); color: var(--color-warning); border-radius: 8px; font-size: 13px; line-height: 1.6; }
 .faculty-availability .availability-section h2 { font-size: 18px; font-weight: 650; margin: 0 0 6px; }
 .faculty-availability .panel-sub { font-size: 13px; line-height: 1.5; color: var(--color-text-secondary); margin: 0 0 20px; }
 .faculty-availability .panel-head-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
