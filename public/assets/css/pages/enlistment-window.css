@@ -1,12 +1,20 @@
 /* Chairperson > Enlistment Window — the term-window card only. */
 
+.ew-layout {
+    display: grid; grid-template-columns: minmax(360px, 440px) 1fr;
+    align-items: stretch; gap: 24px;
+}
+@media (max-width: 960px) {
+    .ew-layout { grid-template-columns: 1fr; }
+}
+
 .ew-section {
     --ew-ink: var(--color-text-primary); --ew-muted: var(--color-text-secondary); --ew-line: var(--color-border);
     --ew-radius-card: 20px; --ew-radius-control: 12px;
     --ew-shadow-card: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px -12px rgba(16, 24, 40, .10);
     --ew-shadow-card-hover: 0 2px 4px rgba(16, 24, 40, .05), 0 16px 36px -14px rgba(16, 24, 40, .16);
     --ew-ease: cubic-bezier(.4, 0, .2, 1); --ew-t: 200ms var(--ew-ease);
-    max-width: 460px; color: var(--ew-ink);
+    color: var(--ew-ink);
 }
 
 .ew-term-field { margin-bottom: 18px; }
@@ -54,6 +62,40 @@
 
 .ew-save { width: 100%; min-height: 46px; border-radius: var(--ew-radius-control); font-size: 13px; font-weight: 650; margin-top: 4px; }
 
+.ew-offerings {
+    display: flex; flex-direction: column;
+    padding: 24px 26px 26px;
+    border-radius: var(--ew-radius-card, 20px);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px -12px rgba(16, 24, 40, .10);
+}
+.ew-offerings__title { margin: 0 0 6px; font-size: 16px; }
+.ew-offerings__hint { margin: 0 0 18px; font-size: 12.5px; line-height: 1.5; color: var(--color-text-secondary); }
+
+.ew-offerings__filters { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+.ew-offerings__filters label {
+    display: flex; flex-direction: column; gap: 7px; font-size: 11px; font-weight: 650;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-secondary);
+}
+.ew-offerings__filters .ac-input { min-width: 160px; }
+.ew-offerings__section-field .ac-input { min-width: 140px; }
+.ew-offerings__filters .ac-btn { align-self: flex-end; }
+
+.ew-offerings__empty, .ew-offerings__table-form { margin-top: 18px; }
+.ew-offerings__empty { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
+.ew-offerings__table { width: 100%; }
+.ew-offerings__save { margin-top: 14px; }
+
+/* Fills the panel instead of leaving dead space when no subject list is loaded yet. */
+.ew-offerings__placeholder {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; margin-top: 18px; padding: 40px 24px;
+    border: 1.5px dashed var(--ew-line, var(--color-border)); border-radius: var(--ew-radius-control, 12px);
+    background: #fafbfd; color: var(--color-text-secondary); text-align: center;
+}
+.ew-offerings__placeholder .material-symbols-outlined { font-size: 30px; color: #b6c3d6; }
+.ew-offerings__placeholder p { margin: 0; font-size: 12.5px; max-width: 320px; }
+
 @media (max-width: 560px) {
-    .ew-section { max-width: 100%; }
+    .ew-offerings__filters { flex-direction: column; align-items: stretch; }
+    .ew-offerings__filters .ac-input, .ew-offerings__filters .ac-btn { width: 100%; }
 }

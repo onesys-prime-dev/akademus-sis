@@ -74,7 +74,8 @@ endif;
 <?php if ($ay === null): ?>
     <div class="ac-empty-block">No upcoming academic term exists yet. Create one under Admin &rarr; Academic Years before opening enlistment for it.</div>
 <?php else: ?>
-    <div class="ew-section">
+    <div class="ew-layout">
+        <div class="ew-section">
         <?php if (count($terms) > 1): ?>
             <form method="get" action="<?= site_url('chairperson/enlistment-window') ?>" class="ew-term-field">
                 <label for="ewTermSelect">Term</label>
@@ -118,22 +119,22 @@ endif;
                 <button type="submit" class="ac-btn ac-btn-primary ew-save">Save Window</button>
             </form>
         </div>
-    </div>
-    <script>(function () { var t = document.getElementById('ewTermSelect'); if (t && window.enhanceSelect) window.enhanceSelect(t); })();</script>
+        <script>(function () { var t = document.getElementById('ewTermSelect'); if (t && window.enhanceSelect) window.enhanceSelect(t); })();</script>
+        </div>
 
-    <div class="ac-card" style="max-width:720px; margin-top:20px;">
-        <h3 class="ac-dept-name" style="margin-bottom:4px;">Offered Subjects</h3>
-        <p style="font-size:12.5px; color:var(--color-text-secondary); margin-top:0;">
+        <div class="ac-card ew-offerings">
+        <h3 class="ac-dept-name ew-offerings__title">Offered Subjects</h3>
+        <p class="ew-offerings__hint">
             Every curriculum subject for <strong><?= esc($ay['semester']) ?> Semester, <?= esc($ay['label']) ?></strong> on the program/year/section you pick is pre-checked &mdash; uncheck anything you're <strong>not</strong> offering, then save.
         </p>
 
         <?php if ($programs === []): ?>
             <div class="ac-empty-block">You have no program assigned for scheduling.</div>
         <?php else: ?>
-            <form method="get" action="<?= site_url('chairperson/enlistment-window') ?>" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-top:12px;">
+            <form method="get" action="<?= site_url('chairperson/enlistment-window') ?>" class="ew-offerings__filters">
                 <input type="hidden" name="ay_id" value="<?= (int) $ay['ay_id'] ?>">
                 <?php if (count($programs) > 1): ?>
-                    <label style="font-size:11.5px;">Program
+                    <label>Program
                         <select name="program_id" class="ac-input" onchange="this.form.submit()">
                             <?php foreach ($programs as $p): ?>
                                 <option value="<?= (int) $p['program_id'] ?>" <?= $selectedProgram === (int) $p['program_id'] ? 'selected' : '' ?>><?= esc($p['program_name']) ?></option>
@@ -144,7 +145,7 @@ endif;
                     <input type="hidden" name="program_id" value="<?= (int) $programs[0]['program_id'] ?>">
                 <?php endif ?>
 
-                <label style="font-size:11.5px;">Year Level
+                <label>Year Level
                     <select name="year_level" class="ac-input" onchange="this.form.submit()">
                         <option value="">Select&hellip;</option>
                         <?php foreach ($yearLevels as $level => $label): ?>
@@ -153,8 +154,8 @@ endif;
                     </select>
                 </label>
 
-                <label style="font-size:11.5px;">Section
-                    <select name="section" class="ac-input" style="width:160px;" onchange="this.form.submit()">
+                <label class="ew-offerings__section-field">Section
+                    <select name="section" class="ac-input" onchange="this.form.submit()">
                         <option value="">Select&hellip;</option>
                         <?php foreach ($sections as $s): ?>
                             <option value="<?= esc($s) ?>" <?= $selectedSection === $s ? 'selected' : '' ?>><?= esc($s) ?></option>
@@ -167,16 +168,16 @@ endif;
 
             <?php if ($selectedYear >= 1 && $selectedSection !== ''): ?>
                 <?php if ($subjects === []): ?>
-                    <div class="ac-empty-block" style="margin-top:16px;">No curriculum subjects found for this program/year/semester.</div>
+                    <div class="ac-empty-block ew-offerings__empty">No curriculum subjects found for this program/year/semester.</div>
                 <?php else: ?>
-                    <form method="post" action="<?= site_url('chairperson/enlistment-window/save-offerings') ?>" style="margin-top:16px;">
+                    <form method="post" action="<?= site_url('chairperson/enlistment-window/save-offerings') ?>" class="ew-offerings__table-form">
                         <?= csrf_field() ?>
                         <input type="hidden" name="ay_id" value="<?= (int) $ay['ay_id'] ?>">
                         <input type="hidden" name="program_id" value="<?= $selectedProgram ?>">
                         <input type="hidden" name="year_level" value="<?= $selectedYear ?>">
                         <input type="hidden" name="section" value="<?= esc($selectedSection) ?>">
 
-                        <table class="ac-table" style="width:100%;">
+                        <table class="ac-table ew-offerings__table">
                             <thead>
                                 <tr><th>Offer</th><th>Code</th><th>Title</th><th>Units</th></tr>
                             </thead>
@@ -192,11 +193,17 @@ endif;
                             </tbody>
                         </table>
 
-                        <button type="submit" class="ac-btn ac-btn-primary" style="margin-top:12px;">Save Offerings</button>
+                        <button type="submit" class="ac-btn ac-btn-primary ew-offerings__save">Save Offerings</button>
                     </form>
                 <?php endif ?>
+            <?php else: ?>
+                <div class="ew-offerings__placeholder">
+                    <span class="material-symbols-outlined" aria-hidden="true">checklist</span>
+                    <p>Pick a program, year level, and section above, then <strong>Load Subjects</strong> to choose what's offered this term.</p>
+                </div>
             <?php endif ?>
         <?php endif ?>
+        </div>
     </div>
 <?php endif ?>
 
