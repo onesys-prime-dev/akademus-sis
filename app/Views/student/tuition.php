@@ -116,6 +116,7 @@ $totalAssessment = (float) $current['total_amount'];
 $paidPercent = $totalAssessment > 0 ? min(100, max(0, $amountPaid / $totalAssessment * 100)) : 0;
 $statusLabel = ['paid' => 'Paid in full', 'partial' => 'Partially paid'][$current['status']] ?? 'Unpaid';
 $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ?? 'unpaid';
+$creditBalance = max(0, $amountPaid - $totalAssessment);
 ?>
 <?php if (! empty($current['is_estimated'])): ?>
     <div class="ac-notice" style="margin-bottom:16px; background:var(--color-info-soft, #eff6ff);">
@@ -128,6 +129,9 @@ $statusClass = ['paid' => 'paid', 'partial' => 'partial'][$current['status']] ??
         <div class="tf-balance-top"><span>Amount due</span><span class="tf-status tf-status--<?= $statusClass ?>"><?= esc($statusLabel) ?></span></div>
         <strong class="tf-amount"><span>₱</span><?= number_format((float) $current['balance'], 2) ?></strong>
         <p>Outstanding balance for <?= esc($current['academic_year']) ?></p>
+        <?php if ($creditBalance > 0): ?>
+            <p class="tf-credit"><span class="material-symbols-outlined" aria-hidden="true">account_balance_wallet</span>Credit balance: ₱<?= number_format($creditBalance, 2) ?> — you've paid more than this term's assessment.</p>
+        <?php endif ?>
         <a class="tf-action" href="#payment-proof">Submit payment proof<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
     </div>
     <div class="tf-overview">

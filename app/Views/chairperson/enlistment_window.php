@@ -7,7 +7,63 @@ $userName      = $user['name'];
 $userRoleLabel = $user['role'];
 $navGroups     = require __DIR__ . '/_nav.php';
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
+
+/**
+ * A human-readable companion to the OPEN/CLOSED pill, read off the same
+ * raw enlistment_opens_at/enlistment_closes_at fields AcademicYearModel::
+ * isEnlistmentOpen() checks — never recomputed independently, so the pill
+ * and this line can't disagree.
+ */
+if (! function_exists('ew_status_line')) :
+function ew_status_line(?array $ay, bool $isOpen): array
+{
+    if ($ay === null) {
+        return ['schedule', 'No window scheduled yet.'];
+    }
+
+    $opensAt  = $ay['enlistment_opens_at'] ?? null;
+    $closesAt = $ay['enlistment_closes_at'] ?? null;
+    $now      = time();
+
+    if ($isOpen) {
+        return $closesAt !== null
+            ? ['hourglass_top', 'Open now — closes ' . ew_relative_time(strtotime($closesAt), $now) . '.']
+            : ['hourglass_top', 'Open now — no closing date set.'];
+    }
+
+    if ($opensAt !== null && strtotime($opensAt) > $now) {
+        return ['event_upcoming', 'Opens ' . ew_relative_time(strtotime($opensAt), $now) . '.'];
+    }
+
+    if ($closesAt !== null && strtotime($closesAt) <= $now) {
+        return ['event_busy', 'Closed ' . ew_relative_time(strtotime($closesAt), $now) . '.'];
+    }
+
+    return ['schedule', 'No window scheduled yet.'];
+}
+
+function ew_relative_time(int $target, int $now): string
+{
+    $diff   = abs($target - $now);
+    $future = $target > $now;
+
+    $unit = match (true) {
+        $diff < 3600       => [round($diff / 60), 'minute'],
+        $diff < 86400      => [round($diff / 3600), 'hour'],
+        default            => [round($diff / 86400), 'day'],
+    };
+    [$count, $label] = $unit;
+    $count = max(1, (int) $count);
+    $text  = $count . ' ' . $label . ($count === 1 ? '' : 's');
+
+    return $future ? 'in ' . $text : $text . ' ago';
+}
+endif;
 ?>
+
+<?= $this->section('styles') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/enlistment-window.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/enlistment-window.css') ?>">
+<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 
@@ -18,32 +74,52 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
 <?php if ($ay === null): ?>
     <div class="ac-empty-block">No upcoming academic term exists yet. Create one under Admin &rarr; Academic Years before opening enlistment for it.</div>
 <?php else: ?>
-    <?php if (count($terms) > 1): ?>
-        <form method="get" action="<?= site_url('chairperson/enlistment-window') ?>" style="margin-bottom:16px;">
-            <label style="font-size:11.5px;">Term
-                <select name="ay_id" class="ac-input" onchange="this.form.submit()">
+    <div class="ew-section">
+        <?php if (count($terms) > 1): ?>
+            <form method="get" action="<?= site_url('chairperson/enlistment-window') ?>" class="ew-term-field">
+                <label for="ewTermSelect">Term</label>
+                <select id="ewTermSelect" name="ay_id" onchange="this.form.submit()">
                     <?php foreach ($terms as $t): ?>
                         <option value="<?= (int) $t['ay_id'] ?>" <?= (int) $ay['ay_id'] === (int) $t['ay_id'] ? 'selected' : '' ?>><?= esc($t['label']) ?> &middot; <?= esc($t['semester']) ?> Semester</option>
                     <?php endforeach ?>
                 </select>
-            </label>
-        </form>
-    <?php endif ?>
+            </form>
+        <?php endif ?>
 
-    <div class="ac-card" style="max-width:420px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="ac-dept-name"><?= esc($ay['label']) ?> &middot; <?= esc($ay['semester']) ?> <span style="font-weight:400; color:var(--color-text-secondary);">(upcoming)</span></span>
-            <span class="ac-pill <?= $isOpen ? 'ac-pill--success' : 'ac-pill--danger' ?>">Enlistment <?= $isOpen ? 'OPEN' : 'CLOSED' ?></span>
+        <?php [$statusIcon, $statusText] = ew_status_line($ay, $isOpen); ?>
+        <div class="ew-card">
+            <div class="ew-card-head">
+                <strong><?= esc($ay['label']) ?> &middot; <?= esc($ay['semester']) ?> <span class="ew-upcoming">(upcoming)</span></strong>
+                <span class="ew-pill <?= $isOpen ? 'ew-pill--open' : 'ew-pill--closed' ?>">Enlistment <?= $isOpen ? 'OPEN' : 'CLOSED' ?></span>
+            </div>
+
+            <div class="ew-status-line">
+                <span class="material-symbols-outlined" aria-hidden="true"><?= esc($statusIcon) ?></span>
+                <span><?= esc($statusText) ?></span>
+            </div>
+
+            <form method="post" action="<?= site_url('chairperson/enlistment-window/update') ?>" class="ew-card-body">
+                <?= csrf_field() ?>
+                <input type="hidden" name="ay_id" value="<?= (int) $ay['ay_id'] ?>">
+                <div class="ew-datefield">
+                    <label for="ewOpensAt">Opens</label>
+                    <div class="ew-datefield-control">
+                        <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+                        <input id="ewOpensAt" type="datetime-local" name="enlistment_opens_at" value="<?= $ay['enlistment_opens_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_opens_at'])) : '' ?>">
+                    </div>
+                </div>
+                <div class="ew-datefield">
+                    <label for="ewClosesAt">Closes</label>
+                    <div class="ew-datefield-control">
+                        <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
+                        <input id="ewClosesAt" type="datetime-local" name="enlistment_closes_at" value="<?= $ay['enlistment_closes_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_closes_at'])) : '' ?>">
+                    </div>
+                </div>
+                <button type="submit" class="ac-btn ac-btn-primary ew-save">Save Window</button>
+            </form>
         </div>
-
-        <form method="post" action="<?= site_url('chairperson/enlistment-window/update') ?>" style="display:grid; gap:8px; margin-top:14px;">
-            <?= csrf_field() ?>
-            <input type="hidden" name="ay_id" value="<?= (int) $ay['ay_id'] ?>">
-            <label style="font-size:11.5px;">Opens<input type="datetime-local" name="enlistment_opens_at" class="ac-input" value="<?= $ay['enlistment_opens_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_opens_at'])) : '' ?>"></label>
-            <label style="font-size:11.5px;">Closes<input type="datetime-local" name="enlistment_closes_at" class="ac-input" value="<?= $ay['enlistment_closes_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_closes_at'])) : '' ?>"></label>
-            <button type="submit" class="ac-btn ac-btn-primary ac-btn-block">Save Window</button>
-        </form>
     </div>
+    <script>(function () { var t = document.getElementById('ewTermSelect'); if (t && window.enhanceSelect) window.enhanceSelect(t); })();</script>
 
     <div class="ac-card" style="max-width:720px; margin-top:20px;">
         <h3 class="ac-dept-name" style="margin-bottom:4px;">Offered Subjects</h3>

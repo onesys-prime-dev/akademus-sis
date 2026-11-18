@@ -1,0 +1,59 @@
+/* Chairperson > Enlistment Window — the term-window card only. */
+
+.ew-section {
+    --ew-ink: var(--color-text-primary); --ew-muted: var(--color-text-secondary); --ew-line: var(--color-border);
+    --ew-radius-card: 20px; --ew-radius-control: 12px;
+    --ew-shadow-card: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px -12px rgba(16, 24, 40, .10);
+    --ew-shadow-card-hover: 0 2px 4px rgba(16, 24, 40, .05), 0 16px 36px -14px rgba(16, 24, 40, .16);
+    --ew-ease: cubic-bezier(.4, 0, .2, 1); --ew-t: 200ms var(--ew-ease);
+    max-width: 460px; color: var(--ew-ink);
+}
+
+.ew-term-field { margin-bottom: 18px; }
+.ew-term-field label { display: block; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--ew-muted); margin-bottom: 8px; }
+.ew-term-field .cs-select__trigger { min-height: 44px; border-radius: var(--ew-radius-control); font-size: 13px; font-weight: 550; }
+
+.ew-card {
+    border: 1px solid var(--ew-line); background: #fff; border-radius: var(--ew-radius-card);
+    box-shadow: var(--ew-shadow-card); overflow: hidden;
+    transition: box-shadow var(--ew-t), transform var(--ew-t), border-color var(--ew-t);
+}
+.ew-card:hover { box-shadow: var(--ew-shadow-card-hover); transform: translateY(-1px); }
+
+.ew-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 24px 26px 20px; border-bottom: 1px solid var(--ew-line); }
+.ew-card-head strong { display: block; font-size: 17px; font-weight: 650; letter-spacing: -.2px; }
+.ew-card-head span.ew-upcoming { font-weight: 450; color: var(--ew-muted); font-size: 13px; }
+
+.ew-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 650; letter-spacing: .02em; white-space: nowrap; }
+.ew-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); }
+.ew-pill--open { color: #157347; background: #effaf4; }
+.ew-pill--closed { color: #b42318; background: #fef3f2; }
+
+.ew-status-line { display: flex; align-items: center; gap: 8px; padding: 14px 26px; background: #fafbfd; border-bottom: 1px solid var(--ew-line); color: #58708e; font-size: 12.5px; }
+.ew-status-line .material-symbols-outlined { font-size: 17px; color: #8097b8; }
+
+.ew-card-body { padding: 22px 26px 26px; display: grid; gap: 16px; }
+.ew-datefield label { display: block; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--ew-muted); margin-bottom: 8px; }
+.ew-datefield-control { position: relative; }
+.ew-datefield-control .material-symbols-outlined { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; color: #8ea0b8; pointer-events: none; }
+.ew-datefield-control input {
+    width: 100%; min-height: 46px; border: 1px solid #dce5f0; border-radius: var(--ew-radius-control);
+    padding: 11px 14px 11px 42px; background: #fff; color: #203349; font-size: 13.5px; font-weight: 550;
+    font-variant-numeric: tabular-nums; cursor: pointer; color-scheme: light;
+    transition: border-color var(--ew-t), box-shadow var(--ew-t), background-color var(--ew-t);
+}
+.ew-datefield-control input:hover { border-color: #b6c9e3; background: var(--color-surface-secondary); }
+.ew-datefield-control input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent); outline: none; background: #fff; }
+/* The native calendar/clock glyph duplicates the icon we already draw on
+   the left — stretched invisibly over the whole field instead of removed
+   outright, so the field stays clickable anywhere to open the picker. */
+.ew-datefield-control input::-webkit-calendar-picker-indicator {
+    position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0;
+    background: transparent; color: transparent; cursor: pointer; opacity: 0;
+}
+
+.ew-save { width: 100%; min-height: 46px; border-radius: var(--ew-radius-control); font-size: 13px; font-weight: 650; margin-top: 4px; }
+
+@media (max-width: 560px) {
+    .ew-section { max-width: 100%; }
+}

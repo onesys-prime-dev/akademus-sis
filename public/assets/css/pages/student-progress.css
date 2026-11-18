@@ -26,7 +26,7 @@
 .sp-empty h3 { margin:0 0 5px; font-size:14px; font-weight:650; }
 .sp-empty p { margin:0; font-size:12px; line-height:1.7; color:var(--sp-muted); }
 
-.sp-filters { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:22px 28px; margin-bottom:22px; flex-wrap:wrap; }
+.sp-filters { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:22px 28px; margin-bottom:22px; flex-wrap:wrap; overflow:visible; }
 .sp-filter { display:flex; flex-direction:column; gap:8px; }
 .sp-filter label { font-size:11px; font-weight:650; text-transform:uppercase; letter-spacing:.04em; color:var(--sp-muted); }
 .sp-filter .cs-select { min-width:200px; }
