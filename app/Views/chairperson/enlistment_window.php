@@ -99,25 +99,43 @@ endif;
                 <span><?= esc($statusText) ?></span>
             </div>
 
-            <form method="post" action="<?= site_url('chairperson/enlistment-window/update') ?>" class="ew-card-body">
-                <?= csrf_field() ?>
-                <input type="hidden" name="ay_id" value="<?= (int) $ay['ay_id'] ?>">
-                <div class="ew-datefield">
-                    <label for="ewOpensAt">Opens</label>
-                    <div class="ew-datefield-control">
-                        <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
-                        <input id="ewOpensAt" type="datetime-local" name="enlistment_opens_at" value="<?= $ay['enlistment_opens_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_opens_at'])) : '' ?>">
-                    </div>
+            <?php if ($windowMode === 'registrar_only'): ?>
+                <p class="ew-readonly-note">Enlistment windows are controlled by the Registrar.</p>
+            <?php else: ?>
+                <?php $outerSet = $ay['enlistment_opens_at'] !== null && $ay['enlistment_closes_at'] !== null; ?>
+                <div class="ew-program-windows">
+                    <?php if (! $outerSet): ?>
+                        <p class="ew-readonly-note">The Registrar hasn't opened enlistment for this term yet — your program's window can't be set until they do.</p>
+                    <?php else: ?>
+                        <p class="ew-readonly-note">Registrar window: <?= esc(date('M j, Y g:i A', strtotime($ay['enlistment_opens_at']))) ?> &ndash; <?= esc(date('M j, Y g:i A', strtotime($ay['enlistment_closes_at']))) ?></p>
+                    <?php endif ?>
+
+                    <?php foreach ($programs as $p): ?>
+                        <?php $pw = $programWindows[(int) $p['program_id']] ?? null; ?>
+                        <form method="post" action="<?= site_url('chairperson/enlistment-window/update-program-window') ?>" class="ew-card-body ew-program-window">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="ay_id" value="<?= (int) $ay['ay_id'] ?>">
+                            <input type="hidden" name="program_id" value="<?= (int) $p['program_id'] ?>">
+                            <div class="ew-program-window__name"><?= esc($p['program_name']) ?></div>
+                            <div class="ew-datefield">
+                                <label for="ewOpensAt<?= (int) $p['program_id'] ?>">Opens</label>
+                                <div class="ew-datefield-control">
+                                    <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+                                    <input id="ewOpensAt<?= (int) $p['program_id'] ?>" type="datetime-local" name="enlistment_opens_at" value="<?= $pw && $pw['enlistment_opens_at'] ? esc(str_replace(' ', 'T', $pw['enlistment_opens_at'])) : '' ?>" <?= $outerSet ? '' : 'disabled' ?>>
+                                </div>
+                            </div>
+                            <div class="ew-datefield">
+                                <label for="ewClosesAt<?= (int) $p['program_id'] ?>">Closes</label>
+                                <div class="ew-datefield-control">
+                                    <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
+                                    <input id="ewClosesAt<?= (int) $p['program_id'] ?>" type="datetime-local" name="enlistment_closes_at" value="<?= $pw && $pw['enlistment_closes_at'] ? esc(str_replace(' ', 'T', $pw['enlistment_closes_at'])) : '' ?>" <?= $outerSet ? '' : 'disabled' ?>>
+                                </div>
+                            </div>
+                            <button type="submit" class="ac-btn ac-btn-primary ew-save" <?= $outerSet ? '' : 'disabled' ?>>Save Window</button>
+                        </form>
+                    <?php endforeach ?>
                 </div>
-                <div class="ew-datefield">
-                    <label for="ewClosesAt">Closes</label>
-                    <div class="ew-datefield-control">
-                        <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
-                        <input id="ewClosesAt" type="datetime-local" name="enlistment_closes_at" value="<?= $ay['enlistment_closes_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_closes_at'])) : '' ?>">
-                    </div>
-                </div>
-                <button type="submit" class="ac-btn ac-btn-primary ew-save">Save Window</button>
-            </form>
+            <?php endif ?>
         </div>
         <script>(function () { var t = document.getElementById('ewTermSelect'); if (t && window.enhanceSelect) window.enhanceSelect(t); })();</script>
         </div>

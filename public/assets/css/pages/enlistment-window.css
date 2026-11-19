@@ -63,6 +63,15 @@
 }
 
 .ew-save { width: 100%; min-height: 46px; border-radius: var(--ew-radius-control); font-size: 13px; font-weight: 650; margin-top: auto; }
+.ew-save:disabled { opacity: .55; cursor: not-allowed; }
+
+.ew-readonly-note { margin: 0 0 16px; padding: 12px 14px; background: #fafbfd; border: 1px solid var(--ew-line); border-radius: var(--ew-radius-control); font-size: 12.5px; color: var(--ew-muted); line-height: 1.5; }
+
+.ew-program-windows { flex: 1; display: flex; flex-direction: column; }
+.ew-program-window { padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--ew-line); }
+.ew-program-window:first-of-type { padding-top: 0; margin-top: 0; border-top: none; }
+.ew-program-window__name { font-size: 13px; font-weight: 650; margin-bottom: 4px; }
+.ew-datefield-control input:disabled { background: var(--color-surface-secondary); color: var(--ew-muted); cursor: not-allowed; }
 
 .ew-offerings {
     display: flex; flex-direction: column;
