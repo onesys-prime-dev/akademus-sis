@@ -205,6 +205,57 @@ endif;
         <?php endif ?>
         </div>
     </div>
+
+    <div class="ac-card ew-overrides">
+        <h3 class="ac-dept-name ew-overrides__title">Student Overrides</h3>
+        <p class="ew-overrides__hint">Let one student enlist for <strong><?= esc($ay['semester']) ?> Semester, <?= esc($ay['label']) ?></strong> regardless of the window above &mdash; for an irregular student who needs to enlist outside the normal schedule.</p>
+
+        <form method="get" action="<?= site_url('chairperson/enlistment-window') ?>" class="ew-overrides__search">
+            <input type="hidden" name="ay_id" value="<?= (int) $ay['ay_id'] ?>">
+            <input type="search" name="override_q" value="<?= esc($overrideQuery, 'attr') ?>" placeholder="Search by name or student number&hellip;">
+            <button type="submit" class="ac-btn ac-btn-secondary">Search</button>
+        </form>
+
+        <?php if ($overrideQuery !== ''): ?>
+            <?php if ($overrideCandidates === []): ?>
+                <div class="ac-empty-block">No active student matches "<?= esc($overrideQuery) ?>" in your programs.</div>
+            <?php else: ?>
+                <ul class="ew-overrides__candidates">
+                    <?php foreach ($overrideCandidates as $c): ?>
+                        <li>
+                            <span><?= esc($c['last_name']) ?>, <?= esc($c['first_name']) ?> &middot; <?= esc($c['student_number']) ?> &middot; <?= esc($c['program_name'] ?? '') ?></span>
+                            <button type="button" class="ac-btn ac-btn-primary" data-grant-window-override="<?= (int) $c['student_id'] ?>">Unlock</button>
+                        </li>
+                    <?php endforeach ?>
+                </ul>
+            <?php endif ?>
+        <?php endif ?>
+
+        <h4 class="ew-overrides__subhead">Active overrides this term</h4>
+        <?php if ($activeOverrides === []): ?>
+            <div class="ac-empty-block">No student has an active override for this term.</div>
+        <?php else: ?>
+            <ul class="ew-overrides__active">
+                <?php foreach ($activeOverrides as $o): ?>
+                    <li>
+                        <span><?= esc($o['last_name']) ?>, <?= esc($o['first_name']) ?> &middot; <?= esc($o['student_number']) ?> &middot; "<?= esc($o['reason']) ?>"</span>
+                        <button type="button" class="ac-btn ac-btn-secondary" data-revoke-window-override="<?= (int) $o['id'] ?>">Revoke</button>
+                    </li>
+                <?php endforeach ?>
+            </ul>
+        <?php endif ?>
+    </div>
 <?php endif ?>
 
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<?php if ($ay !== null): ?>
+<script type="application/json" id="ewConfig"><?= json_encode([
+    'grantUrl'  => site_url('chairperson/enlistment-window/grant-override'),
+    'revokeUrl' => site_url('chairperson/enlistment-window/revoke-override'),
+    'ayId'      => (int) $ay['ay_id'],
+], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+<script src="<?= base_url('assets/js/enlistment-window.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/enlistment-window.js') ?>"></script>
+<?php endif ?>
 <?= $this->endSection() ?>

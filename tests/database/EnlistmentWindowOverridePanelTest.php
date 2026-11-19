@@ -111,4 +111,23 @@ final class EnlistmentWindowOverridePanelTest extends CIUnitTestCase
         $this->assertFalse($body['ok']);
         $this->seeInDatabase('enlistment_window_overrides', ['id' => $granted['id'], 'status' => 'active']);
     }
+
+    public function testSearchFindsAnAuthorizedStudentByName(): void
+    {
+        $result = $this->withSession()->get('/chairperson/enlistment-window?ay_id=' . $this->ayId . '&override_q=DelaCruz');
+
+        $result->assertStatus(200);
+        $result->assertSee('DelaCruz');
+        $result->assertDontSee('Santos'); // other-program student must not surface
+    }
+
+    public function testTheActiveOverridesListShowsAGrantedOverrideForThisTerm(): void
+    {
+        (new EnlistmentWindowOverrideModel())->grant($this->studentId, AcademicYearModel::format('2026-2027', '2nd'), 'Catch-up term', 70803, 'chairperson');
+
+        $result = $this->withSession()->get('/chairperson/enlistment-window?ay_id=' . $this->ayId);
+
+        $result->assertSee('Catch-up term');
+        $result->assertSee('DelaCruz');
+    }
 }

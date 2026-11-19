@@ -83,6 +83,10 @@ class EnlistmentWindowController extends BaseController
             $subjects = $this->offerableSubjects($programId, $yearLevel, $ay, $section);
         }
 
+        $overrideQuery      = trim((string) ($this->request->getGet('override_q') ?? ''));
+        $overrideCandidates = $overrideQuery !== '' ? $this->overrideCandidatesFor($programIds, $overrideQuery) : [];
+        $activeOverrides    = $ay !== null ? $this->activeOverridesFor($programIds, AcademicYearModel::format($ay['label'], $ay['semester'])) : [];
+
         return view('chairperson/enlistment_window', [
             'pageTitle'       => 'Enlistment Window',
             'user'            => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
@@ -96,6 +100,9 @@ class EnlistmentWindowController extends BaseController
             'sections'        => $sections,
             'selectedSection' => $section,
             'subjects'        => $subjects,
+            'overrideQuery'      => $overrideQuery,
+            'overrideCandidates' => $overrideCandidates,
+            'activeOverrides'    => $activeOverrides,
         ]);
     }
 
@@ -219,6 +226,55 @@ class EnlistmentWindowController extends BaseController
         ]);
 
         return redirect()->to($redirectUrl)->with('message', $parts === [] ? 'No changes.' : implode('. ', $parts) . '.');
+    }
+
+    /**
+     * Active students in $programIds matching $q by name or student
+     * number — candidates for the "Student Overrides" panel's Unlock
+     * button. Mirrors StudentProgressController::rosterFor()'s join/search
+     * shape.
+     */
+    private function overrideCandidatesFor(array $programIds, string $q): array
+    {
+        if ($programIds === []) {
+            return [];
+        }
+
+        return db_connect()->table('students s')
+            ->select('s.student_id, s.student_number, u.first_name, u.last_name, p.program_name')
+            ->join('users u', 'u.id = s.user_id')
+            ->join('programs p', 'p.program_id = s.program_id', 'left')
+            ->whereIn('s.program_id', $programIds)
+            ->where('s.student_status', 'active')
+            ->groupStart()
+                ->like('u.first_name', $q)
+                ->orLike('u.last_name', $q)
+                ->orLike('s.student_number', $q)
+            ->groupEnd()
+            ->orderBy('u.last_name')->orderBy('u.first_name')
+            ->limit(20)
+            ->get()->getResultArray();
+    }
+
+    /**
+     * This term's active window overrides for students in $programIds —
+     * the "Student Overrides" panel's revoke list.
+     */
+    private function activeOverridesFor(array $programIds, string $academicYear): array
+    {
+        if ($programIds === []) {
+            return [];
+        }
+
+        return db_connect()->table('enlistment_window_overrides w')
+            ->select('w.id, w.reason, w.granted_by_role, w.created_at, s.student_number, u.first_name, u.last_name')
+            ->join('students s', 's.student_id = w.student_id')
+            ->join('users u', 'u.id = s.user_id')
+            ->whereIn('s.program_id', $programIds)
+            ->where('w.academic_year', $academicYear)
+            ->where('w.status', 'active')
+            ->orderBy('w.created_at', 'DESC')
+            ->get()->getResultArray();
     }
 
     /**
