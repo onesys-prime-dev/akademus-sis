@@ -237,8 +237,15 @@ endif;
         <?php else: ?>
             <ul class="ew-overrides__active">
                 <?php foreach ($activeOverrides as $o): ?>
+                    <?php
+                        $grantedByName = trim(($o['granted_by_last_name'] ?? '') . ' ' . ($o['granted_by_first_name'] ?? ''));
+                        $grantedByWho  = $grantedByName !== '' ? $grantedByName : ucfirst($o['granted_by_role']);
+                    ?>
                     <li>
-                        <span><?= esc($o['last_name']) ?>, <?= esc($o['first_name']) ?> &middot; <?= esc($o['student_number']) ?> &middot; "<?= esc($o['reason']) ?>"</span>
+                        <span>
+                            <?= esc($o['last_name']) ?>, <?= esc($o['first_name']) ?> &middot; <?= esc($o['student_number']) ?> &middot; "<?= esc($o['reason']) ?>"
+                            <br><small>Granted by <?= esc($grantedByWho) ?> &middot; <?= esc(date('M j, Y g:i A', strtotime($o['created_at']))) ?></small>
+                        </span>
                         <button type="button" class="ac-btn ac-btn-secondary" data-revoke-window-override="<?= (int) $o['id'] ?>">Revoke</button>
                     </li>
                 <?php endforeach ?>

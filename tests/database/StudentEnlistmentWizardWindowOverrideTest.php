@@ -65,4 +65,24 @@ final class StudentEnlistmentWizardWindowOverrideTest extends CIUnitTestCase
 
         $result->assertDontSee('Enlistment is not yet open');
     }
+
+    public function testARevokedWindowOverrideShowsTheClosedSplashAgain(): void
+    {
+        $enlistTerm = (new AcademicYearModel())->upcomingFormatted();
+        $granted    = (new EnlistmentWindowOverrideModel())->grant($this->studentId, $enlistTerm, 'Catch-up term', 801, 'chairperson');
+        (new EnlistmentWindowOverrideModel())->revoke((int) $granted['id'], 802);
+
+        $result = $this->withSession()->get('/student/enlistment');
+
+        $result->assertSee('Enlistment is not yet open');
+    }
+
+    public function testAnOverrideForADifferentTermDoesNotHideTheClosedSplash(): void
+    {
+        (new EnlistmentWindowOverrideModel())->grant($this->studentId, 'AY 2099 - 2100 · 1st Semester', 'Wrong term', 801, 'chairperson');
+
+        $result = $this->withSession()->get('/student/enlistment');
+
+        $result->assertSee('Enlistment is not yet open');
+    }
 }

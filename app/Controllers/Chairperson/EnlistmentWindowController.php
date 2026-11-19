@@ -267,9 +267,10 @@ class EnlistmentWindowController extends BaseController
         }
 
         return db_connect()->table('enlistment_window_overrides w')
-            ->select('w.id, w.reason, w.granted_by_role, w.created_at, s.student_number, u.first_name, u.last_name')
+            ->select('w.id, w.reason, w.granted_by_role, w.created_at, s.student_number, u.first_name, u.last_name, gu.first_name AS granted_by_first_name, gu.last_name AS granted_by_last_name')
             ->join('students s', 's.student_id = w.student_id')
             ->join('users u', 'u.id = s.user_id')
+            ->join('users gu', 'gu.id = w.granted_by', 'left')
             ->whereIn('s.program_id', $programIds)
             ->where('w.academic_year', $academicYear)
             ->where('w.status', 'active')

@@ -56,7 +56,7 @@ final class EnlistmentWindowOverridePanelTest extends CIUnitTestCase
         $this->otherProgramStudentId = (int) $db->insertID();
 
         $this->seedUsers(70803);
-        $db->table('users')->where('id', 70803)->update(['sub_department_id' => 91001]);
+        $db->table('users')->where('id', 70803)->update(['sub_department_id' => 91001, 'first_name' => 'Ana', 'last_name' => 'Reyes']);
         $db->table('auth_groups_users')->insert(['user_id' => 70803, 'group' => 'chairperson', 'created_at' => date('Y-m-d H:i:s')]);
         $this->actingAs(auth()->getProvider()->findById(70803));
     }
@@ -129,5 +129,16 @@ final class EnlistmentWindowOverridePanelTest extends CIUnitTestCase
 
         $result->assertSee('Catch-up term');
         $result->assertSee('DelaCruz');
+    }
+
+    public function testTheActiveOverridesListShowsWhoGrantedItAndWhen(): void
+    {
+        (new EnlistmentWindowOverrideModel())->grant($this->studentId, AcademicYearModel::format('2026-2027', '2nd'), 'Catch-up term', 70803, 'chairperson');
+
+        $result = $this->withSession()->get('/chairperson/enlistment-window?ay_id=' . $this->ayId);
+
+        // Who granted it (by name, not just role) and when.
+        $result->assertSee('Reyes');
+        $result->assertSee(date('Y'));
     }
 }

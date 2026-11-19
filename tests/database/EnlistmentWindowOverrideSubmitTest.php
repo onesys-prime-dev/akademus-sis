@@ -97,4 +97,17 @@ final class EnlistmentWindowOverrideSubmitTest extends CIUnitTestCase
 
         $this->assertFalse($result['ok']);
     }
+
+    public function testAnOverrideForADifferentTermDoesNotUnblockSubmit(): void
+    {
+        (new EnlistmentWindowOverrideModel())->grant($this->studentId, 'AY 2099 - 2100 · 1st Semester', 'Wrong term', 801, 'chairperson');
+
+        $model      = new StudentEnlistmentModel();
+        $enlistment = $model->openOrCreate($this->studentId, self::AY);
+        $model->addItem((int) $enlistment['id'], $this->studentUserId, $this->sectionId, 'WIN-A');
+
+        $result = $model->submit((int) $enlistment['id'], $this->studentId);
+
+        $this->assertFalse($result['ok']);
+    }
 }
