@@ -1,0 +1,98 @@
+/* Academic Calendar — shared by Admin > Academic Years and Registrar > Academic Calendar. */
+
+.ay-page {
+    --ay-ink: var(--color-text-primary); --ay-muted: var(--color-text-secondary); --ay-line: var(--color-border);
+    --ay-radius-card: 18px; --ay-radius-control: 10px;
+    --ay-shadow-card: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px -12px rgba(16, 24, 40, .10);
+    --ay-shadow-card-hover: 0 2px 4px rgba(16, 24, 40, .05), 0 18px 36px -14px rgba(16, 24, 40, .16);
+    --ay-ease: cubic-bezier(.4, 0, .2, 1); --ay-t: 200ms var(--ay-ease);
+    --ay-active: #16a34a;
+    color: var(--ay-ink);
+}
+
+.ay-toolbar {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 22px;
+}
+
+.ay-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;
+}
+
+.ay-card {
+    border: 1px solid var(--ay-line); background: #fff; border-radius: var(--ay-radius-card);
+    box-shadow: var(--ay-shadow-card); padding: 22px 24px 24px;
+    display: flex; flex-direction: column;
+    transition: box-shadow var(--ay-t), transform var(--ay-t), border-color var(--ay-t);
+}
+.ay-card:hover { box-shadow: var(--ay-shadow-card-hover); transform: translateY(-2px); }
+
+.ay-card--active {
+    border-color: color-mix(in srgb, var(--ay-active) 35%, var(--ay-line));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ay-active) 20%, transparent), var(--ay-shadow-card);
+}
+.ay-card--active:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ay-active) 28%, transparent), var(--ay-shadow-card-hover); }
+
+.ay-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.ay-card__year { font-size: 19px; font-weight: 700; letter-spacing: -.3px; line-height: 1.2; }
+.ay-card__term { margin-top: 3px; font-size: 13px; font-weight: 550; color: var(--ay-muted); }
+
+.ay-badge {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .05em; white-space: nowrap;
+    color: #fff; background: var(--ay-active);
+}
+.ay-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.35); }
+
+.ay-card__dates {
+    display: flex; align-items: center; gap: 7px; margin-top: 12px; padding: 10px 12px;
+    background: #fafbfd; border: 1px solid var(--ay-line); border-radius: var(--ay-radius-control);
+    font-size: 12.5px; font-weight: 550; color: #45607f; font-variant-numeric: tabular-nums;
+}
+.ay-card__dates .material-symbols-outlined { font-size: 17px; color: #8ea0b8; }
+.ay-card__dates--empty { color: var(--ay-muted); font-weight: 450; font-style: italic; }
+
+.ay-card__pills { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 14px; }
+.ay-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px;
+    font-size: 11px; font-weight: 650; letter-spacing: .01em; white-space: nowrap;
+}
+.ay-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); }
+.ay-pill--open { color: #157347; background: #effaf4; }
+.ay-pill--closed { color: #b42318; background: #fef3f2; }
+
+.ay-card__edit { margin-top: 16px; border-top: 1px solid var(--ay-line); padding-top: 12px; }
+.ay-card__edit summary {
+    cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between;
+    font-size: 12.5px; font-weight: 600; color: var(--ay-muted); user-select: none;
+    transition: color var(--ay-t);
+}
+.ay-card__edit summary::-webkit-details-marker { display: none; }
+.ay-card__edit summary:hover { color: var(--ay-ink); }
+.ay-card__edit summary .ay-chevron { font-size: 18px; transition: transform var(--ay-t); color: #8ea0b8; }
+.ay-card__edit[open] summary .ay-chevron { transform: rotate(180deg); }
+.ay-card__edit[open] summary { color: var(--ay-ink); margin-bottom: 12px; }
+
+.ay-edit-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.ay-edit-form__field { display: flex; flex-direction: column; gap: 6px; }
+.ay-edit-form__field label {
+    font-size: 10.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--ay-muted);
+}
+.ay-edit-form__field input {
+    min-height: 38px; border: 1px solid #dce5f0; border-radius: var(--ay-radius-control);
+    padding: 0 10px; background: #fff; color: #203349; font-size: 12.5px; font-weight: 550;
+    font-variant-numeric: tabular-nums; cursor: pointer; color-scheme: light;
+    transition: border-color var(--ay-t), box-shadow var(--ay-t), background-color var(--ay-t);
+}
+.ay-edit-form__field input:hover { border-color: #b6c9e3; background: var(--color-surface-secondary); }
+.ay-edit-form__field input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent); outline: none; background: #fff; }
+.ay-edit-form__save { grid-column: 1 / -1; min-height: 40px; border-radius: var(--ay-radius-control); font-size: 12.5px; font-weight: 650; margin-top: 2px; }
+
+.ay-card__setactive { margin-top: 14px; }
+.ay-card__setactive .ac-btn { width: 100%; min-height: 40px; border-radius: var(--ay-radius-control); font-size: 12.5px; font-weight: 650; }
+
+@media (max-width: 560px) {
+    .ay-edit-form { grid-template-columns: 1fr; }
+    .ay-toolbar { flex-direction: column; align-items: stretch; }
+    .ay-toolbar .ac-btn, .ay-toolbar form { width: 100%; }
+}

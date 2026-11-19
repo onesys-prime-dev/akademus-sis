@@ -2,10 +2,16 @@
 
 <?php $basePath = $basePath ?? 'admin'; ?>
 
+<?= $this->section('styles') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/academic-calendar.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/academic-calendar.css') ?>">
+<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 
+<div class="ay-page">
+
 <?php if ($basePath === 'admin'): ?>
-<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+<div class="ay-toolbar">
     <button type="button" class="ac-btn ac-btn-primary" onclick="acOpenModal('modalAddAy')">
         <?= admin_icon('plus', 16) ?> Add Academic Year
     </button>
@@ -30,59 +36,68 @@ $ayModel = new \App\Models\AcademicYearModel();
 <?php if (empty($years)): ?>
     <div class="ac-empty-block" style="margin-top:16px;">No academic years yet.</div>
 <?php else: ?>
-    <div class="ac-grid ac-grid--sm" style="margin-top:16px;">
+    <div class="ay-grid">
         <?php foreach ($years as $ay): ?>
             <?php
                 $gradingOpen      = $ayModel->isGradingOpen((int) $ay['ay_id']);
                 $registrationOpen = $ayModel->isRegistrationOpen((int) $ay['ay_id']);
                 $enlistmentOpen   = $ayModel->isEnlistmentOpen((int) $ay['ay_id']);
             ?>
-            <div class="ac-card" style="<?= $ay['is_active'] ? 'border-color:#bbf7d0;' : '' ?>">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span class="ac-dept-name"><?= esc($ay['label']) ?></span>
+            <div class="ay-card <?= $ay['is_active'] ? 'ay-card--active' : '' ?>">
+                <div class="ay-card__head">
+                    <div>
+                        <div class="ay-card__year"><?= esc($ay['label']) ?></div>
+                        <div class="ay-card__term"><?= esc($ay['semester']) ?> Semester</div>
+                    </div>
                     <?php if ($ay['is_active']): ?>
-                        <span class="ac-badge-active">ACTIVE</span>
-                    <?php endif ?>
-                </div>
-                <div class="ac-dept-meta"><?= esc($ay['semester']) ?> Semester</div>
-                <div class="ac-dept-meta">
-                    <?php if ($ay['start_date'] && $ay['end_date']): ?>
-                        <?= esc(date('M j, Y', strtotime($ay['start_date']))) ?> &ndash; <?= esc(date('M j, Y', strtotime($ay['end_date']))) ?>
-                    <?php else: ?>
-                        <span style="color:var(--color-text-tertiary);">No dates set</span>
+                        <span class="ay-badge">Active</span>
                     <?php endif ?>
                 </div>
 
-                <div style="display:flex; gap:6px; margin-top:10px;">
-                    <span class="ac-pill <?= $gradingOpen ? 'ac-pill--success' : 'ac-pill--danger' ?>">Grading <?= $gradingOpen ? 'OPEN' : 'CLOSED' ?></span>
-                    <span class="ac-pill <?= $registrationOpen ? 'ac-pill--success' : 'ac-pill--danger' ?>">Registration <?= $registrationOpen ? 'OPEN' : 'CLOSED' ?></span>
-                    <span class="ac-pill <?= $enlistmentOpen ? 'ac-pill--success' : 'ac-pill--danger' ?>">Enlistment <?= $enlistmentOpen ? 'OPEN' : 'CLOSED' ?></span>
+                <?php if ($ay['start_date'] && $ay['end_date']): ?>
+                    <div class="ay-card__dates">
+                        <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                        <span><?= esc(date('M j, Y', strtotime($ay['start_date']))) ?> &ndash; <?= esc(date('M j, Y', strtotime($ay['end_date']))) ?></span>
+                    </div>
+                <?php else: ?>
+                    <div class="ay-card__dates ay-card__dates--empty">
+                        <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                        <span>No dates set</span>
+                    </div>
+                <?php endif ?>
+
+                <div class="ay-card__pills">
+                    <span class="ay-pill <?= $gradingOpen ? 'ay-pill--open' : 'ay-pill--closed' ?>">Grading <?= $gradingOpen ? 'OPEN' : 'CLOSED' ?></span>
+                    <span class="ay-pill <?= $registrationOpen ? 'ay-pill--open' : 'ay-pill--closed' ?>">Registration <?= $registrationOpen ? 'OPEN' : 'CLOSED' ?></span>
+                    <span class="ay-pill <?= $enlistmentOpen ? 'ay-pill--open' : 'ay-pill--closed' ?>">Enlistment <?= $enlistmentOpen ? 'OPEN' : 'CLOSED' ?></span>
                 </div>
 
-                <details style="margin-top:10px;">
-                    <summary style="cursor:pointer; font-size:12.5px; color:var(--color-text-secondary);">Edit windows</summary>
-                    <form method="post" action="<?= site_url($basePath . '/academic-' . ($basePath === 'admin' ? 'years' : 'calendar') . '/' . $ay['ay_id'] . '/window') ?>" style="display:grid; gap:8px; margin-top:8px;">
+                <details class="ay-card__edit">
+                    <summary>Edit windows <span class="material-symbols-outlined ay-chevron" aria-hidden="true">expand_more</span></summary>
+                    <form method="post" action="<?= site_url($basePath . '/academic-' . ($basePath === 'admin' ? 'years' : 'calendar') . '/' . $ay['ay_id'] . '/window') ?>" class="ay-edit-form">
                         <?= csrf_field() ?>
-                        <label style="font-size:11.5px;">Grading opens<input type="datetime-local" name="grading_opens_at" class="ac-input" value="<?= $ay['grading_opens_at'] ? esc(str_replace(' ', 'T', $ay['grading_opens_at'])) : '' ?>"></label>
-                        <label style="font-size:11.5px;">Grading closes<input type="datetime-local" name="grading_closes_at" class="ac-input" value="<?= $ay['grading_closes_at'] ? esc(str_replace(' ', 'T', $ay['grading_closes_at'])) : '' ?>"></label>
-                        <label style="font-size:11.5px;">Registration opens<input type="datetime-local" name="registration_opens_at" class="ac-input" value="<?= $ay['registration_opens_at'] ? esc(str_replace(' ', 'T', $ay['registration_opens_at'])) : '' ?>"></label>
-                        <label style="font-size:11.5px;">Registration closes<input type="datetime-local" name="registration_closes_at" class="ac-input" value="<?= $ay['registration_closes_at'] ? esc(str_replace(' ', 'T', $ay['registration_closes_at'])) : '' ?>"></label>
-                        <label style="font-size:11.5px;">Enlistment opens<input type="datetime-local" name="enlistment_opens_at" class="ac-input" value="<?= $ay['enlistment_opens_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_opens_at'])) : '' ?>"></label>
-                        <label style="font-size:11.5px;">Enlistment closes<input type="datetime-local" name="enlistment_closes_at" class="ac-input" value="<?= $ay['enlistment_closes_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_closes_at'])) : '' ?>"></label>
-                        <button type="submit" class="ac-btn ac-btn-secondary ac-btn-block">Save windows</button>
+                        <label class="ay-edit-form__field">Grading opens<input type="datetime-local" name="grading_opens_at" value="<?= $ay['grading_opens_at'] ? esc(str_replace(' ', 'T', $ay['grading_opens_at'])) : '' ?>"></label>
+                        <label class="ay-edit-form__field">Grading closes<input type="datetime-local" name="grading_closes_at" value="<?= $ay['grading_closes_at'] ? esc(str_replace(' ', 'T', $ay['grading_closes_at'])) : '' ?>"></label>
+                        <label class="ay-edit-form__field">Registration opens<input type="datetime-local" name="registration_opens_at" value="<?= $ay['registration_opens_at'] ? esc(str_replace(' ', 'T', $ay['registration_opens_at'])) : '' ?>"></label>
+                        <label class="ay-edit-form__field">Registration closes<input type="datetime-local" name="registration_closes_at" value="<?= $ay['registration_closes_at'] ? esc(str_replace(' ', 'T', $ay['registration_closes_at'])) : '' ?>"></label>
+                        <label class="ay-edit-form__field">Enlistment opens<input type="datetime-local" name="enlistment_opens_at" value="<?= $ay['enlistment_opens_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_opens_at'])) : '' ?>"></label>
+                        <label class="ay-edit-form__field">Enlistment closes<input type="datetime-local" name="enlistment_closes_at" value="<?= $ay['enlistment_closes_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_closes_at'])) : '' ?>"></label>
+                        <button type="submit" class="ac-btn ac-btn-secondary ay-edit-form__save">Save windows</button>
                     </form>
                 </details>
 
                 <?php if ($basePath === 'admin' && ! $ay['is_active']): ?>
-                    <form method="post" action="<?= site_url('admin/academic-years/set-active/' . $ay['ay_id']) ?>" style="margin-top:12px;">
+                    <form method="post" action="<?= site_url('admin/academic-years/set-active/' . $ay['ay_id']) ?>" class="ay-card__setactive">
                         <?= csrf_field() ?>
-                        <button type="submit" class="ac-btn ac-btn-secondary ac-btn-block">Set as active term</button>
+                        <button type="submit" class="ac-btn ac-btn-secondary">Set as active term</button>
                     </form>
                 <?php endif ?>
             </div>
         <?php endforeach ?>
     </div>
 <?php endif ?>
+
+</div>
 
 <!-- Add academic year modal -->
 <div class="ac-modal" id="modalAddAy">
