@@ -187,7 +187,8 @@ class StudentEnlistmentModel extends Model
             return ['ok' => false, 'error' => 'This enlistment can no longer be submitted.'];
         }
 
-        if (! (new AcademicYearModel())->isEnlistmentOpen()) {
+        if (! (new AcademicYearModel())->isEnlistmentOpen()
+            && ! (new EnlistmentWindowOverrideModel())->hasOverride($studentId, $enlistment['academic_year'])) {
             return ['ok' => false, 'error' => 'Online enlistment is closed for the upcoming term.'];
         }
 
