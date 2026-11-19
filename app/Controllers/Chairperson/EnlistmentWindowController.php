@@ -7,8 +7,10 @@ use App\Libraries\SchedulingAuthorization;
 use App\Models\AcademicYearModel;
 use App\Models\CurriculumModel;
 use App\Models\CollegeModel;
+use App\Models\EnlistmentWindowOverrideModel;
 use App\Models\EnrollmentModel;
 use App\Models\SectionModel;
+use App\Models\StudentModel;
 
 /**
  * A chairperson's narrow slice of academic-calendar control: only the
@@ -217,6 +219,79 @@ class EnlistmentWindowController extends BaseController
         ]);
 
         return redirect()->to($redirectUrl)->with('message', $parts === [] ? 'No changes.' : implode('. ', $parts) . '.');
+    }
+
+    /**
+     * Unlocks the self-enlistment wizard for one authorized student for one
+     * upcoming term, regardless of the global enlistment window's state.
+     * Scoped the same way every other action on this controller is — the
+     * student's program must be one of this chair's authorizedPrograms().
+     */
+    public function grantOverride()
+    {
+        $userId    = (int) auth()->id();
+        $studentId = (int) $this->request->getPost('student_id');
+        $ayId      = (int) $this->request->getPost('ay_id');
+        $reason    = (string) $this->request->getPost('reason');
+
+        $student = (new StudentModel())->find($studentId);
+
+        if ($student === null || $student['program_id'] === null
+            || ! in_array((int) $student['program_id'], array_column($this->authorizedPrograms($userId), 'program_id'), true)) {
+            return $this->fail('Student not found.');
+        }
+
+        $ay = $this->resolveTerm((new AcademicYearModel())->upcomingTerms(), $ayId);
+
+        if ($ay === null) {
+            return $this->fail('No upcoming academic term exists yet.');
+        }
+
+        $academicYear = AcademicYearModel::format($ay['label'], $ay['semester']);
+        $result       = (new EnlistmentWindowOverrideModel())->grant($studentId, $academicYear, $reason, $userId, 'chairperson');
+
+        if (! $result['ok']) {
+            return $this->fail($result['error']);
+        }
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * Ends a previously-granted window override, for one of this chair's
+     * authorized students.
+     */
+    public function revokeOverride()
+    {
+        $userId     = (int) auth()->id();
+        $overrideId = (int) $this->request->getPost('override_id');
+
+        $overrides = new EnlistmentWindowOverrideModel();
+        $override  = $overrides->find($overrideId);
+
+        if ($override === null) {
+            return $this->fail('Override not found.');
+        }
+
+        $student = (new StudentModel())->find((int) $override['student_id']);
+
+        if ($student === null || $student['program_id'] === null
+            || ! in_array((int) $student['program_id'], array_column($this->authorizedPrograms($userId), 'program_id'), true)) {
+            return $this->fail('Student not found.');
+        }
+
+        $result = $overrides->revoke($overrideId, $userId);
+
+        if (! $result['ok']) {
+            return $this->fail($result['error']);
+        }
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    private function fail(string $message)
+    {
+        return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => $message]);
     }
 
     /**
