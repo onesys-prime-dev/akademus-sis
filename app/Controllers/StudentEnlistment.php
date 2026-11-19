@@ -6,6 +6,7 @@ use App\Libraries\StudentProgressService;
 use App\Models\AcademicYearModel;
 use App\Models\CollegeModel;
 use App\Models\EnlistmentOverrideModel;
+use App\Models\EnlistmentWindowOverrideModel;
 use App\Models\EnrollmentModel;
 use App\Models\GeneratedDocumentModel;
 use App\Models\StudentEnlistmentModel;
@@ -47,7 +48,8 @@ class StudentEnlistment extends BaseController
         $ayModel    = new AcademicYearModel();
         $enlistTerm = $ayModel->upcomingFormatted();
         $activeTerm = $ayModel->activeFormatted();
-        $windowOpen = $ayModel->isEnlistmentOpen();
+        $windowOpen = $ayModel->isEnlistmentOpen()
+            || ($enlistTerm !== null && (new EnlistmentWindowOverrideModel())->hasOverride((int) $student['student_id'], $enlistTerm));
 
         if ($enlistTerm === null) {
             return view('student/enlistment', [
