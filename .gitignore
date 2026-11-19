@@ -127,3 +127,6 @@ _modules/*
 
 # Generated documentation (not part of the shipped codebase)
 /docs/
+
+# Local git worktrees used for isolated feature work
+/.worktrees/
