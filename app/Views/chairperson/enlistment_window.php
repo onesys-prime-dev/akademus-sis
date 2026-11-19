@@ -177,21 +177,23 @@ endif;
                         <input type="hidden" name="year_level" value="<?= $selectedYear ?>">
                         <input type="hidden" name="section" value="<?= esc($selectedSection) ?>">
 
-                        <table class="ac-table ew-offerings__table">
-                            <thead>
-                                <tr><th>Offer</th><th>Code</th><th>Title</th><th>Units</th></tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($subjects as $s): ?>
-                                    <tr>
-                                        <td data-label="Offer"><input type="checkbox" name="subjects[]" value="<?= esc($s['code']) ?>" checked></td>
-                                        <td data-label="Code"><?= esc($s['code']) ?></td>
-                                        <td data-label="Title"><?= esc($s['title']) ?></td>
-                                        <td data-label="Units"><?= esc((string) $s['units']) ?></td>
-                                    </tr>
-                                <?php endforeach ?>
-                            </tbody>
-                        </table>
+                        <div class="ew-offerings__table-scroll">
+                            <table class="ac-table ew-offerings__table">
+                                <thead>
+                                    <tr><th>Offer</th><th>Code</th><th>Title</th><th>Units</th></tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($subjects as $s): ?>
+                                        <tr>
+                                            <td data-label="Offer"><input type="checkbox" name="subjects[]" value="<?= esc($s['code']) ?>" checked></td>
+                                            <td data-label="Code"><?= esc($s['code']) ?></td>
+                                            <td data-label="Title"><?= esc($s['title']) ?></td>
+                                            <td data-label="Units"><?= esc((string) $s['units']) ?></td>
+                                        </tr>
+                                    <?php endforeach ?>
+                                </tbody>
+                            </table>
+                        </div>
 
                         <button type="submit" class="ac-btn ac-btn-primary ew-offerings__save">Save Offerings</button>
                     </form>

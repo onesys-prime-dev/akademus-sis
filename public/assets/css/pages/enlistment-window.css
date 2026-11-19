@@ -15,6 +15,7 @@
     --ew-shadow-card-hover: 0 2px 4px rgba(16, 24, 40, .05), 0 16px 36px -14px rgba(16, 24, 40, .16);
     --ew-ease: cubic-bezier(.4, 0, .2, 1); --ew-t: 200ms var(--ew-ease);
     color: var(--ew-ink);
+    display: flex; flex-direction: column; height: 100%;
 }
 
 .ew-term-field { margin-bottom: 18px; }
@@ -25,6 +26,7 @@
     border: 1px solid var(--ew-line); background: #fff; border-radius: var(--ew-radius-card);
     box-shadow: var(--ew-shadow-card); overflow: hidden;
     transition: box-shadow var(--ew-t), transform var(--ew-t), border-color var(--ew-t);
+    display: flex; flex-direction: column; flex: 1;
 }
 .ew-card:hover { box-shadow: var(--ew-shadow-card-hover); transform: translateY(-1px); }
 
@@ -40,7 +42,7 @@
 .ew-status-line { display: flex; align-items: center; gap: 8px; padding: 14px 26px; background: #fafbfd; border-bottom: 1px solid var(--ew-line); color: #58708e; font-size: 12.5px; }
 .ew-status-line .material-symbols-outlined { font-size: 17px; color: #8097b8; }
 
-.ew-card-body { padding: 22px 26px 26px; display: grid; gap: 16px; }
+.ew-card-body { padding: 22px 26px 26px; display: grid; gap: 16px; flex: 1; align-content: start; }
 .ew-datefield label { display: block; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--ew-muted); margin-bottom: 8px; }
 .ew-datefield-control { position: relative; }
 .ew-datefield-control .material-symbols-outlined { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; color: #8ea0b8; pointer-events: none; }
@@ -60,7 +62,7 @@
     background: transparent; color: transparent; cursor: pointer; opacity: 0;
 }
 
-.ew-save { width: 100%; min-height: 46px; border-radius: var(--ew-radius-control); font-size: 13px; font-weight: 650; margin-top: 4px; }
+.ew-save { width: 100%; min-height: 46px; border-radius: var(--ew-radius-control); font-size: 13px; font-weight: 650; margin-top: auto; }
 
 .ew-offerings {
     display: flex; flex-direction: column;
@@ -82,7 +84,15 @@
 
 .ew-offerings__empty, .ew-offerings__table-form { margin-top: 18px; }
 .ew-offerings__empty { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
+.ew-offerings__table-form { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.ew-offerings__table-scroll {
+    flex: 1; min-height: 160px; max-height: 420px; overflow-y: auto;
+    border: 1px solid var(--ew-line, var(--color-border)); border-radius: var(--ew-radius-control, 12px);
+}
 .ew-offerings__table { width: 100%; }
+.ew-offerings__table-scroll .ew-offerings__table thead th {
+    position: sticky; top: 0; z-index: 1; background: #fff; box-shadow: 0 1px 0 var(--ew-line, var(--color-border));
+}
 .ew-offerings__save { margin-top: 14px; }
 
 /* Fills the panel instead of leaving dead space when no subject list is loaded yet. */
