@@ -603,7 +603,7 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     // online enlistment — this chair's slice of the term's enlistment window,
     // plus the chair's step in the enlistment approval chain
     $routes->get('enlistment-window'                 , 'Chairperson\EnlistmentWindowController::edit');
-    $routes->post('enlistment-window/update'         , 'Chairperson\EnlistmentWindowController::update');
+    $routes->post('enlistment-window/update-program-window', 'Chairperson\EnlistmentWindowController::updateProgramWindow');
     $routes->post('enlistment-window/save-offerings' , 'Chairperson\EnlistmentWindowController::saveOfferings');
     $routes->post('enlistment-window/grant-override' , 'Chairperson\EnlistmentWindowController::grantOverride');
     $routes->post('enlistment-window/revoke-override', 'Chairperson\EnlistmentWindowController::revokeOverride');
