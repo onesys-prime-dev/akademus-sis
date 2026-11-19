@@ -72,19 +72,9 @@ $ayModel = new \App\Models\AcademicYearModel();
                     <span class="ay-pill <?= $enlistmentOpen ? 'ay-pill--open' : 'ay-pill--closed' ?>">Enlistment <?= $enlistmentOpen ? 'OPEN' : 'CLOSED' ?></span>
                 </div>
 
-                <details class="ay-card__edit">
-                    <summary>Edit windows <span class="material-symbols-outlined ay-chevron" aria-hidden="true">expand_more</span></summary>
-                    <form method="post" action="<?= site_url($basePath . '/academic-' . ($basePath === 'admin' ? 'years' : 'calendar') . '/' . $ay['ay_id'] . '/window') ?>" class="ay-edit-form">
-                        <?= csrf_field() ?>
-                        <label class="ay-edit-form__field">Grading opens<input type="datetime-local" name="grading_opens_at" value="<?= $ay['grading_opens_at'] ? esc(str_replace(' ', 'T', $ay['grading_opens_at'])) : '' ?>"></label>
-                        <label class="ay-edit-form__field">Grading closes<input type="datetime-local" name="grading_closes_at" value="<?= $ay['grading_closes_at'] ? esc(str_replace(' ', 'T', $ay['grading_closes_at'])) : '' ?>"></label>
-                        <label class="ay-edit-form__field">Registration opens<input type="datetime-local" name="registration_opens_at" value="<?= $ay['registration_opens_at'] ? esc(str_replace(' ', 'T', $ay['registration_opens_at'])) : '' ?>"></label>
-                        <label class="ay-edit-form__field">Registration closes<input type="datetime-local" name="registration_closes_at" value="<?= $ay['registration_closes_at'] ? esc(str_replace(' ', 'T', $ay['registration_closes_at'])) : '' ?>"></label>
-                        <label class="ay-edit-form__field">Enlistment opens<input type="datetime-local" name="enlistment_opens_at" value="<?= $ay['enlistment_opens_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_opens_at'])) : '' ?>"></label>
-                        <label class="ay-edit-form__field">Enlistment closes<input type="datetime-local" name="enlistment_closes_at" value="<?= $ay['enlistment_closes_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_closes_at'])) : '' ?>"></label>
-                        <button type="submit" class="ac-btn ac-btn-secondary ay-edit-form__save">Save windows</button>
-                    </form>
-                </details>
+                <button type="button" class="ac-btn ac-btn-secondary ay-card__edit-btn" onclick="acOpenModal('modalEditWindows<?= (int) $ay['ay_id'] ?>')">
+                    <span class="material-symbols-outlined" aria-hidden="true">tune</span> Edit windows
+                </button>
 
                 <?php if ($basePath === 'admin' && ! $ay['is_active']): ?>
                     <form method="post" action="<?= site_url('admin/academic-years/set-active/' . $ay['ay_id']) ?>" class="ay-card__setactive">
@@ -98,6 +88,35 @@ $ayModel = new \App\Models\AcademicYearModel();
 <?php endif ?>
 
 </div>
+
+<?php if (! empty($years)): ?>
+<?php foreach ($years as $ay): ?>
+    <div class="ac-modal" id="modalEditWindows<?= (int) $ay['ay_id'] ?>">
+        <div class="ac-modal__panel">
+            <div class="ac-modal__header">
+                <div class="ac-modal__title">Edit Windows &mdash; <?= esc($ay['label']) ?> &middot; <?= esc($ay['semester']) ?></div>
+                <button type="button" class="ac-modal__close" onclick="acCloseModal('modalEditWindows<?= (int) $ay['ay_id'] ?>')"><?= admin_icon('x', 16) ?></button>
+            </div>
+
+            <form method="post" action="<?= site_url($basePath . '/academic-' . ($basePath === 'admin' ? 'years' : 'calendar') . '/' . $ay['ay_id'] . '/window') ?>">
+                <?= csrf_field() ?>
+                <div class="ac-modal__body ay-edit-form">
+                    <label class="ay-edit-form__field">Grading opens<input type="datetime-local" name="grading_opens_at" value="<?= $ay['grading_opens_at'] ? esc(str_replace(' ', 'T', $ay['grading_opens_at'])) : '' ?>"></label>
+                    <label class="ay-edit-form__field">Grading closes<input type="datetime-local" name="grading_closes_at" value="<?= $ay['grading_closes_at'] ? esc(str_replace(' ', 'T', $ay['grading_closes_at'])) : '' ?>"></label>
+                    <label class="ay-edit-form__field">Registration opens<input type="datetime-local" name="registration_opens_at" value="<?= $ay['registration_opens_at'] ? esc(str_replace(' ', 'T', $ay['registration_opens_at'])) : '' ?>"></label>
+                    <label class="ay-edit-form__field">Registration closes<input type="datetime-local" name="registration_closes_at" value="<?= $ay['registration_closes_at'] ? esc(str_replace(' ', 'T', $ay['registration_closes_at'])) : '' ?>"></label>
+                    <label class="ay-edit-form__field">Enlistment opens<input type="datetime-local" name="enlistment_opens_at" value="<?= $ay['enlistment_opens_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_opens_at'])) : '' ?>"></label>
+                    <label class="ay-edit-form__field">Enlistment closes<input type="datetime-local" name="enlistment_closes_at" value="<?= $ay['enlistment_closes_at'] ? esc(str_replace(' ', 'T', $ay['enlistment_closes_at'])) : '' ?>"></label>
+                </div>
+                <div class="ac-modal__actions">
+                    <button type="button" class="ac-btn ac-btn-secondary" onclick="acCloseModal('modalEditWindows<?= (int) $ay['ay_id'] ?>')">Cancel</button>
+                    <button type="submit" class="ac-btn ac-btn-primary">Save windows</button>
+                </div>
+            </form>
+        </div>
+    </div>
+<?php endforeach ?>
+<?php endif ?>
 
 <!-- Add academic year modal -->
 <div class="ac-modal" id="modalAddAy">

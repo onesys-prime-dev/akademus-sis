@@ -61,38 +61,31 @@
 .ay-pill--open { color: #157347; background: #effaf4; }
 .ay-pill--closed { color: #b42318; background: #fef3f2; }
 
-.ay-card__edit { margin-top: 16px; border-top: 1px solid var(--ay-line); padding-top: 12px; }
-.ay-card__edit summary {
-    cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between;
-    font-size: 12.5px; font-weight: 600; color: var(--ay-muted); user-select: none;
-    transition: color var(--ay-t);
+.ay-card__edit-btn {
+    margin-top: 16px; width: 100%; min-height: 40px; border-radius: var(--ay-radius-control);
+    font-size: 12.5px; font-weight: 650; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
 }
-.ay-card__edit summary::-webkit-details-marker { display: none; }
-.ay-card__edit summary:hover { color: var(--ay-ink); }
-.ay-card__edit summary .ay-chevron { font-size: 18px; transition: transform var(--ay-t); color: #8ea0b8; }
-.ay-card__edit[open] summary .ay-chevron { transform: rotate(180deg); }
-.ay-card__edit[open] summary { color: var(--ay-ink); margin-bottom: 12px; }
+.ay-card__edit-btn .material-symbols-outlined { font-size: 16px; }
 
-.ay-edit-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
-.ay-edit-form__field { display: flex; flex-direction: column; gap: 6px; }
+.ay-edit-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+.ay-edit-form__field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .ay-edit-form__field label {
     font-size: 10.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--ay-muted);
 }
 .ay-edit-form__field input {
-    min-height: 38px; border: 1px solid #dce5f0; border-radius: var(--ay-radius-control);
-    padding: 0 10px; background: #fff; color: #203349; font-size: 12.5px; font-weight: 550;
-    font-variant-numeric: tabular-nums; cursor: pointer; color-scheme: light;
+    width: 100%; min-width: 0; min-height: 42px; border: 1px solid #dce5f0; border-radius: var(--ay-radius-control);
+    padding: 0 12px; background: #fff; color: #203349; font-size: 13px; font-weight: 550;
+    font-variant-numeric: tabular-nums; cursor: pointer; color-scheme: light; box-sizing: border-box;
     transition: border-color var(--ay-t), box-shadow var(--ay-t), background-color var(--ay-t);
 }
 .ay-edit-form__field input:hover { border-color: #b6c9e3; background: var(--color-surface-secondary); }
 .ay-edit-form__field input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent); outline: none; background: #fff; }
-.ay-edit-form__save { grid-column: 1 / -1; min-height: 40px; border-radius: var(--ay-radius-control); font-size: 12.5px; font-weight: 650; margin-top: 2px; }
 
-.ay-card__setactive { margin-top: 14px; }
+.ay-card__setactive { margin-top: 10px; }
 .ay-card__setactive .ac-btn { width: 100%; min-height: 40px; border-radius: var(--ay-radius-control); font-size: 12.5px; font-weight: 650; }
 
 @media (max-width: 560px) {
-    .ay-edit-form { grid-template-columns: 1fr; }
     .ay-toolbar { flex-direction: column; align-items: stretch; }
     .ay-toolbar .ac-btn, .ay-toolbar form { width: 100%; }
+    .ay-edit-form { grid-template-columns: 1fr; }
 }
