@@ -187,7 +187,9 @@ class StudentEnlistmentModel extends Model
             return ['ok' => false, 'error' => 'This enlistment can no longer be submitted.'];
         }
 
-        if (! (new AcademicYearModel())->isEnlistmentOpen()
+        $student = (new StudentModel())->find($studentId);
+
+        if (! (new \App\Libraries\EnlistmentWindowResolver())->isOpenFor(null, $student['program_id'] ?? null)
             && ! (new EnlistmentWindowOverrideModel())->hasOverride($studentId, $enlistment['academic_year'])) {
             return ['ok' => false, 'error' => 'Online enlistment is closed for the upcoming term.'];
         }
@@ -197,8 +199,6 @@ class StudentEnlistmentModel extends Model
         if ($cartItems === []) {
             return ['ok' => false, 'error' => 'Add at least one subject before submitting.'];
         }
-
-        $student = (new StudentModel())->find($studentId);
 
         if ($student !== null) {
             $enrollments = new EnrollmentModel();
