@@ -383,6 +383,7 @@
     // being edited is scoped to the chair's own department.
     let prereqSubjectId = null;
     const prereqDialog = byId('soPrereqDialog');
+    if (window.enhanceSelect) { window.enhanceSelect(byId('soPrereqCandidate')); window.enhanceSelect(byId('soCoreqCandidate')); }
     function renderReqTags(listEl, items, idKey, onRemove) {
         listEl.innerHTML = items.map(item => `<li class="so-chip">${escape(item.subject_code)} — ${escape(item.subject_name)}<button type="button" data-id="${item[idKey]}" aria-label="Remove">&times;</button></li>`).join('')
             || '<li class="so-req-empty">None set.</li>';
