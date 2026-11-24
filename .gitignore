@@ -130,3 +130,4 @@ _modules/*
 
 # Local git worktrees used for isolated feature work
 /.worktrees/
+node_modules/
