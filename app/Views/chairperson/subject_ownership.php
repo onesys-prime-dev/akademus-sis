@@ -97,6 +97,7 @@ $catalog = array_map(static fn ($s) => [
             <header class="so-dialog-header"><div><div class="so-eyebrow">SUBJECT REQUIREMENTS</div><h3 id="soPrereqTitle">Prerequisites &amp; corequisites</h3><p id="soPrereqSubtitle"></p></div><button type="button" class="so-icon-button" data-close-prereq aria-label="Close requirements editor"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></header>
             <div class="so-dialog-body">
                 <div class="so-feedback is-error" id="soPrereqError" role="alert" hidden></div>
+                <p class="so-editor-hint" id="soPrereqPairNote" hidden><span class="material-symbols-outlined" aria-hidden="true">info</span><span id="soPrereqPairNoteText"></span></p>
                 <section class="so-req-section" aria-labelledby="soPrereqListTitle">
                     <h4 id="soPrereqListTitle">Prerequisites<small>Must be passed before enrolling.</small></h4>
                     <ul class="so-req-tags" id="soPrereqTags"></ul>

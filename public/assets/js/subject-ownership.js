@@ -393,14 +393,28 @@
             get(`/${prereqSubjectId}/prerequisites`),
             get(`/${prereqSubjectId}/corequisites`),
         ]);
-        renderReqTags(byId('soPrereqTags'), prereqData.prerequisites, 'subject_id', async subjectPrerequisiteId => {
-            await post(`/${prereqSubjectId}/prerequisites/${subjectPrerequisiteId}/remove`, {});
-            refreshPrereqDialog();
+        renderReqTags(byId('soPrereqTags'), prereqData.prerequisites, 'subject_id', async prerequisiteSubjectId => {
+            try {
+                byId('soPrereqError').hidden = true;
+                await post(`/${prereqSubjectId}/prerequisites/${prerequisiteSubjectId}/remove`, {});
+                await refreshPrereqDialog();
+            } catch (error) {
+                byId('soPrereqError').textContent = error.message;
+                byId('soPrereqError').hidden = false;
+                await refreshPrereqDialog();
+            }
         });
         renderReqCandidates(byId('soPrereqCandidate'), prereqData.candidates);
-        renderReqTags(byId('soCoreqTags'), coreqData.corequisites, 'subject_id', async subjectCorequisiteId => {
-            await post(`/${prereqSubjectId}/corequisites/${subjectCorequisiteId}/remove`, {});
-            refreshPrereqDialog();
+        renderReqTags(byId('soCoreqTags'), coreqData.corequisites, 'subject_id', async corequisiteSubjectId => {
+            try {
+                byId('soPrereqError').hidden = true;
+                await post(`/${prereqSubjectId}/corequisites/${corequisiteSubjectId}/remove`, {});
+                await refreshPrereqDialog();
+            } catch (error) {
+                byId('soPrereqError').textContent = error.message;
+                byId('soPrereqError').hidden = false;
+                await refreshPrereqDialog();
+            }
         });
         renderReqCandidates(byId('soCoreqCandidate'), coreqData.candidates);
     }
@@ -408,6 +422,13 @@
         prereqSubjectId = row.id;
         byId('soPrereqSubtitle').textContent = row.code + ' — ' + row.title;
         byId('soPrereqError').hidden = true;
+        const pairNote = byId('soPrereqPairNote');
+        if (row.secondaryCode) {
+            byId('soPrereqPairNoteText').textContent = `Applies to ${row.code} only — ${row.secondaryCode} (its lab) needs its own requirements set separately.`;
+            pairNote.hidden = false;
+        } else {
+            pairNote.hidden = true;
+        }
         prereqDialog.showModal();
         try {
             await refreshPrereqDialog();
@@ -424,6 +445,7 @@
     byId('soPrereqAdd').addEventListener('click', async () => {
         const candidateId = Number(byId('soPrereqCandidate').value);
         if (!candidateId) return;
+        byId('soPrereqError').hidden = true;
         try {
             await post(`/${prereqSubjectId}/prerequisites/add`, { prerequisite_subject_id: candidateId });
             await refreshPrereqDialog();
@@ -435,6 +457,7 @@
     byId('soCoreqAdd').addEventListener('click', async () => {
         const candidateId = Number(byId('soCoreqCandidate').value);
         if (!candidateId) return;
+        byId('soPrereqError').hidden = true;
         try {
             await post(`/${prereqSubjectId}/corequisites/add`, { corequisite_subject_id: candidateId });
             await refreshPrereqDialog();
