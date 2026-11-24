@@ -527,6 +527,9 @@ $routes->group('chairperson', ['filter' => 'group:chairperson'], function ($rout
     $routes->post('subject-ownership/store', 'Chairperson\SubjectOwnershipController::store');
     $routes->post('subject-ownership/(:num)/update', 'Chairperson\SubjectOwnershipController::update/$1');
     $routes->post('subject-ownership/(:num)/toggle-status', 'Chairperson\SubjectOwnershipController::toggleStatus/$1');
+    $routes->get('subject-ownership/(:num)/prerequisites', 'Chairperson\SubjectOwnershipController::prerequisites/$1');
+    $routes->post('subject-ownership/(:num)/prerequisites/add', 'Chairperson\SubjectOwnershipController::addPrerequisite/$1');
+    $routes->post('subject-ownership/(:num)/prerequisites/(:num)/remove', 'Chairperson\SubjectOwnershipController::removePrerequisite/$1/$2');
     $routes->post('swaps/approve', 'ChairpersonController::approveSwap');
     $routes->post('swaps/reject', 'ChairpersonController::rejectSwap');
     $routes->post('change-requests/approve', 'ChairpersonController::approveChangeRequest');
