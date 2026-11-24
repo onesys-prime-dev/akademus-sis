@@ -130,6 +130,8 @@ window.enhanceSelect = function (select) {
     function positionPanel() {
         panel.style.left = '';
         panel.style.right = '0';
+        panel.style.top = '';
+        panel.style.bottom = '';
         var margin = 8;
         var wrapRect = wrap.getBoundingClientRect();
         var panelWidth = panel.getBoundingClientRect().width;
@@ -137,6 +139,19 @@ window.enhanceSelect = function (select) {
         if (naturalLeft < margin) {
             panel.style.right = 'auto';
             panel.style.left = (margin - wrapRect.left) + 'px';
+        }
+
+        // Flip the panel above the trigger when there isn't enough room
+        // below it (e.g. a long catalog-wide list opened near the bottom of
+        // a modal) — otherwise it just keeps growing straight down past
+        // whatever container it's in, since position:absolute doesn't
+        // contribute to that container's own measured height.
+        var panelHeight = panel.getBoundingClientRect().height;
+        var spaceBelow = window.innerHeight - wrapRect.bottom - margin;
+        var spaceAbove = wrapRect.top - margin;
+        if (spaceBelow < panelHeight && spaceAbove > spaceBelow) {
+            panel.style.top = 'auto';
+            panel.style.bottom = 'calc(100% + 6px)';
         }
     }
 
