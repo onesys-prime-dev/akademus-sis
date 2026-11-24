@@ -110,7 +110,7 @@ $catalog = array_map(static fn ($s) => [
                     <div class="so-req-add"><select id="soCoreqCandidate" aria-label="Add a corequisite"></select><button type="button" class="so-button" id="soCoreqAdd">Add</button></div>
                 </section>
             </div>
-            <footer class="so-dialog-footer"><button type="button" class="so-button" data-close-prereq>Done</button></footer>
+            <footer class="so-dialog-footer"><button type="button" class="so-button so-button--primary" data-close-prereq>Save</button></footer>
         </dialog>
     <?php endif ?>
 </div>

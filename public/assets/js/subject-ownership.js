@@ -366,8 +366,31 @@
                 <div><span>Status</span><span class="so-status ${row.active ? 'so-status--active' : ''}"><i class="so-dot"></i>${row.active ? 'Active' : 'Inactive'}</span></div>
             </div>
             <div class="so-detail-courses"><h4>Assigned to</h4><div class="so-course-chips">${chips}</div></div>
+            <div class="so-detail-courses"><h4>Prerequisites &amp; corequisites</h4><div class="so-course-chips" id="soDetailReqs"><p class="so-course-empty">Loading…</p></div></div>
         `;
         byId('soDetail').showModal();
+        loadDetailReqs(row);
+    }
+
+    let detailReqsToken = 0;
+    async function loadDetailReqs(row) {
+        const ticket = ++detailReqsToken;
+        try {
+            const [prereqData, coreqData] = await Promise.all([
+                get(`/${row.id}/prerequisites`),
+                get(`/${row.id}/corequisites`),
+            ]);
+            if (ticket !== detailReqsToken) return; // a newer request superseded this one
+            const reqChips = (label, items) => items.length
+                ? items.map(i => `<span class="so-chip">${escape(label)}: ${escape(i.subject_code)}</span>`).join('')
+                : '';
+            const prereqChips = reqChips('Requires', prereqData.prerequisites);
+            const coreqChips = reqChips('With', coreqData.corequisites);
+            byId('soDetailReqs').innerHTML = (prereqChips + coreqChips) || '<p class="so-course-empty">None set.</p>';
+        } catch (error) {
+            if (ticket !== detailReqsToken) return;
+            byId('soDetailReqs').innerHTML = '<p class="so-course-empty">Could not load.</p>';
+        }
     }
     document.querySelectorAll('[data-close-detail]').forEach(button => button.addEventListener('click', () => byId('soDetail').close()));
     byId('soDetailEdit').addEventListener('click', () => {
@@ -384,8 +407,8 @@
     let prereqSubjectId = null;
     const prereqDialog = byId('soPrereqDialog');
     if (window.enhanceSelect) { window.enhanceSelect(byId('soPrereqCandidate')); window.enhanceSelect(byId('soCoreqCandidate')); }
-    function renderReqTags(listEl, items, idKey, onRemove) {
-        listEl.innerHTML = items.map(item => `<li class="so-chip">${escape(item.subject_code)} — ${escape(item.subject_name)}<button type="button" data-id="${item[idKey]}" aria-label="Remove">&times;</button></li>`).join('')
+    function renderReqTags(listEl, items, idKey, kind, onRemove) {
+        listEl.innerHTML = items.map(item => `<li class="so-chip">${escape(item.subject_code)} — ${escape(item.subject_name)}<button type="button" data-id="${item[idKey]}" data-confirm="Remove ${escape(item.subject_code)} as a ${kind} for this subject?" aria-label="Remove ${escape(item.subject_code)} as a ${kind}">&times;</button></li>`).join('')
             || '<li class="so-req-empty">None set.</li>';
         listEl.querySelectorAll('button[data-id]').forEach(btn => btn.addEventListener('click', () => onRemove(Number(btn.dataset.id))));
     }
@@ -398,7 +421,7 @@
             get(`/${prereqSubjectId}/prerequisites`),
             get(`/${prereqSubjectId}/corequisites`),
         ]);
-        renderReqTags(byId('soPrereqTags'), prereqData.prerequisites, 'subject_id', async prerequisiteSubjectId => {
+        renderReqTags(byId('soPrereqTags'), prereqData.prerequisites, 'subject_id', 'prerequisite', async prerequisiteSubjectId => {
             try {
                 byId('soPrereqError').hidden = true;
                 await post(`/${prereqSubjectId}/prerequisites/${prerequisiteSubjectId}/remove`, {});
@@ -410,7 +433,7 @@
             }
         });
         renderReqCandidates(byId('soPrereqCandidate'), prereqData.candidates, 'prerequisite');
-        renderReqTags(byId('soCoreqTags'), coreqData.corequisites, 'subject_id', async corequisiteSubjectId => {
+        renderReqTags(byId('soCoreqTags'), coreqData.corequisites, 'subject_id', 'corequisite', async corequisiteSubjectId => {
             try {
                 byId('soPrereqError').hidden = true;
                 await post(`/${prereqSubjectId}/corequisites/${corequisiteSubjectId}/remove`, {});
@@ -453,8 +476,12 @@
     });
     byId('soPrereqAdd').addEventListener('click', async () => {
         const candidateId = Number(byId('soPrereqCandidate').value);
-        if (!candidateId) return;
         byId('soPrereqError').hidden = true;
+        if (!candidateId) {
+            byId('soPrereqError').textContent = 'Pick a subject from the dropdown first.';
+            byId('soPrereqError').hidden = false;
+            return;
+        }
         try {
             await post(`/${prereqSubjectId}/prerequisites/add`, { prerequisite_subject_id: candidateId });
             await refreshPrereqDialog();
@@ -465,8 +492,12 @@
     });
     byId('soCoreqAdd').addEventListener('click', async () => {
         const candidateId = Number(byId('soCoreqCandidate').value);
-        if (!candidateId) return;
         byId('soPrereqError').hidden = true;
+        if (!candidateId) {
+            byId('soPrereqError').textContent = 'Pick a subject from the dropdown first.';
+            byId('soPrereqError').hidden = false;
+            return;
+        }
         try {
             await post(`/${prereqSubjectId}/corequisites/add`, { corequisite_subject_id: candidateId });
             await refreshPrereqDialog();
