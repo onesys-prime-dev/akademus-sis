@@ -91,7 +91,25 @@ $catalog = array_map(static fn ($s) => [
         <dialog class="so-dialog so-dialog--small" id="soDetail" aria-labelledby="soDetailTitle">
             <div class="so-dialog-header"><div><div class="so-eyebrow">SUBJECT DETAILS</div><h3 id="soDetailTitle"></h3><p id="soDetailSubtitle"></p></div><button type="button" class="so-icon-button" data-close-detail aria-label="Close subject details"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div>
             <div class="so-dialog-body" id="soDetailBody"></div>
-            <footer class="so-dialog-footer"><button type="button" class="so-button" data-close-detail>Close</button><button type="button" class="so-button so-button--primary" id="soDetailEdit">Edit subject</button></footer>
+            <footer class="so-dialog-footer"><button type="button" class="so-button" data-close-detail>Close</button><button type="button" class="so-button" id="soDetailRequirements">Prerequisites &amp; corequisites</button><button type="button" class="so-button so-button--primary" id="soDetailEdit">Edit subject</button></footer>
+        </dialog>
+        <dialog class="so-dialog" id="soPrereqDialog" aria-labelledby="soPrereqTitle">
+            <header class="so-dialog-header"><div><div class="so-eyebrow">SUBJECT REQUIREMENTS</div><h3 id="soPrereqTitle">Prerequisites &amp; corequisites</h3><p id="soPrereqSubtitle"></p></div><button type="button" class="so-icon-button" data-close-prereq aria-label="Close requirements editor"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></header>
+            <div class="so-dialog-body">
+                <div class="so-feedback is-error" id="soPrereqError" role="alert" hidden></div>
+                <p class="so-editor-hint" id="soPrereqPairNote" hidden><span class="material-symbols-outlined" aria-hidden="true">info</span><span id="soPrereqPairNoteText"></span></p>
+                <section class="so-req-section" aria-labelledby="soPrereqListTitle">
+                    <h4 id="soPrereqListTitle">Prerequisites<small>Must be passed before enrolling.</small></h4>
+                    <ul class="so-req-tags" id="soPrereqTags"></ul>
+                    <div class="so-req-add"><select id="soPrereqCandidate" aria-label="Add a prerequisite"></select><button type="button" class="so-button" id="soPrereqAdd">Add</button></div>
+                </section>
+                <section class="so-req-section" aria-labelledby="soCoreqListTitle">
+                    <h4 id="soCoreqListTitle">Corequisites<small>Must be taken at the same time.</small></h4>
+                    <ul class="so-req-tags" id="soCoreqTags"></ul>
+                    <div class="so-req-add"><select id="soCoreqCandidate" aria-label="Add a corequisite"></select><button type="button" class="so-button" id="soCoreqAdd">Add</button></div>
+                </section>
+            </div>
+            <footer class="so-dialog-footer"><button type="button" class="so-button" data-close-prereq>Done</button></footer>
         </dialog>
     <?php endif ?>
 </div>

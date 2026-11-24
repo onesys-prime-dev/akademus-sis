@@ -7,6 +7,9 @@ use App\Libraries\AcademicHourResolver;
 use App\Libraries\SchedulingAuthorization;
 use App\Models\PlottedScheduleModel;
 use App\Models\SubjectModel;
+use App\Models\SubjectCorequisiteModel;
+use App\Models\SubjectPrerequisiteModel;
+use CodeIgniter\HTTP\ResponseInterface;
 
 /**
  * Step: Subject Catalog -> Subject Ownership.
@@ -306,6 +309,129 @@ class SubjectOwnershipController extends BaseController
 
         foreach ($rows as $row) {
             $subjects->update($row['subject_id'], ['is_active' => $turningOn ? 1 : 0]);
+        }
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * Only the write target ($id) is scoped to the chair's authorized
+     * departments — the candidate list below is deliberately catalog-wide
+     * (any active subject, any department): cross-department prerequisites
+     * (e.g. a major subject requiring a Gen-Ed course) are legitimate.
+     */
+    private function ownedSubjectOrFail(int $id): array|ResponseInterface
+    {
+        $subjects = new SubjectModel();
+        $existing = $subjects->find($id);
+        $subDeptIds = (new SchedulingAuthorization())->authorizedSubDeptIds((int) auth()->id());
+
+        if ($existing === null || ! in_array((int) $existing['department_id'], $subDeptIds, true)) {
+            return $this->fail('Subject not found, or not owned by your department.');
+        }
+
+        return $existing;
+    }
+
+    public function prerequisites($id)
+    {
+        $subject = $this->ownedSubjectOrFail((int) $id);
+
+        if ($subject instanceof ResponseInterface) {
+            return $subject;
+        }
+
+        $model = new SubjectPrerequisiteModel();
+
+        return $this->response->setJSON([
+            'ok'             => true,
+            'prerequisites'  => $model->forSubject((int) $id),
+            'candidates'     => $model->candidatesFor((int) $id),
+        ]);
+    }
+
+    public function addPrerequisite($id)
+    {
+        $subject = $this->ownedSubjectOrFail((int) $id);
+
+        if ($subject instanceof ResponseInterface) {
+            return $subject;
+        }
+
+        $prerequisiteId = (int) ($this->request->getJSON(true)['prerequisite_subject_id'] ?? 0);
+        $result         = (new SubjectPrerequisiteModel())->addPrerequisite((int) $id, $prerequisiteId);
+
+        if (! $result['ok']) {
+            return $this->fail($result['error']);
+        }
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    public function removePrerequisite($id, $prerequisiteId)
+    {
+        $subject = $this->ownedSubjectOrFail((int) $id);
+
+        if ($subject instanceof ResponseInterface) {
+            return $subject;
+        }
+
+        $removed = (new SubjectPrerequisiteModel())->removePrerequisite((int) $id, (int) $prerequisiteId);
+
+        if (! $removed) {
+            return $this->fail('That prerequisite was not set.');
+        }
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    public function corequisites($id)
+    {
+        $subject = $this->ownedSubjectOrFail((int) $id);
+
+        if ($subject instanceof ResponseInterface) {
+            return $subject;
+        }
+
+        $model = new SubjectCorequisiteModel();
+
+        return $this->response->setJSON([
+            'ok'            => true,
+            'corequisites'  => $model->forSubject((int) $id),
+            'candidates'    => $model->candidatesFor((int) $id),
+        ]);
+    }
+
+    public function addCorequisite($id)
+    {
+        $subject = $this->ownedSubjectOrFail((int) $id);
+
+        if ($subject instanceof ResponseInterface) {
+            return $subject;
+        }
+
+        $corequisiteId = (int) ($this->request->getJSON(true)['corequisite_subject_id'] ?? 0);
+        $result        = (new SubjectCorequisiteModel())->addCorequisite((int) $id, $corequisiteId);
+
+        if (! $result['ok']) {
+            return $this->fail($result['error']);
+        }
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    public function removeCorequisite($id, $corequisiteId)
+    {
+        $subject = $this->ownedSubjectOrFail((int) $id);
+
+        if ($subject instanceof ResponseInterface) {
+            return $subject;
+        }
+
+        $removed = (new SubjectCorequisiteModel())->removeCorequisite((int) $id, (int) $corequisiteId);
+
+        if (! $removed) {
+            return $this->fail('That corequisite was not set.');
         }
 
         return $this->response->setJSON(['ok' => true]);
