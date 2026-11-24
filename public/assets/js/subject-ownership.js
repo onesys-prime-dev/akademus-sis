@@ -388,8 +388,9 @@
             || '<li class="so-req-empty">None set.</li>';
         listEl.querySelectorAll('button[data-id]').forEach(btn => btn.addEventListener('click', () => onRemove(Number(btn.dataset.id))));
     }
-    function renderReqCandidates(selectEl, candidates) {
-        selectEl.innerHTML = candidates.map(c => `<option value="${c.subject_id}">${escape(c.subject_code)} — ${escape(c.subject_name)}</option>`).join('');
+    function renderReqCandidates(selectEl, candidates, kind) {
+        const placeholder = `<option value="" selected>No ${kind} for this subject</option>`;
+        selectEl.innerHTML = placeholder + candidates.map(c => `<option value="${c.subject_id}">${escape(c.subject_code)} — ${escape(c.subject_name)}</option>`).join('');
     }
     async function refreshPrereqDialog() {
         const [prereqData, coreqData] = await Promise.all([
@@ -407,7 +408,7 @@
                 await refreshPrereqDialog();
             }
         });
-        renderReqCandidates(byId('soPrereqCandidate'), prereqData.candidates);
+        renderReqCandidates(byId('soPrereqCandidate'), prereqData.candidates, 'prerequisite');
         renderReqTags(byId('soCoreqTags'), coreqData.corequisites, 'subject_id', async corequisiteSubjectId => {
             try {
                 byId('soPrereqError').hidden = true;
@@ -419,7 +420,7 @@
                 await refreshPrereqDialog();
             }
         });
-        renderReqCandidates(byId('soCoreqCandidate'), coreqData.candidates);
+        renderReqCandidates(byId('soCoreqCandidate'), coreqData.candidates, 'corequisite');
     }
     async function openPrereqDialog(row) {
         prereqSubjectId = row.id;
