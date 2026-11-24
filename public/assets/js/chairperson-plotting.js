@@ -1280,7 +1280,19 @@ $('noProfAuto').addEventListener('click', () => {
 
         function aiFacultyChip(f) {
             const chip = aiEl('div', 'ai-prof');
-            chip.appendChild(aiEl('span', 'avatar', (f.name || '?').charAt(0).toUpperCase()));
+            const avatar = aiEl('span', 'avatar');
+            const avatarPhotoUrl = window.AvatarHelper ? window.AvatarHelper.photoUrl(CONFIG.avatarUrl, f.id, f.photo_mime) : null;
+            if (avatarPhotoUrl) {
+                const img = document.createElement('img');
+                img.src = avatarPhotoUrl;
+                img.alt = '';
+                avatar.appendChild(img);
+            } else {
+                avatar.style.background = window.AvatarHelper ? window.AvatarHelper.color(f.name) : '#174ea6';
+                avatar.style.color = '#fff';
+                avatar.textContent = (f.name || '?').charAt(0).toUpperCase();
+            }
+            chip.appendChild(avatar);
             const text = aiEl('span', 'text', f.name);
             chip.appendChild(text);
 
@@ -2840,6 +2852,11 @@ function announce(message) {
                 const loadPercent = maxUnits ? Math.min(100, (units / maxUnits) * 100) : 0;
                 const initials = faculty.name.split(/\s+/).map(word => word[0]).slice(0, 2).join('').toUpperCase();
                 const employment = faculty.employment_status === 'full_time' ? 'Full-time' : faculty.employment_status === 'part_time' ? 'Part-time' : 'Employment type not set';
+                const avatarPhotoUrl = window.AvatarHelper ? window.AvatarHelper.photoUrl(CONFIG.avatarUrl, faculty.id, faculty.photo_mime) : null;
+                const avatarInner = avatarPhotoUrl
+                    ? `<img src="${escapeHtml(avatarPhotoUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;">`
+                    : escapeHtml(initials);
+                const avatarStyle = avatarPhotoUrl ? '' : ` style="background:${window.AvatarHelper ? window.AvatarHelper.color(faculty.name) : '#174ea6'};color:#fff;"`;
                 const card = document.createElement('article');
                 card.className = `fd-card ${setup.complete ? 'is-ready' : 'needs-setup'}`;
                 card.setAttribute('role', 'listitem');
@@ -2847,7 +2864,7 @@ function announce(message) {
                 card.innerHTML = `
                     <div class="fd-card-main">
                         <div class="fd-person">
-                            <div class="fd-avatar">${escapeHtml(initials)}</div>
+                            <div class="fd-avatar"${avatarStyle}>${avatarInner}</div>
                             <div><div class="fd-name">${escapeHtml(faculty.name)}</div><span class="fd-employment">${employment}</span></div>
                         </div>
                         <div class="fd-fact">
@@ -4251,7 +4268,20 @@ function facultyRow(c, p) {
     li.dataset.status = c.status;
 
     const row = mk('div', 'pick-row is-static');
-    row.appendChild(mk('span', 'avatar', initials(f.name)));
+    const avatar = mk('span', 'avatar');
+    const avatarPhotoUrl = window.AvatarHelper ? window.AvatarHelper.photoUrl(CONFIG.avatarUrl, f.id, f.photo_mime) : null;
+    if (avatarPhotoUrl) {
+        const img = document.createElement('img');
+        img.src = avatarPhotoUrl;
+        img.alt = '';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+        avatar.appendChild(img);
+    } else {
+        avatar.style.background = window.AvatarHelper ? window.AvatarHelper.color(f.name) : '#174ea6';
+        avatar.style.color = '#fff';
+        avatar.textContent = initials(f.name);
+    }
+    row.appendChild(avatar);
 
     const main = mk('span', 'pick-main');
     const title = mk('span', 'pick-title', f.name);

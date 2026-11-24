@@ -45,7 +45,8 @@
             roles: (opt.dataset.roles || '').split(' ').filter(Boolean),
             chairOf: opt.dataset.chairOf || '',
             current: opt.dataset.current === '1',
-            tone: Math.min(6, Math.max(1, parseInt(opt.dataset.tone || '1', 10))),
+            userId: opt.dataset.userId || opt.value,
+            photoMime: opt.dataset.photoMime || '',
         };
     }).filter(Boolean);
 
@@ -119,8 +120,19 @@
             row.tabIndex = -1;
         }
 
-        var avatar = node('span', 'chair-avatar chair-avatar--' + c.tone, initials(c.name));
+        var avatar = node('span', 'chair-avatar');
         avatar.setAttribute('aria-hidden', 'true');
+        var avatarPhotoUrl = window.AvatarHelper ? window.AvatarHelper.photoUrl(window.AVATAR_BASE_URL, c.userId, c.photoMime) : null;
+        if (avatarPhotoUrl) {
+            var avatarImg = document.createElement('img');
+            avatarImg.src = avatarPhotoUrl;
+            avatarImg.alt = '';
+            avatar.appendChild(avatarImg);
+        } else {
+            avatar.style.background = window.AvatarHelper ? window.AvatarHelper.color(c.name) : '#174ea6';
+            avatar.style.color = '#fff';
+            avatar.textContent = initials(c.name);
+        }
 
         var body = node('span', 'chair-user__body');
         var top  = node('span', 'chair-user__top');

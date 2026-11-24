@@ -223,7 +223,7 @@ class StudentProgressController extends BaseController
     {
         $builder = db_connect()->table('students s')
             ->select('s.student_id, s.student_number, s.user_id, s.curriculum_id, s.student_status,
-                      u.first_name, u.last_name, u.section_id,
+                      u.first_name, u.last_name, u.username, u.section_id, u.photo_mime,
                       p.program_code, p.program_name,
                       c.curriculum_code,
                       sec.year_level, sec.section')

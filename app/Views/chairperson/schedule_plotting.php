@@ -517,8 +517,10 @@ $curriculumUrl = site_url('chairperson/curriculum') . '?' . http_build_query($se
             'swapRejectUrl'      => site_url('chairperson/swaps/reject'),
             'changeApproveUrl'   => site_url('chairperson/change-requests/approve'),
             'changeRejectUrl'    => site_url('chairperson/change-requests/reject'),
+            'avatarUrl'          => site_url('avatar'),
         ],
     ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 </script>
+<script src="<?= base_url('assets/js/avatar-helper.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/avatar-helper.js') ?>"></script>
 <script src="<?= base_url('assets/js/chairperson-plotting.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/chairperson-plotting.js') ?>"></script>
 <?= $this->endSection() ?>

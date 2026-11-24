@@ -127,7 +127,14 @@
                         ?>
                         <div class="ac-program-row">
                             <div class="ac-program-row__left">
-                                <div class="ac-avatar ac-avatar--primary"><?= esc(strtoupper(substr($fm['username'], 0, 1))) ?></div>
+                                <?php $fmPhotoUrl = avatar_photo_url((int) $fm['id'], $fm['photo_mime'] ?? null); ?>
+                                <div class="ac-avatar" style="<?= $fmPhotoUrl === null ? 'background:' . esc(avatar_color($fm['username']), 'attr') . ';color:#fff;' : '' ?>">
+                                    <?php if ($fmPhotoUrl !== null): ?>
+                                        <img src="<?= esc($fmPhotoUrl) ?>" alt="">
+                                    <?php else: ?>
+                                        <?= esc(strtoupper(substr($fm['username'], 0, 1))) ?>
+                                    <?php endif ?>
+                                </div>
                                 <div>
                                     <p class="ac-program-title"><?= esc($fm['username']) ?></p>
                                     <p class="ac-program-sub"><?= esc($fm['email']) ?></p>
@@ -520,7 +527,8 @@ $initialChairMode = old('chair_mode') === 'new' ? 'new' : 'existing';
                                 data-roles="<?= esc(implode(' ', $shownRoles), 'attr') ?>"
                                 data-chair-of="<?= esc(implode(', ', $u['chair_of']), 'attr') ?>"
                                 data-current="<?= $u['is_current'] ? '1' : '0' ?>"
-                                data-tone="<?= (int) $u['tone'] ?>"
+                                data-user-id="<?= (int) $u['id'] ?>"
+                                data-photo-mime="<?= esc($u['photo_mime'] ?? '', 'attr') ?>"
                                 <?= (int) $u['id'] === $oldChairUserId ? 'selected' : '' ?>><?= esc($optionText) ?></option>
                         <?php endforeach ?>
                     </select>
@@ -696,6 +704,8 @@ $initialChairMode = old('chair_mode') === 'new' ? 'new' : 'existing';
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
+<script>window.AVATAR_BASE_URL = <?= json_encode(site_url('avatar')) ?>;</script>
+<script src="<?= base_url('assets/js/avatar-helper.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/avatar-helper.js') ?>"></script>
 <script src="<?= base_url('assets/js/chair-assignment.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/chair-assignment.js') ?>"></script>
 <?php if (session('errors')): ?>
 <script>

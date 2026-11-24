@@ -59,10 +59,19 @@
     <?php endif ?>
 
     <?php foreach ($students as $s): ?>
-        <?php $initials = strtoupper(substr($s['first_name'] ?? '?', 0, 1) . substr($s['last_name'] ?? '', 0, 1)); ?>
+        <?php
+            $initials = strtoupper(substr($s['first_name'] ?? '?', 0, 1) . substr($s['last_name'] ?? '', 0, 1));
+            $sPhotoUrl = avatar_photo_url((int) $s['user_id'], $s['photo_mime'] ?? null);
+        ?>
         <div class="ac-dtable__row">
             <div class="ac-user-cell">
-                <div class="ac-avatar" style="background:<?= esc(avatar_color($s['username']), 'attr') ?>;color:#fff;"><?= esc($initials) ?></div>
+                <div class="ac-avatar" style="<?= $sPhotoUrl === null ? 'background:' . esc(avatar_color($s['username']), 'attr') . ';color:#fff;' : '' ?>">
+                    <?php if ($sPhotoUrl !== null): ?>
+                        <img src="<?= esc($sPhotoUrl) ?>" alt="">
+                    <?php else: ?>
+                        <?= esc($initials) ?>
+                    <?php endif ?>
+                </div>
                 <div>
                     <p class="ac-user-cell__name"><?= esc(trim(($s['first_name'] ?? '') . ' ' . ($s['last_name'] ?? ''))) ?: esc($s['username']) ?></p>
                     <p class="ac-user-cell__id"><?= esc($s['email'] ?? $s['username']) ?></p>

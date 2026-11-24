@@ -196,8 +196,6 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
         </div>
 
         <?php
-            $avatarColors = ['#174ea6', '#0f766e', '#a65b08', '#15803d', '#4f5eb3'];
-
             $groups = [];
             foreach ($sections as $g) {
                 $groups[$g['academic_year'] . '|' . $g['program'] . '|' . $g['year_level']] = $g;
@@ -312,11 +310,18 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($roster as $idx => $r): ?>
+                            <?php foreach ($roster as $r): ?>
+                                <?php $rosterPhotoUrl = avatar_photo_url((int) $r['id'], $r['photo_mime'] ?? null); ?>
                                 <tr>
                                     <td>
                                         <div class="roster-student">
-                                            <div class="roster-avatar" style="background:<?= $avatarColors[$idx % count($avatarColors)] ?>;"><?= esc(mb_strtoupper(mb_substr($r['username'], 0, 1))) ?></div>
+                                            <div class="roster-avatar" style="<?= $rosterPhotoUrl === null ? 'background:' . esc(avatar_color($r['username']), 'attr') . ';' : '' ?>">
+                                                <?php if ($rosterPhotoUrl !== null): ?>
+                                                    <img src="<?= esc($rosterPhotoUrl) ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
+                                                <?php else: ?>
+                                                    <?= esc(mb_strtoupper(mb_substr($r['username'], 0, 1))) ?>
+                                                <?php endif ?>
+                                            </div>
                                             <span><?= esc($r['username']) ?></span>
                                         </div>
                                     </td>

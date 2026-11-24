@@ -85,7 +85,7 @@ class DepartmentController extends BaseController
         $db = db_connect();
 
         $rows = $db->table('users u')
-            ->select('u.id, u.username, i.secret AS email')
+            ->select('u.id, u.username, u.photo_mime, i.secret AS email')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->whereIn('g.group', ['faculty', 'chairperson'])
@@ -150,9 +150,7 @@ class DepartmentController extends BaseController
                 'chair_of'       => array_values($chairs),
                 'is_current'     => array_key_exists($subDeptId, $chairs),
                 'is_chairperson' => $isChair,
-                // Deterministic avatar tone — restrained colour variety
-                // without a per-user preference to configure or maintain.
-                'tone'           => (crc32((string) $row['username']) % 6) + 1,
+                'photo_mime'     => $row['photo_mime'] ?? null,
             ];
         }
 
@@ -1050,7 +1048,7 @@ class DepartmentController extends BaseController
         }
 
         $rows = db_connect()->table('users u')
-            ->select('u.id, u.username, u.active, u.employment_status, i.secret as email')
+            ->select('u.id, u.username, u.active, u.employment_status, u.photo_mime, i.secret as email')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->join('auth_identities i', "i.user_id = u.id AND i.type = 'email_password'", 'left')
             ->where('g.group', 'faculty')

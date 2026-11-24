@@ -425,7 +425,7 @@ class StudentModel extends Model
     {
         $builder = $this->db->table('students s')
             ->select('s.student_id, s.student_number, s.applicant_id, s.student_status, s.admission_date,
-                      u.id as user_id, u.first_name, u.last_name, u.username, u.section_id,
+                      u.id as user_id, u.first_name, u.last_name, u.username, u.section_id, u.photo_mime,
                       i.secret as email,
                       p.program_id, p.program_code, p.program_name,
                       c.curriculum_id, c.curriculum_code,

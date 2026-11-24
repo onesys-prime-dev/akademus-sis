@@ -856,7 +856,7 @@ class ChairpersonController extends BaseController
         }
 
         $faculty = $db->table('users u')
-            ->select('u.id, u.username, u.employment_status')
+            ->select('u.id, u.username, u.employment_status, u.photo_mime')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'faculty')
             ->whereIn('u.id', $affiliatedIds)
@@ -918,6 +918,7 @@ class ChairpersonController extends BaseController
             'id'                => (int) $f['id'],
             'name'              => $f['username'],
             'employment_status' => $f['employment_status'],
+            'photo_mime'        => $f['photo_mime'] ?? null,
             'availability'      => $availability[(int) $f['id']] ?? [],
             'preferences'       => $preferences[(int) $f['id']] ?? [],
             'units'             => (float) ($units[$f['id']] ?? 0),
@@ -1361,7 +1362,7 @@ class ChairpersonController extends BaseController
         }
 
         $faculty = db_connect()->table('users u')
-            ->select('u.id, u.username, u.employment_status')
+            ->select('u.id, u.username, u.employment_status, u.photo_mime')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'faculty')
             ->whereIn('u.id', $affiliatedIds)
@@ -1470,6 +1471,7 @@ class ChairpersonController extends BaseController
                 'id'                 => $id,
                 'name'               => $f['username'],
                 'employment_status'  => $f['employment_status'],
+                'photo_mime'         => $f['photo_mime'] ?? null,
                 'availability'       => $availabilityByUser[$id] ?? [],
                 'has_submitted_availability' => isset($availabilityByUser[$id]),
                 'preferences'        => $preferencesByUser[$id] ?? [],
@@ -2589,7 +2591,7 @@ class ChairpersonController extends BaseController
         }
 
         $students = db_connect()->table('users u')
-            ->select('u.id, u.username, u.section_id')
+            ->select('u.id, u.username, u.section_id, u.photo_mime')
             ->join('auth_groups_users g', 'g.user_id = u.id')
             ->where('g.group', 'student')
             ->where('u.deleted_at', null)

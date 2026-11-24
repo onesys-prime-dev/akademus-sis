@@ -19,8 +19,6 @@ $baseQuery = static function (array $overrides) use ($currentParams): string {
 
     return site_url('chairperson/student-progress') . ($params !== [] ? '?' . http_build_query($params) : '');
 };
-
-$avatarColors = ['#174ea6', '#0f766e', '#a65b08', '#15803d', '#4f5eb3'];
 ?>
 
 <?= $this->section('styles') ?>
@@ -89,10 +87,17 @@ $avatarColors = ['#174ea6', '#0f766e', '#a65b08', '#15803d', '#4f5eb3'];
                         </thead>
                         <tbody>
                             <?php foreach ($students as $idx => $s): ?>
+                                <?php $spPhotoUrl = avatar_photo_url((int) $s['user_id'], $s['photo_mime'] ?? null); ?>
                                 <tr>
                                     <td>
                                         <div class="sp-student">
-                                            <div class="sp-avatar" style="background:<?= $avatarColors[$idx % count($avatarColors)] ?>;"><?= esc(mb_strtoupper(mb_substr($s['first_name'] !== '' ? $s['first_name'] : $s['last_name'], 0, 1))) ?></div>
+                                            <div class="sp-avatar" style="<?= $spPhotoUrl === null ? 'background:' . esc(avatar_color($s['username']), 'attr') . ';' : '' ?>">
+                                                <?php if ($spPhotoUrl !== null): ?>
+                                                    <img src="<?= esc($spPhotoUrl) ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
+                                                <?php else: ?>
+                                                    <?= esc(mb_strtoupper(mb_substr($s['first_name'] !== '' ? $s['first_name'] : $s['last_name'], 0, 1))) ?>
+                                                <?php endif ?>
+                                            </div>
                                             <div class="sp-student-meta">
                                                 <strong><?= esc($s['last_name'] . ', ' . $s['first_name']) ?></strong>
                                                 <small><?= esc($s['student_number']) ?></small>

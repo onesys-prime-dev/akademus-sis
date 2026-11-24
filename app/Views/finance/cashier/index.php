@@ -68,36 +68,12 @@
 
 <?= $this->endSection() ?>
 <?= $this->section('scripts') ?>
+<script src="<?= base_url('assets/js/avatar-helper.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/avatar-helper.js') ?>"></script>
 <script>
     const searchInput = document.getElementById('finSearchInput');
     const resultsBox = document.getElementById('finResults');
+    const avatarBaseUrl = <?= json_encode(site_url('avatar')) ?>;
     let searchTimer = null;
-
-    function initials(username) {
-        return (username || '?').slice(0, 2).toUpperCase();
-    }
-
-    // Mirrors avatar_color()/avatar_photo_url() in app/Helpers/admin_helper.php
-    // — same palette, same crc32 hash — so a student's avatar color here
-    // matches the one shown everywhere else in the app.
-    const AVATAR_PALETTE = ['#174ea6', '#0f766e', '#a65b08', '#15803d', '#4f5eb3', '#b91c1c', '#7c3aed', '#0e7490'];
-    let crc32Table = null;
-    function crc32(str) {
-        if (!crc32Table) {
-            crc32Table = [];
-            for (let n = 0; n < 256; n++) {
-                let c = n;
-                for (let k = 0; k < 8; k++) c = c & 1 ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
-                crc32Table[n] = c;
-            }
-        }
-        let crc = 0xFFFFFFFF;
-        for (let i = 0; i < str.length; i++) crc = crc32Table[(crc ^ str.charCodeAt(i)) & 0xFF] ^ (crc >>> 8);
-        return (crc ^ 0xFFFFFFFF) >>> 0;
-    }
-    function avatarColor(seed) {
-        return AVATAR_PALETTE[crc32(seed) % AVATAR_PALETTE.length];
-    }
 
     searchInput.addEventListener('input', () => {
         clearTimeout(searchTimer);
@@ -122,15 +98,16 @@
 
                 const avatar = document.createElement('span');
                 avatar.className = 'csh-result__avatar';
-                if (row.photo_mime) {
+                const photoUrl = AvatarHelper.photoUrl(avatarBaseUrl, row.user_id, row.photo_mime);
+                if (photoUrl) {
                     const img = document.createElement('img');
-                    img.src = '<?= site_url('avatar') ?>/' + row.user_id;
+                    img.src = photoUrl;
                     img.alt = '';
                     avatar.append(img);
                 } else {
-                    avatar.style.background = avatarColor(row.username);
+                    avatar.style.background = AvatarHelper.color(row.username);
                     avatar.style.color = '#fff';
-                    avatar.textContent = initials(row.username);
+                    avatar.textContent = AvatarHelper.initials(row.username);
                 }
 
                 const name = document.createElement('span');

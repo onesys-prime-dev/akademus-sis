@@ -915,7 +915,7 @@ body.is-plot-dragging .block.is-other { opacity: .7; }
 .pick-empty strong { color: var(--color-text-primary); font-weight: 600; font-size: 13px; }
 .pick-skeleton { height: 52px; margin: 6px 0; border-radius: var(--radius-sm); background: var(--color-surface-sunken); animation: plPulse 1.1s ease-in-out infinite; }
 
-.avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--color-surface-sunken); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
+.avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: none; border-radius: 50%; overflow: hidden; font-size: 13px; font-weight: 700; }
 .load-bar { display: block; height: 3px; margin-top: 3px; border-radius: 2px; background: var(--color-surface-sunken); overflow: hidden; }
 .load-bar i { display: block; height: 100%; background: var(--color-primary); }
 .load-bar.is-over i { background: var(--color-warning); }
@@ -1159,7 +1159,7 @@ body.is-plot-dragging .block.is-other { opacity: .7; }
 .fd-card { border: 1px solid var(--color-border); border-radius: var(--radius-md); }
 .fd-card-main { display: grid; grid-template-columns: minmax(180px, 1.2fr) repeat(3, minmax(120px, 1fr)) auto; gap: var(--space-3); align-items: center; padding: var(--space-3); }
 .fd-person { display: flex; align-items: center; gap: var(--space-2); }
-.fd-avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--color-surface-sunken); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
+.fd-avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: none; border-radius: 50%; overflow: hidden; font-size: 13px; font-weight: 700; }
 .fd-name { font-size: 13px; font-weight: 600; }
 .fd-employment { font-size: 12px; color: var(--color-text-secondary); }
 .fd-fact { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
@@ -1222,7 +1222,7 @@ body.is-plot-dragging .block.is-other { opacity: .7; }
 .faculty-directory .fd-card.is-expanded { box-shadow: 0 4px 18px #14213d08; }
 .faculty-directory .fd-card-main { grid-template-columns: minmax(190px, 1.25fr) minmax(150px, 1fr) minmax(165px, 1fr) auto; padding: 20px; gap: 20px; }
 .faculty-directory .fd-person { gap: 12px; min-width: 0; }
-.faculty-directory .fd-avatar { width: 42px; height: 42px; background: var(--color-primary-soft); color: var(--color-primary); font-size: 12px; }
+.faculty-directory .fd-avatar { width: 42px; height: 42px; font-size: 14px; }
 .faculty-directory .fd-name { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .faculty-directory .fd-fact { gap: 6px; }
 .faculty-directory .fd-load-track { margin-top: 2px; height: 4px; }
