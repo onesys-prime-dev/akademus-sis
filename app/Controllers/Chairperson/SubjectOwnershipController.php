@@ -7,6 +7,7 @@ use App\Libraries\AcademicHourResolver;
 use App\Libraries\SchedulingAuthorization;
 use App\Models\PlottedScheduleModel;
 use App\Models\SubjectModel;
+use App\Models\SubjectCorequisiteModel;
 use App\Models\SubjectPrerequisiteModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -379,6 +380,58 @@ class SubjectOwnershipController extends BaseController
 
         if (! $removed) {
             return $this->fail('That prerequisite was not set.');
+        }
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    public function corequisites($id)
+    {
+        $subject = $this->ownedSubjectOrFail((int) $id);
+
+        if ($subject instanceof ResponseInterface) {
+            return $subject;
+        }
+
+        $model = new SubjectCorequisiteModel();
+
+        return $this->response->setJSON([
+            'ok'            => true,
+            'corequisites'  => $model->forSubject((int) $id),
+            'candidates'    => $model->candidatesFor((int) $id),
+        ]);
+    }
+
+    public function addCorequisite($id)
+    {
+        $subject = $this->ownedSubjectOrFail((int) $id);
+
+        if ($subject instanceof ResponseInterface) {
+            return $subject;
+        }
+
+        $corequisiteId = (int) ($this->request->getJSON(true)['corequisite_subject_id'] ?? 0);
+        $result        = (new SubjectCorequisiteModel())->addCorequisite((int) $id, $corequisiteId);
+
+        if (! $result['ok']) {
+            return $this->fail($result['error']);
+        }
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    public function removeCorequisite($id, $corequisiteId)
+    {
+        $subject = $this->ownedSubjectOrFail((int) $id);
+
+        if ($subject instanceof ResponseInterface) {
+            return $subject;
+        }
+
+        $removed = (new SubjectCorequisiteModel())->removeCorequisite((int) $id, (int) $corequisiteId);
+
+        if (! $removed) {
+            return $this->fail('That corequisite was not set.');
         }
 
         return $this->response->setJSON(['ok' => true]);
