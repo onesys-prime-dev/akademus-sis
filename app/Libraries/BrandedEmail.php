@@ -208,6 +208,7 @@ class BrandedEmail
     public function prepare(\CodeIgniter\Email\Email $mailer, string $to, string $subject, array $content): void
     {
         $mailer->clear(true);
+        $mailer->setMailType('html');
 
         $header = FCPATH . $this->headerPath($content['header'] ?? null);
         $src    = '';

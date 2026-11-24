@@ -133,9 +133,16 @@ final class BrandedEmailTest extends CIUnitTestCase
             $ref->setAccessible(true);
             $ref->invoke($mailer);
         }
-        $prop = new \ReflectionProperty($mailer, 'finalBody');
-        $prop->setAccessible(true);
-        $mime = (string) $prop->getValue($mailer);
+        // Config\Email's default protocol is 'mail', which passes headers to
+        // PHP's mail() as a separate 4th argument (see Email::sendWithMail())
+        // rather than folding them into the body — so the multipart/related
+        // Content-Type line for the inline image lives in headerStr, not
+        // finalBody. Concatenate both, as every other protocol already does.
+        $headerProp = new \ReflectionProperty($mailer, 'headerStr');
+        $headerProp->setAccessible(true);
+        $bodyProp = new \ReflectionProperty($mailer, 'finalBody');
+        $bodyProp->setAccessible(true);
+        $mime = (string) $headerProp->getValue($mailer) . "\r\n\r\n" . (string) $bodyProp->getValue($mailer);
 
         // The HTML part (quoted-printable) references the CID...
         $this->assertSame(1, preg_match('/Content-ID: <([^>]+)>/', $mime, $cid), 'no inline part with a Content-ID');
