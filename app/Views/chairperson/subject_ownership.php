@@ -83,7 +83,7 @@ $catalog = array_map(static fn ($s) => [
                     <div class="so-component is-collapsed" id="soLabComponent"><div class="so-field"><label for="soLabUnits">Laboratory units</label><input id="soLabUnits" type="number" min="0.5" max="6" step="0.5" value="1"><small>Between 0.5 and 6 units.</small></div><p class="so-computed">Meeting length <strong id="soLabLength">3 hrs</strong><span>Computed automatically — 1 unit = <span id="soLabRate">3</span> hrs/week.</span></p></div>
                     <div class="so-totals"><div><span>Total units</span><strong id="soTotalUnits">3</strong></div><div><span>Total weekly hours</span><strong id="soTotalHours">1 hr</strong></div></div>
                     <p class="so-editor-hint" id="soEditorHint"><span class="material-symbols-outlined" aria-hidden="true">info</span>Already in the catalog? Reuse it through the Curriculum Builder.</p>
-                    <p class="so-editor-hint" id="soEditorPrereqHint" hidden><span class="material-symbols-outlined" aria-hidden="true">info</span>Prerequisites &amp; corequisites become available once this subject is saved.</p>
+                    <p class="so-editor-hint so-editor-hint--emphasis" id="soEditorPrereqHint" hidden><span class="material-symbols-outlined" aria-hidden="true">warning</span>Prerequisites &amp; corequisites become available once this subject is saved.</p>
                 </div>
                 <footer class="so-dialog-footer"><button type="button" class="so-button" id="soEditorRequirements" hidden>Prerequisites &amp; corequisites</button><button type="button" class="so-button" data-close-editor>Cancel</button><button type="submit" class="so-button so-button--primary" id="soSave">Add subject</button></footer>
             </form>

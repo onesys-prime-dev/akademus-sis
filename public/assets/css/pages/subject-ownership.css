@@ -236,6 +236,11 @@
 .so-totals strong { font-size: 18px; color: var(--so-ink); }
 .so-editor-hint { display: flex; align-items: flex-start; gap: 8px; padding: 12px; border-radius: 7px; background: #f7f9fc; font-size: 10px; line-height: 1.7; color: #798aa3; margin: 20px 0 0; }
 .so-editor-hint .material-symbols-outlined { font-size: 16px; }
+.so-editor-hint--emphasis {
+    background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
+    font-size: 12.5px; font-weight: 600; line-height: 1.6; padding: 13px 14px;
+}
+.so-editor-hint--emphasis .material-symbols-outlined { font-size: 19px; color: #ea580c; }
 .so-dialog-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 17px 26px; border-top: 1px solid var(--so-line); background: #fafbfd; }
 #soStatusSubject { font-size: 14px; display: block; line-height: 1.6; }
 #soStatusDescription { font-size: 12px; color: var(--so-muted); line-height: 1.8; margin: 12px 0 0; }
