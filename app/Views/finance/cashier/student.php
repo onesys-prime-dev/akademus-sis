@@ -1,6 +1,12 @@
 <?= $this->extend('layouts/admin_console') ?>
 
+<?= $this->section('styles') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/pages/cashier.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/cashier.css') ?>">
+<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
+
+<div class="csh-page">
 
 <?php
     $s = $student;
@@ -170,7 +176,7 @@
 <!-- Record Payment -->
 <div class="cs-panel" id="cs-record" hidden>
     <div class="ac-card">
-        <h3 style="margin-top:0;">Record a Payment</h3>
+        <div class="csh-card-head"><span class="material-symbols-outlined" aria-hidden="true">payments</span><h3>Record a Payment</h3></div>
         <form method="post" action="<?= site_url('finance/cashier/student/' . $s['student_id'] . '/payment') ?>" class="ac-form-grid">
             <?= csrf_field() ?>
             <div class="ac-field" style="margin:0;">
@@ -205,7 +211,7 @@
 <!-- Change Plan -->
 <div class="cs-panel" id="cs-change" hidden>
     <div class="ac-card">
-        <h3 style="margin-top:0;">Change Installment Plan</h3>
+        <div class="csh-card-head"><span class="material-symbols-outlined" aria-hidden="true">tune</span><h3>Change Installment Plan</h3></div>
         <form method="post" action="<?= site_url('finance/cashier/student/' . $s['student_id'] . '/installments') ?>" id="installmentForm" class="ac-form-grid">
             <?= csrf_field() ?>
             <div class="ac-field" style="margin:0;">
@@ -459,5 +465,7 @@ function csToggleReject(proofId, show) {
 </script>
 
 <?php endif ?>
+
+</div>
 
 <?= $this->endSection() ?>

@@ -24,8 +24,31 @@ class CashierController extends BaseController
 {
     public function index()
     {
+        $db = db_connect();
+
+        $todayStats = $db->table('student_payments')
+            ->select('COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total')
+            ->where('DATE(payment_date)', date('Y-m-d'))
+            ->get()
+            ->getRowArray();
+
+        $pendingProofs = (new PaymentProofModel())->where('status', 'pending')->countAllResults();
+
+        $recentPayments = $db->table('student_payments sp')
+            ->select('sp.amount, sp.payment_date, sp.method, u.id AS user_id, u.username, u.photo_mime, s.student_number')
+            ->join('students s', 's.student_id = sp.student_id')
+            ->join('users u', 'u.id = s.user_id')
+            ->orderBy('sp.payment_date', 'DESC')
+            ->limit(6)
+            ->get()
+            ->getResultArray();
+
         return view('finance/cashier/index', [
-            'pageTitle' => 'Cashier',
+            'pageTitle'       => 'Cashier',
+            'todayCount'      => (int) ($todayStats['count'] ?? 0),
+            'todayTotal'      => (float) ($todayStats['total'] ?? 0),
+            'pendingProofs'   => $pendingProofs,
+            'recentPayments'  => $recentPayments,
         ] + FinancePortal::shell('cashier'));
     }
 
@@ -38,8 +61,9 @@ class CashierController extends BaseController
         }
 
         $results = db_connect()->table('students s')
-            ->select('s.student_id, s.student_number, u.username')
+            ->select('s.student_id, s.student_number, u.id AS user_id, u.username, u.photo_mime, p.program_name')
             ->join('users u', 'u.id = s.user_id')
+            ->join('programs p', 'p.program_id = s.program_id', 'left')
             ->groupStart()
                 ->like('u.username', $query)
                 ->orLike('s.student_number', $query)

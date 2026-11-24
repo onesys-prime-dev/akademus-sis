@@ -1,0 +1,96 @@
+/* Finance > Cashier — search screen + student ledger. Stays inside the
+   app's own existing design language (ac-page-header, ac-card, soft
+   shadows) rather than inventing a separate "landing page" look. */
+
+.csh-page {
+    --csh-ink: var(--color-text-primary); --csh-muted: var(--color-text-secondary); --csh-line: var(--color-border);
+    --csh-radius-card: 14px; --csh-radius-control: 10px;
+    --csh-shadow-card: 0 1px 2px rgba(16, 24, 40, .04), 0 6px 16px -10px rgba(16, 24, 40, .08);
+    --csh-shadow-card-hover: 0 2px 4px rgba(16, 24, 40, .05), 0 12px 28px -12px rgba(16, 24, 40, .12);
+    --csh-ease: cubic-bezier(.4, 0, .2, 1); --csh-t: 160ms var(--csh-ease);
+    color: var(--csh-ink);
+}
+
+.csh-layout {
+    display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: start;
+}
+@media (max-width: 860px) { .csh-layout { grid-template-columns: 1fr; } }
+
+.csh-search-card {
+    border: 1px solid var(--csh-line); background: #fff; border-radius: var(--csh-radius-card);
+    box-shadow: var(--csh-shadow-card); padding: 28px 28px 30px;
+}
+.csh-search-card__label { font-size: 12.5px; font-weight: 650; color: var(--csh-ink); margin-bottom: 10px; }
+
+.csh-search { position: relative; }
+.csh-search__icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--csh-muted); font-size: 19px; pointer-events: none; transition: color var(--csh-t); }
+.csh-search input {
+    width: 100%; padding: 13px 14px 13px 42px; border: 1px solid var(--csh-line); border-radius: var(--csh-radius-control);
+    font-size: 13.5px; font-weight: 500; color: var(--csh-ink); background: #fcfdfe;
+    transition: border-color var(--csh-t), box-shadow var(--csh-t), background var(--csh-t);
+}
+.csh-search input:focus {
+    outline: none; background: #fff; border-color: color-mix(in srgb, var(--color-primary) 45%, var(--csh-line));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+.csh-search input:focus ~ .csh-search__icon { color: var(--color-primary); }
+.csh-search input::placeholder { color: #9aa5b8; }
+
+.csh-search-card__hint { margin: 10px 0 0; font-size: 11.5px; color: var(--csh-muted); }
+
+.csh-results {
+    position: absolute; left: 0; right: 0; top: calc(100% + 8px);
+    background: #fff; border: 1px solid var(--csh-line); border-radius: var(--csh-radius-control); box-shadow: var(--csh-shadow-card-hover);
+    overflow: hidden; z-index: 20; max-height: 340px; overflow-y: auto;
+}
+.csh-result {
+    display: flex; align-items: center; gap: 11px; padding: 10px 14px;
+    border-bottom: 1px solid var(--csh-line); text-decoration: none; color: inherit;
+    transition: background var(--csh-t);
+}
+.csh-result:last-child { border-bottom: none; }
+.csh-result:hover, .csh-result:focus-visible { background: #f8fafc; }
+.csh-result__avatar {
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: var(--color-primary-soft); color: var(--color-primary); font-weight: 700; font-size: 12px; flex: none; overflow: hidden;
+}
+.csh-result__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.csh-result__name { display: block; font-weight: 600; font-size: 13px; color: var(--csh-ink); }
+.csh-result__meta { display: block; font-size: 11.5px; color: var(--csh-muted); margin-top: 1px; }
+.csh-results__empty { padding: 16px 14px; font-size: 12px; color: var(--csh-muted); text-align: center; }
+
+.csh-recent-card {
+    border: 1px solid var(--csh-line); background: #fff; border-radius: var(--csh-radius-card);
+    box-shadow: var(--csh-shadow-card); padding: 24px 24px 20px;
+}
+.csh-recent-empty { margin: 0; font-size: 12.5px; color: var(--csh-muted); }
+.csh-recent-list { list-style: none; margin: 0; padding: 0; }
+.csh-recent-list li {
+    display: flex; align-items: center; gap: 11px; padding: 10px 0;
+    border-bottom: 1px solid var(--csh-line);
+}
+.csh-recent-list li:last-child { border-bottom: none; padding-bottom: 0; }
+.csh-recent-list li:first-child { padding-top: 0; }
+.csh-recent-list__avatar {
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px; flex: none; overflow: hidden;
+}
+.csh-recent-list__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.csh-recent-list__info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.csh-recent-list__name { font-weight: 600; font-size: 13px; color: var(--csh-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.csh-recent-list__meta { font-size: 11px; color: var(--csh-muted); margin-top: 1px; }
+.csh-recent-list__amount { font-weight: 700; font-size: 13px; color: var(--color-success); white-space: nowrap; }
+
+/* Student ledger page — the same quiet polish applied to its existing
+   ac-* cards and metric tiles, nothing structurally new. */
+.csh-page .ac-metric-card { border-radius: var(--csh-radius-card); box-shadow: var(--csh-shadow-card); transition: box-shadow var(--csh-t), transform var(--csh-t); }
+.csh-page .ac-metric-card:hover { box-shadow: var(--csh-shadow-card-hover); transform: translateY(-1px); }
+.csh-page .ac-card { border-radius: var(--csh-radius-card); box-shadow: var(--csh-shadow-card); }
+
+.csh-card-head { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; }
+.csh-card-head .material-symbols-outlined { font-size: 17px; color: var(--color-primary); }
+.csh-card-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
+
+@media (max-width: 560px) {
+    .csh-search-card { padding: 20px 18px 22px; }
+}
