@@ -258,6 +258,20 @@ textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
     visibility: hidden;
 }
 .cs-select.is-open .cs-select__panel { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; visibility: visible; transition-delay: 0s; }
+/* A [popover] panel is positioned in JS (custom-select.js's positionPanel())
+   with fixed top/left computed from the trigger's live viewport rect, since
+   top-layer rendering takes it out of normal flow entirely — it no longer
+   sits relative to .cs-select, so the anchored-to-trigger CSS above doesn't
+   apply here. This is what lets it float free of any ancestor's clipping
+   (e.g. a scrollable modal), which position:absolute alone could never do. */
+.cs-select__panel[popover] {
+    /* `min-width: 100%` above means "100% of the trigger" when position is
+       absolute (containing block = the relatively-positioned .cs-select
+       wrapper), but position:fixed's containing block is the viewport
+       itself — so that same rule would mean "100% of the viewport" here if
+       left in place. The JS sets an explicit pixel min-width instead. */
+    position: fixed; inset: auto; margin: 0; top: 0; left: 0; right: auto; min-width: 0;
+}
 
 .cs-select__option {
     padding: 7px 10px; border-radius: var(--radius-sm); font-size: 12px; color: var(--color-text-primary);

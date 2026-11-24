@@ -48,6 +48,12 @@ window.enhanceSelect = function (select) {
     panel.className = 'cs-select__panel';
     panel.setAttribute('role', 'listbox');
     panel.tabIndex = -1;
+    // A native popover renders in the browser's top layer — completely
+    // immune to any ancestor's `overflow: auto/hidden` (e.g. a scrollable
+    // modal body), which position:absolute/fixed alone can never escape.
+    // This is the only way the panel can float freely over a dialog's own
+    // edges instead of being clipped at them.
+    if ('showPopover' in panel) panel.setAttribute('popover', 'manual');
     wrap.appendChild(panel);
 
     // A <label for="..."> pointing at the native select should still
@@ -127,32 +133,36 @@ window.enhanceSelect = function (select) {
     // pushes the panel's left edge past x=0 — clipped by the viewport.
     // Re-anchor to the trigger's left edge instead whenever that would
     // happen, measured fresh each open() since content/viewport can change.
+    var usePopover = panel.hasAttribute('popover');
+
+    // Popover elements render in the top layer, entirely out of normal
+    // document flow — they don't inherit position from a `position:relative`
+    // ancestor the way the old position:absolute version did, so every
+    // coordinate (including width, which the trigger no longer constrains)
+    // is computed fresh from the trigger's live viewport position.
     function positionPanel() {
-        panel.style.left = '';
-        panel.style.right = '0';
-        panel.style.top = '';
-        panel.style.bottom = '';
-        var margin = 8;
-        var wrapRect = wrap.getBoundingClientRect();
-        var panelWidth = panel.getBoundingClientRect().width;
-        var naturalLeft = wrapRect.right - panelWidth;
-        if (naturalLeft < margin) {
-            panel.style.right = 'auto';
-            panel.style.left = (margin - wrapRect.left) + 'px';
+        if (!usePopover) {
+            panel.style.left = '';
+            panel.style.right = '0';
+            var margin2 = 8;
+            var wrapRect2 = wrap.getBoundingClientRect();
+            var panelWidth2 = panel.getBoundingClientRect().width;
+            if (wrapRect2.right - panelWidth2 < margin2) {
+                panel.style.right = 'auto';
+                panel.style.left = (margin2 - wrapRect2.left) + 'px';
+            }
+            return;
         }
 
-        // Flip the panel above the trigger when there isn't enough room
-        // below it (e.g. a long catalog-wide list opened near the bottom of
-        // a modal) — otherwise it just keeps growing straight down past
-        // whatever container it's in, since position:absolute doesn't
-        // contribute to that container's own measured height.
-        var panelHeight = panel.getBoundingClientRect().height;
-        var spaceBelow = window.innerHeight - wrapRect.bottom - margin;
-        var spaceAbove = wrapRect.top - margin;
-        if (spaceBelow < panelHeight && spaceAbove > spaceBelow) {
-            panel.style.top = 'auto';
-            panel.style.bottom = 'calc(100% + 6px)';
-        }
+        var margin = 8;
+        var triggerRect = trigger.getBoundingClientRect();
+        var panelWidth = panel.getBoundingClientRect().width;
+        var left = triggerRect.right - panelWidth;
+        if (left < margin) left = margin;
+        if (left + panelWidth > window.innerWidth - margin) left = window.innerWidth - margin - panelWidth;
+        panel.style.left = left + 'px';
+        panel.style.top = (triggerRect.bottom + 6) + 'px';
+        panel.style.minWidth = triggerRect.width + 'px';
     }
 
     function open() {
@@ -160,18 +170,22 @@ window.enhanceSelect = function (select) {
         buildPanel();
         wrap.classList.add('is-open');
         trigger.setAttribute('aria-expanded', 'true');
+        if (usePopover) panel.showPopover();
         positionPanel();
         document.addEventListener('click', onOutside, true);
         document.addEventListener('keydown', onKeydown, true);
         window.addEventListener('resize', positionPanel);
+        window.addEventListener('scroll', positionPanel, true);
     }
 
     function close() {
         wrap.classList.remove('is-open');
         trigger.setAttribute('aria-expanded', 'false');
+        if (usePopover && panel.matches(':popover-open')) panel.hidePopover();
         document.removeEventListener('click', onOutside, true);
         document.removeEventListener('keydown', onKeydown, true);
         window.removeEventListener('resize', positionPanel);
+        window.removeEventListener('scroll', positionPanel, true);
     }
 
     trigger.addEventListener('click', function () {
