@@ -6,7 +6,7 @@
     const byId = id => document.getElementById(id);
     const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
     let subjects = config.subjects;
-    let page = 1, status = 'all', editingId = null, statusId = null, busy = false;
+    let page = 1, status = 'all', editingId = null, statusId = null, busy = false, editorRow = null;
     const pageSize = 10;
     const editor = byId('soEditor'), statusDialog = byId('soStatusDialog'), form = byId('soForm');
     const search = byId('soSearch'), type = byId('soType'), department = byId('soDepartment');
@@ -274,6 +274,9 @@
         byId('soLectureUnits').value = row?.lecture?.units ?? 3;
         byId('soLabUnits').value = row?.lab?.units ?? 1;
         if (row) byId('soOwner').value = String(row.department);
+        editorRow = row;
+        byId('soEditorRequirements').hidden = !isEdit;
+        byId('soEditorPrereqHint').hidden = isEdit;
         byId('soOwner').disabled = !!row;
         // Covers both branches: form.reset() above already reverted the
         // underlying <select> to its default option for the add case, and
@@ -441,6 +444,10 @@
     byId('soDetailRequirements').addEventListener('click', () => {
         byId('soDetail').close();
         if (detailRow) openPrereqDialog(detailRow);
+    });
+    byId('soEditorRequirements').addEventListener('click', () => {
+        editor.close();
+        if (editorRow) openPrereqDialog(editorRow);
     });
     byId('soPrereqAdd').addEventListener('click', async () => {
         const candidateId = Number(byId('soPrereqCandidate').value);
