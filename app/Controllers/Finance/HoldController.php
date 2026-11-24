@@ -20,9 +20,16 @@ class HoldController extends BaseController
 {
     public function index()
     {
+        $holds = (new FinancialHoldModel())->queue();
+
+        $oldestDays = $holds === [] ? null : (int) floor((time() - strtotime($holds[0]['placed_at'])) / 86400);
+
         return view('finance/holds/index', [
-            'pageTitle' => 'Financial Holds',
-            'holds'     => (new FinancialHoldModel())->queue(),
+            'pageTitle'       => 'Financial Holds',
+            'holds'           => $holds,
+            'holdCount'       => count($holds),
+            'uniqueStudents'  => count(array_unique(array_column($holds, 'student_id'))),
+            'oldestDays'      => $oldestDays,
         ] + FinancePortal::shell('holds'));
     }
 
@@ -35,8 +42,9 @@ class HoldController extends BaseController
         }
 
         $results = db_connect()->table('students s')
-            ->select('s.student_id, s.student_number, u.username')
+            ->select('s.student_id, s.student_number, u.id AS user_id, u.username, u.photo_mime, p.program_name')
             ->join('users u', 'u.id = s.user_id')
+            ->join('programs p', 'p.program_id = s.program_id', 'left')
             ->groupStart()
                 ->like('u.username', $query)
                 ->orLike('s.student_number', $query)

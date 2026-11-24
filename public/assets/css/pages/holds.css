@@ -1,0 +1,79 @@
+/* Finance > Financial Holds — stays inside the app's own existing design
+   language (ac-page-header, ac-card, ac-table) rather than inventing a
+   separate look. Search-card treatment mirrors cashier.css's. */
+
+.hld-page {
+    --hld-ink: var(--color-text-primary); --hld-muted: var(--color-text-secondary); --hld-line: var(--color-border);
+    --hld-radius-card: 14px; --hld-radius-control: 10px;
+    --hld-shadow-card: 0 1px 2px rgba(16, 24, 40, .04), 0 6px 16px -10px rgba(16, 24, 40, .08);
+    --hld-shadow-card-hover: 0 2px 4px rgba(16, 24, 40, .05), 0 12px 28px -12px rgba(16, 24, 40, .12);
+    --hld-ease: cubic-bezier(.4, 0, .2, 1); --hld-t: 160ms var(--hld-ease);
+    color: var(--hld-ink);
+}
+
+.hld-search-card {
+    border: 1px solid var(--hld-line); background: #fff; border-radius: var(--hld-radius-card);
+    box-shadow: var(--hld-shadow-card); padding: 24px 24px 26px; margin-bottom: 24px;
+}
+.hld-search-card__label { font-size: 12.5px; font-weight: 650; color: var(--hld-ink); margin-bottom: 10px; }
+.hld-search-card__sub { font-size: 12px; color: var(--hld-muted); margin: 0 0 14px; }
+
+.hld-search { position: relative; max-width: 560px; }
+.hld-search__icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--hld-muted); font-size: 19px; pointer-events: none; transition: color var(--hld-t); }
+.hld-search input {
+    width: 100%; padding: 13px 14px 13px 42px; border: 1px solid var(--hld-line); border-radius: var(--hld-radius-control);
+    font-size: 13.5px; font-weight: 500; color: var(--hld-ink); background: #fcfdfe;
+    transition: border-color var(--hld-t), box-shadow var(--hld-t), background var(--hld-t);
+}
+.hld-search input:focus {
+    outline: none; background: #fff; border-color: color-mix(in srgb, var(--color-primary) 45%, var(--hld-line));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+.hld-search input:focus ~ .hld-search__icon { color: var(--color-primary); }
+.hld-search input::placeholder { color: #9aa5b8; }
+
+.hld-results {
+    position: absolute; left: 0; right: 0; top: calc(100% + 8px);
+    background: #fff; border: 1px solid var(--hld-line); border-radius: var(--hld-radius-control); box-shadow: var(--hld-shadow-card-hover);
+    overflow: hidden; z-index: 20; max-height: 340px; overflow-y: auto;
+}
+.hld-result {
+    display: flex; align-items: center; gap: 11px; padding: 10px 14px;
+    border-bottom: 1px solid var(--hld-line); text-decoration: none; color: inherit;
+    transition: background var(--hld-t);
+}
+.hld-result:last-child { border-bottom: none; }
+.hld-result:hover, .hld-result:focus-visible { background: #f8fafc; }
+.hld-result__avatar {
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: var(--color-primary-soft); color: var(--color-primary); font-weight: 700; font-size: 12px; flex: none; overflow: hidden;
+}
+.hld-result__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.hld-result__name { display: block; font-weight: 600; font-size: 13px; color: var(--hld-ink); }
+.hld-result__meta { display: block; font-size: 11.5px; color: var(--hld-muted); margin-top: 1px; }
+.hld-results__empty { padding: 16px 14px; font-size: 12px; color: var(--hld-muted); text-align: center; }
+
+.hld-page .ac-metric-card { border-radius: var(--hld-radius-card); box-shadow: var(--hld-shadow-card); transition: box-shadow var(--hld-t), transform var(--hld-t); }
+.hld-page .ac-metric-card:hover { box-shadow: var(--hld-shadow-card-hover); transform: translateY(-1px); }
+.hld-page .ac-table-card { border-radius: var(--hld-radius-card); box-shadow: var(--hld-shadow-card); }
+
+.hld-student { display: flex; align-items: center; gap: 10px; }
+.hld-student__avatar {
+    width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px; flex: none; overflow: hidden;
+}
+.hld-student__avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.hld-type-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 650;
+}
+.hld-type-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.hld-type-pill--delinquent { color: #b42318; background: #fef3f2; }
+.hld-type-pill--unpaid_balance { color: #b45309; background: #fff7ed; }
+.hld-type-pill--manual { color: #4f5eb3; background: #f0f1fc; }
+.hld-type-pill--other { color: var(--hld-muted); background: #f5f6f8; }
+
+@media (max-width: 560px) {
+    .hld-search-card { padding: 18px 16px 20px; }
+}

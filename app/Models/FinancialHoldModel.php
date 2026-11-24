@@ -99,7 +99,7 @@ class FinancialHoldModel extends Model
     public function queue(): array
     {
         return $this->db->table('financial_holds h')
-            ->select('h.id, h.hold_type, h.reason, h.placed_at, s.student_id, s.student_number, u.username')
+            ->select('h.id, h.hold_type, h.reason, h.placed_at, s.student_id, s.student_number, u.id AS user_id, u.username, u.photo_mime')
             ->join('students s', 's.student_id = h.student_id')
             ->join('users u', 'u.id = s.user_id')
             ->where('h.status', 'active')
