@@ -222,6 +222,12 @@
         if (!response.ok || !data?.ok) throw new Error(data?.error || 'Unable to save your changes. Please try again.');
         return data;
     }
+    async function get(path) {
+        const response = await fetch(config.endpoint + path, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data?.ok) throw new Error(data?.error || 'Unable to load that. Please try again.');
+        return data;
+    }
     function updateComponentVisibility() {
         // A class instead of the `hidden` attribute — `hidden` maps to
         // display:none, which can't be transitioned, so toggling it just
@@ -364,6 +370,78 @@
     byId('soDetailEdit').addEventListener('click', () => {
         byId('soDetail').close();
         if (detailRow) openEditor(detailRow);
+    });
+
+    // Prerequisites & corequisites dialog — a thin reuse of the admin
+    // console's own SubjectPrerequisiteModel/SubjectCorequisiteModel via
+    // the chair-scoped JSON actions on this same controller. The candidate
+    // list is deliberately catalog-wide (see Chairperson/
+    // SubjectOwnershipController::ownedSubjectOrFail) — only the subject
+    // being edited is scoped to the chair's own department.
+    let prereqSubjectId = null;
+    const prereqDialog = byId('soPrereqDialog');
+    function renderReqTags(listEl, items, idKey, onRemove) {
+        listEl.innerHTML = items.map(item => `<li class="so-chip">${escape(item.subject_code)} — ${escape(item.subject_name)}<button type="button" data-id="${item[idKey]}" aria-label="Remove">&times;</button></li>`).join('')
+            || '<li class="so-req-empty">None set.</li>';
+        listEl.querySelectorAll('button[data-id]').forEach(btn => btn.addEventListener('click', () => onRemove(Number(btn.dataset.id))));
+    }
+    function renderReqCandidates(selectEl, candidates) {
+        selectEl.innerHTML = candidates.map(c => `<option value="${c.subject_id}">${escape(c.subject_code)} — ${escape(c.subject_name)}</option>`).join('');
+    }
+    async function refreshPrereqDialog() {
+        const [prereqData, coreqData] = await Promise.all([
+            get(`/${prereqSubjectId}/prerequisites`),
+            get(`/${prereqSubjectId}/corequisites`),
+        ]);
+        renderReqTags(byId('soPrereqTags'), prereqData.prerequisites, 'subject_id', async subjectPrerequisiteId => {
+            await post(`/${prereqSubjectId}/prerequisites/${subjectPrerequisiteId}/remove`, {});
+            refreshPrereqDialog();
+        });
+        renderReqCandidates(byId('soPrereqCandidate'), prereqData.candidates);
+        renderReqTags(byId('soCoreqTags'), coreqData.corequisites, 'subject_id', async subjectCorequisiteId => {
+            await post(`/${prereqSubjectId}/corequisites/${subjectCorequisiteId}/remove`, {});
+            refreshPrereqDialog();
+        });
+        renderReqCandidates(byId('soCoreqCandidate'), coreqData.candidates);
+    }
+    async function openPrereqDialog(row) {
+        prereqSubjectId = row.id;
+        byId('soPrereqSubtitle').textContent = row.code + ' — ' + row.title;
+        byId('soPrereqError').hidden = true;
+        prereqDialog.showModal();
+        try {
+            await refreshPrereqDialog();
+        } catch (error) {
+            byId('soPrereqError').textContent = error.message;
+            byId('soPrereqError').hidden = false;
+        }
+    }
+    document.querySelectorAll('[data-close-prereq]').forEach(button => button.addEventListener('click', () => prereqDialog.close()));
+    byId('soDetailRequirements').addEventListener('click', () => {
+        byId('soDetail').close();
+        if (detailRow) openPrereqDialog(detailRow);
+    });
+    byId('soPrereqAdd').addEventListener('click', async () => {
+        const candidateId = Number(byId('soPrereqCandidate').value);
+        if (!candidateId) return;
+        try {
+            await post(`/${prereqSubjectId}/prerequisites/add`, { prerequisite_subject_id: candidateId });
+            await refreshPrereqDialog();
+        } catch (error) {
+            byId('soPrereqError').textContent = error.message;
+            byId('soPrereqError').hidden = false;
+        }
+    });
+    byId('soCoreqAdd').addEventListener('click', async () => {
+        const candidateId = Number(byId('soCoreqCandidate').value);
+        if (!candidateId) return;
+        try {
+            await post(`/${prereqSubjectId}/corequisites/add`, { corequisite_subject_id: candidateId });
+            await refreshPrereqDialog();
+        } catch (error) {
+            byId('soPrereqError').textContent = error.message;
+            byId('soPrereqError').hidden = false;
+        }
     });
     function focusRow(id) {
         const button = byId('soRows').querySelector(`.ac-dtable__row[data-id="${id}"] [data-action="edit"]`);
