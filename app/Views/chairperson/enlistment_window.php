@@ -71,6 +71,24 @@ endif;
     <div><h2 class="ac-page-header__title">Enlistment Window</h2><p class="ac-page-header__sub">Open or close pre-registration for the upcoming term, while the active term is still running.</p></div>
 </div>
 
+<?php if (session()->has('message')): ?>
+    <div class="ac-notice" style="margin-bottom:16px;">
+        <span class="material-symbols-outlined" style="font-size:16px; color:var(--color-success); margin-top:1px;" aria-hidden="true">check_circle</span>
+        <span class="ac-notice__text"><?= esc(session('message')) ?></span>
+    </div>
+<?php endif ?>
+
+<?php if (session()->has('errors')): ?>
+    <div class="ac-alert" style="background:var(--color-danger-soft); border-color:var(--color-danger-border); margin-bottom:16px;">
+        <span class="material-symbols-outlined" style="color:var(--color-danger);" aria-hidden="true">error</span>
+        <div class="ac-alert__text" style="color:var(--color-danger);">
+            <?php foreach ((array) session('errors') as $error): ?>
+                <p><?= esc($error) ?></p>
+            <?php endforeach ?>
+        </div>
+    </div>
+<?php endif ?>
+
 <?php if ($ay === null): ?>
     <div class="ac-empty-block">No upcoming academic term exists yet. Create one under Admin &rarr; Academic Years before opening enlistment for it.</div>
 <?php else: ?>
