@@ -28,8 +28,13 @@
                 </select>
             </div>
             <div class="ac-field" style="margin:0;">
-                <label>Academic Year</label>
-                <input type="text" name="academic_year" class="ac-input" placeholder="Blank = every term">
+                <label for="fdAcademicYear">Academic Year</label>
+                <select id="fdAcademicYear" name="academic_year" class="ac-input">
+                    <option value="">Every term</option>
+                    <?php foreach ($terms as $t): ?>
+                        <option value="<?= esc($t['value'], 'attr') ?>"><?= esc($t['label']) ?></option>
+                    <?php endforeach ?>
+                </select>
             </div>
             <div class="ac-field" style="margin:0;">
                 <label>Override Value</label>
@@ -57,7 +62,7 @@
                     <td><?= esc($g['name']) ?></td>
                     <td><?= $g['override_value'] !== null ? (esc($g['override_value']) . ($g['value_type'] === 'percentage' ? '%' : '')) : esc($g['default_value']) . ($g['value_type'] === 'percentage' ? '%' : '') ?></td>
                     <td><?= $g['academic_year'] !== null ? esc($g['academic_year']) : 'Every term' ?></td>
-                    <td><span class="ac-status <?= $g['status'] === 'active' ? 'locked' : '' ?>"><?= esc(ucfirst($g['status'])) ?></span></td>
+                    <td><span class="ac-status-dot <?= $g['status'] === 'active' ? 'ac-status-dot--active' : 'ac-status-dot--inactive' ?>"><?= esc(ucfirst($g['status'])) ?></span></td>
                     <td><?= esc(date('M j, Y', strtotime($g['granted_at']))) ?></td>
                     <td>
                         <?php if ($g['status'] === 'active'): ?>
@@ -73,4 +78,12 @@
     </table>
 </div>
 
+<?= $this->endSection() ?>
+<?= $this->section('scripts') ?>
+<script>
+    (function () {
+        var ay = document.getElementById('fdAcademicYear');
+        if (ay && window.enhanceSelect) window.enhanceSelect(ay);
+    })();
+</script>
 <?= $this->endSection() ?>

@@ -4,6 +4,7 @@ namespace App\Controllers\Finance;
 
 use App\Controllers\BaseController;
 use App\Libraries\FinancePortal;
+use App\Models\AcademicYearModel;
 use App\Models\DiscountTypeModel;
 use App\Models\LedgerAdjustmentModel;
 use App\Models\NotificationModel;
@@ -101,11 +102,17 @@ class DiscountController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
+        $terms = (new AcademicYearModel())->orderBy('label', 'DESC')->orderBy('semester', 'DESC')->findAll();
+
         return view('finance/discounts/student', [
             'pageTitle'     => 'Discounts — ' . $student['student_number'],
             'student'       => $student,
             'grants'        => (new StudentDiscountModel())->forStudent((int) $studentId),
             'discountTypes' => (new DiscountTypeModel())->active(),
+            'terms'         => array_map(
+                static fn (array $t): array => ['value' => AcademicYearModel::format($t['label'], $t['semester']), 'label' => $t['label'] . ' · ' . $t['semester'] . ' Semester'],
+                $terms
+            ),
         ] + FinancePortal::shell('discounts'));
     }
 
