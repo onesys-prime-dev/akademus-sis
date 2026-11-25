@@ -83,7 +83,7 @@
                             <td><?= esc(date('M j, Y g:i A', strtotime($p['payment_date']))) ?></td>
                             <td>
                                 <?php if (! empty($p['or_number'])): ?>
-                                    <a href="<?= site_url('student/tuition/receipt/' . $p['receipt_id']) ?>" target="_blank"><?= esc($p['or_number']) ?></a>
+                                    <a href="<?= site_url('student/tuition/receipt/' . $p['receipt_id']) ?>" target="_blank" style="color:var(--color-primary); text-decoration:none; font-weight:600;"><?= esc($p['or_number']) ?></a>
                                 <?php else: ?>
                                     —
                                 <?php endif ?>
