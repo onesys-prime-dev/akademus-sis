@@ -45,7 +45,7 @@
 .ew-card-body { padding: 22px 26px 26px; display: grid; gap: 16px; flex: 1; align-content: start; }
 .ew-datefield label { display: block; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--ew-muted); margin-bottom: 8px; }
 .ew-datefield-control { position: relative; }
-.ew-datefield-control .material-symbols-outlined { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; color: #8ea0b8; pointer-events: none; }
+.ew-datefield-control .material-symbols-outlined { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; color: #8ea0b8; pointer-events: none; transition: color var(--ew-t); }
 .ew-datefield-control input {
     width: 100%; min-height: 46px; border: 1px solid #dce5f0; border-radius: var(--ew-radius-control);
     padding: 11px 14px 11px 42px; background: #fff; color: #203349; font-size: 13.5px; font-weight: 550;
@@ -54,6 +54,8 @@
 }
 .ew-datefield-control input:hover { border-color: #b6c9e3; background: var(--color-surface-secondary); }
 .ew-datefield-control input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent); outline: none; background: #fff; }
+.ew-datefield-control:has(input:hover) .material-symbols-outlined,
+.ew-datefield-control:has(input:focus) .material-symbols-outlined { color: var(--color-primary); }
 /* The native calendar/clock glyph duplicates the icon we already draw on
    the left — stretched invisibly over the whole field instead of removed
    outright, so the field stays clickable anywhere to open the picker. */
@@ -83,12 +85,15 @@
 .ew-offerings__hint { margin: 0 0 18px; font-size: 12.5px; line-height: 1.5; color: var(--color-text-secondary); }
 
 .ew-offerings__filters { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
-.ew-offerings__filters label {
-    display: flex; flex-direction: column; gap: 7px; font-size: 11px; font-weight: 650;
-    text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-secondary);
+.ew-offerings__field {
+    display: flex; flex-direction: column; gap: 7px;
 }
-.ew-offerings__filters .ac-input { min-width: 160px; }
-.ew-offerings__section-field .ac-input { min-width: 140px; }
+.ew-offerings__field label {
+    font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-secondary);
+}
+.ew-offerings__field .ac-input, .ew-offerings__field .cs-select { min-width: 160px; }
+.ew-offerings__field .cs-select__trigger { min-height: 40px; border-radius: var(--ew-radius-control, 12px); font-size: 13px; font-weight: 550; }
+.ew-offerings__section-field .ac-input, .ew-offerings__section-field .cs-select { min-width: 140px; }
 .ew-offerings__filters .ac-btn { align-self: flex-end; }
 
 .ew-offerings__empty, .ew-offerings__table-form { margin-top: 18px; }
@@ -116,7 +121,7 @@
 
 @media (max-width: 560px) {
     .ew-offerings__filters { flex-direction: column; align-items: stretch; }
-    .ew-offerings__filters .ac-input, .ew-offerings__filters .ac-btn { width: 100%; }
+    .ew-offerings__filters .ac-input, .ew-offerings__filters .cs-select, .ew-offerings__filters .ac-btn { width: 100%; }
 }
 
 .ew-overrides {

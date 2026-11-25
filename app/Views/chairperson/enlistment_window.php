@@ -152,34 +152,44 @@ endif;
             <form method="get" action="<?= site_url('chairperson/enlistment-window') ?>" class="ew-offerings__filters">
                 <input type="hidden" name="ay_id" value="<?= (int) $ay['ay_id'] ?>">
                 <?php if (count($programs) > 1): ?>
-                    <label>Program
-                        <select name="program_id" class="ac-input" onchange="this.form.submit()">
+                    <div class="ew-offerings__field">
+                        <label for="ewProgramSelect">Program</label>
+                        <select id="ewProgramSelect" name="program_id" class="ac-input" onchange="this.form.submit()">
                             <?php foreach ($programs as $p): ?>
                                 <option value="<?= (int) $p['program_id'] ?>" <?= $selectedProgram === (int) $p['program_id'] ? 'selected' : '' ?>><?= esc($p['program_name']) ?></option>
                             <?php endforeach ?>
                         </select>
-                    </label>
+                    </div>
                 <?php else: ?>
                     <input type="hidden" name="program_id" value="<?= (int) $programs[0]['program_id'] ?>">
                 <?php endif ?>
 
-                <label>Year Level
-                    <select name="year_level" class="ac-input" onchange="this.form.submit()">
+                <div class="ew-offerings__field">
+                    <label for="ewYearLevelSelect">Year Level</label>
+                    <select id="ewYearLevelSelect" name="year_level" class="ac-input" onchange="this.form.submit()">
                         <option value="">Select&hellip;</option>
                         <?php foreach ($yearLevels as $level => $label): ?>
                             <option value="<?= $level ?>" <?= $selectedYear === $level ? 'selected' : '' ?>><?= esc($label) ?></option>
                         <?php endforeach ?>
                     </select>
-                </label>
+                </div>
 
-                <label class="ew-offerings__section-field">Section
-                    <select name="section" class="ac-input" onchange="this.form.submit()">
+                <div class="ew-offerings__field ew-offerings__section-field">
+                    <label for="ewSectionSelect">Section</label>
+                    <select id="ewSectionSelect" name="section" class="ac-input" onchange="this.form.submit()">
                         <option value="">Select&hellip;</option>
                         <?php foreach ($sections as $s): ?>
                             <option value="<?= esc($s) ?>" <?= $selectedSection === $s ? 'selected' : '' ?>><?= esc($s) ?></option>
                         <?php endforeach ?>
                     </select>
-                </label>
+                </div>
+
+                <script>(function () {
+                    ['ewProgramSelect', 'ewYearLevelSelect', 'ewSectionSelect'].forEach(function (id) {
+                        var el = document.getElementById(id);
+                        if (el && window.enhanceSelect) window.enhanceSelect(el);
+                    });
+                })();</script>
 
                 <button type="submit" class="ac-btn ac-btn-secondary">Load Subjects</button>
             </form>
