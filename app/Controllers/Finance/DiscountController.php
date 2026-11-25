@@ -80,7 +80,7 @@ class DiscountController extends BaseController
         }
 
         $results = db_connect()->table('students s')
-            ->select('s.student_id, s.student_number, u.username')
+            ->select('s.student_id, s.student_number, u.id AS user_id, u.username, u.photo_mime')
             ->join('users u', 'u.id = s.user_id')
             ->groupStart()
                 ->like('u.username', $query)

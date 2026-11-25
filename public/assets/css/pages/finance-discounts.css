@@ -1,0 +1,74 @@
+/* Finance > Discounts & Scholarships */
+
+.fd-section {
+    --fd-ink: var(--color-text-primary); --fd-muted: var(--color-text-secondary); --fd-line: var(--color-border);
+    --fd-radius-card: 20px; --fd-radius-control: 12px;
+    --fd-shadow-card: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px -12px rgba(16, 24, 40, .10);
+    --fd-ease: cubic-bezier(.4, 0, .2, 1); --fd-t: 200ms var(--fd-ease);
+}
+
+.fd-card {
+    background: #fff; border: 1px solid var(--fd-line); border-radius: var(--fd-radius-card);
+    box-shadow: var(--fd-shadow-card); padding: 24px 26px 26px; margin-bottom: 20px;
+}
+.fd-card__title { margin: 0 0 4px; font-size: 16px; font-weight: 650; letter-spacing: -.2px; color: var(--fd-ink); }
+.fd-card__hint { margin: 0 0 18px; font-size: 12.5px; line-height: 1.5; color: var(--fd-muted); }
+
+/* Same shape as .csh-search/.csh-result on the Cashier page — one shared
+   look for every finance "find a student" box instead of each page
+   inventing its own. */
+.fd-search { position: relative; max-width: 480px; }
+.fd-search__icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--fd-muted); font-size: 19px; pointer-events: none; transition: color var(--fd-t); }
+.fd-search input {
+    width: 100%; padding: 13px 14px 13px 42px; border: 1px solid var(--fd-line); border-radius: var(--fd-radius-control);
+    font-size: 13.5px; font-weight: 500; color: var(--fd-ink); background: #fcfdfe;
+    transition: border-color var(--fd-t), box-shadow var(--fd-t), background var(--fd-t);
+}
+.fd-search input:focus {
+    outline: none; background: #fff; border-color: color-mix(in srgb, var(--color-primary) 45%, var(--fd-line));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+.fd-search input:focus ~ .fd-search__icon { color: var(--color-primary); }
+.fd-search input::placeholder { color: #9aa5b8; }
+
+.fd-results {
+    position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 30;
+    background: #fff; border: 1px solid var(--fd-line); border-radius: var(--fd-radius-control);
+    box-shadow: 0 2px 4px rgba(16, 24, 40, .05), 0 16px 36px -14px rgba(16, 24, 40, .18);
+    overflow: hidden; max-height: 340px; overflow-y: auto;
+}
+.fd-result {
+    display: flex; align-items: center; gap: 11px; padding: 10px 14px;
+    border-bottom: 1px solid var(--fd-line); text-decoration: none; color: inherit;
+    transition: background var(--fd-t);
+}
+.fd-result:last-child { border-bottom: none; }
+.fd-result:hover, .fd-result:focus-visible { background: #f8fafc; }
+.fd-result__avatar {
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: var(--color-primary-soft); color: var(--color-primary); font-weight: 700; font-size: 12px; flex: none; overflow: hidden;
+}
+.fd-result__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.fd-result__name { display: block; font-weight: 600; font-size: 13px; color: var(--fd-ink); }
+.fd-result__meta { display: block; font-size: 11.5px; color: var(--fd-muted); margin-top: 1px; }
+.fd-results__empty { padding: 16px 14px; font-size: 12px; color: var(--fd-muted); text-align: center; }
+
+.fd-field label { display: block; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--fd-muted); margin-bottom: 8px; }
+.fd-form { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 14px; align-items: end; }
+.fd-form .ac-input { min-height: 44px; border-radius: var(--fd-radius-control); }
+.fd-form .cs-select__trigger { min-height: 44px; border-radius: var(--fd-radius-control); font-size: 13px; }
+.fd-form .ac-btn { min-height: 44px; border-radius: var(--fd-radius-control); padding: 0 20px; }
+
+@media (max-width: 860px) {
+    .fd-form { grid-template-columns: 1fr 1fr; }
+    .fd-form .ac-btn { grid-column: 1 / -1; }
+}
+
+.fd-card--flush { padding: 0; overflow: hidden; }
+.fd-card--flush .fd-card__head { padding: 24px 26px 18px; }
+.fd-card--flush .ac-table-card { border: none; border-radius: 0; margin: 0; box-shadow: none; }
+
+.fd-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; }
+.fd-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.fd-status--active { color: #157347; }
+.fd-status--inactive { color: var(--fd-muted); }
