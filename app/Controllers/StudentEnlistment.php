@@ -48,7 +48,7 @@ class StudentEnlistment extends BaseController
         $ayModel    = new AcademicYearModel();
         $enlistTerm = $ayModel->upcomingFormatted();
         $activeTerm = $ayModel->activeFormatted();
-        $windowOpen = $ayModel->isEnlistmentOpen()
+        $windowOpen = (new \App\Libraries\EnlistmentWindowResolver())->isOpenFor(null, $student['program_id'] !== null ? (int) $student['program_id'] : null)
             || ($enlistTerm !== null && (new EnlistmentWindowOverrideModel())->hasOverride((int) $student['student_id'], $enlistTerm));
 
         if ($enlistTerm === null) {

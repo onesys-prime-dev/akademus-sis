@@ -3,12 +3,14 @@
 namespace App\Controllers\Chairperson;
 
 use App\Controllers\BaseController;
+use App\Libraries\EnlistmentWindowResolver;
 use App\Libraries\SchedulingAuthorization;
 use App\Models\AcademicYearModel;
 use App\Models\CurriculumModel;
 use App\Models\CollegeModel;
 use App\Models\EnlistmentWindowOverrideModel;
 use App\Models\EnrollmentModel;
+use App\Models\ProgramEnlistmentWindowModel;
 use App\Models\SectionModel;
 use App\Models\StudentModel;
 
@@ -87,6 +89,17 @@ class EnlistmentWindowController extends BaseController
         $overrideCandidates = $overrideQuery !== '' ? $this->overrideCandidatesFor($programIds, $overrideQuery) : [];
         $activeOverrides    = $ay !== null ? $this->activeOverridesFor($programIds, AcademicYearModel::format($ay['label'], $ay['semester'])) : [];
 
+        $windowMode     = (new EnlistmentWindowResolver())->mode();
+        $programWindows = [];
+
+        if ($ay !== null && $windowMode === 'program_scoped') {
+            $windowModel = new ProgramEnlistmentWindowModel();
+
+            foreach ($programIds as $pid) {
+                $programWindows[$pid] = $windowModel->forProgram((int) $ay['ay_id'], $pid);
+            }
+        }
+
         return view('chairperson/enlistment_window', [
             'pageTitle'       => 'Enlistment Window',
             'user'            => ['name' => auth()->user()->username ?? 'Chairperson', 'role' => 'Chairperson'],
@@ -103,33 +116,49 @@ class EnlistmentWindowController extends BaseController
             'overrideQuery'      => $overrideQuery,
             'overrideCandidates' => $overrideCandidates,
             'activeOverrides'    => $activeOverrides,
+            'windowMode'         => $windowMode,
+            'programWindows'     => $programWindows,
         ]);
     }
 
-    public function update()
+    /**
+     * A chairperson's own program-scoped enlistment window — only reachable
+     * in Program-Scoped mode (see EnlistmentWindowResolver). Replaces the
+     * old update() action, which wrote directly to academic_years and could
+     * open/close enlistment for the entire university; a chairperson now
+     * has no path to that table at all.
+     */
+    public function updateProgramWindow()
     {
-        $ayModel = new AcademicYearModel();
-        $ay      = $this->resolveTerm($ayModel->upcomingTerms(), (int) $this->request->getPost('ay_id'));
+        $resolver = new EnlistmentWindowResolver();
 
-        if ($ay === null) {
-            return redirect()->to('/chairperson/enlistment-window')->with('errors', ['No upcoming academic term exists yet — create one under Admin > Academic Years before opening enlistment for it.']);
+        if ($resolver->mode() !== 'program_scoped') {
+            return redirect()->back()->with('errors', ['Enlistment windows are controlled by the Registrar.']);
         }
 
-        $rules = [
-            'enlistment_opens_at'  => 'permit_empty|valid_date',
-            'enlistment_closes_at' => 'permit_empty|valid_date',
-        ];
+        $userId     = (int) auth()->id();
+        $programId  = (int) $this->request->getPost('program_id');
+        $programIds = array_column($this->authorizedPrograms($userId), 'program_id');
 
-        if (! $this->validate($rules)) {
-            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        if (! in_array($programId, $programIds, true)) {
+            return redirect()->back()->with('errors', ['You are not authorized for that program.']);
         }
 
-        $ayModel->update((int) $ay['ay_id'], [
-            'enlistment_opens_at'  => $this->request->getPost('enlistment_opens_at') ?: null,
-            'enlistment_closes_at' => $this->request->getPost('enlistment_closes_at') ?: null,
-        ]);
+        $ayId = (int) $this->request->getPost('ay_id');
 
-        return redirect()->to('/chairperson/enlistment-window?ay_id=' . (int) $ay['ay_id'])->with('message', "{$ay['label']} ({$ay['semester']}) enlistment window updated.");
+        $result = (new ProgramEnlistmentWindowModel())->upsert(
+            $ayId,
+            $programId,
+            $this->request->getPost('enlistment_opens_at') ?: null,
+            $this->request->getPost('enlistment_closes_at') ?: null,
+            $userId
+        );
+
+        if (! $result['ok']) {
+            return redirect()->back()->withInput()->with('errors', [$result['error']]);
+        }
+
+        return redirect()->to('/chairperson/enlistment-window?ay_id=' . $ayId)->with('message', "Your program's enlistment window was updated.");
     }
 
     /**

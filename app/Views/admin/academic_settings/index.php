@@ -62,6 +62,14 @@
             <input type="number" step="1" id="max_student_units" name="max_student_units" class="ac-input" value="<?= old('max_student_units', $maxStudentUnits) ?>">
         </div>
 
+        <div class="ac-field">
+            <label for="enlistment_window_mode">Enlistment Window Control</label>
+            <select id="enlistment_window_mode" name="enlistment_window_mode" class="ac-input">
+                <option value="registrar_only" <?= old('enlistment_window_mode', $enlistmentWindowMode) === 'registrar_only' ? 'selected' : '' ?>>Registrar-only — only the Registrar opens/closes enlistment</option>
+                <option value="program_scoped" <?= old('enlistment_window_mode', $enlistmentWindowMode) === 'program_scoped' ? 'selected' : '' ?>>Program-scoped — chairs may also open/close enlistment for their own program, within the Registrar's dates</option>
+            </select>
+        </div>
+
         <div style="margin-top:8px;">
             <button type="submit" class="ac-btn ac-btn-primary">Save Rules</button>
         </div>

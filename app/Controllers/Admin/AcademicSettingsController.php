@@ -16,6 +16,7 @@ class AcademicSettingsController extends BaseController
             'maxMeetingsPerWeek'  => setting('Academic.maxMeetingsPerWeek') ?? 3,
             'partTimeMaxUnits'    => setting('Academic.partTimeMaxUnits'),
             'maxStudentUnits'     => setting('Academic.maxStudentUnits') ?? 24,
+            'enlistmentWindowMode' => setting('Enlistment.windowMode') ?? 'registrar_only',
             'activeAdmin'         => 'academic-settings',
         ]);
     }
@@ -29,6 +30,7 @@ class AcademicSettingsController extends BaseController
             'max_meetings_per_week'  => 'required|integer',
             'part_time_max_units'    => 'permit_empty|integer',
             'max_student_units'      => 'required|integer',
+            'enlistment_window_mode' => 'permit_empty|in_list[registrar_only,program_scoped]',
         ];
 
         if (! $this->validate($rules)) {
@@ -46,6 +48,7 @@ class AcademicSettingsController extends BaseController
         $partTimeMaxUnits = $this->request->getPost('part_time_max_units');
         setting('Academic.partTimeMaxUnits', $partTimeMaxUnits !== '' ? (int) $partTimeMaxUnits : null);
         setting('Academic.maxStudentUnits', (int) $this->request->getPost('max_student_units'));
+        setting('Enlistment.windowMode', $this->request->getPost('enlistment_window_mode') ?: 'registrar_only');
 
         return redirect()
             ->to('/admin/academic-settings')
