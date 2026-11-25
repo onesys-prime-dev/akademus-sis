@@ -35,18 +35,31 @@ class ProgramEnlistmentWindowModel extends Model
             return ['ok' => false, 'error' => "The Registrar hasn't opened enlistment for this term yet."];
         }
 
-        if ($opensAt !== null && $closesAt !== null && $opensAt > $closesAt) {
+        $opensTs  = $opensAt === null ? null : strtotime($opensAt);
+        $closesTs = $closesAt === null ? null : strtotime($closesAt);
+
+        if ($opensAt !== null && $opensTs === false) {
+            return ['ok' => false, 'error' => 'Opens is not a valid date.'];
+        }
+
+        if ($closesAt !== null && $closesTs === false) {
+            return ['ok' => false, 'error' => 'Closes is not a valid date.'];
+        }
+
+        if ($opensTs !== null && $closesTs !== null && $opensTs > $closesTs) {
             return ['ok' => false, 'error' => 'Opens must be before closes.'];
         }
 
         $termOpens  = $term['enlistment_opens_at'];
         $termCloses = $term['enlistment_closes_at'];
+        $termOpensTs  = $termOpens === null ? null : strtotime($termOpens);
+        $termClosesTs = $termCloses === null ? null : strtotime($termCloses);
 
-        if ($opensAt !== null && (($termOpens !== null && $opensAt < $termOpens) || ($termCloses !== null && $opensAt > $termCloses))) {
+        if ($opensTs !== null && (($termOpensTs !== null && $opensTs < $termOpensTs) || ($termClosesTs !== null && $opensTs > $termClosesTs))) {
             return ['ok' => false, 'error' => "Must fall within the Registrar's window ({$termOpens} – {$termCloses})."];
         }
 
-        if ($closesAt !== null && (($termOpens !== null && $closesAt < $termOpens) || ($termCloses !== null && $closesAt > $termCloses))) {
+        if ($closesTs !== null && (($termOpensTs !== null && $closesTs < $termOpensTs) || ($termClosesTs !== null && $closesTs > $termClosesTs))) {
             return ['ok' => false, 'error' => "Must fall within the Registrar's window ({$termOpens} – {$termCloses})."];
         }
 
@@ -55,8 +68,8 @@ class ProgramEnlistmentWindowModel extends Model
         $data = [
             'ay_id'                 => $ayId,
             'program_id'            => $programId,
-            'enlistment_opens_at'   => $opensAt,
-            'enlistment_closes_at'  => $closesAt,
+            'enlistment_opens_at'   => $opensTs === null ? null : date('Y-m-d H:i:s', $opensTs),
+            'enlistment_closes_at'  => $closesTs === null ? null : date('Y-m-d H:i:s', $closesTs),
             'updated_by'            => $updatedBy,
         ];
 

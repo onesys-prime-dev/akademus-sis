@@ -79,6 +79,18 @@ final class ProgramEnlistmentWindowModelTest extends CIUnitTestCase
         $this->assertTrue($result['ok'], $result['error'] ?? '');
     }
 
+    public function testUpsertAcceptsHtmlDatetimeLocalFormatExactlyAtTheRegistrarsBoundary(): void
+    {
+        $ayId      = $this->seedTerm('2026-10-01 00:00:00', '2026-10-31 23:59:59');
+        $programId = $this->seedProgram();
+
+        // Browser <input type="datetime-local"> posts "T"-separated values
+        // (no seconds), not the "Y-m-d H:i:s" the DB column stores.
+        $result = (new ProgramEnlistmentWindowModel())->upsert($ayId, $programId, '2026-10-01T00:00', '2026-10-31T23:59', $this->chairUserId);
+
+        $this->assertTrue($result['ok'], $result['error'] ?? '');
+    }
+
     public function testUpsertRejectsOpensAfterCloses(): void
     {
         $ayId      = $this->seedTerm('2026-10-01 00:00:00', '2026-10-31 23:59:59');

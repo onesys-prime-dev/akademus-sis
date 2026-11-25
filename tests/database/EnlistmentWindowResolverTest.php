@@ -51,9 +51,9 @@ final class EnlistmentWindowResolverTest extends CIUnitTestCase
     public function testInRegistrarOnlyModeAProgramWindowIsIgnored(): void
     {
         setting('Enlistment.windowMode', 'registrar_only');
-        $ayId      = $this->seedTerm('2026-10-01 00:00:00', '2026-12-01 00:00:00');
+        $ayId      = $this->seedTerm(date('Y-m-d H:i:s', strtotime('-1 day')), date('Y-m-d H:i:s', strtotime('+60 days')));
         $programId = $this->seedProgram();
-        (new ProgramEnlistmentWindowModel())->upsert($ayId, $programId, '2099-01-01 00:00:00', '2099-01-02 00:00:00', $this->chairUserId);
+        (new ProgramEnlistmentWindowModel())->upsert($ayId, $programId, date('Y-m-d H:i:s', strtotime('+99 years')), date('Y-m-d H:i:s', strtotime('+99 years +1 day')), $this->chairUserId);
 
         $this->assertTrue((new EnlistmentWindowResolver())->isOpenFor($ayId, $programId));
     }
@@ -61,9 +61,9 @@ final class EnlistmentWindowResolverTest extends CIUnitTestCase
     public function testInProgramScopedModeBothWindowsMustBeOpen(): void
     {
         setting('Enlistment.windowMode', 'program_scoped');
-        $ayId      = $this->seedTerm('2026-10-01 00:00:00', '2026-12-01 00:00:00');
+        $ayId      = $this->seedTerm(date('Y-m-d H:i:s', strtotime('-1 day')), date('Y-m-d H:i:s', strtotime('+60 days')));
         $programId = $this->seedProgram();
-        (new ProgramEnlistmentWindowModel())->upsert($ayId, $programId, '2026-10-01 00:00:00', '2026-12-01 00:00:00', $this->chairUserId);
+        (new ProgramEnlistmentWindowModel())->upsert($ayId, $programId, date('Y-m-d H:i:s', strtotime('-1 day')), date('Y-m-d H:i:s', strtotime('+60 days')), $this->chairUserId);
 
         $this->assertTrue((new EnlistmentWindowResolver())->isOpenFor($ayId, $programId));
     }
@@ -71,8 +71,10 @@ final class EnlistmentWindowResolverTest extends CIUnitTestCase
     public function testInProgramScopedModeTermClosedOverridesAnOpenProgramWindow(): void
     {
         setting('Enlistment.windowMode', 'program_scoped');
-        $ayId      = $this->seedTerm('2099-01-01 00:00:00', '2099-02-01 00:00:00'); // term not yet open
+        $ayId      = $this->seedTerm(date('Y-m-d H:i:s', strtotime('+30 days')), date('Y-m-d H:i:s', strtotime('+60 days'))); // term not yet open
         $programId = $this->seedProgram();
+        // Program window itself is wide open — only the closed term should gate this.
+        (new ProgramEnlistmentWindowModel())->upsert($ayId, $programId, date('Y-m-d H:i:s', strtotime('+30 days')), date('Y-m-d H:i:s', strtotime('+60 days')), $this->chairUserId);
 
         $this->assertFalse((new EnlistmentWindowResolver())->isOpenFor($ayId, $programId));
     }
@@ -80,7 +82,7 @@ final class EnlistmentWindowResolverTest extends CIUnitTestCase
     public function testInProgramScopedModeAnUnconfiguredProgramIsClosed(): void
     {
         setting('Enlistment.windowMode', 'program_scoped');
-        $ayId      = $this->seedTerm('2026-10-01 00:00:00', '2026-12-01 00:00:00');
+        $ayId      = $this->seedTerm(date('Y-m-d H:i:s', strtotime('-1 day')), date('Y-m-d H:i:s', strtotime('+60 days')));
         $programId = $this->seedProgram();
 
         $this->assertFalse((new EnlistmentWindowResolver())->isOpenFor($ayId, $programId));
@@ -89,14 +91,14 @@ final class EnlistmentWindowResolverTest extends CIUnitTestCase
     public function testANullProgramIdFallsBackToTermOnlyRegardlessOfMode(): void
     {
         setting('Enlistment.windowMode', 'program_scoped');
-        $ayId = $this->seedTerm('2026-10-01 00:00:00', '2026-12-01 00:00:00');
+        $ayId = $this->seedTerm(date('Y-m-d H:i:s', strtotime('-1 day')), date('Y-m-d H:i:s', strtotime('+60 days')));
 
         $this->assertTrue((new EnlistmentWindowResolver())->isOpenFor($ayId, null));
     }
 
     public function testANullAyIdDefaultsToTheUpcomingTerm(): void
     {
-        $ayId = $this->seedTerm('2026-10-01 00:00:00', '2026-12-01 00:00:00', date('Y-m-d', strtotime('+30 days')));
+        $ayId = $this->seedTerm(date('Y-m-d H:i:s', strtotime('-1 day')), date('Y-m-d H:i:s', strtotime('+60 days')), date('Y-m-d', strtotime('+30 days')));
 
         $this->assertTrue((new EnlistmentWindowResolver())->isOpenFor(null, null));
     }
