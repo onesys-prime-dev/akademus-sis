@@ -62,28 +62,8 @@ class OfficialReceiptModel extends Model
 
         $orNumber = $this->nextOrNumber();
 
-        $html = view('finance/receipt_pdf', [
-            'student'   => $student,
-            'payment'   => $payment,
-            'orNumber'  => $orNumber,
-            'issuedAt'  => date('F j, Y g:i A'),
-        ]);
-
-        $options = new Options();
-        $options->set('isRemoteEnabled', false);
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper([0, 0, 396, 576], 'portrait'); // half-letter, receipt-sized
-        $dompdf->render();
-
-        $targetDir = WRITEPATH . 'uploads/official_receipts';
-
-        if (! is_dir($targetDir)) {
-            mkdir($targetDir, 0755, true);
-        }
-
         $storedFilename = $orNumber . '.pdf';
-        file_put_contents($targetDir . '/' . $storedFilename, $dompdf->output());
+        $this->renderPdf($student, $payment, $orNumber, date('F j, Y g:i A'), $storedFilename);
 
         $this->insert([
             'payment_id'      => $paymentId,
@@ -156,5 +136,53 @@ class OfficialReceiptModel extends Model
     public function filePath(array $row): string
     {
         return WRITEPATH . 'uploads/official_receipts/' . $row['stored_filename'];
+    }
+
+    /**
+     * Rebuilds a receipt's PDF from its own row data when the file is
+     * missing from disk (e.g. a fresh environment or a cleared writable/
+     * directory) instead of leaving a valid, already-issued receipt
+     * permanently unreachable. Uses the receipt's own issued_at, not
+     * "now", so a regenerated file matches the one originally handed out.
+     */
+    public function regenerateFile(array $receipt): bool
+    {
+        $payment = (new StudentPaymentModel())->find((int) $receipt['payment_id']);
+        $student = $payment === null ? null : (new StudentModel())->findDetailed((int) $payment['student_id']);
+
+        if ($payment === null || $student === null) {
+            return false;
+        }
+
+        $issuedAt = $receipt['issued_at'] !== null ? date('F j, Y g:i A', strtotime($receipt['issued_at'])) : date('F j, Y g:i A');
+
+        $this->renderPdf($student, $payment, $receipt['or_number'], $issuedAt, $receipt['stored_filename']);
+
+        return true;
+    }
+
+    private function renderPdf(array $student, array $payment, string $orNumber, string $issuedAt, string $storedFilename): void
+    {
+        $html = view('finance/receipt_pdf', [
+            'student'  => $student,
+            'payment'  => $payment,
+            'orNumber' => $orNumber,
+            'issuedAt' => $issuedAt,
+        ]);
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', false);
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper([0, 0, 396, 576], 'portrait'); // half-letter, receipt-sized
+        $dompdf->render();
+
+        $targetDir = WRITEPATH . 'uploads/official_receipts';
+
+        if (! is_dir($targetDir)) {
+            mkdir($targetDir, 0755, true);
+        }
+
+        file_put_contents($targetDir . '/' . $storedFilename, $dompdf->output());
     }
 }

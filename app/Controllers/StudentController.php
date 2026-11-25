@@ -334,9 +334,10 @@ class StudentController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
-        $path = (new OfficialReceiptModel())->filePath($receipt);
+        $receiptModel = new OfficialReceiptModel();
+        $path         = $receiptModel->filePath($receipt);
 
-        if (! is_file($path)) {
+        if (! is_file($path) && ! $receiptModel->regenerateFile($receipt)) {
             throw PageNotFoundException::forPageNotFound();
         }
 
