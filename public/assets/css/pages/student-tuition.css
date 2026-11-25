@@ -23,6 +23,11 @@
 .tf-term { display: grid; gap: 3px; text-align: right; color: #263650; font-size: 12px; font-weight: 600; }
 .tf-term > span { color: #78859a; font-size: 10px; font-weight: 500; }
 
+.tf-term-field { display: grid; gap: 5px; justify-items: end; text-align: right; }
+.tf-term-field label { color: #78859a; font-size: 10px; font-weight: 500; }
+.tf-term-field .cs-select__trigger { min-height: 34px; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #263650; }
+.tf-term-field .cs-select__chevron { font-size: 16px; }
+
 .tf-summary { display: grid; grid-template-columns: minmax(330px, .86fr) minmax(0, 1.14fr); margin-bottom: 24px; overflow: hidden; border: 1px solid #d9e0ea; border-top: 3px solid #153f86; border-radius: 10px; background: #fff; box-shadow: 0 8px 24px -22px rgba(18, 37, 69, .45); }
 .tf-balance { padding: 28px 32px; border-right: 1px solid var(--tf-line); }
 .tf-balance-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; color: #526077; font-size: 12px; }
@@ -186,6 +191,7 @@
 @media (max-width: 720px) {
     .tf-heading { align-items: flex-start; flex-direction: column; gap: 14px; margin-bottom: 20px; }
     .tf-term { text-align: left; }
+    .tf-term-field { justify-items: start; text-align: left; }
     .tf-summary { grid-template-columns: 1fr; }
     .tf-balance { border-right: 0; border-bottom: 1px solid var(--tf-line); }
     .tf-page .panel { padding: 20px 16px; }

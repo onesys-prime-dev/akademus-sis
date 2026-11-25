@@ -159,6 +159,9 @@ class StudentController extends BaseController
         $proofs      = [];
         $additionalFees = [];
 
+        $current        = null;
+        $isCurrentTerm  = true;
+
         if ($student !== null) {
             $this->ensureActiveTermAssessment($student, (new AcademicYearModel())->activeFormatted());
 
@@ -167,7 +170,17 @@ class StudentController extends BaseController
             $proofs      = (new PaymentProofModel())->forStudent((int) $student['student_id']);
 
             if ($assessments !== []) {
-                $current = $assessments[0];
+                // Lets the student toggle to an older term's assessment —
+                // ?assessment_id must be one of THEIR OWN rows from historyFor()
+                // above, never trusted/looked-up directly, so there's no way
+                // to view another student's assessment by guessing an id.
+                $requestedId = (int) ($this->request->getGet('assessment_id') ?? 0);
+                $current     = $requestedId > 0
+                    ? current(array_filter($assessments, static fn (array $a): bool => (int) $a['assessment_id'] === $requestedId)) ?: $assessments[0]
+                    : $assessments[0];
+
+                $isCurrentTerm = (int) $current['assessment_id'] === (int) $assessments[0]['assessment_id'];
+
                 $itemsByCategory = (new AssessmentItemModel())->forAssessment((int) $current['assessment_id']);
                 $schedule = (new PaymentScheduleModel())->withBalances((int) $current['assessment_id'], (float) $current['amount_paid']);
                 $additionalFees = (new StudentAdditionalFeeModel())->activeFor((int) $student['student_id'], (string) $current['academic_year']);
@@ -179,6 +192,8 @@ class StudentController extends BaseController
             'activePage'      => 'tuition',
             'account'         => $account,
             'assessments'     => $assessments,
+            'current'         => $current,
+            'isCurrentTerm'   => $isCurrentTerm,
             'itemsByCategory' => $itemsByCategory,
             'additionalFees'  => $additionalFees,
             'schedule'        => $schedule,

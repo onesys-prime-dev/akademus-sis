@@ -36,8 +36,6 @@ $navGroups     = [
 ];
 $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'userRoleLabel', 'navGroups'));
 
-$current = $assessments[0] ?? null;
-
 // Tuition-first waterfall for the two-bucket Balances split: payments apply
 // to the tuition line before the itemized/added fees. "Added fees" here
 // covers BOTH the curriculum-driven itemized lines (Miscellaneous/Other/
@@ -75,7 +73,16 @@ $addedFeesBalance = max(0, $addedFeesTotal - $addedFeesPaid);
         <h1>Tuition &amp; Fees</h1>
         <p>Review your assessment, payment schedule, and account activity.</p>
     </div>
-    <?php if ($current !== null): ?>
+    <?php if ($current !== null && count($assessments) > 1): ?>
+        <form method="get" action="<?= site_url('student/tuition') ?>" class="tf-term-field">
+            <label for="tfTermSelect"><?= $isCurrentTerm ? 'Current term' : 'Viewing' ?></label>
+            <select id="tfTermSelect" name="assessment_id" onchange="this.form.submit()">
+                <?php foreach ($assessments as $a): ?>
+                    <option value="<?= (int) $a['assessment_id'] ?>" <?= (int) $a['assessment_id'] === (int) $current['assessment_id'] ? 'selected' : '' ?>><?= esc($a['academic_year']) ?></option>
+                <?php endforeach ?>
+            </select>
+        </form>
+    <?php elseif ($current !== null): ?>
         <span class="tf-term"><span>Current term</span><?= esc($current['academic_year']) ?></span>
     <?php endif ?>
 </header>
@@ -132,7 +139,11 @@ $creditBalance = max(0, $amountPaid - $totalAssessment);
         <?php if ($creditBalance > 0): ?>
             <p class="tf-credit"><span class="material-symbols-outlined" aria-hidden="true">account_balance_wallet</span>Credit balance: ₱<?= number_format($creditBalance, 2) ?> — you've paid more than this term's assessment.</p>
         <?php endif ?>
-        <a class="tf-action" href="#payment-proof">Submit payment proof<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
+        <?php if ($isCurrentTerm): ?>
+            <a class="tf-action" href="#payment-proof">Submit payment proof<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
+        <?php else: ?>
+            <p class="tf-form-help">This is a past term &mdash; switch to <?= esc($assessments[0]['academic_year']) ?> to submit a payment.</p>
+        <?php endif ?>
     </div>
     <div class="tf-overview">
         <div class="tf-overview-label">Account summary</div>
@@ -196,6 +207,7 @@ $creditBalance = max(0, $amountPaid - $totalAssessment);
 </div>
 <?php endif ?>
 
+<?php if ($isCurrentTerm): ?>
 <section class="panel tf-upload" id="payment-proof" tabindex="-1">
     <header class="tf-section-heading"><div><h2>Submit payment proof</h2><p>Send a receipt after completing a payment.</p></div></header>
     <form method="post" action="<?= site_url('student/tuition/proof/upload') ?>" enctype="multipart/form-data" class="tf-upload-form" id="tfUploadForm">
@@ -494,6 +506,7 @@ $creditBalance = max(0, $amountPaid - $totalAssessment);
     })();
     </script>
 </section>
+<?php endif ?>
 </div>
 </div>
 
@@ -639,6 +652,11 @@ function tfPrintFile() {
         frame.contentWindow.print();
     }
 }
+(function () {
+    var termSelect = document.getElementById('tfTermSelect');
+    if (termSelect && window.enhanceSelect) window.enhanceSelect(termSelect);
+})();
+
 (function () {
     var modal = document.getElementById('tfFileModal');
     new MutationObserver(function () {
