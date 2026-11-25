@@ -125,6 +125,11 @@
     });
     const terms = [...new Set(classList.map(c => c.term))];
     $('ssTerm').replaceChildren(...terms.map(term => new Option(term, term)));
+    // A single term has nothing to toggle between — show it as a plain
+    // label instead of a one-option dropdown (same convention as the
+    // Tuition & Fees term switcher).
+    const hasMultipleTerms = terms.length > 1;
+    if (!hasMultipleTerms) $('ssTermStaticLabel').textContent = terms[0] || '';
     let view = window.matchMedia('(max-width: 700px)').matches ? 'agenda' : 'calendar';
     let day = 'all', selected = null, returnFocus = null;
     let viewToggleIndicator = null, dayFilterIndicator = null;
@@ -374,7 +379,8 @@
         if (subjectPicker) subjectPicker.sync();
         (subjectPicker ? subjectPicker.trigger : $('ssSubject')).focus();
     });
-    ['ssTermField', 'ssOverview', 'ssViewToggle', 'ssToolbar', 'ssFooter', 'ssPrint'].forEach(id => { $(id).hidden = false; });
+    ['ssOverview', 'ssViewToggle', 'ssToolbar', 'ssFooter', 'ssPrint'].forEach(id => { $(id).hidden = false; });
+    $(hasMultipleTerms ? 'ssTermField' : 'ssTermStatic').hidden = false;
     syncViewLabel();
     // Crossing the phone/desktop line changes what the calendar can show, so
     // relabel the toggle, re-pin "All days" if needed, and redraw.

@@ -55,7 +55,11 @@ $scheduleData = array_map(static fn (array $m) => [
 <?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <div class="ss-page" id="studentSchedule">
-    <header class="ss-heading"><div><span class="ss-eyebrow">ACADEMIC SCHEDULE</span><h1>My Schedule</h1><p>Review your weekly classes, meeting times, rooms, and instructors.</p></div><div class="ss-term" id="ssTermField" hidden><span>Academic term</span><label class="ss-sr-only" for="ssTerm">Academic term</label><select id="ssTerm"></select></div></header>
+    <header class="ss-heading">
+        <div><span class="ss-eyebrow">ACADEMIC SCHEDULE</span><h1>My Schedule</h1><p>Review your weekly classes, meeting times, rooms, and instructors.</p></div>
+        <div class="ss-term" id="ssTermField" hidden><span>Academic term</span><label class="ss-sr-only" for="ssTerm">Academic term</label><select id="ssTerm"></select></div>
+        <div class="ss-term" id="ssTermStatic" hidden><span>Academic term</span><strong id="ssTermStaticLabel"></strong></div>
+    </header>
     <?php if (session()->has('message')): ?><div class="ss-notice" role="status"><?= esc(session('message')) ?></div><?php endif ?>
     <?php if (session()->has('errors')): ?><div class="ss-notice ss-notice--error" role="alert"><?php foreach ((array) session('errors') as $error): ?><p><?= esc($error) ?></p><?php endforeach ?></div><?php endif ?>
     <?php if ($meetings === []): ?>

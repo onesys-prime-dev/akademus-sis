@@ -14,6 +14,7 @@
 .ss-term .cs-select__trigger { min-height: auto; padding: 0; border: 0; background: transparent; font-size: 11px; color: #4b5d78; }
 .ss-term .cs-select__chevron { font-size: 18px; }
 .ss-term .material-symbols-outlined { font-size: 18px; }
+#ssTermStaticLabel { font-size: 11px; font-weight: 650; color: #4b5d78; }
 .ss-overview { display: grid; grid-template-columns: 1fr repeat(3, minmax(100px, .25fr)); gap: 24px; align-items: center; padding: 22px 26px; border: 1px solid var(--ss-line); border-radius: 14px; background: linear-gradient(110deg, #f7f9ff, #fff 65%); margin-bottom: 24px; }
 .ss-overview-intro { display: flex; align-items: center; gap: 13px; }
 .ss-overview-icon { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #e1e8f5; border-radius: 11px; background: #eef3fc; color: #5476aa; }
