@@ -61,11 +61,17 @@ class AdditionalFeeController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
+        $terms = (new AcademicYearModel())->orderBy('label', 'DESC')->orderBy('semester', 'DESC')->findAll();
+
         return view('finance/additional-fees/student', [
             'pageTitle'   => 'Additional Fees — ' . $student['student_number'],
             'student'     => $student,
             'fees'        => (new StudentAdditionalFeeModel())->forStudent((int) $studentId),
             'activeTerm'  => (new AcademicYearModel())->activeFormatted(),
+            'terms'       => array_map(
+                static fn (array $t): array => ['value' => AcademicYearModel::format($t['label'], $t['semester']), 'label' => $t['label'] . ' · ' . $t['semester'] . ' Semester'],
+                $terms
+            ),
         ] + FinancePortal::shell('additional-fees'));
     }
 

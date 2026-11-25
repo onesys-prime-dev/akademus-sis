@@ -30,12 +30,17 @@
                 </select>
             </div>
             <div class="ac-field" style="margin:0;">
-                <label>Academic Year</label>
-                <input type="text" name="academic_year" class="ac-input" placeholder="e.g. AY 2025 - 2026 &middot; 1st Semester" required>
+                <label for="trAcademicYear">Academic Year</label>
+                <select id="trAcademicYear" name="academic_year" class="ac-input" required>
+                    <option value="">— Select —</option>
+                    <?php foreach ($terms as $t): ?>
+                        <option value="<?= esc($t['value'], 'attr') ?>"><?= esc($t['label']) ?></option>
+                    <?php endforeach ?>
+                </select>
             </div>
             <button type="submit" class="ac-btn ac-btn-primary">Open Rate Sheet</button>
         </form>
-        <p style="font-size:11.5px; color:var(--color-text-secondary); margin:10px 0 0;">Enter the academic year exactly as it appears on sections/enrollment (e.g. the string shown on Student Records &rarr; Current Section).</p>
+        <p style="font-size:11.5px; color:var(--color-text-secondary); margin:10px 0 0;">Only terms already created under Academic Years can have a rate sheet &mdash; add the term there first if it's missing here.</p>
     </div>
 </div>
 
@@ -73,4 +78,12 @@
     </div>
 <?php endif ?>
 
+<?= $this->endSection() ?>
+<?= $this->section('scripts') ?>
+<script>
+    (function () {
+        var ay = document.getElementById('trAcademicYear');
+        if (ay && window.enhanceSelect) window.enhanceSelect(ay);
+    })();
+</script>
 <?= $this->endSection() ?>

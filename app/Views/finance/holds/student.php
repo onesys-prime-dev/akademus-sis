@@ -49,7 +49,7 @@
                 <tr>
                     <td><?= esc(ucfirst(str_replace('_', ' ', $h['hold_type']))) ?></td>
                     <td><?= esc($h['reason']) ?></td>
-                    <td><span class="ac-status <?= $h['status'] === 'active' ? '' : 'locked' ?>"><?= esc(ucfirst($h['status'])) ?></span></td>
+                    <td><span class="ac-status-dot <?= $h['status'] === 'active' ? 'ac-status-dot--danger' : 'ac-status-dot--inactive' ?>"><?= esc(ucfirst($h['status'])) ?></span></td>
                     <td><?= esc(date('M j, Y', strtotime($h['placed_at']))) ?></td>
                     <td><?= $h['released_at'] !== null ? esc(date('M j, Y', strtotime($h['released_at']))) : '—' ?></td>
                     <td>

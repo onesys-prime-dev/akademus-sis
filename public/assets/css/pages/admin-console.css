@@ -1856,6 +1856,8 @@ body.ac-scroll-locked .ac-content { overflow: hidden; }
 .ac-status-dot--pending::before { background: var(--color-warning); }
 .ac-status-dot--inactive { color: var(--color-text-tertiary); }
 .ac-status-dot--inactive::before { background: var(--color-text-tertiary); }
+.ac-status-dot--danger { color: var(--color-danger); }
+.ac-status-dot--danger::before { background: var(--color-danger); }
 
 .ac-actions-cell { display: flex; justify-content: flex-end; gap: 8px; }
 

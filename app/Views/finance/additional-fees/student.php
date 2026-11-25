@@ -17,8 +17,12 @@
     <form method="post" action="<?= site_url('finance/additional-fees/student/' . $s['student_id'] . '/grant') ?>" style="display:grid; grid-template-columns:1.5fr 2fr 1fr 2fr auto; gap:10px; align-items:end;">
         <?= csrf_field() ?>
         <div class="ac-field" style="margin:0;">
-            <label>Academic Year</label>
-            <input type="text" name="academic_year" class="ac-input" value="<?= esc($activeTerm ?? '') ?>" placeholder="AY 2026 - 2027 · 1st Semester" required>
+            <label for="afAcademicYear">Academic Year</label>
+            <select id="afAcademicYear" name="academic_year" class="ac-input" required>
+                <?php foreach ($terms as $t): ?>
+                    <option value="<?= esc($t['value'], 'attr') ?>" <?= $t['value'] === $activeTerm ? 'selected' : '' ?>><?= esc($t['label']) ?></option>
+                <?php endforeach ?>
+            </select>
         </div>
         <div class="ac-field" style="margin:0;">
             <label>Fee Label</label>
@@ -49,7 +53,7 @@
                     <td><?= esc($f['label']) ?><?php if ($f['remarks']): ?><br><small class="ac-muted"><?= esc($f['remarks']) ?></small><?php endif ?></td>
                     <td>₱<?= number_format((float) $f['amount'], 2) ?></td>
                     <td><?= esc($f['academic_year']) ?></td>
-                    <td><span class="ac-status <?= $f['status'] === 'active' ? 'locked' : '' ?>"><?= esc(ucfirst($f['status'])) ?></span></td>
+                    <td><span class="ac-status-dot <?= $f['status'] === 'active' ? 'ac-status-dot--active' : 'ac-status-dot--inactive' ?>"><?= esc(ucfirst($f['status'])) ?></span></td>
                     <td><?= esc(date('M j, Y', strtotime($f['granted_at']))) ?></td>
                     <td>
                         <?php if ($f['status'] === 'active'): ?>
@@ -65,4 +69,12 @@
     </table>
 </div>
 
+<?= $this->endSection() ?>
+<?= $this->section('scripts') ?>
+<script>
+    (function () {
+        var ay = document.getElementById('afAcademicYear');
+        if (ay && window.enhanceSelect) window.enhanceSelect(ay);
+    })();
+</script>
 <?= $this->endSection() ?>

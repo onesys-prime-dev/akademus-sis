@@ -256,7 +256,8 @@
                 <div data-label="Discounts"><?= ((float) ($a['discount_amount'] ?? 0)) > 0 ? '−' . number_format((float) $a['discount_amount'], 2) : '—' ?></div>
                 <div data-label="Paid"><?= number_format((float) $a['amount_paid'], 2) ?></div>
                 <div data-label="Balance"><?= number_format((float) $a['balance'], 2) ?></div>
-                <div data-label="Status"><span class="ac-status <?= $a['status'] === 'paid' ? 'locked' : '' ?>"><?= esc(ucfirst($a['status'])) ?></span></div>
+                <?php $assessStatusDot = ['paid' => 'ac-status-dot--active', 'partial' => 'ac-status-dot--pending'][$a['status']] ?? 'ac-status-dot--inactive'; ?>
+                <div data-label="Status"><span class="ac-status-dot <?= $assessStatusDot ?>"><?= esc(ucfirst($a['status'])) ?></span></div>
             </div>
         <?php endforeach ?>
     </div>

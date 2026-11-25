@@ -5,6 +5,7 @@ namespace App\Controllers\Admin;
 use App\Controllers\BaseController;
 use App\Libraries\FinancePortal;
 use App\Libraries\RegistrarPortal;
+use App\Models\AcademicYearModel;
 use App\Models\FeeTypeModel;
 use App\Models\ProgramFeeRateModel;
 use App\Models\ProgramModel;
@@ -61,11 +62,17 @@ class TuitionController extends BaseController
             $programsById[(int) $program['program_id']] = $program;
         }
 
+        $terms = (new AcademicYearModel())->orderBy('label', 'DESC')->orderBy('semester', 'DESC')->findAll();
+
         return view('admin/tuition_rates/index', [
             'pageTitle'    => 'Tuition Rates',
             'rates'        => $rates,
             'programs'     => $programs,
             'programsById' => $programsById,
+            'terms'        => array_map(
+                static fn (array $t): array => ['value' => AcademicYearModel::format($t['label'], $t['semester']), 'label' => $t['label'] . ' · ' . $t['semester'] . ' Semester'],
+                $terms
+            ),
         ] + $this->shell());
     }
 
