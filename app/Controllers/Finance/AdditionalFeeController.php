@@ -221,32 +221,6 @@ class AdditionalFeeController extends BaseController
         ] + FinancePortal::shell('additional-fees'));
     }
 
-    /**
-     * Read-only: how many/which students the chosen filter currently
-     * matches — shown before anything is actually charged, since this is a
-     * one-click action against potentially dozens of accounts at once.
-     */
-    public function bulkPreview()
-    {
-        $students = $this->matchingStudents(
-            (string) $this->request->getGet('program'),
-            (string) $this->request->getGet('year_level'),
-            (string) $this->request->getGet('section')
-        );
-
-        return $this->response->setJSON([
-            'ok'    => true,
-            'count' => count($students),
-            'students' => array_map(static fn (array $s) => [
-                'student_id'     => (int) $s['student_id'],
-                'student_number' => $s['student_number'],
-                'username'       => $s['username'],
-                'user_id'        => (int) $s['user_id'],
-                'photo_mime'     => $s['photo_mime'],
-            ], array_slice($students, 0, 50)),
-        ]);
-    }
-
     public function bulkApply()
     {
         $rules = [

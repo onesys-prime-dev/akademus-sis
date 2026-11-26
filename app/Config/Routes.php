@@ -355,7 +355,6 @@ $routes->group('finance', ['filter' => 'group:finance'], function ($routes) use 
     $routes->post('additional-fees/student/(:num)/grant', 'Finance\AdditionalFeeController::grant/$1', ['filter' => 'permission:finance.assess']);
     $routes->post('additional-fees/fee/(:num)/revoke', 'Finance\AdditionalFeeController::revoke/$1', ['filter' => 'permission:finance.assess']);
     $routes->get('additional-fees/bulk', 'Finance\AdditionalFeeController::bulkForm', ['filter' => 'permission:finance.assess']);
-    $routes->get('additional-fees/bulk/preview', 'Finance\AdditionalFeeController::bulkPreview', ['filter' => 'permission:finance.assess']);
     $routes->post('additional-fees/bulk/apply', 'Finance\AdditionalFeeController::bulkApply', ['filter' => 'permission:finance.assess']);
 
     // cashier — dedicated record-payment screen
