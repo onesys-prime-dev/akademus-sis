@@ -533,11 +533,34 @@ class StudentModel extends Model
             ->get()
             ->getResultArray();
 
-        $student['tuition_assessments'] = (new TuitionAssessmentModel())->historyFor($studentId);
+        $activeTerm = (new AcademicYearModel())->activeFormatted();
+        $tuitionAssessments = (new TuitionAssessmentModel())->historyFor($studentId);
+
+        // A row with is_estimated=1 and status='unassessed' is a $0
+        // curriculum-based preview stub ensureActiveTermAssessment() leaves
+        // behind for whatever term was active WHEN IT RAN — not a real
+        // historical assessment. Once that term stops being active with
+        // nothing real ever having happened in it, it shouldn't linger in
+        // this student's assessment history (same leak the Tuition page's
+        // own stub-filter fixes for the student-facing view).
+        $student['tuition_assessments'] = array_values(array_filter(
+            $tuitionAssessments,
+            static fn (array $a): bool => $a['academic_year'] === $activeTerm
+                || ! ((bool) $a['is_estimated'] && $a['status'] === 'unassessed')
+        ));
+
         $student['payment_history']     = (new StudentPaymentModel())->historyFor($studentId);
         $student['pending_proofs']      = (new PaymentProofModel())->where('student_id', $studentId)->where('status', 'pending')->findAll();
 
-        $currentAssessment = $student['tuition_assessments'][0] ?? null;
+        // "The current assessment" is whichever one matches the real active
+        // term, not just the first row of a academic_year-DESC sort — sort
+        // order silently stops matching "current" the moment an admin
+        // reverts which year is active (the same bug already fixed on the
+        // student-facing Tuition page).
+        $currentAssessment = current(array_filter(
+            $student['tuition_assessments'],
+            static fn (array $a): bool => $a['academic_year'] === $activeTerm
+        )) ?: ($student['tuition_assessments'][0] ?? null);
 
         $student['assessment_items']  = $currentAssessment !== null
             ? (new AssessmentItemModel())->forAssessment((int) $currentAssessment['assessment_id'])

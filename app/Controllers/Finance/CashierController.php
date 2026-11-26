@@ -83,7 +83,11 @@ class CashierController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
-        $assessments = (new TuitionAssessmentModel())->historyFor((int) $studentId);
+        // Reuses findDetailed()'s own tuition_assessments, which already
+        // excludes a $0 curriculum-estimate preview stub left over from a
+        // term that's no longer active — a fresh historyFor() call here
+        // would re-introduce that phantom row into the cashier's view.
+        $assessments = $student['tuition_assessments'];
 
         // Every assessment's CURRENT installment schedule, with real
         // paid/balance per row (FIFO against amount_paid, same math the

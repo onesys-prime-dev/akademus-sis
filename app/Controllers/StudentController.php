@@ -278,7 +278,18 @@ class StudentController extends BaseController
             return redirect()->to('/student/tuition')->with('errors', ['No student record found.']);
         }
 
-        $assessment = (new TuitionAssessmentModel())->historyFor((int) $student['student_id'])[0] ?? null;
+        // Must be the assessment for the real active term, not just the
+        // newest-sorted row — picking by sort order risks filing a
+        // genuine payment proof against a stale/mis-sorted assessment
+        // (e.g. a $0 preview stub left over from a term that's no longer
+        // active), silently crediting the wrong term. Same bug class as
+        // the one already fixed on this page's own display logic.
+        $activeTerm  = (new AcademicYearModel())->activeFormatted();
+        $assessments = (new TuitionAssessmentModel())->historyFor((int) $student['student_id']);
+        $assessment  = current(array_filter(
+            $assessments,
+            static fn (array $a): bool => $a['academic_year'] === $activeTerm
+        )) ?: ($assessments[0] ?? null);
 
         if ($assessment === null) {
             return redirect()->to('/student/tuition')->with('errors', ['No assessment exists yet to upload a proof against.']);

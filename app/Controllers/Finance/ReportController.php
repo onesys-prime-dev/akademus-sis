@@ -4,6 +4,7 @@ namespace App\Controllers\Finance;
 
 use App\Controllers\BaseController;
 use App\Libraries\FinancePortal;
+use App\Models\AcademicYearModel;
 use App\Models\AssessmentItemModel;
 use App\Models\LedgerAdjustmentModel;
 use App\Models\StudentModel;
@@ -107,7 +108,18 @@ class ReportController extends BaseController
 
         $entries = [];
 
-        foreach ((new TuitionAssessmentModel())->historyFor((int) $studentId) as $assessment) {
+        // Exclude a $0 curriculum-estimate preview stub (is_estimated +
+        // unassessed) left over from a term that's no longer active and
+        // was never really billed — otherwise it shows as a phantom
+        // "Charge" line for a term the student was never enrolled in.
+        $activeTerm  = (new AcademicYearModel())->activeFormatted();
+        $assessments = array_filter(
+            (new TuitionAssessmentModel())->historyFor((int) $studentId),
+            static fn (array $a): bool => $a['academic_year'] === $activeTerm
+                || ! ((bool) $a['is_estimated'] && $a['status'] === 'unassessed')
+        );
+
+        foreach ($assessments as $assessment) {
             $entries[] = [
                 'date'   => $assessment['created_at'],
                 'type'   => 'Charge',
