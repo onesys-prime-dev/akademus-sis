@@ -49,7 +49,7 @@ class GradeApprovalController extends BaseController
         $context = $this->contextFromPayload($this->request->getGet());
 
         if ($context === null || $this->ownProgram($context['program']) === null) {
-            return redirect()->to('/dean/grade-approvals')->with('error', 'That class does not belong to your college.');
+            return redirect()->to('/dean/grade-approvals')->with('errors', ['That class does not belong to your college.']);
         }
 
         $result = (new GradeModel())->rosterWithGrades($context['academic_year'], $context['program'], $context['year_level'], $context['section'], $context['subject_code']);

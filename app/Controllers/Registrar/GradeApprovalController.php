@@ -34,7 +34,7 @@ class GradeApprovalController extends BaseController
         $context = $this->contextFromPayload($this->request->getGet());
 
         if ($context === null) {
-            return redirect()->to('/registrar/grade-approvals')->with('error', 'Missing class context.');
+            return redirect()->to('/registrar/grade-approvals')->with('errors', ['Missing class context.']);
         }
 
         $result = (new GradeModel())->rosterWithGrades($context['academic_year'], $context['program'], $context['year_level'], $context['section'], $context['subject_code']);

@@ -64,7 +64,7 @@ class GradeApprovalController extends BaseController
         $context = $this->contextFromPayload($this->request->getGet());
 
         if ($context === null || $this->ownProgram($context['program']) === null) {
-            return redirect()->to('/chairperson/grade-approvals')->with('error', 'That class does not belong to your department.');
+            return redirect()->to('/chairperson/grade-approvals')->with('errors', ['That class does not belong to your department.']);
         }
 
         $result = (new GradeModel())->rosterWithGrades($context['academic_year'], $context['program'], $context['year_level'], $context['section'], $context['subject_code']);

@@ -77,13 +77,13 @@ class GradingController extends BaseController
         $context   = $this->requireContext();
 
         if ($context === null) {
-            return redirect()->to('/faculty/grading')->with('error', 'Missing class context.');
+            return redirect()->to('/faculty/grading')->with('errors', ['Missing class context.']);
         }
 
         $owns = (new FacultyAssignmentModel())->where(array_merge($context, ['user_id' => $facultyId]))->first();
 
         if ($owns === null) {
-            return redirect()->to('/faculty/grading')->with('error', 'You are not assigned to that class.');
+            return redirect()->to('/faculty/grading')->with('errors', ['You are not assigned to that class.']);
         }
 
         $result = (new GradeModel())->rosterWithGrades($context['academic_year'], $context['program'], $context['year_level'], $context['section'], $context['subject_code']);
