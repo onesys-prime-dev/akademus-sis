@@ -24,7 +24,36 @@ class AdditionalFeeController extends BaseController
 {
     public function index()
     {
-        return view('finance/additional-fees/index', FinancePortal::shell('additional-fees'));
+        $db = db_connect();
+
+        $activeStats = $db->table('student_additional_fees')
+            ->select('COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total')
+            ->where('status', 'active')
+            ->get()
+            ->getRowArray();
+
+        $todayStats = $db->table('student_additional_fees')
+            ->select('COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total')
+            ->where('DATE(granted_at)', date('Y-m-d'))
+            ->get()
+            ->getRowArray();
+
+        $recentFees = $db->table('student_additional_fees saf')
+            ->select('saf.label, saf.amount, saf.status, saf.granted_at, u.id AS user_id, u.username, u.photo_mime, s.student_number')
+            ->join('students s', 's.student_id = saf.student_id')
+            ->join('users u', 'u.id = s.user_id')
+            ->orderBy('saf.granted_at', 'DESC')
+            ->limit(6)
+            ->get()
+            ->getResultArray();
+
+        return view('finance/additional-fees/index', [
+            'activeCount' => (int) ($activeStats['count'] ?? 0),
+            'activeTotal' => (float) ($activeStats['total'] ?? 0),
+            'todayCount'  => (int) ($todayStats['count'] ?? 0),
+            'todayTotal'  => (float) ($todayStats['total'] ?? 0),
+            'recentFees'  => $recentFees,
+        ] + FinancePortal::shell('additional-fees'));
     }
 
     /**
@@ -40,7 +69,7 @@ class AdditionalFeeController extends BaseController
         }
 
         $results = db_connect()->table('students s')
-            ->select('s.student_id, s.student_number, u.username')
+            ->select('s.student_id, s.student_number, u.id AS user_id, u.username, u.photo_mime')
             ->join('users u', 'u.id = s.user_id')
             ->groupStart()
                 ->like('u.username', $query)

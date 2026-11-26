@@ -7,6 +7,18 @@
     .fin-bulk-count { font-weight: 700; font-size: 14px; color: var(--color-text-primary); margin-bottom: 8px; }
     .fin-bulk-list { max-height: 200px; overflow-y: auto; font-size: 12.5px; color: var(--color-text-secondary); }
     .fin-bulk-list div { padding: 3px 0; }
+
+    .fin-bulk-everyone {
+        display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+        margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--color-border);
+        border-radius: var(--radius-md); background: var(--color-surface-sunken, #f8fafc);
+        transition: border-color 150ms ease, background 150ms ease;
+    }
+    .fin-bulk-everyone:has(input:checked) { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 6%, #fff); }
+    .fin-bulk-everyone input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--color-primary); flex-shrink: 0; }
+    .fin-bulk-everyone span { font-size: 12.5px; color: var(--color-text-secondary); line-height: 1.5; }
+    .fin-bulk-everyone span strong { color: var(--color-text-primary); }
+    #bulkFilterFields.is-disabled { opacity: .45; pointer-events: none; }
 </style>
 <?= $this->endSection() ?>
 
@@ -31,7 +43,12 @@
 
         <p style="font-size:12.5px; color:var(--color-text-secondary); margin:0 0 16px;">Term: <strong><?= esc($activeTerm) ?></strong></p>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+        <label class="fin-bulk-everyone">
+            <input type="checkbox" id="bulkEveryone" onchange="bulkToggleEveryone()">
+            <span><strong>Apply to every active student</strong> — skips the filters below and ignores program, year level, and section entirely.</span>
+        </label>
+
+        <div id="bulkFilterFields" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
             <div class="ac-field">
                 <label>Program</label>
                 <select name="program" id="bulkProgram" class="ac-input" onchange="bulkResetPreview()">
@@ -102,13 +119,44 @@
         document.getElementById('bulkResults').classList.add('is-empty');
     }
 
+    // "Apply to every active student" is a deliberate, named choice rather
+    // than something staff only discover by accident from leaving all three
+    // filters blank. Checking it visibly disables the filters and forces
+    // them back to "Any" so there's no ambiguity about what's about to be
+    // charged — the same "everyone" scope the filters already supported
+    // when left empty, just no longer implicit.
+    function bulkToggleEveryone() {
+        const everyone = document.getElementById('bulkEveryone').checked;
+        const fields = document.getElementById('bulkFilterFields');
+        fields.classList.toggle('is-disabled', everyone);
+        ['bulkProgram', 'bulkYearLevel', 'bulkSection'].forEach(function (id) {
+            const el = document.getElementById(id);
+            el.disabled = everyone;
+            if (everyone) el.value = '';
+        });
+        bulkResetPreview();
+    }
+
     function bulkConfirmSubmit(e) {
+        e.preventDefault();
+
         if (!window.bulkConfirmed) {
             alert('Run Preview first to see how many students this will charge.');
             return false;
         }
 
-        return confirm(`Charge "${window.bulkLastLabel}" to ${window.bulkLastCount} student${window.bulkLastCount === 1 ? '' : 's'}? This can\'t be bulk-undone — each one would need to be revoked individually.`);
+        const form = e.target;
+        const scope = window.bulkScopeText || `${window.bulkLastCount} student${window.bulkLastCount === 1 ? '' : 's'}`;
+        const message = `Charge "${window.bulkLastLabel}" to ${scope}? This can't be bulk-undone — each one would need to be revoked individually.`;
+
+        (typeof window.acConfirm === 'function' ? window.acConfirm(message) : Promise.resolve(confirm(message))).then(function (ok) {
+            // form.submit() (not requestSubmit()) deliberately bypasses the
+            // submit event entirely — requestSubmit() would re-dispatch it
+            // and re-run this same onsubmit handler, looping forever.
+            if (ok) form.submit();
+        });
+
+        return false;
     }
 
     async function bulkPreview() {
@@ -134,9 +182,25 @@
         }
 
         const label = document.getElementById('bulkLabel').value.trim() || '(this fee)';
+        const everyoneChosen = document.getElementById('bulkEveryone').checked;
+        const noFilter = !document.getElementById('bulkProgram').value
+            && !document.getElementById('bulkYearLevel').value
+            && !document.getElementById('bulkSection').value;
+        // No filter selected means no WHERE clause at all server-side — every
+        // active student in the active term, across every program/section.
+        // Said out loud here so this scope is never ambiguous — worded as a
+        // confirmation when "Apply to every active student" was explicitly
+        // checked, or as a warning when the filters just happen to be blank
+        // without that checkbox (the one state that's easy to hit by
+        // accident: picking nothing from any of the three dropdowns).
+        window.bulkScopeText = noFilter ? 'EVERY active student, across ALL programs and sections' : 'the students matching your filter';
         countEl.textContent = data.count === 0
             ? 'No students match this filter — nothing would be charged.'
-            : `This will charge "${label}" to ${data.count} student${data.count === 1 ? '' : 's'}.`;
+            : (everyoneChosen
+                ? `This will charge "${label}" to ${window.bulkScopeText}: all ${data.count} active student${data.count === 1 ? '' : 's'}.`
+                : (noFilter
+                    ? `⚠ No program/year/section filter is set — this will charge "${label}" to ${window.bulkScopeText}: all ${data.count} active student${data.count === 1 ? '' : 's'}.`
+                    : `This will charge "${label}" to ${data.count} student${data.count === 1 ? '' : 's'}.`));
 
         listEl.replaceChildren();
         data.students.forEach(s => {
