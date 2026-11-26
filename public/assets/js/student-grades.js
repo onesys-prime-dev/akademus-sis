@@ -4,8 +4,11 @@
     var configEl = document.getElementById('sgConfig');
     if (!configEl) return;
 
-    var terms = JSON.parse(configEl.textContent || '{}').terms || [];
+    var configData = JSON.parse(configEl.textContent || '{}');
+    var terms = configData.terms || [];
     if (terms.length === 0) return;
+    var activeYear = configData.activeYear || null;
+    var activeSemester = configData.activeSemester || null;
 
     var yearSelect = document.getElementById('sgYear');
     var semesterSelect = document.getElementById('sgSemester');
@@ -180,8 +183,21 @@
     });
     semesterSelect.addEventListener('change', render);
 
+    // Default to the real active term, not whichever term happens to sort
+    // first in `terms` — same bug class as the Tuition page's fix: sort
+    // order silently stops matching "current" the moment an admin reverts
+    // which year is active. Fall back to the first available term only if
+    // the student has no record at all for the active term.
+    var defaultYear = activeYear && years.indexOf(activeYear) !== -1 ? activeYear : years[0];
+    var semestersForDefaultYear = semestersForYear(defaultYear);
+    var defaultSemester = activeSemester && semestersForDefaultYear.indexOf(activeSemester) !== -1
+        ? activeSemester
+        : semestersForDefaultYear[0];
+
     fillSelect(yearSelect, years);
-    fillSelect(semesterSelect, semestersForYear(years[0]));
+    yearSelect.value = defaultYear;
+    fillSelect(semesterSelect, semestersForDefaultYear);
+    semesterSelect.value = defaultSemester;
     render();
 
     // Same animated floating-listbox dropdown every other filter in the

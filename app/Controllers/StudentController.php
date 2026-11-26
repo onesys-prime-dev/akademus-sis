@@ -175,6 +175,22 @@ class StudentController extends BaseController
             $this->ensureActiveTermAssessment($student, $activeTerm);
 
             $assessments = (new TuitionAssessmentModel())->historyFor((int) $student['student_id']);
+
+            // ensureActiveTermAssessment() (and recompute()'s own curriculum-
+            // estimate fallback) leaves a placeholder row — is_estimated,
+            // status 'unassessed', every amount zero — for a term the
+            // student was never actually enrolled in, just so the CURRENT
+            // term's card has something to preview before enrollment lands.
+            // Once that term stops being active with nothing real ever
+            // having happened in it, it's not a real term in the student's
+            // history and shouldn't linger as a selectable one — keep it
+            // only while it's still the active term.
+            $assessments = array_values(array_filter(
+                $assessments,
+                static fn (array $a): bool => $a['academic_year'] === $activeTerm
+                    || ! ((bool) $a['is_estimated'] && $a['status'] === 'unassessed')
+            ));
+
             $payments    = (new StudentPaymentModel())->historyFor((int) $student['student_id']);
             $proofs      = (new PaymentProofModel())->forStudent((int) $student['student_id']);
 

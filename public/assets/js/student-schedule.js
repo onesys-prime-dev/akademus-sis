@@ -66,6 +66,7 @@
     // header/footer need to say which portal printed it rather than always
     // claiming "Student Portal".
     const portalLabel = configData.portalLabel || 'Student Portal';
+    const activeTerm = configData.activeTerm || null;
     const showInstructor = configData.showInstructor !== false;
     if (!raw.length) return;
     const $ = id => document.getElementById(id);
@@ -125,6 +126,13 @@
     });
     const terms = [...new Set(classList.map(c => c.term))];
     $('ssTerm').replaceChildren(...terms.map(term => new Option(term, term)));
+    // Default to the real active term, not whichever term happens to sort
+    // first — classList/meetings arrive newest-academic_year-first from the
+    // server, which silently stops matching "the current term" the moment
+    // an admin reactivates an older term after a newer one briefly went
+    // active. Fall back to the first available term only if the student
+    // has no meetings in the active term at all (e.g. only past history).
+    if (activeTerm && terms.includes(activeTerm)) $('ssTerm').value = activeTerm;
     // A single term has nothing to toggle between — show it as a plain
     // label instead of a one-option dropdown (same convention as the
     // Tuition & Fees term switcher).

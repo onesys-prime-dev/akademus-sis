@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\AcademicYearModel;
 use App\Models\GradeModel;
 use App\Models\GradingScaleModel;
 
@@ -44,12 +45,22 @@ class StudentGrades extends BaseController
             $gwaByTerm[$term] = $this->computeGwa($rows, $scales);
         }
 
+        // The default School Year/Semester selection must be the real
+        // active term, not whichever term happens to sort first in
+        // $byYear — same divergence as the Tuition page's bug: sort order
+        // silently stops matching "current" the moment an admin reverts
+        // which year is active.
+        $activeTerm = (new AcademicYearModel())->activeFormatted();
+        $activeTermSplit = $activeTerm !== null ? $this->splitTerm($activeTerm) : null;
+
         return view('student/grades', [
-            'pageTitle' => 'My Grades',
-            'byYear'    => $byYear,
-            'scales'    => $scales,
-            'terms'     => $terms,
-            'gwaByTerm' => $gwaByTerm,
+            'pageTitle'       => 'My Grades',
+            'byYear'          => $byYear,
+            'scales'          => $scales,
+            'terms'           => $terms,
+            'gwaByTerm'       => $gwaByTerm,
+            'activeYear'      => $activeTermSplit['year'] ?? null,
+            'activeSemester'  => $activeTermSplit['semester'] ?? null,
         ]);
     }
 

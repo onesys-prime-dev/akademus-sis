@@ -239,10 +239,11 @@ class StudentEnrollment extends BaseController
         }, (new EnrollmentModel())->activeForStudent($userId));
 
         return view('student/schedule', [
-            'pageTitle' => 'My Schedule',
-            'meetings'  => $meetings,
-            'blocks'    => $blocks,
-            'enrolled'  => $enrolled,
+            'pageTitle'  => 'My Schedule',
+            'meetings'   => $meetings,
+            'blocks'     => $blocks,
+            'enrolled'   => $enrolled,
+            'activeTerm' => $activeYear,
         ]);
     }
 
