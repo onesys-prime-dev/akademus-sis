@@ -20,8 +20,8 @@
         <form method="post" action="<?= site_url('finance/discounts/student/' . $s['student_id'] . '/grant') ?>" style="display:grid; grid-template-columns:2fr 1fr 1fr 2fr auto; gap:10px; align-items:end;">
             <?= csrf_field() ?>
             <div class="ac-field" style="margin:0;">
-                <label>Discount Type</label>
-                <select name="discount_type_id" class="ac-input" required>
+                <label for="fdDiscountType">Discount Type</label>
+                <select id="fdDiscountType" name="discount_type_id" class="ac-input" required>
                     <?php foreach ($discountTypes as $d): ?>
                         <option value="<?= (int) $d['id'] ?>"><?= esc($d['name']) ?> (<?= $d['value_type'] === 'percentage' ? esc($d['default_value']) . '%' : '₱' . number_format((float) $d['default_value'], 2) ?>)</option>
                     <?php endforeach ?>
@@ -82,8 +82,10 @@
 <?= $this->section('scripts') ?>
 <script>
     (function () {
-        var ay = document.getElementById('fdAcademicYear');
-        if (ay && window.enhanceSelect) window.enhanceSelect(ay);
+        ['fdDiscountType', 'fdAcademicYear'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el && window.enhanceSelect) window.enhanceSelect(el);
+        });
     })();
 </script>
 <?= $this->endSection() ?>
