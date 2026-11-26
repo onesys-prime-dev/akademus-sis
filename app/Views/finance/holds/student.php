@@ -6,7 +6,7 @@
 
 <div class="ac-page-header">
     <div>
-        <a href="<?= site_url('finance/holds') ?>" style="font-size:12.5px; color:var(--color-text-secondary);">&larr; Back to Holds</a>
+        <a href="<?= site_url('finance/holds') ?>" class="ac-back-link"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to Holds</a>
         <h2 class="ac-page-header__title" style="margin-top:6px;"><?= esc(trim($s['first_name'] . ' ' . $s['last_name'])) ?></h2>
         <p class="ac-page-header__sub"><?= esc($s['student_number']) ?> &middot; <?= esc($s['program_name'] ?? 'No program set') ?></p>
     </div>

@@ -4,7 +4,7 @@
 
 <div class="ac-page-header">
     <div>
-        <a href="<?= site_url($basePath . '/tuition-rates') ?>" style="font-size:12.5px; color:var(--color-text-secondary);">&larr; Back to Tuition Rates</a>
+        <a href="<?= site_url($basePath . '/tuition-rates') ?>" class="ac-back-link"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to Tuition Rates</a>
         <h2 class="ac-page-header__title" style="margin-top:6px;"><?= esc($program['program_code']) ?> — <?= esc($academicYear) ?></h2>
         <p class="ac-page-header__sub">Every active fee type appears below, grouped by category. Leave an amount blank to not charge that fee to this program.</p>
     </div>

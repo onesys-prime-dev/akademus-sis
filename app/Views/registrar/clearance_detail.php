@@ -6,7 +6,7 @@
 
 <div class="ac-page-header">
     <div>
-        <a href="<?= site_url('registrar/clearance') ?>" style="font-size:12.5px; color:var(--color-text-secondary);">&larr; Back to Clearance Queue</a>
+        <a href="<?= site_url('registrar/clearance') ?>" class="ac-back-link"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to Clearance Queue</a>
         <h2 class="ac-page-header__title" style="margin-top:6px;"><?= esc($c['username']) ?></h2>
         <p class="ac-page-header__sub"><?= esc($c['student_number']) ?> &middot; <?= esc($c['academic_year']) ?> &middot; <span class="ac-pill <?= $c['status'] === 'cleared' ? 'ac-pill--success' : ($c['status'] === 'denied' ? 'ac-pill--danger' : '') ?>"><?= esc(ucfirst($c['status'])) ?></span></p>
     </div>

@@ -14,7 +14,7 @@
 
 <div class="ac-page-header">
     <div>
-        <a href="<?= site_url('finance/additional-fees') ?>" style="font-size:12.5px; color:var(--color-text-secondary);">&larr; Back to Additional Fees</a>
+        <a href="<?= site_url('finance/additional-fees') ?>" class="ac-back-link"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to Additional Fees</a>
         <h2 class="ac-page-header__title" style="margin-top:6px;">Bulk Apply a Fee</h2>
         <p class="ac-page-header__sub">Charge the same fee to every student matching a program/year level/section filter, in one action.</p>
     </div>
