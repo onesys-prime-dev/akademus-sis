@@ -161,25 +161,39 @@ class StudentController extends BaseController
 
         $current        = null;
         $isCurrentTerm  = true;
+        $activeTerm     = null;
 
         if ($student !== null) {
-            $this->ensureActiveTermAssessment($student, (new AcademicYearModel())->activeFormatted());
+            // The real source of truth for "current term" is whichever
+            // academic year is actually marked active — NOT just the
+            // newest assessment row. historyFor() sorts by academic_year
+            // DESC, so a later term's assessment (e.g. one already created
+            // while it was briefly active) would otherwise keep outranking
+            // the real active term the moment an admin reverts/corrects
+            // which year is active.
+            $activeTerm = (new AcademicYearModel())->activeFormatted();
+            $this->ensureActiveTermAssessment($student, $activeTerm);
 
             $assessments = (new TuitionAssessmentModel())->historyFor((int) $student['student_id']);
             $payments    = (new StudentPaymentModel())->historyFor((int) $student['student_id']);
             $proofs      = (new PaymentProofModel())->forStudent((int) $student['student_id']);
 
             if ($assessments !== []) {
+                $activeAssessment = current(array_filter(
+                    $assessments,
+                    static fn (array $a): bool => $a['academic_year'] === $activeTerm
+                )) ?: $assessments[0];
+
                 // Lets the student toggle to an older term's assessment —
                 // ?assessment_id must be one of THEIR OWN rows from historyFor()
                 // above, never trusted/looked-up directly, so there's no way
                 // to view another student's assessment by guessing an id.
                 $requestedId = (int) ($this->request->getGet('assessment_id') ?? 0);
                 $current     = $requestedId > 0
-                    ? current(array_filter($assessments, static fn (array $a): bool => (int) $a['assessment_id'] === $requestedId)) ?: $assessments[0]
-                    : $assessments[0];
+                    ? current(array_filter($assessments, static fn (array $a): bool => (int) $a['assessment_id'] === $requestedId)) ?: $activeAssessment
+                    : $activeAssessment;
 
-                $isCurrentTerm = (int) $current['assessment_id'] === (int) $assessments[0]['assessment_id'];
+                $isCurrentTerm = $current['academic_year'] === $activeTerm;
 
                 $itemsByCategory = (new AssessmentItemModel())->forAssessment((int) $current['assessment_id']);
                 $schedule = (new PaymentScheduleModel())->withBalances((int) $current['assessment_id'], (float) $current['amount_paid']);
@@ -193,6 +207,7 @@ class StudentController extends BaseController
             'account'         => $account,
             'assessments'     => $assessments,
             'current'         => $current,
+            'activeTerm'      => $activeTerm,
             'isCurrentTerm'   => $isCurrentTerm,
             'itemsByCategory' => $itemsByCategory,
             'additionalFees'  => $additionalFees,

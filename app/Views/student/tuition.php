@@ -142,7 +142,11 @@ $creditBalance = max(0, $amountPaid - $totalAssessment);
         <?php if ($isCurrentTerm): ?>
             <a class="tf-action" href="#payment-proof">Submit payment proof<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
         <?php else: ?>
-            <p class="tf-form-help">This is a past term &mdash; switch to <?= esc($assessments[0]['academic_year']) ?> to submit a payment.</p>
+            <p class="tf-form-help">
+                <?= $activeTerm !== null
+                    ? 'This is a past term &mdash; switch to ' . esc($activeTerm) . ' to submit a payment.'
+                    : 'This is a past term and no term is currently active for payments.' ?>
+            </p>
         <?php endif ?>
     </div>
     <div class="tf-overview">
