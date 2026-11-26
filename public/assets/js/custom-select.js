@@ -156,13 +156,22 @@ window.enhanceSelect = function (select) {
 
         var margin = 8;
         var triggerRect = trigger.getBoundingClientRect();
+        // Must be set BEFORE measuring panel width below: on a panel's very
+        // first open there's no leftover inline min-width from a previous
+        // open, so panel.getBoundingClientRect().width would still reflect
+        // only its own (possibly narrower) content box. Computing `left`
+        // off that stale, too-narrow width, then growing the panel via
+        // min-width afterward, leaves it sitting too far right of where it
+        // should align with the trigger — exactly the glitch that "fixed
+        // itself" the second time only because that inline min-width was
+        // already applied from the prior open.
+        panel.style.minWidth = triggerRect.width + 'px';
         var panelWidth = panel.getBoundingClientRect().width;
         var left = triggerRect.right - panelWidth;
         if (left < margin) left = margin;
         if (left + panelWidth > window.innerWidth - margin) left = window.innerWidth - margin - panelWidth;
         panel.style.left = left + 'px';
         panel.style.top = (triggerRect.bottom + 6) + 'px';
-        panel.style.minWidth = triggerRect.width + 'px';
     }
 
     function open() {
