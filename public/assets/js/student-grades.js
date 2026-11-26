@@ -141,18 +141,26 @@
             var units = Number(row.units);
             return total + (Number.isFinite(units) ? units : 0);
         }, 0);
+        // A subject with no locked grade yet (shown as "CE") carries units
+        // same as any other row, but contributes nothing to the GWA — only
+        // count units from rows that actually have a posted grade so this
+        // caption can't claim a "weighted" figure the value below doesn't
+        // back up.
+        var gradedUnits = rows.reduce(function (total, row) {
+            if (row.grade === null || row.grade === undefined || row.grade === '') return total;
+            var units = Number(row.units);
+            return total + (Number.isFinite(units) ? units : 0);
+        }, 0);
+        var hasGwa = term && term.gwa !== null && term.gwa !== undefined;
+
         termTitle.textContent = term ? term.year + (term.semester ? ' · ' + term.semester : '') : 'Official grades';
         courseCount.textContent = rows.length;
         unitCount.textContent = totalUnits % 1 === 0 ? String(totalUnits) : totalUnits.toFixed(1);
-        gwaMeta.textContent = rows.length
-            ? 'Weighted across ' + (totalUnits % 1 === 0 ? String(totalUnits) : totalUnits.toFixed(1)) + ' posted units'
+        gwaMeta.textContent = hasGwa
+            ? 'Weighted across ' + (gradedUnits % 1 === 0 ? String(gradedUnits) : gradedUnits.toFixed(1)) + ' posted units'
             : 'No posted numeric grades for this term';
 
-        if (term && term.gwa !== null && term.gwa !== undefined) {
-            gwaValue.textContent = Number(term.gwa).toFixed(2);
-        } else {
-            gwaValue.textContent = '—';
-        }
+        gwaValue.textContent = hasGwa ? Number(term.gwa).toFixed(2) : '—';
     }
 
     function escapeHtml(value) {

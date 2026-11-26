@@ -943,4 +943,56 @@ class GradeModel extends Model
 
         return $rows;
     }
+
+    /**
+     * Same shape as forStudent(), but for every subject the student is
+     * CURRENTLY ENROLLED in, term by term — not only the ones that already
+     * have a locked grade. A subject with no locked grade yet comes back
+     * with grade_value/grading_scale_id/is_passing null and remarks forced
+     * to 'CE' (Currently Enrolled, the same marking the view's legend
+     * already defines), so the student's course list on "My Grades" matches
+     * what they're actually enrolled in instead of only appearing once a
+     * grade is locked.
+     */
+    public function forStudentWithEnrollments(int $userId): array
+    {
+        $rows = $this->db->table('enrollments e')
+            ->select('e.subject_code, e.academic_year, subj.subject_name, subj.units,
+                      s.program, s.year_level, s.section,
+                      g.grade_value, g.grading_scale_id, g.is_passing, g.remarks')
+            ->join('sections s', 's.section_id = e.section_id')
+            ->join('subjects subj', 'subj.subject_code = e.subject_code', 'left')
+            ->join('grades g', "g.enrollment_id = e.enrollment_id AND g.status = 'locked'", 'left')
+            ->where('e.user_id', $userId)
+            ->where('e.status', 'enrolled')
+            ->orderBy('e.academic_year', 'DESC')
+            ->orderBy('subj.subject_name', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $schedules = new PlottedScheduleModel();
+
+        foreach ($rows as &$row) {
+            if ($row['grade_value'] === null) {
+                $row['remarks'] = 'CE';
+            }
+
+            $meetings = $schedules
+                ->select('day, start_time, end_time, time_label, room, prof')
+                ->where('academic_year', $row['academic_year'])
+                ->where('program', $row['program'])
+                ->where('year_level', $row['year_level'])
+                ->where('section', $row['section'])
+                ->where('subject_code', $row['subject_code'])
+                ->orderBy('day')
+                ->findAll();
+
+            $row['meetings']   = $meetings;
+            $row['instructor'] = $meetings[0]['prof'] ?? null;
+            $row['room']       = $meetings[0]['room'] ?? null;
+        }
+        unset($row);
+
+        return $rows;
+    }
 }

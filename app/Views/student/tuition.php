@@ -22,7 +22,7 @@ $navGroups     = [
         ]],
         'grades'    => ['label' => 'My Grades',   'icon' => 'grade',          'url' => 'student/grades', 'help' => [
             'title' => 'My Grades',
-            'text'  => "Your official grades, term by term. A grade only appears here once it's been locked by the registrar.",
+            'text'  => "Your official grades, term by term — enrolled subjects show up right away; the final grade appears once it's locked by the registrar.",
         ]],
         'enlistment' => ['label' => 'Enlistment', 'icon' => 'playlist_add_check', 'url' => 'student/enlistment', 'help' => [
             'title' => 'Enlistment',

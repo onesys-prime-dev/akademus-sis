@@ -16,9 +16,9 @@ class StudentGrades extends BaseController
     public function index()
     {
         $userId = (int) auth()->id();
-        $grades = (new GradeModel())->forStudent($userId);
+        $grades = (new GradeModel())->forStudentWithEnrollments($userId);
 
-        $scaleIds = array_unique(array_column($grades, 'grading_scale_id'));
+        $scaleIds = array_unique(array_filter(array_column($grades, 'grading_scale_id')));
         $scales   = [];
 
         foreach ($scaleIds as $scaleId) {

@@ -22,7 +22,7 @@ $navGroups     = [
         ]],
         'grades'    => ['label' => 'My Grades',   'icon' => 'grade',          'url' => 'student/grades', 'help' => [
             'title' => 'My Grades',
-            'text'  => "Your official grades, term by term. A grade only appears here once it's been locked by the registrar.",
+            'text'  => "Your official grades, term by term — enrolled subjects show up right away; the final grade appears once it's locked by the registrar.",
         ]],
         'enlistment' => ['label' => 'Enlistment', 'icon' => 'playlist_add_check', 'url' => 'student/enlistment', 'help' => [
             'title' => 'Enlistment',
@@ -90,8 +90,8 @@ foreach ($byYear as $term => $rows) {
     <?php if (empty($byYear)): ?>
         <section class="sg-card sg-empty">
             <span class="material-symbols-outlined" aria-hidden="true">grade</span>
-            <h2>No grades posted yet</h2>
-            <p>Your official grades will appear here once your instructors submit them and your chairperson locks them in.</p>
+            <h2>No enrollment on record yet</h2>
+            <p>Your subjects will appear here once you're enrolled in a term — final grades follow once your instructors submit them and your chairperson locks them in.</p>
         </section>
     <?php else: ?>
         <section class="sg-card sg-filters">
@@ -115,7 +115,7 @@ foreach ($byYear as $term => $rows) {
                 <div>
                     <span class="sg-section-label">Selected term</span>
                     <h2 id="sgTermTitle">Official grades</h2>
-                    <p>Locked grades submitted for your enrolled classes.</p>
+                    <p>Every subject you're enrolled in this term — shows "CE" until a grade is locked.</p>
                 </div>
                 <div class="sg-table-metrics" aria-live="polite">
                     <span><strong id="sgCourseCount">0</strong> courses</span>
@@ -139,7 +139,7 @@ foreach ($byYear as $term => $rows) {
             </div>
             <div class="sg-empty-term" id="sgEmptyTerm" hidden>
                 <span class="material-symbols-outlined" aria-hidden="true">search_off</span>
-                <p>No grades posted for this term.</p>
+                <p>No subjects found for this term.</p>
             </div>
         </section>
 
