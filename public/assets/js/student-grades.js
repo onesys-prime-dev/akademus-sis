@@ -125,13 +125,17 @@
 
             rows.forEach(function (g) {
                 var tr = document.createElement('tr');
-                var gradeClass = g.is_passing === false ? 'sg-grade is-fail' : 'sg-grade';
+                var hasGrade = g.grade !== null && g.grade !== undefined && g.grade !== '';
+                var gradeClass = hasGrade
+                    ? (g.is_passing === false ? 'sg-grade is-fail' : 'sg-grade')
+                    : 'sg-grade sg-grade--pending';
+                var gradeLabel = hasGrade ? g.grade : 'Not yet available';
                 tr.innerHTML =
                     '<td data-label="Course"><span class="sg-course-code">' + escapeHtml(g.code) + '</span><span class="sg-course-title">' + escapeHtml(g.title) + '</span></td>' +
                     '<td data-label="Class details"><span class="sg-cell-primary">' + escapeHtml(g.schedule) + '</span><span class="sg-cell-secondary">Instructor · ' + escapeHtml(g.instructor) + '</span></td>' +
                     '<td data-label="Enrollment"><span class="sg-cell-primary">' + escapeHtml(g.program) + '</span><span class="sg-cell-secondary">' + escapeHtml(g.year_level) + ' · Section ' + escapeHtml(g.section) + '</span></td>' +
                     '<td data-label="Units"><span class="sg-cell-primary">' + escapeHtml(g.units) + '</span></td>' +
-                    '<td data-label="Final grade"><span class="' + gradeClass + '">' + escapeHtml(g.grade) + '</span></td>' +
+                    '<td data-label="Final grade"><span class="' + gradeClass + '">' + escapeHtml(gradeLabel) + '</span></td>' +
                     '<td data-label="Result"><span class="' + passRemarkClass(g.is_passing) + '">' + escapeHtml(passRemarkLabel(g.is_passing, g.remarks)) + '</span></td>';
                 tbody.appendChild(tr);
             });

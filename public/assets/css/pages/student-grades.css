@@ -59,6 +59,7 @@
 .sg-cell-secondary { display:block; margin-top:4px; color:var(--color-text-secondary); font-size:10.5px; line-height:1.4; overflow-wrap:anywhere; }
 .sg-grade { color:#083f9f; font-size:15px; font-weight:750; }
 .sg-grade.is-fail { color:#9a2630; }
+.sg-grade--pending { color:var(--color-text-tertiary); font-size:12px; font-weight:600; font-style:italic; }
 .sg-pill { display:inline-flex; align-items:center; gap:5px; padding:5px 9px; border-radius:999px; background:var(--color-surface-sunken); color:var(--color-text-secondary); font-size:10.5px; font-weight:700; white-space:nowrap; }
 .sg-pill::before { content:''; width:6px; height:6px; border-radius:50%; background:currentColor; }
 .sg-pill--pass { background:var(--color-success-soft); color:#087443; }
