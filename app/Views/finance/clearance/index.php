@@ -24,10 +24,10 @@
                                 <input type="text" name="remarks" placeholder="Remarks (optional)" style="width:160px; font-size:11.5px;">
                                 <button type="submit" class="ac-btn-outline">Clear</button>
                             </form>
-                            <form method="post" action="<?= site_url('finance/clearance/' . $item['clearance_id'] . '/item/' . $item['id'] . '/deny') ?>" style="display:inline;" onsubmit="return confirm('Deny this item? A reason is required.');">
+                            <form method="post" action="<?= site_url('finance/clearance/' . $item['clearance_id'] . '/item/' . $item['id'] . '/deny') ?>" style="display:inline;">
                                 <?= csrf_field() ?>
                                 <input type="text" name="remarks" placeholder="Reason (required)" style="width:160px; font-size:11.5px;" required>
-                                <button type="submit" class="ac-btn-outline">Deny</button>
+                                <button type="submit" class="ac-btn-outline" data-confirm="Deny this item? A reason is required.">Deny</button>
                             </form>
                         </td>
                     </tr>

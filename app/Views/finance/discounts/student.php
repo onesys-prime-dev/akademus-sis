@@ -66,9 +66,9 @@
                     <td><?= esc(date('M j, Y', strtotime($g['granted_at']))) ?></td>
                     <td>
                         <?php if ($g['status'] === 'active'): ?>
-                            <form method="post" action="<?= site_url('finance/discounts/grant/' . $g['id'] . '/revoke') ?>" onsubmit="return confirm('Revoke this discount? It will stop being applied on future recomputes.');">
+                            <form method="post" action="<?= site_url('finance/discounts/grant/' . $g['id'] . '/revoke') ?>">
                                 <?= csrf_field() ?>
-                                <button type="submit" class="ac-btn-outline">Revoke</button>
+                                <button type="submit" class="ac-btn-outline" data-confirm="Revoke this discount? It will stop being applied on future recomputes.">Revoke</button>
                             </form>
                         <?php endif ?>
                     </td>

@@ -83,8 +83,8 @@
                         </td>
                         <td class="ac-actions-cell">
                             <?php if ($r['is_active']): ?>
-                                <form method="post" action="<?= site_url('admin/subject-substitutions/deactivate/' . $r['id']) ?>" onsubmit="return confirm('Deactivate this relationship? It can be reactivated later by adding the same relationship again.');">
-                                    <button type="submit" class="ac-btn-outline">Deactivate</button>
+                                <form method="post" action="<?= site_url('admin/subject-substitutions/deactivate/' . $r['id']) ?>">
+                                    <button type="submit" class="ac-btn-outline" data-confirm="Deactivate this relationship? It can be reactivated later by adding the same relationship again.">Deactivate</button>
                                 </form>
                             <?php endif ?>
                         </td>

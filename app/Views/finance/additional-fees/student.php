@@ -57,9 +57,9 @@
                     <td><?= esc(date('M j, Y', strtotime($f['granted_at']))) ?></td>
                     <td>
                         <?php if ($f['status'] === 'active'): ?>
-                            <form method="post" action="<?= site_url('finance/additional-fees/fee/' . $f['id'] . '/revoke') ?>" onsubmit="return confirm('Revoke this fee? It will stop being applied on future recomputes.');">
+                            <form method="post" action="<?= site_url('finance/additional-fees/fee/' . $f['id'] . '/revoke') ?>">
                                 <?= csrf_field() ?>
-                                <button type="submit" class="ac-btn-outline">Revoke</button>
+                                <button type="submit" class="ac-btn-outline" data-confirm="Revoke this fee? It will stop being applied on future recomputes.">Revoke</button>
                             </form>
                         <?php endif ?>
                     </td>

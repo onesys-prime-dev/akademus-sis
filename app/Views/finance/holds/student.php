@@ -54,9 +54,9 @@
                     <td><?= $h['released_at'] !== null ? esc(date('M j, Y', strtotime($h['released_at']))) : '—' ?></td>
                     <td>
                         <?php if ($h['status'] === 'active'): ?>
-                            <form method="post" action="<?= site_url('finance/holds/' . $h['id'] . '/release') ?>" onsubmit="return confirm('Release this hold?');">
+                            <form method="post" action="<?= site_url('finance/holds/' . $h['id'] . '/release') ?>">
                                 <?= csrf_field() ?>
-                                <button type="submit" class="ac-btn-outline">Release</button>
+                                <button type="submit" class="ac-btn-outline" data-confirm="Release this hold?">Release</button>
                             </form>
                         <?php endif ?>
                     </td>
