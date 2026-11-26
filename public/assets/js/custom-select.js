@@ -156,22 +156,24 @@ window.enhanceSelect = function (select) {
 
         var margin = 8;
         var triggerRect = trigger.getBoundingClientRect();
-        // Must be set BEFORE measuring panel width below: on a panel's very
-        // first open there's no leftover inline min-width from a previous
-        // open, so panel.getBoundingClientRect().width would still reflect
-        // only its own (possibly narrower) content box. Computing `left`
-        // off that stale, too-narrow width, then growing the panel via
-        // min-width afterward, leaves it sitting too far right of where it
-        // should align with the trigger — exactly the glitch that "fixed
-        // itself" the second time only because that inline min-width was
-        // already applied from the prior open.
-        panel.style.minWidth = triggerRect.width + 'px';
-        var panelWidth = panel.getBoundingClientRect().width;
+        // On a panel's very first open there's no leftover inline min-width
+        // from a previous open, so its natural content box can be narrower
+        // than the trigger. Rather than writing min-width to the DOM and
+        // then reading layout again (that extra write-then-read forces a
+        // second synchronous reflow in the middle of the open transition,
+        // which was resolving the opacity/transform transition instantly
+        // instead of animating it — confirmed via computed-style sampling),
+        // just take the max of the two widths in JS and use that for the
+        // position math up front. All three style writes below then happen
+        // together with no further layout read in between, exactly like
+        // the single read this function already did before.
+        var panelWidth = Math.max(panel.getBoundingClientRect().width, triggerRect.width);
         var left = triggerRect.right - panelWidth;
         if (left < margin) left = margin;
         if (left + panelWidth > window.innerWidth - margin) left = window.innerWidth - margin - panelWidth;
         panel.style.left = left + 'px';
         panel.style.top = (triggerRect.bottom + 6) + 'px';
+        panel.style.minWidth = triggerRect.width + 'px';
     }
 
     function open() {

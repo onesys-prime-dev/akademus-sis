@@ -258,6 +258,14 @@ textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
     visibility: hidden;
 }
 .cs-select.is-open .cs-select__panel { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; visibility: visible; transition-delay: 0s; }
+/* A [popover] panel goes from "not rendered at all" to fully shown in one
+   step (showPopover() promotes it straight into the top layer) — a CSS
+   transition has no previous frame to animate from unless the "before"
+   state is declared explicitly here. Without this, the fade/scale-in never
+   played at all; it just snapped open instantly every time. */
+@starting-style {
+    .cs-select.is-open .cs-select__panel[popover] { opacity: 0; transform: scale(.96) translateY(-4px); }
+}
 /* A [popover] panel is positioned in JS (custom-select.js's positionPanel())
    with fixed top/left computed from the trigger's live viewport rect, since
    top-layer rendering takes it out of normal flow entirely — it no longer
