@@ -241,6 +241,8 @@ class AdditionalFeeController extends BaseController
                 'student_id'     => (int) $s['student_id'],
                 'student_number' => $s['student_number'],
                 'username'       => $s['username'],
+                'user_id'        => (int) $s['user_id'],
+                'photo_mime'     => $s['photo_mime'],
             ], array_slice($students, 0, 50)),
         ]);
     }
@@ -308,7 +310,7 @@ class AdditionalFeeController extends BaseController
         }
 
         $builder = db_connect()->table('students s')
-            ->select('s.student_id, u.id AS user_id, s.student_number, u.username')
+            ->select('s.student_id, u.id AS user_id, s.student_number, u.username, u.photo_mime')
             ->join('users u', 'u.id = s.user_id')
             ->join('sections sec', 'sec.section_id = u.section_id')
             ->where('sec.academic_year', AcademicYearModel::yearOnly($activeTerm))
