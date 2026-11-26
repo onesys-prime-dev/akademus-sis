@@ -4207,13 +4207,13 @@ class ChairpersonController extends BaseController
         ];
 
         if (! $this->validate($rules)) {
-            return redirect()->to('/chairperson/profile')->with('profile_error', implode(' ', $this->validator->getErrors()));
+            return redirect()->to('/chairperson/profile')->with('errors', $this->validator->getErrors());
         }
 
         $file = $this->request->getFile('photo');
 
         if ($file === null || ! $file->isValid()) {
-            return redirect()->to('/chairperson/profile')->with('profile_error', 'Upload failed. Please try again.');
+            return redirect()->to('/chairperson/profile')->with('errors', ['Upload failed. Please try again.']);
         }
 
         db_connect()->table('users')->where('id', $userId)->update([
@@ -4221,7 +4221,7 @@ class ChairpersonController extends BaseController
             'photo_mime' => $file->getClientMimeType(),
         ]);
 
-        return redirect()->to('/chairperson/profile')->with('profile_message', 'Profile photo updated.');
+        return redirect()->to('/chairperson/profile')->with('message', 'Profile photo updated.');
     }
 
     /** Same contract as StudentController::removePhoto(). */
@@ -4232,7 +4232,7 @@ class ChairpersonController extends BaseController
             'photo_mime' => null,
         ]);
 
-        return redirect()->to('/chairperson/profile')->with('profile_message', 'Profile photo removed.');
+        return redirect()->to('/chairperson/profile')->with('message', 'Profile photo removed.');
     }
 
     public function updateProfile()
@@ -4240,7 +4240,7 @@ class ChairpersonController extends BaseController
         $username = trim((string) $this->request->getPost('username'));
 
         if ($username === '' || mb_strlen($username) > 100) {
-            return redirect()->back()->with('profile_error', 'Name is required (max 100 characters).');
+            return redirect()->back()->with('errors', ['Name is required (max 100 characters).']);
         }
 
         $users = auth()->getProvider();
@@ -4248,7 +4248,7 @@ class ChairpersonController extends BaseController
         $user->username = $username;
         $users->save($user);
 
-        return redirect()->to('/chairperson/profile')->with('profile_message', 'Profile updated.');
+        return redirect()->to('/chairperson/profile')->with('message', 'Profile updated.');
     }
 
     public function updatePassword()
@@ -4258,22 +4258,22 @@ class ChairpersonController extends BaseController
         $confirm = (string) $this->request->getPost('confirm_password');
 
         if ($current === '' || $new === '' || $confirm === '') {
-            return redirect()->back()->with('profile_error', 'All password fields are required.');
+            return redirect()->back()->with('errors', ['All password fields are required.']);
         }
 
         if ($new !== $confirm) {
-            return redirect()->back()->with('profile_error', 'New password and confirmation do not match.');
+            return redirect()->back()->with('errors', ['New password and confirmation do not match.']);
         }
 
         $account = auth()->user();
         $result  = auth()->check(['email' => $account->getEmail(), 'password' => $current]);
 
         if (! $result->isOK()) {
-            return redirect()->back()->with('profile_error', 'Current password is incorrect.');
+            return redirect()->back()->with('errors', ['Current password is incorrect.']);
         }
 
         if (mb_strlen($new) < 8) {
-            return redirect()->back()->with('profile_error', 'New password must be at least 8 characters.');
+            return redirect()->back()->with('errors', ['New password must be at least 8 characters.']);
         }
 
         $users = auth()->getProvider();
@@ -4281,6 +4281,6 @@ class ChairpersonController extends BaseController
         $user->password = $new;
         $users->save($user);
 
-        return redirect()->to('/chairperson/profile')->with('profile_message', 'Password changed.');
+        return redirect()->to('/chairperson/profile')->with('message', 'Password changed.');
     }
 }

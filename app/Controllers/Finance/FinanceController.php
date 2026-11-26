@@ -77,13 +77,13 @@ class FinanceController extends BaseController
         ];
 
         if (! $this->validate($rules)) {
-            return redirect()->to('/finance/profile')->with('profile_error', implode(' ', $this->validator->getErrors()));
+            return redirect()->to('/finance/profile')->with('errors', $this->validator->getErrors());
         }
 
         $file = $this->request->getFile('photo');
 
         if ($file === null || ! $file->isValid()) {
-            return redirect()->to('/finance/profile')->with('profile_error', 'Upload failed. Please try again.');
+            return redirect()->to('/finance/profile')->with('errors', ['Upload failed. Please try again.']);
         }
 
         db_connect()->table('users')->where('id', $userId)->update([
@@ -91,7 +91,7 @@ class FinanceController extends BaseController
             'photo_mime' => $file->getClientMimeType(),
         ]);
 
-        return redirect()->to('/finance/profile')->with('profile_message', 'Profile photo updated.');
+        return redirect()->to('/finance/profile')->with('message', 'Profile photo updated.');
     }
 
     /** Same contract as StudentController::removePhoto(). */
@@ -102,7 +102,7 @@ class FinanceController extends BaseController
             'photo_mime' => null,
         ]);
 
-        return redirect()->to('/finance/profile')->with('profile_message', 'Profile photo removed.');
+        return redirect()->to('/finance/profile')->with('message', 'Profile photo removed.');
     }
 
     public function updateProfile()
@@ -110,11 +110,11 @@ class FinanceController extends BaseController
         $username = trim((string) $this->request->getPost('username'));
 
         if ($username === '' || mb_strlen($username) > 100) {
-            return redirect()->back()->with('profile_error', 'Name is required (max 100 characters).');
+            return redirect()->back()->with('errors', ['Name is required (max 100 characters).']);
         }
 
         if (preg_match('/[<>"`\\]/', $username) === 1) {
-            return redirect()->back()->with('profile_error', 'Name cannot contain < > " ` or \ characters.');
+            return redirect()->back()->with('errors', ['Name cannot contain < > " ` or \ characters.']);
         }
 
         $users = auth()->getProvider();
@@ -122,7 +122,7 @@ class FinanceController extends BaseController
         $user->username = $username;
         $users->save($user);
 
-        return redirect()->to('/finance/profile')->with('profile_message', 'Profile updated.');
+        return redirect()->to('/finance/profile')->with('message', 'Profile updated.');
     }
 
     public function updatePassword()
@@ -132,18 +132,18 @@ class FinanceController extends BaseController
         $confirm = (string) $this->request->getPost('confirm_password');
 
         if ($current === '' || $new === '' || $confirm === '') {
-            return redirect()->back()->with('profile_error', 'All password fields are required.');
+            return redirect()->back()->with('errors', ['All password fields are required.']);
         }
 
         if ($new !== $confirm) {
-            return redirect()->back()->with('profile_error', 'New password and confirmation do not match.');
+            return redirect()->back()->with('errors', ['New password and confirmation do not match.']);
         }
 
         /** @var User $account */
         $account = auth()->user();
 
         if (! auth()->check(['email' => $account->getEmail(), 'password' => $current])->isOK()) {
-            return redirect()->back()->with('profile_error', 'Current password is incorrect.');
+            return redirect()->back()->with('errors', ['Current password is incorrect.']);
         }
 
         $account->password = $new;
@@ -151,9 +151,9 @@ class FinanceController extends BaseController
         try {
             auth()->getProvider()->save($account);
         } catch (\Throwable $e) {
-            return redirect()->back()->with('profile_error', 'That password was rejected. Use at least 8 characters that are not easy to guess.');
+            return redirect()->back()->with('errors', ['That password was rejected. Use at least 8 characters that are not easy to guess.']);
         }
 
-        return redirect()->to('/finance/profile')->with('profile_message', 'Password changed.');
+        return redirect()->to('/finance/profile')->with('message', 'Password changed.');
     }
 }

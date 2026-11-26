@@ -46,11 +46,11 @@ $this->setData(compact('activeAdmin', 'pageTitle', 'brandSub', 'userName', 'user
     <div><h2 class="ac-page-header__title">Profile</h2></div>
 </div>
 
-<?php if (session('profile_message')): ?>
-    <div class="flash success"><?= esc(session('profile_message')) ?></div>
+<?php if (session('message')): ?>
+    <div class="flash success"><?= esc(session('message')) ?></div>
 <?php endif ?>
-<?php if (session('profile_error')): ?>
-    <div class="flash error"><?= esc(session('profile_error')) ?></div>
+<?php if (session('errors')): ?>
+    <div class="flash error"><?php foreach ((array) session('errors') as $error): ?><?= esc($error) ?><br><?php endforeach ?></div>
 <?php endif ?>
 
 <div class="panel">
