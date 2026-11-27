@@ -29,6 +29,38 @@
             </div>
             <span class="material-symbols-outlined fr-link-card__arrow" aria-hidden="true">arrow_forward</span>
         </a>
+        <a href="<?= site_url('finance/reports/revenue-by-program') ?>" class="fr-link-card">
+            <div class="fr-link-card__icon fr-link-card__icon--success"><span class="material-symbols-outlined" aria-hidden="true">bar_chart</span></div>
+            <div class="fr-link-card__body">
+                <p class="fr-link-card__label">Revenue by Program</p>
+                <p class="fr-link-card__hint">Billed, collected, and outstanding, by program and year level.</p>
+            </div>
+            <span class="material-symbols-outlined fr-link-card__arrow" aria-hidden="true">arrow_forward</span>
+        </a>
+        <a href="<?= site_url('finance/reports/balances-by-program') ?>" class="fr-link-card">
+            <div class="fr-link-card__icon fr-link-card__icon--warning"><span class="material-symbols-outlined" aria-hidden="true">account_balance</span></div>
+            <div class="fr-link-card__body">
+                <p class="fr-link-card__label">Outstanding Balances by Program</p>
+                <p class="fr-link-card__hint">Which programs and year levels owe the most, this term.</p>
+            </div>
+            <span class="material-symbols-outlined fr-link-card__arrow" aria-hidden="true">arrow_forward</span>
+        </a>
+        <a href="<?= site_url('finance/reports/monthly-collection') ?>" class="fr-link-card">
+            <div class="fr-link-card__icon fr-link-card__icon--success"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span></div>
+            <div class="fr-link-card__body">
+                <p class="fr-link-card__label">Monthly Collection Summary</p>
+                <p class="fr-link-card__hint">Total collections per month, across a full year.</p>
+            </div>
+            <span class="material-symbols-outlined fr-link-card__arrow" aria-hidden="true">arrow_forward</span>
+        </a>
+        <a href="<?= site_url('finance/reports/discounts-fees-summary') ?>" class="fr-link-card">
+            <div class="fr-link-card__icon fr-link-card__icon--warning"><span class="material-symbols-outlined" aria-hidden="true">sell</span></div>
+            <div class="fr-link-card__body">
+                <p class="fr-link-card__label">Discounts &amp; Additional Fees Summary</p>
+                <p class="fr-link-card__hint">What was actually granted, by discount type and fee label.</p>
+            </div>
+            <span class="material-symbols-outlined fr-link-card__arrow" aria-hidden="true">arrow_forward</span>
+        </a>
     </div>
 
     <div class="fr-card">

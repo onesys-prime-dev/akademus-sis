@@ -105,3 +105,12 @@
 .fr-bucket--90 .fr-bucket__count { color: #b42318; }
 
 .fr-amount { font-weight: 650; color: var(--fr-ink); }
+
+/* Monthly Collection Summary bars */
+.fr-bars { display: flex; flex-direction: column; gap: 10px; }
+.fr-bar { display: grid; grid-template-columns: 90px 1fr 120px; align-items: center; gap: 12px; }
+.fr-bar__label { font-size: 12.5px; font-weight: 600; color: var(--fr-ink); }
+.fr-bar__track { background: var(--color-surface-sunken, #f8fafc); border-radius: 999px; height: 12px; overflow: hidden; }
+.fr-bar__fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 70%, white), var(--color-primary)); transition: width 400ms var(--fr-ease); }
+.fr-bar__value { font-size: 12.5px; font-weight: 650; color: var(--fr-ink); text-align: right; }
+.fr-bar--empty .fr-bar__label, .fr-bar--empty .fr-bar__value { color: var(--fr-muted); font-weight: 500; }

@@ -370,6 +370,10 @@ $routes->group('finance', ['filter' => 'group:finance'], function ($routes) use 
     $routes->get('reports/search-students', 'Finance\ReportController::searchStudents', ['filter' => 'permission:finance.view']);
     $routes->get('reports/daily-collection', 'Finance\ReportController::dailyCollection', ['filter' => 'permission:finance.view']);
     $routes->get('reports/ar-aging', 'Finance\ReportController::arAging', ['filter' => 'permission:finance.view']);
+    $routes->get('reports/revenue-by-program', 'Finance\ReportController::revenueByProgram', ['filter' => 'permission:finance.view']);
+    $routes->get('reports/balances-by-program', 'Finance\ReportController::balancesByProgram', ['filter' => 'permission:finance.view']);
+    $routes->get('reports/monthly-collection', 'Finance\ReportController::monthlyCollection', ['filter' => 'permission:finance.view']);
+    $routes->get('reports/discounts-fees-summary', 'Finance\ReportController::discountsFeesSummary', ['filter' => 'permission:finance.view']);
     $routes->get('reports/ledger/(:num)', 'Finance\ReportController::ledgerSummary/$1', ['filter' => 'permission:finance.view']);
 
     // graduation clearance — Finance's exclusive "accounting" item queue
