@@ -63,6 +63,7 @@ endif;
 
 <?= $this->section('styles') ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/pages/enlistment-window.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/pages/enlistment-window.css') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/components/datetime-picker.css') ?>?v=<?= filemtime(FCPATH . 'assets/css/components/datetime-picker.css') ?>">
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
@@ -305,6 +306,12 @@ endif;
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
+<script src="<?= base_url('assets/js/datetime-picker.js') ?>?v=<?= filemtime(FCPATH . 'assets/js/datetime-picker.js') ?>"></script>
+<script>
+    document.querySelectorAll('.ew-datefield input[type="datetime-local"]').forEach(function (input) {
+        if (window.enhanceDateTimeField) window.enhanceDateTimeField(input);
+    });
+</script>
 <?php if ($ay !== null): ?>
 <script type="application/json" id="ewConfig"><?= json_encode([
     'grantUrl'  => site_url('chairperson/enlistment-window/grant-override'),

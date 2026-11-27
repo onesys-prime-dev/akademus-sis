@@ -48,9 +48,12 @@
 
     function iconEl(name) {
         var el = document.createElement('span');
-        el.className = 'material-symbols-outlined';
+        // Keep navigation arrows readable even if the optional icon font
+        // has not loaded yet (or a local font cache is stale).
+        var fallback = { chevron_left: '‹', chevron_right: '›', expand_more: '⌄' };
+        el.className = fallback[name] ? 'ac-dt__chevron' : 'material-symbols-outlined';
         el.setAttribute('aria-hidden', 'true');
-        el.textContent = name;
+        el.textContent = fallback[name] || name;
         return el;
     }
 
@@ -457,13 +460,13 @@
             clearBtn.type = 'button';
             clearBtn.className = 'ac-dt__link ac-dt__link--danger';
             clearBtn.appendChild(iconEl('restart_alt'));
-            clearBtn.appendChild(document.createTextNode('Clear Field'));
+            clearBtn.appendChild(document.createTextNode('Clear'));
             clearBtn.addEventListener('click', function () { pending = null; commit(null); close(); });
 
             var todayBtn = document.createElement('button');
             todayBtn.type = 'button';
             todayBtn.className = 'ac-dt__today-btn';
-            todayBtn.textContent = 'Jump to Today';
+            todayBtn.textContent = 'Today';
             todayBtn.addEventListener('click', function () { jumpDays(0); });
 
             left.appendChild(clearBtn);
@@ -479,7 +482,7 @@
             var confirmBtn = document.createElement('button');
             confirmBtn.type = 'button';
             confirmBtn.className = 'ac-btn ac-btn-primary ac-dt__confirm';
-            confirmBtn.textContent = 'Confirm';
+            confirmBtn.textContent = 'Apply';
             confirmBtn.disabled = !pending;
             confirmBtn.addEventListener('click', function () { commit(pending); close(); });
 
