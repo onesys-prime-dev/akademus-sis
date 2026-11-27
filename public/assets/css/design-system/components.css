@@ -60,6 +60,69 @@
 .ac-page .field :is(input, select, textarea):disabled { background: var(--color-surface-sunken); color: var(--color-text-secondary); cursor: not-allowed; -webkit-text-fill-color: var(--color-text-secondary); }
 textarea.ac-input, .field textarea { min-height: 100px; resize: vertical; }
 .ac-field label, .ac-page .field label, .auth-page .form-floating label { font: var(--text-label); text-transform: none; letter-spacing: 0; color: var(--color-text-secondary); display: block; margin-bottom: 8px; }
+
+/* Every type="date"/"time" field app-wide — the box styling above already
+   covers the input itself; this is only the native calendar/clock glyph,
+   which otherwise renders as a flat, unstyled OS-grey icon that clashes
+   with the rest of the (styled) field. color-scheme:light keeps that glyph
+   from inverting to white-on-white under a dark OS theme, since the app
+   itself has no dark mode of its own yet. */
+input[type="date"], input[type="time"], input[type="datetime-local"], input[type="month"] {
+    color-scheme: light; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+    padding: 3px; margin-left: 4px; border-radius: 6px; opacity: .55;
+    cursor: pointer; transition: opacity var(--transition-fast, 150ms), background-color var(--transition-fast, 150ms);
+}
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="date"]:focus::-webkit-calendar-picker-indicator,
+input[type="time"]:hover::-webkit-calendar-picker-indicator,
+input[type="time"]:focus::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]:focus::-webkit-calendar-picker-indicator,
+input[type="month"]:hover::-webkit-calendar-picker-indicator,
+input[type="month"]:focus::-webkit-calendar-picker-indicator {
+    opacity: 1; background: var(--color-primary-soft, color-mix(in srgb, var(--color-primary) 12%, transparent));
+}
+input[type="date"]:disabled::-webkit-calendar-picker-indicator,
+input[type="time"]:disabled::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]:disabled::-webkit-calendar-picker-indicator,
+input[type="month"]:disabled::-webkit-calendar-picker-indicator { opacity: .3; cursor: not-allowed; }
+
+/* The full date-field treatment — a left-aligned icon, no native glyph (it's
+   stretched invisibly over the whole input instead, so the field stays
+   clickable anywhere), hover/focus border + icon tint. Promoted from the
+   Chairperson > Enlistment Window page (finance-reports.css, academic_years,
+   etc. all reuse this instead of reinventing it). Markup:
+   <div class="ac-date-field"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><input type="date" ...></div>
+   Override --acdf-radius on a wrapping element to match a page's own control
+   radius (e.g. the 12px "card" pages use instead of the 6px app default). */
+.ac-date-field { position: relative; }
+.ac-date-field .material-symbols-outlined {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    font-size: 18px; color: var(--color-text-tertiary, #8ea0b8); pointer-events: none;
+    transition: color var(--transition-fast, 150ms);
+}
+.ac-date-field input {
+    width: 100%; min-height: var(--control-height); border: 1px solid var(--color-border-control);
+    border-radius: var(--acdf-radius, var(--radius-sm)); padding: 9px 14px 9px 42px;
+    background: var(--color-surface); color: var(--color-text-primary); font: var(--text-body);
+    font-variant-numeric: tabular-nums; cursor: pointer; color-scheme: light;
+    transition: border-color var(--transition-fast, 150ms), box-shadow var(--transition-fast, 150ms), background-color var(--transition-fast, 150ms);
+}
+.ac-date-field input:hover { border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border-control)); background: var(--color-surface-secondary); }
+.ac-date-field input:focus { border-color: var(--color-primary); box-shadow: var(--focus-ring); outline: none; background: var(--color-surface); }
+.ac-date-field:has(input:hover) .material-symbols-outlined,
+.ac-date-field:has(input:focus) .material-symbols-outlined { color: var(--color-primary); }
+.ac-date-field input::-webkit-calendar-picker-indicator {
+    position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0;
+    background: transparent; color: transparent; cursor: pointer; opacity: 0;
+}
+.ac-date-field input:disabled { background: var(--color-surface-sunken); color: var(--color-text-secondary); cursor: not-allowed; }
+
 .ac-modal__body { gap: var(--space-4); }
 .ac-page input:is([type="checkbox"], [type="radio"]), .auth-page input:is([type="checkbox"], [type="radio"]) { width: 16px; height: 16px; }
 .ac-page .field-row > *, .ac-page-header > *, .ac-toolbar > * { min-width: 0; }

@@ -19,7 +19,10 @@
     <form method="get" action="<?= site_url('finance/reports/daily-collection') ?>" class="fr-filter-form">
         <div class="fr-field">
             <label for="frDate">Date</label>
-            <input type="date" name="date" id="frDate" class="ac-input" value="<?= esc($date) ?>">
+            <div class="ac-date-field">
+                <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                <input type="date" name="date" id="frDate" value="<?= esc($date) ?>">
+            </div>
         </div>
         <button type="submit" class="ac-btn ac-btn-primary"><span class="material-symbols-outlined" aria-hidden="true">filter_alt</span>View</button>
     </form>

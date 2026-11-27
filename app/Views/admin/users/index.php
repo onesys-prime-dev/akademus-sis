@@ -283,7 +283,10 @@
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                         <div class="ac-field">
                             <label>Date of Birth</label>
-                            <input type="date" name="date_of_birth" class="ac-input">
+                            <div class="ac-date-field">
+                                <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                                <input type="date" name="date_of_birth">
+                            </div>
                         </div>
                         <div class="ac-field">
                             <label>Gender</label>
@@ -422,7 +425,10 @@
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                         <div class="ac-field">
                             <label>Date of Birth</label>
-                            <input type="date" name="date_of_birth" id="acEditDob" class="ac-input">
+                            <div class="ac-date-field">
+                                <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                                <input type="date" name="date_of_birth" id="acEditDob">
+                            </div>
                         </div>
                         <div class="ac-field">
                             <label>Gender</label>

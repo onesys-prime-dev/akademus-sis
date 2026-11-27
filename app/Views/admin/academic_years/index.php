@@ -143,11 +143,17 @@ $ayModel = new \App\Models\AcademicYearModel();
                 </div>
                 <div class="ac-field">
                     <label>Start Date <span class="optional">(Optional)</span></label>
-                    <input type="date" name="start_date" class="ac-input" value="<?= old('start_date') ?>">
+                    <div class="ac-date-field">
+                        <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                        <input type="date" name="start_date" value="<?= old('start_date') ?>">
+                    </div>
                 </div>
                 <div class="ac-field">
                     <label>End Date <span class="optional">(Optional)</span></label>
-                    <input type="date" name="end_date" class="ac-input" value="<?= old('end_date') ?>">
+                    <div class="ac-date-field">
+                        <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                        <input type="date" name="end_date" value="<?= old('end_date') ?>">
+                    </div>
                 </div>
             </div>
             <div class="ac-modal__actions">

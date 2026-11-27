@@ -19,11 +19,17 @@
     <form method="get" action="<?= site_url('finance/reports/discounts-fees-summary') ?>" class="fr-filter-form">
         <div class="fr-field">
             <label for="frFrom">From</label>
-            <input type="date" name="from" id="frFrom" class="ac-input" value="<?= esc($from) ?>">
+            <div class="ac-date-field">
+                <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                <input type="date" name="from" id="frFrom" value="<?= esc($from) ?>">
+            </div>
         </div>
         <div class="fr-field">
             <label for="frTo">To</label>
-            <input type="date" name="to" id="frTo" class="ac-input" value="<?= esc($to) ?>">
+            <div class="ac-date-field">
+                <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+                <input type="date" name="to" id="frTo" value="<?= esc($to) ?>">
+            </div>
         </div>
         <button type="submit" class="ac-btn ac-btn-primary"><span class="material-symbols-outlined" aria-hidden="true">filter_alt</span>View</button>
     </form>
