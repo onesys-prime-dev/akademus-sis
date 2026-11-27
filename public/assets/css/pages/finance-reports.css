@@ -1,0 +1,107 @@
+/* Finance > Reports */
+
+.fr-section {
+    --fr-ink: var(--color-text-primary); --fr-muted: var(--color-text-secondary); --fr-line: var(--color-border);
+    --fr-radius-card: 20px; --fr-radius-control: 12px;
+    --fr-shadow-card: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px -12px rgba(16, 24, 40, .10);
+    --fr-ease: cubic-bezier(.4, 0, .2, 1); --fr-t: 200ms var(--fr-ease);
+}
+
+.fr-card {
+    background: #fff; border: 1px solid var(--fr-line); border-radius: var(--fr-radius-card);
+    box-shadow: var(--fr-shadow-card); padding: 24px 26px 26px; margin-bottom: 20px;
+}
+.fr-card__title { margin: 0 0 4px; font-size: 16px; font-weight: 650; letter-spacing: -.2px; color: var(--fr-ink); }
+.fr-card__hint { margin: 0 0 18px; font-size: 12.5px; line-height: 1.5; color: var(--fr-muted); }
+
+/* The two report launch cards on the Reports index */
+.fr-link-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.fr-link-card {
+    display: flex; align-items: center; gap: 16px; background: #fff; border: 1px solid var(--fr-line);
+    border-radius: var(--fr-radius-card); box-shadow: var(--fr-shadow-card); padding: 20px 22px;
+    text-decoration: none; color: inherit; transition: transform var(--fr-t), box-shadow var(--fr-t), border-color var(--fr-t);
+}
+.fr-link-card:hover, .fr-link-card:focus-visible {
+    transform: translateY(-2px); border-color: color-mix(in srgb, var(--color-primary) 30%, var(--fr-line));
+    box-shadow: 0 2px 4px rgba(16, 24, 40, .06), 0 16px 32px -14px rgba(16, 24, 40, .18);
+}
+.fr-link-card__icon {
+    width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    flex: none; font-size: 22px;
+}
+.fr-link-card__icon--success { background: var(--color-success-soft, #e7f6ec); color: var(--color-success, #157347); }
+.fr-link-card__icon--warning { background: var(--color-warning-soft, #fdf1de); color: #b8860b; }
+.fr-link-card__body { flex: 1; min-width: 0; }
+.fr-link-card__label { margin: 0 0 2px; font-size: 13.5px; font-weight: 650; color: var(--fr-ink); }
+.fr-link-card__hint { margin: 0; font-size: 12px; color: var(--fr-muted); }
+.fr-link-card__arrow { color: var(--fr-muted); font-size: 20px; transition: transform var(--fr-t), color var(--fr-t); }
+.fr-link-card:hover .fr-link-card__arrow { transform: translateX(3px); color: var(--color-primary); }
+
+@media (max-width: 760px) {
+    .fr-link-grid { grid-template-columns: 1fr; }
+}
+
+/* Same "find a student" search box as Discounts/Additional Fees/Cashier */
+.fr-search { position: relative; max-width: 480px; }
+.fr-search__icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--fr-muted); font-size: 19px; pointer-events: none; transition: color var(--fr-t); }
+.fr-search input {
+    width: 100%; padding: 13px 14px 13px 42px; border: 1px solid var(--fr-line); border-radius: var(--fr-radius-control);
+    font-size: 13.5px; font-weight: 500; color: var(--fr-ink); background: #fcfdfe;
+    transition: border-color var(--fr-t), box-shadow var(--fr-t), background var(--fr-t);
+}
+.fr-search input:focus {
+    outline: none; background: #fff; border-color: color-mix(in srgb, var(--color-primary) 45%, var(--fr-line));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+.fr-search input:focus ~ .fr-search__icon { color: var(--color-primary); }
+.fr-search input::placeholder { color: #9aa5b8; }
+
+.fr-results {
+    position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 30;
+    background: #fff; border: 1px solid var(--fr-line); border-radius: var(--fr-radius-control);
+    box-shadow: 0 2px 4px rgba(16, 24, 40, .05), 0 16px 36px -14px rgba(16, 24, 40, .18);
+    overflow: hidden; max-height: 340px; overflow-y: auto;
+}
+.fr-result {
+    display: flex; align-items: center; gap: 11px; padding: 10px 14px;
+    border-bottom: 1px solid var(--fr-line); text-decoration: none; color: inherit;
+    transition: background var(--fr-t);
+}
+.fr-result:last-child { border-bottom: none; }
+.fr-result:hover, .fr-result:focus-visible { background: #f8fafc; }
+.fr-result__avatar {
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: var(--color-primary-soft); color: var(--color-primary); font-weight: 700; font-size: 12px; flex: none; overflow: hidden;
+}
+.fr-result__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.fr-result__name { display: block; font-weight: 600; font-size: 13px; color: var(--fr-ink); }
+.fr-result__meta { display: block; font-size: 11.5px; color: var(--fr-muted); margin-top: 1px; }
+.fr-results__empty { padding: 16px 14px; font-size: 12px; color: var(--fr-muted); text-align: center; }
+
+/* Row avatar used in the Daily Collection / AR Aging / Ledger tables */
+.fr-row {
+    display: flex; align-items: center; gap: 10px;
+}
+.fr-row__avatar {
+    width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: var(--color-primary-soft); color: var(--color-primary); font-weight: 700; font-size: 11px; flex: none; overflow: hidden;
+}
+.fr-row__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.fr-row__name { font-weight: 600; font-size: 13px; color: var(--fr-ink); }
+.fr-row__meta { font-size: 11.5px; color: var(--fr-muted); }
+
+/* Date-filter form on Daily Collection */
+.fr-filter-form { display: flex; gap: 12px; align-items: end; margin-bottom: 20px; }
+.fr-filter-form .fr-field label { display: block; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--fr-muted); margin-bottom: 8px; }
+.fr-filter-form .ac-input { min-height: 44px; border-radius: var(--fr-radius-control); }
+.fr-filter-form .ac-btn { min-height: 44px; border-radius: var(--fr-radius-control); padding: 0 20px; }
+
+/* AR Aging bucket sections */
+.fr-bucket { margin-bottom: 20px; }
+.fr-bucket__head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.fr-bucket__title { margin: 0; font-size: 14px; font-weight: 650; color: var(--fr-ink); }
+.fr-bucket__count { font-size: 11.5px; font-weight: 650; color: var(--fr-muted); background: var(--color-surface-sunken, #f8fafc); border: 1px solid var(--fr-line); border-radius: 999px; padding: 2px 9px; }
+.fr-bucket--current .fr-bucket__count { color: #157347; }
+.fr-bucket--90 .fr-bucket__count { color: #b42318; }
+
+.fr-amount { font-weight: 650; color: var(--fr-ink); }

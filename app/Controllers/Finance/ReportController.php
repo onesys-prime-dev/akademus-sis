@@ -26,7 +26,7 @@ class ReportController extends BaseController
         $date = $this->request->getGet('date') ?: date('Y-m-d');
 
         $rows = db_connect()->table('student_payments sp')
-            ->select('sp.*, s.student_number, u.username')
+            ->select('sp.*, s.student_number, u.id AS user_id, u.username, u.photo_mime')
             ->join('students s', 's.student_id = sp.student_id')
             ->join('users u', 'u.id = s.user_id')
             ->where('DATE(sp.payment_date)', $date)
@@ -62,7 +62,7 @@ class ReportController extends BaseController
     public function arAging()
     {
         $rows = db_connect()->table('tuition_assessments ta')
-            ->select('ta.*, s.student_number, u.username')
+            ->select('ta.*, s.student_number, u.id AS user_id, u.username, u.photo_mime')
             ->join('students s', 's.student_id = ta.student_id')
             ->join('users u', 'u.id = s.user_id')
             ->where('ta.balance >', 0)
@@ -178,7 +178,7 @@ class ReportController extends BaseController
         }
 
         $results = db_connect()->table('students s')
-            ->select('s.student_id, s.student_number, u.username')
+            ->select('s.student_id, s.student_number, u.id AS user_id, u.username, u.photo_mime')
             ->join('users u', 'u.id = s.user_id')
             ->groupStart()
                 ->like('u.username', $query)
